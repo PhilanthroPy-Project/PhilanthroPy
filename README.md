@@ -146,13 +146,17 @@ philanthropy/
 ├── preprocessing/          # CRM cleaning, FY engineering, and clinical encounter features
 │   ├── transformers.py     # CRMCleaner, FiscalYearTransformer
 │   ├── _wealth.py          # WealthScreeningImputer (leakage-safe vendor data imputation)
-│   └── _encounters.py      # EncounterTransformer (clinical discharge → gift date features)
+│   ├── _encounters.py      # EncounterTransformer (clinical discharge → gift date features)
+│   └── _rfm.py             # RFMTransformer (recency, frequency, monetary metrics)
 ├── models/                 # Scikit-learn–compatible estimators
 │   ├── propensity.py       # PropensityScorer, LapsePredictor (base stubs)
 │   ├── _propensity.py      # DonorPropensityModel (RF-backed classifier, 0-100 affinity score)
 │   └── _wallet.py          # ShareOfWalletRegressor (capacity regression + untapped-ratio)
 ├── metrics/                # Fundraising-specific KPI functions
-│   └── scoring.py
+│   ├── scoring.py
+│   └── _financial.py
+├── visualisation/          # Presentation-ready visualizations
+│   └── _plots.py
 ├── utils/                  # Shared testing helpers and synthetic data utilities
 │   └── testing.py
 └── base.py                 # Abstract base classes for all PhilanthroPy estimators
@@ -213,6 +217,11 @@ print(empty.shape)   # (0, 5)
 ### `philanthropy.preprocessing`
 
 Transformers inherit from `sklearn.base.TransformerMixin`, so they drop directly into a `Pipeline`.
+
+#### `RFMTransformer`
+
+Transforms transaction logs into Recency, Frequency, and Monetary features relative to a given reference date. 
+Standardises raw transaction data into a format suitable for pipeline models.
 
 #### `CRMCleaner`
 
@@ -489,6 +498,10 @@ print(importances)
 
 ---
 
+#### `MajorGiftClassifier`
+
+Classifies major gifts using calibrated probability estimates. Uses `HistGradientBoostingClassifier` as the backend to handle missing data natively, and wraps the backend in `CalibratedClassifierCV` to ensure the `.predict_proba()` outputs are true probabilities. Provides a `.predict_affinity_score(X)` method scaling the calibrated probability to a 0-100 integer.
+
 #### `PropensityScorer`
 
 A lightweight base stub for propensity scoring. Uses a pluggable `estimator` backend and a configurable `threshold` for class boundary tuning.
@@ -514,21 +527,24 @@ preds = scorer.predict(X)
 
 #### `LapsePredictor`
 
-Identifies donors at risk of lapsing (i.e., not renewing their gift). Useful for retention-focused campaigns.
+Identifies donors at risk of lapsing (i.e., not renewing their gift) using a production `RandomForestClassifier` backend. Useful for retention-focused campaigns.
 
 **Parameters:**
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `estimator` | estimator \| None | `None` | Backend sklearn classifier. |
-| `lapse_window_years` | `int` | `2` | Number of years of inactivity that defines a lapsed donor. |
-| `threshold` | `float` | `0.5` | Decision threshold for `predict()`. |
-| `fiscal_year_start` | `int` | `7` | Fiscal year starting month. |
+| `n_estimators` | `int` | `100` | Number of trees in the Random Forest. |
+| `lapse_window_years` | `int` | `2` | Time window over which to predict lapsing, in years. |
+
+Mapping to retention strategies based on predicted probabilities:
+- **High Risk (> 70%)**: Flag for immediate high-touch stewardship.
+- **Moderate Risk (40% - 70%)**: Add to targeted multi-channel re-engagement campaigns.
+- **Low Risk (< 40%)**: Continue with standard cyclic communications.
 
 ```python
 from philanthropy.models import LapsePredictor
 
-predictor = LapsePredictor(lapse_window_years=3, threshold=0.3)
+predictor = LapsePredictor(lapse_window_years=3)
 predictor.fit(X, y)
 at_risk = predictor.predict(X)   # 1 = at risk of lapsing
 ```
@@ -602,6 +618,17 @@ print(ratios[:5])   # e.g. [3.2, 8.7, 1.1, 12.4, 2.9]
 
 Pure functions — no fitting required. Take standard Python collections as input, return scalar floats. Safe to call in any reporting script.
 
+#### `donor_lifetime_value(average_donation, lifespan_years, discount_rate=0.05, retention_rate=None) → float`
+
+Computes the Net Present Value (NPV) of a donor's future giving. If `retention_rate` is provided, dynamically calculates the expected lifespan; otherwise uses the fixed `lifespan_years`.
+
+```python
+from philanthropy.metrics import donor_lifetime_value
+
+ltv = donor_lifetime_value(average_donation=100.0, lifespan_years=5, discount_rate=0.05)
+print(f"Donor LTV: ${ltv:,.2f}")
+```
+
 #### `donor_retention_rate(current_donors, prior_donors) → float`
 
 Calculates the year-over-year donor retention rate:
@@ -656,6 +683,21 @@ print(f"Donor Acquisition Cost: ${dac:,.2f}")   # Donor Acquisition Cost: $250.0
 ```
 
 ---
+
+### `philanthropy.visualisation`
+
+Presentation-ready visualizations of donor characteristics and pipeline health. Returns `matplotlib.axes.Axes` objects for further customization.
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+from philanthropy.visualisation import plot_affinity_distribution
+
+scores = np.random.uniform(0, 100, 500)
+labels = np.random.randint(0, 2, 500)
+ax = plot_affinity_distribution(scores, labels=labels)
+plt.show()
+```
 
 ### `philanthropy.utils`
 
@@ -1116,11 +1158,11 @@ Contributions are welcome! Please follow these steps:
 - [x] `philanthropy.models.ShareOfWalletRegressor` — continuous capacity regression + `predict_capacity_ratio()`
 - [x] Property-based testing (hypothesis) for `FiscalYearTransformer` across leap years, pre-1970 dates, all start months
 - [x] Temporal leakage prevention test suite (`test_leakage.py`)
-- [ ] `philanthropy.preprocessing.RFMTransformer` — compute Recency, Frequency, Monetary features
-- [ ] `philanthropy.models.MajorGiftClassifier` — gradient-boosted variant with calibrated probabilities
-- [ ] `philanthropy.models.LapsePredictor` — production RF implementation (currently stub)
-- [ ] `philanthropy.metrics.donor_lifetime_value()` — LTV calculation with discount rate
-- [ ] `philanthropy.visualisation` — affinity score plots, retention waterfall charts
+- [x] `philanthropy.preprocessing.RFMTransformer` — compute Recency, Frequency, Monetary features
+- [x] `philanthropy.models.MajorGiftClassifier` — gradient-boosted variant with calibrated probabilities
+- [x] `philanthropy.models.LapsePredictor` — production RF implementation (currently stub)
+- [x] `philanthropy.metrics.donor_lifetime_value()` — LTV calculation with discount rate
+- [x] `philanthropy.visualisation` — affinity score plots, retention waterfall charts
 - [ ] Full Sphinx documentation site
 
 ---

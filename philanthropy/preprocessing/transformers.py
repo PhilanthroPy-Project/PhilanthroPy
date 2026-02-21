@@ -20,10 +20,11 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from philanthropy.base import BasePhilanthropyTransformer
+from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.utils.validation import check_is_fitted, validate_data
 
 
-class CRMCleaner(BasePhilanthropyTransformer):
+class CRMCleaner(TransformerMixin, BaseEstimator):
     """Standardise raw CRM exports and optionally impute wealth-screening data.
 
     ``CRMCleaner`` performs lightweight, defensive cleaning of CRM datasets
@@ -83,11 +84,8 @@ class CRMCleaner(BasePhilanthropyTransformer):
         self,
         date_col: str = "gift_date",
         amount_col: str = "gift_amount",
-        fiscal_year_start: int = 7,
         wealth_imputer=None,
     ) -> None:
-        # scikit-learn rule: __init__ stores parameters and does NO logic.
-        super().__init__(fiscal_year_start=fiscal_year_start)
         self.date_col = date_col
         self.amount_col = amount_col
         self.wealth_imputer = wealth_imputer
@@ -106,9 +104,10 @@ class CRMCleaner(BasePhilanthropyTransformer):
         -------
         self : CRMCleaner
         """
-        self._validate_fiscal_year_start()
-        self.feature_names_in_ = list(X.columns)
-        self.n_features_in_ = len(X.columns)
+        X = validate_data(self, X, reset=True)
+        if hasattr(X, "columns"):
+            self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
+        self.n_features_in_ = X.shape[1]
 
         # Fit the optional wealth-screening imputer on training data only
         if self.wealth_imputer is not None:
@@ -133,7 +132,9 @@ class CRMCleaner(BasePhilanthropyTransformer):
             * ``amount_col`` coerced to ``float64`` (non-numeric → ``NaN``).
             * Wealth columns imputed if ``wealth_imputer`` was provided.
         """
-        X_out = X.copy()
+        check_is_fitted(self)
+        X = validate_data(self, X, reset=False)
+        X_out = X.copy() if hasattr(X, "columns") else pd.DataFrame(X)
 
         # Coerce date column
         if self.date_col in X_out.columns:
@@ -149,8 +150,19 @@ class CRMCleaner(BasePhilanthropyTransformer):
 
         return X_out
 
+    def get_feature_names_out(self, input_features=None):
+        check_is_fitted(self)
+        return np.array(self.feature_names_in_, dtype=object)
 
-class FiscalYearTransformer(BasePhilanthropyTransformer):
+    def _more_tags(self):
+        return {"X_types": ["2darray", "dataframe"]}
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        return tags
+
+
+class FiscalYearTransformer(TransformerMixin, BaseEstimator):
     """Append ``fiscal_year`` and ``fiscal_quarter`` columns to a gift DataFrame.
 
     Computes fiscal-calendar features from a configurable start month.
@@ -186,8 +198,8 @@ class FiscalYearTransformer(BasePhilanthropyTransformer):
         date_col: str = "gift_date",
         fiscal_year_start: int = 7,
     ) -> None:
-        super().__init__(fiscal_year_start=fiscal_year_start)
         self.date_col = date_col
+        self.fiscal_year_start = fiscal_year_start
 
     def fit(self, X: pd.DataFrame, y=None) -> "FiscalYearTransformer":
         """Validate parameters and record input schema.
@@ -202,8 +214,14 @@ class FiscalYearTransformer(BasePhilanthropyTransformer):
         -------
         self : FiscalYearTransformer
         """
-        self._validate_fiscal_year_start()
-        self.feature_names_in_ = list(X.columns)
+        if not (1 <= self.fiscal_year_start <= 12):
+            raise ValueError(
+                f"`fiscal_year_start` must be between 1 and 12, "
+                f"got {self.fiscal_year_start!r}."
+            )
+        X = validate_data(self, X, reset=True)
+        if hasattr(X, "columns"):
+            self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
         return self
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
@@ -222,17 +240,28 @@ class FiscalYearTransformer(BasePhilanthropyTransformer):
             * ``fiscal_year`` — Calendar year in which the fiscal year *ends*.
             * ``fiscal_quarter`` — Fiscal quarter (1–4) of the gift date.
         """
-        X_out = X.copy()
-        dates = pd.to_datetime(X_out[self.date_col])
+        check_is_fitted(self)
+        X = validate_data(self, X, reset=False)
+        X_out = X.copy() if hasattr(X, "columns") else pd.DataFrame(X)
+        dates = pd.to_datetime(X_out[self.date_col], errors="coerce")
 
         X_out["fiscal_year"] = dates.apply(
-            lambda d: d.year + 1 if d.month >= self.fiscal_year_start else d.year
-        )
+            lambda d: pd.NA if pd.isna(d) else (d.year + 1 if d.month >= self.fiscal_year_start else d.year)
+        ).astype("Int64")
 
-        # Compute fiscal quarter: shift months so fiscal month 1 = start month
-        def _fiscal_quarter(d) -> int:
-            fiscal_month = ((d.month - self.fiscal_year_start) % 12) + 1
-            return (fiscal_month - 1) // 3 + 1
-
-        X_out["fiscal_quarter"] = dates.apply(_fiscal_quarter).astype("Int64")
+        # Compute fiscal quarter
+        X_out["fiscal_quarter"] = dates.apply(
+            lambda d: pd.NA if pd.isna(d) else (((d.month - self.fiscal_year_start) % 12) // 3 + 1)
+        ).astype("Int64")
         return X_out
+
+    def get_feature_names_out(self, input_features=None):
+        check_is_fitted(self)
+        return np.array([*self.feature_names_in_, "fiscal_year", "fiscal_quarter"], dtype=object)
+
+    def _more_tags(self):
+        return {"X_types": ["2darray", "dataframe"]}
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        return tags

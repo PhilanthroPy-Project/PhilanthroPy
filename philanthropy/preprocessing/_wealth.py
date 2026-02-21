@@ -40,11 +40,8 @@ from typing import Dict, List, Literal, Optional
 
 import numpy as np
 import pandas as pd
-from sklearn.base import TransformerMixin
-from sklearn.utils.validation import check_is_fitted
-
-from philanthropy.base import BasePhilanthropyEstimator
-
+from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.utils.validation import check_is_fitted, validate_data
 
 # Default column names used by common wealth-screening vendors
 _DEFAULT_WEALTH_COLS: List[str] = [
@@ -56,7 +53,7 @@ _DEFAULT_WEALTH_COLS: List[str] = [
 ]
 
 
-class WealthScreeningImputer(BasePhilanthropyEstimator, TransformerMixin):
+class WealthScreeningImputer(TransformerMixin, BaseEstimator):
     """Leakage-safe median/constant imputation for wealth-screening columns.
 
     This transformer learns fill statistics **only** from the training fold
@@ -149,10 +146,7 @@ class WealthScreeningImputer(BasePhilanthropyEstimator, TransformerMixin):
         wealth_cols: Optional[List[str]] = None,
         strategy: Literal["median", "mean", "zero"] = "median",
         add_indicator: bool = True,
-        fiscal_year_start: int = 7,
     ) -> None:
-        # scikit-learn rule: __init__ only stores parameters — no logic.
-        super().__init__(fiscal_year_start=fiscal_year_start)
         self.wealth_cols = wealth_cols
         self.strategy = strategy
         self.add_indicator = add_indicator
@@ -208,16 +202,16 @@ class WealthScreeningImputer(BasePhilanthropyEstimator, TransformerMixin):
         """
         import warnings
 
-        self._validate_fiscal_year_start()
-
         if self.strategy not in self._VALID_STRATEGIES:
             raise ValueError(
                 f"`strategy` must be one of {sorted(self._VALID_STRATEGIES)}, "
                 f"got {self.strategy!r}."
             )
 
-        self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
-        self.n_features_in_ = len(X.columns)
+        X = validate_data(self, X, reset=True)
+        if hasattr(X, "columns"):
+            self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
+        self.n_features_in_ = X.shape[1]
 
         self.imputed_cols_ = self._resolve_cols(X)
 
@@ -231,9 +225,10 @@ class WealthScreeningImputer(BasePhilanthropyEstimator, TransformerMixin):
                     UserWarning,
                 )
 
-        self.fill_values_: Dict[str, float] = {
+        computed_fills = {
             col: self._compute_fill(X[col]) for col in self.imputed_cols_
         }
+        self.fill_values_ = dict(computed_fills)
 
         return self
 
@@ -258,7 +253,8 @@ class WealthScreeningImputer(BasePhilanthropyEstimator, TransformerMixin):
             If :meth:`fit` has not been called yet.
         """
         check_is_fitted(self, ["fill_values_", "imputed_cols_"])
-        X_out = X.copy()
+        X = validate_data(self, X, reset=False)
+        X_out = X.copy() if hasattr(X, "columns") else pd.DataFrame(X)
 
         for col in self.imputed_cols_:
             if col not in X_out.columns:
@@ -269,3 +265,20 @@ class WealthScreeningImputer(BasePhilanthropyEstimator, TransformerMixin):
             X_out[col] = X_out[col].fillna(self.fill_values_[col])
 
         return X_out
+
+    def get_feature_names_out(self, input_features=None):
+        check_is_fitted(self)
+        out = list(self.feature_names_in_)
+        if self.add_indicator:
+            for col in self.imputed_cols_:
+                if col in self.feature_names_in_:
+                    out.append(f"{col}__was_missing")
+        return np.array(out, dtype=object)
+
+    def _more_tags(self):
+        return {"X_types": ["2darray", "dataframe"]}
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        return tags
+

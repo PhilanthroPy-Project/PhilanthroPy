@@ -2,25 +2,25 @@ name: Philanthropy
 channels:
   - defaults
 dependencies:
-  - bzip2=1.0.8=h80987f9_6
-  - ca-certificates=2025.12.2=hca03da5_0
-  - expat=2.7.4=h50f4ffc_0
-  - libcxx=21.1.8=hb4ce287_0
-  - libexpat=2.7.4=h50f4ffc_0
-  - libffi=3.4.4=hca03da5_1
-  - libzlib=1.3.1=h5f15de7_0
-  - ncurses=6.5=hee39554_0
-  - openssl=3.0.19=ha0b305a_0
-  - packaging=25.0=py310hca03da5_1
-  - pip=26.0.1=pyhc872135_0
-  - python=3.10.19=hf701271_0
-  - readline=8.3=h0b18652_0
-  - setuptools=80.10.2=py310hca03da5_0
-  - sqlite=3.51.1=hab6afd1_0
-  - tk=8.6.15=hcd8a7d5_0
-  - wheel=0.46.3=py310hca03da5_0
-  - xz=5.6.4=h80987f9_1
-  - zlib=1.3.1=h5f15de7_0
+  - bzip2=1.0.8
+  - ca-certificates=2025.12.2
+  - expat=2.7.4
+  - libcxx=21.1.8
+  - libexpat=2.7.4
+  - libffi=3.4.4
+  - libzlib=1.3.1
+  - ncurses=6.5
+  - openssl=3.0.19
+  - packaging=25.0
+  - pip=26.0.1
+  - python=3.10.19
+  - readline=8.3
+  - setuptools=80.10.2
+  - sqlite=3.51.1
+  - tk=8.6.15
+  - wheel=0.46.3
+  - xz=5.6.4
+  - zlib=1.3.1
   - pip:
       - contourpy==1.3.2
       - coverage==7.13.4
@@ -28,6 +28,7 @@ dependencies:
       - exceptiongroup==1.3.1
       - flake8==7.3.0
       - fonttools==4.61.1
+      - hypothesis==6.151.9
       - iniconfig==2.3.0
       - joblib==1.5.3
       - kiwisolver==1.4.9
@@ -50,6 +51,7 @@ dependencies:
       - scipy==1.15.3
       - seaborn==0.13.2
       - six==1.17.0
+      - sortedcontainers==2.4.0
       - threadpoolctl==3.6.0
       - tomli==2.4.0
       - typing-extensions==4.15.0

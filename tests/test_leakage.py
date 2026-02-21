@@ -367,3 +367,60 @@ class TestTemporalSplitLeakage:
             "encounter_frequency_score must be invariant to test-set size; "
             "it changed between small and large transforms."
         )
+
+
+from hypothesis import given, settings, strategies as st
+from hypothesis.extra.pandas import data_frames, column, range_indexes
+
+class TestTemporalLeakagePrevention:
+    @settings(max_examples=100)
+    @given(
+        df_train=data_frames(
+            columns=[
+                column("estimated_net_worth", elements=st.floats(0, 1e7, allow_nan=True)),
+                column("real_estate_value", elements=st.floats(0, 1e7, allow_nan=True))
+            ],
+            index=range_indexes(min_size=2, max_size=50)
+        ),
+        n_test_samples=st.integers(min_value=1, max_value=1000)
+    )
+    def test_wealth_imputer_fill_value_independent_of_test_size(self, df_train, n_test_samples):
+        imputer = WealthScreeningImputer(strategy="median", add_indicator=False)
+        imputer.fit(df_train)
+        initial_fill = imputer.fill_values_.copy()
+        
+        df_test = pd.DataFrame({
+            "estimated_net_worth": np.random.uniform(0, 1e7, n_test_samples),
+            "real_estate_value": np.random.uniform(0, 1e7, n_test_samples)
+        })
+        imputer.transform(df_test)
+        assert imputer.fill_values_ == initial_fill
+
+    def test_encounter_summary_frozen_after_fit(self, train_encounters, train_gift_df, test_gift_df):
+        enc_df = train_encounters.copy()
+        t = EncounterTransformer()
+        t.set_encounter_data(enc_df)
+        t.fit(train_gift_df)
+        
+        out1 = t.transform(test_gift_df)
+        
+        enc_df.loc[len(enc_df)] = {"donor_id": 1, "discharge_date": "2023-12-31"}
+        out2 = t.transform(test_gift_df)
+        
+        pd.testing.assert_frame_equal(out1, out2)
+
+    def test_no_future_data_in_encounter_summary(self, train_encounters, train_gift_df):
+        future_row = pd.DataFrame({"donor_id": [1], "discharge_date": ["2025-01-01"]})
+        enc_df = pd.concat([train_encounters, future_row], ignore_index=True)
+        
+        t = EncounterTransformer(allow_negative_days=False)
+        t.set_encounter_data(enc_df)
+        t.fit(train_gift_df)
+        
+        out = t.transform(train_gift_df)
+        # donor 1 first gift is "2022-09-01", discharge is "2025-01-01". 
+        # so it's a negative day -> NaN since allow_negative_days=False
+        donor1_mask = train_gift_df["donor_id"] == 1
+        days = out.loc[donor1_mask, "days_since_last_discharge"]
+        assert days.isna().all()
+

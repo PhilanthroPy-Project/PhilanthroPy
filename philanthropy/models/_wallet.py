@@ -48,7 +48,7 @@ from typing import Optional
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.ensemble import HistGradientBoostingRegressor
-from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from sklearn.utils.validation import check_array, check_is_fitted, check_X_y, validate_data
 
 
 class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
@@ -176,37 +176,18 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         self.random_state = random_state
         self.capacity_floor = capacity_floor
 
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.input_tags.allow_nan = True
+        return tags
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
     def fit(self, X, y) -> "ShareOfWalletRegressor":
-        """Fit the share-of-wallet capacity model to labelled prospect data.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Feature matrix.  May contain ``NaN``; the internal
-            ``HistGradientBoostingRegressor`` handles missing values natively.
-            Common features include RFM metrics, engagement scores, and
-            wealth-screening capacity estimates.
-        y : array-like of shape (n_samples,)
-            Continuous target vector representing each donor's estimated total
-            philanthropic capacity in dollars (e.g., derived from prospect
-            research ratings or historical campaign gift maximums).
-
-        Returns
-        -------
-        self : ShareOfWalletRegressor
-            Fitted estimator.
-
-        Raises
-        ------
-        ValueError
-            If ``X`` and ``y`` shapes are incompatible.
-        """
-        # Allow NaN — do NOT call check_X_y with force_all_finite=True
-        X, y = check_X_y(X, y, force_all_finite="allow-nan")
+        """Fit the share-of-wallet capacity model to labelled prospect data."""
+        X, y = validate_data(self, X, y, force_all_finite="allow-nan", reset=True)
         self.n_features_in_ = X.shape[1]
 
         self.estimator_ = HistGradientBoostingRegressor(
@@ -221,27 +202,9 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         return self
 
     def predict(self, X) -> np.ndarray:
-        """Predict philanthropic capacity for each prospect.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Feature matrix.  May contain ``NaN`` values.
-
-        Returns
-        -------
-        capacity : ndarray of shape (n_samples,)
-            Predicted total philanthropic capacity in dollars.  Values are
-            clipped to ``[capacity_floor, ∞)`` so that all outputs are
-            semantically non-negative.
-
-        Raises
-        ------
-        sklearn.exceptions.NotFittedError
-            If :meth:`fit` has not been called yet.
-        """
+        """Predict philanthropic capacity for each prospect."""
         check_is_fitted(self, ["estimator_"])
-        X = check_array(X, force_all_finite="allow-nan")
+        X = validate_data(self, X, force_all_finite="allow-nan", reset=False)
         raw = self.estimator_.predict(X)
         return np.maximum(raw, self.capacity_floor)
 

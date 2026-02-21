@@ -45,10 +45,8 @@ from typing import List, Optional
 
 import numpy as np
 import pandas as pd
-from sklearn.base import TransformerMixin
-from sklearn.utils.validation import check_is_fitted
-
-from philanthropy.base import BasePhilanthropyEstimator
+from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.utils.validation import check_is_fitted, validate_data
 
 
 # ---------------------------------------------------------------------------
@@ -56,7 +54,7 @@ from philanthropy.base import BasePhilanthropyEstimator
 # ---------------------------------------------------------------------------
 
 
-class EncounterTransformer(BasePhilanthropyEstimator, TransformerMixin):
+class EncounterTransformer(TransformerMixin, BaseEstimator):
     """Merge clinical encounter history into philanthropic feature matrices.
 
     Given a lookup ``encounter_df`` containing at least one discharge date per
@@ -152,26 +150,25 @@ class EncounterTransformer(BasePhilanthropyEstimator, TransformerMixin):
     """
 
     # Heuristic substrings used to detect PII-like column names (case-insensitive)
-    _PII_SUBSTRINGS: List[str] = ["_id", "mrn", "ssn", "name", "dob", "zip"]
+    PII_PATTERNS = ("_id", "mrn", "ssn", "name", "dob", "zip")
 
     def __init__(
         self,
-        encounter_df: pd.DataFrame,
         discharge_col: str = "discharge_date",
         gift_date_col: str = "gift_date",
         merge_key: str = "donor_id",
         allow_negative_days: bool = False,
-        id_cols_to_drop: Optional[List[str]] = None,
-        fiscal_year_start: int = 7,
-    ) -> None:
-        # scikit-learn rule: __init__ stores parameters and does NO logic.
-        super().__init__(fiscal_year_start=fiscal_year_start)
-        self.encounter_df = encounter_df
+        id_cols_to_drop: list[str] | None = None,
+    ):
         self.discharge_col = discharge_col
         self.gift_date_col = gift_date_col
         self.merge_key = merge_key
         self.allow_negative_days = allow_negative_days
         self.id_cols_to_drop = id_cols_to_drop
+
+    def set_encounter_data(self, encounter_df: pd.DataFrame) -> "EncounterTransformer":
+        self._encounter_df_input = encounter_df
+        return self
 
     # ------------------------------------------------------------------
     # Validation helpers
@@ -179,20 +176,23 @@ class EncounterTransformer(BasePhilanthropyEstimator, TransformerMixin):
 
     def _validate_encounter_df(self) -> None:
         """Raise ``ValueError`` if ``encounter_df`` is structurally invalid."""
-        if not isinstance(self.encounter_df, pd.DataFrame):
+        if not hasattr(self, "_encounter_df_input"):
+            raise ValueError("set_encounter_data() must be called before fit().")
+            
+        if not isinstance(self._encounter_df_input, pd.DataFrame):
             raise TypeError(
                 f"`encounter_df` must be a pd.DataFrame, "
-                f"got {type(self.encounter_df).__name__!r}."
+                f"got {type(self._encounter_df_input).__name__!r}."
             )
         for col, label in [
             (self.merge_key, "merge_key"),
             (self.discharge_col, "discharge_col"),
         ]:
-            if col not in self.encounter_df.columns:
+            if col not in self._encounter_df_input.columns:
                 raise ValueError(
                     f"Column {col!r} (specified as `{label}`) was not found "
                     f"in `encounter_df`. Available columns: "
-                    f"{list(self.encounter_df.columns)}."
+                    f"{list(self._encounter_df_input.columns)}."
                 )
 
     def _validate_X(self, X: pd.DataFrame) -> None:
@@ -211,6 +211,7 @@ class EncounterTransformer(BasePhilanthropyEstimator, TransformerMixin):
                     f"in ``X``. Available columns: {list(X.columns)}."
                 )
 
+
     # ------------------------------------------------------------------
     # Column-drop utilities
     # ------------------------------------------------------------------
@@ -220,7 +221,7 @@ class EncounterTransformer(BasePhilanthropyEstimator, TransformerMixin):
         explicit = list(self.id_cols_to_drop or [])
         heuristic = [
             c for c in columns
-            if any(sub in c.lower() for sub in self._PII_SUBSTRINGS)
+            if any(sub in c.lower() for sub in self.PII_PATTERNS)
         ]
         # Always include the merge key itself
         merge_key_set = {self.merge_key}
@@ -259,16 +260,17 @@ class EncounterTransformer(BasePhilanthropyEstimator, TransformerMixin):
         ValueError
             If required columns are missing from ``encounter_df`` or ``X``.
         """
-        self._validate_fiscal_year_start()
         self._validate_encounter_df()
         self._validate_X(X)
+        X = validate_data(self, X, reset=True)
 
         # Record input schema (sklearn convention)
-        self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
-        self.n_features_in_ = len(X.columns)
+        if hasattr(X, "columns"):
+            self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
+        self.n_features_in_ = X.shape[1]
 
         # --- Build encounter summary (fit-time only, no leakage from X) ---
-        enc = self.encounter_df[[self.merge_key, self.discharge_col]].copy()
+        enc = self._encounter_df_input[[self.merge_key, self.discharge_col]].copy()
         enc[self.discharge_col] = pd.to_datetime(
             enc[self.discharge_col], errors="coerce"
         )
@@ -320,10 +322,11 @@ class EncounterTransformer(BasePhilanthropyEstimator, TransformerMixin):
         ValueError
             If ``merge_key`` or ``gift_date_col`` is absent from ``X``.
         """
-        check_is_fitted(self, ["encounter_summary_"])
+        check_is_fitted(self)
         self._validate_X(X)
+        X = validate_data(self, X, reset=False)
 
-        X_out = X.copy()
+        X_out = X.copy() if hasattr(X, "columns") else pd.DataFrame(X)
         X_out[self.gift_date_col] = pd.to_datetime(
             X_out[self.gift_date_col], errors="coerce"
         )
@@ -364,3 +367,22 @@ class EncounterTransformer(BasePhilanthropyEstimator, TransformerMixin):
             X_out = X_out.drop(columns=[self.gift_date_col])
 
         return X_out.reset_index(drop=True)
+
+    def get_feature_names_out(self, input_features=None):
+        check_is_fitted(self)
+        features = list(self.feature_names_in_)
+        dropped = set(self._identify_pii_columns(self.feature_names_in_))
+        if self.gift_date_col in features:
+            dropped.add(self.gift_date_col)
+            
+        out = [f for f in features if f not in dropped]
+        out.extend(["days_since_last_discharge", "encounter_frequency_score"])
+        return np.array(out, dtype=object)
+
+    def _more_tags(self):
+        return {"X_types": ["2darray", "dataframe"]}
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        return tags
+

@@ -14,7 +14,8 @@ from typing import Optional
 
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.utils import Tags
 from sklearn.utils.multiclass import unique_labels
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
@@ -321,3 +322,51 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
         proba_positive = self.predict_proba(X)[:, 1]
         affinity_scores = np.round(proba_positive * 100.0, 2)
         return affinity_scores
+
+
+class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
+    """
+    Classifies whether a donor is likely to make a major gift using calibrated probabilities.
+    
+    This uses HistGradientBoostingClassifier to handle missing data natively, and wraps
+    it in a CalibratedClassifierCV so the output probabilities are true calibrated probabilities.
+    """
+    def __sklearn_tags__(self) -> Tags:
+        tags = super().__sklearn_tags__()
+        tags.input_tags.allow_nan = True
+        tags.classifier_tags.multi_class = True
+        return tags
+    
+    def __init__(self, max_iter=100, learning_rate=0.1, random_state=None):
+        self.max_iter = max_iter
+        self.learning_rate = learning_rate
+        self.random_state = random_state
+
+    def fit(self, X, y):
+        X, y = check_X_y(X, y, ensure_all_finite="allow-nan")
+        self.classes_ = unique_labels(y)
+        self.n_features_in_ = X.shape[1]
+        
+        base_estimator = HistGradientBoostingClassifier(
+            max_iter=self.max_iter,
+            learning_rate=self.learning_rate,
+            random_state=self.random_state
+        )
+        self.estimator_ = CalibratedClassifierCV(base_estimator)
+        self.estimator_.fit(X, y)
+        self.n_iter_ = 1
+        return self
+
+    def predict(self, X):
+        check_is_fitted(self)
+        X = check_array(X, ensure_all_finite="allow-nan")
+        return self.estimator_.predict(X)
+
+    def predict_proba(self, X):
+        check_is_fitted(self)
+        X = check_array(X, ensure_all_finite="allow-nan")
+        return self.estimator_.predict_proba(X)
+
+    def predict_affinity_score(self, X):
+        proba_positive = self.predict_proba(X)[:, 1]
+        return np.round(proba_positive * 100.0).astype(int)

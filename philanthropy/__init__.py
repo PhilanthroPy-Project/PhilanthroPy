@@ -8,4 +8,4 @@ in the nonprofit sector.
 __version__ = "0.1.0"
 __author__ = "Your Name"
 
-from . import preprocessing, models, metrics, utils
+from . import preprocessing, models, metrics, utils, datasets

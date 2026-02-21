@@ -1,0 +1,4 @@
+# file: /Users/lalakiya/Library/CloudStorage/OneDrive-WashingtonUniversityinSt.Louis/Immigration_docs/EB1A/Opensource/PhilanthroPy/PhilanthroPy/philanthropy/utils/testing.py
+# hypothesis_version: 6.151.9
+
+[0.25, 1.2, 5.5, 10000.0, 200, 2018, 2024, 'ANNUAL', 'EVENT', 'MAJOR', 'ONLINE', 'PLANNED', 'appeal_code', 'donor_id', 'gift_amount', 'gift_date', 'is_major_gift']

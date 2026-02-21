@@ -1,0 +1,4 @@
+# file: /Users/lalakiya/Library/CloudStorage/OneDrive-WashingtonUniversityinSt.Louis/Immigration_docs/EB1A/Opensource/PhilanthroPy/PhilanthroPy/philanthropy/preprocessing/transformers.py
+# hypothesis_version: 6.151.9
+
+['CRMCleaner', 'Int64', 'coerce', 'fiscal_quarter', 'fiscal_year', 'gift_amount', 'gift_date']

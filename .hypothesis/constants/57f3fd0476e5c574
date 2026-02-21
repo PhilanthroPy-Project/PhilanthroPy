@@ -1,0 +1,4 @@
+# file: /Users/lalakiya/Library/CloudStorage/OneDrive-WashingtonUniversityinSt.Louis/Immigration_docs/EB1A/Opensource/PhilanthroPy/PhilanthroPy/philanthropy/preprocessing/_wealth.py
+# hypothesis_version: 6.151.9
+
+[0.0, 'charitable_capacity', 'estimated_net_worth', 'fill_values_', 'imputed_cols_', 'mean', 'median', 'real_estate_value', 'stock_holdings', 'uint8', 'zero']

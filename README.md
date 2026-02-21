@@ -1,11 +1,17 @@
-# PhilanthroPy 🎗️
+<p align="center">
+  <img src="docs/logo.png" alt="PhilanthroPy logo" width="180"/>
+</p>
 
-> **A scikit-learn–compatible toolkit for predictive donor analytics in the nonprofit and medical philanthropy sector.**
+<p align="center">
+  <strong>A scikit-learn–compatible toolkit for predictive donor analytics in the nonprofit and medical philanthropy sector.</strong>
+</p>
 
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.7%2B-orange.svg)](https://scikit-learn.org/)
-[![Tests](https://img.shields.io/badge/tests-120%20passing-brightgreen.svg)](#testing)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+<p align="center">
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python"></a>
+  <a href="https://scikit-learn.org/"><img src="https://img.shields.io/badge/scikit--learn-1.7%2B-orange.svg" alt="scikit-learn"></a>
+  <img src="https://img.shields.io/badge/tests-161%20passing-brightgreen.svg" alt="Tests">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+</p>
 
 PhilanthroPy gives hospital advancement offices, development teams, and nonprofit data scientists a **production-ready Python library** that slots directly into a `sklearn.pipeline.Pipeline`. It covers the full predictive analytics workflow — from raw CRM data cleaning, through feature engineering and major-gift propensity scoring, to fundraising-specific KPI metrics.
 
@@ -27,6 +33,8 @@ PhilanthroPy gives hospital advancement offices, development teams, and nonprofi
    - [End-to-End Pipeline](#end-to-end-pipeline)
    - [Affinity Score Ranking](#affinity-score-ranking)
    - [Fiscal Year Analysis](#fiscal-year-analysis)
+   - [Medical Philanthropy Pipeline](#medical-philanthropy-pipeline)
+   - [Share-of-Wallet Capacity Ranking](#share-of-wallet-capacity-ranking)
    - [Donor Retention Reporting](#donor-retention-reporting)
 7. [API Reference](#api-reference)
 8. [Design Principles (Golden Rules)](#design-principles-golden-rules)
@@ -42,9 +50,12 @@ Most general-purpose ML libraries treat all classification problems identically.
 
 | Challenge | PhilanthroPy's answer |
 |-----------|----------------------|
-| CRM exports vary wildly by vendor (Raiser's Edge, Salesforce NPSP, Veeva) | `CRMCleaner` standardises raw exports before any modelling |
-| Fiscal years start in July (or any month), not January | `FiscalYearTransformer` appends FY/FQ columns automatically |
+| CRM exports vary wildly by vendor (Raiser's Edge, Salesforce NPSP, Veeva) | `CRMCleaner` standardises raw exports; optional `WealthScreeningImputer` fills missing vendor data leak-safely |
+| Fiscal years start in July (or any month), not January | `FiscalYearTransformer` appends `fiscal_year` and `fiscal_quarter` columns for any start month |
+| Clinical encounter history is siloed from advancement CRM | `EncounterTransformer` merges discharge dates with gift dates, producing `days_since_last_discharge` and `encounter_frequency_score` |
+| Wealth-screening vendor exports have 30–70 % missing values | `WealthScreeningImputer` learns fill statistics from training data only — no leakage |
 | Major donors are <5 % of a prospect pool (severe class imbalance) | `DonorPropensityModel` exposes `class_weight` and outputs affinity scores on a 0–100 scale |
+| Gift officers need a *dollar figure*, not just a binary signal | `ShareOfWalletRegressor` predicts total philanthropic capacity; `predict_capacity_ratio()` surfaces untapped potential |
 | Gift officers need *ranked* prospects, not just binary predictions | `predict_affinity_score()` gives a human-readable score that maps directly to call/visit priority |
 | Fundraising reports need year-over-year retention rates | `donor_retention_rate()` is a single function call |
 
@@ -93,6 +104,7 @@ pip install -e ".[dev]"
 |---------|---------|
 | `pytest` | Test runner |
 | `pytest-cov` | Coverage reporting |
+| `hypothesis` | Property-based testing (stress-tests temporal edge cases) |
 
 ---
 
@@ -129,18 +141,21 @@ print(top_prospects[["affinity_score", "total_gift_amount", "years_active"]])
 
 ```
 philanthropy/
-├── datasets/           # Synthetic data generators for prototyping & testing
+├── datasets/               # Synthetic data generators for prototyping & testing
 │   └── _generator.py
-├── preprocessing/      # CRM data cleaners and fiscal-year feature engineering
-│   └── transformers.py
-├── models/             # Scikit-learn–compatible donor propensity classifiers
-│   ├── propensity.py   # PropensityScorer, LapsePredictor (base stubs)
-│   └── _propensity.py  # DonorPropensityModel (production RF-backed model)
-├── metrics/            # Fundraising-specific KPI functions
+├── preprocessing/          # CRM cleaning, FY engineering, and clinical encounter features
+│   ├── transformers.py     # CRMCleaner, FiscalYearTransformer
+│   ├── _wealth.py          # WealthScreeningImputer (leakage-safe vendor data imputation)
+│   └── _encounters.py      # EncounterTransformer (clinical discharge → gift date features)
+├── models/                 # Scikit-learn–compatible estimators
+│   ├── propensity.py       # PropensityScorer, LapsePredictor (base stubs)
+│   ├── _propensity.py      # DonorPropensityModel (RF-backed classifier, 0-100 affinity score)
+│   └── _wallet.py          # ShareOfWalletRegressor (capacity regression + untapped-ratio)
+├── metrics/                # Fundraising-specific KPI functions
 │   └── scoring.py
-├── utils/              # Shared testing helpers and synthetic data utilities
+├── utils/                  # Shared testing helpers and synthetic data utilities
 │   └── testing.py
-└── base.py             # Abstract base classes for all PhilanthroPy estimators
+└── base.py                 # Abstract base classes for all PhilanthroPy estimators
 ```
 
 ---
@@ -201,27 +216,87 @@ Transformers inherit from `sklearn.base.TransformerMixin`, so they drop directly
 
 #### `CRMCleaner`
 
-Standardises raw CRM export DataFrames. Validates fiscal year configuration at `.fit()` time and stores feature names for downstream compatibility.
+Standardises raw CRM export DataFrames. Coerces `date_col` to `datetime64` and `amount_col` to `float64`. Optionally delegates leakage-safe wealth imputation to an embedded `WealthScreeningImputer`.
 
 **Parameters:**
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `date_col` | `str` | `"gift_date"` | Name of the gift date column. |
-| `amount_col` | `str` | `"gift_amount"` | Name of the gift amount column. |
+| `date_col` | `str` | `"gift_date"` | Name of the gift date column. Coerced to `datetime64`. |
+| `amount_col` | `str` | `"gift_amount"` | Name of the gift amount column. Coerced to `float64`; non-numeric values → `NaN`. |
 | `fiscal_year_start` | `int` | `7` | Starting month of the fiscal year (1–12). |
+| `wealth_imputer` | `WealthScreeningImputer \| None` | `None` | **Unfitted** imputer instance. `CRMCleaner.fit()` will call `wealth_imputer.fit(X_train)`, guaranteeing no test-set data contaminates fill statistics. |
 
 **Fitted attributes:**
 
 | Attribute | Description |
 |-----------|-------------|
 | `feature_names_in_` | Column names seen during `fit()`. |
+| `n_features_in_` | Number of input columns. |
 
 ```python
-from philanthropy.preprocessing import CRMCleaner
+import numpy as np
+from philanthropy.preprocessing import CRMCleaner, WealthScreeningImputer
 
+# Without wealth imputation
 cleaner = CRMCleaner(date_col="gift_date", amount_col="gift_amount", fiscal_year_start=7)
 cleaned_df = cleaner.fit_transform(raw_df)
+
+# With leakage-safe wealth imputation
+imputer = WealthScreeningImputer(
+    wealth_cols=["estimated_net_worth", "real_estate_value"],
+    strategy="median",
+    add_indicator=True,   # appends <col>__was_missing flags
+)
+cleaner = CRMCleaner(wealth_imputer=imputer)   # pass UNFITTED imputer
+cleaned_df = cleaner.fit_transform(X_train)   # imputer.fit() called here
+test_df   = cleaner.transform(X_test)         # frozen fill values applied
+```
+
+---
+
+#### `WealthScreeningImputer`
+
+Leakage-safe median/mean/zero imputation for wealth-screening vendor columns (e.g., Estimated Net Worth, Real Estate Value, Stock Holdings). All fill statistics are computed **exclusively** from `X_train` at `fit()` time and frozen — calling `transform()` on held-out data never updates them.
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `wealth_cols` | `list[str] \| None` | `None` | Columns to impute. Defaults to a canonical vendor set (`estimated_net_worth`, `real_estate_value`, `stock_holdings`, `charitable_capacity`, `planned_gift_inclination`). |
+| `strategy` | `"median"\|"mean"\|"zero"` | `"median"` | Imputation strategy. `"median"` is strongly recommended for wealth data (robust to extreme outliers). |
+| `add_indicator` | `bool` | `True` | Append a `<col>__was_missing` binary column (dtype `uint8`) for each imputed column — retains absence-of-record as a signal. |
+| `fiscal_year_start` | `int` | `7` | FY start month (inherited for pipeline compatibility). |
+
+**Fitted attributes:** `fill_values_` (dict), `imputed_cols_` (list), `n_features_in_` (int)
+
+```python
+import numpy as np, pandas as pd
+from philanthropy.preprocessing import WealthScreeningImputer
+
+X_train = pd.DataFrame({
+    "estimated_net_worth": [1e6, np.nan, 3e6, np.nan],
+    "real_estate_value":   [np.nan, 4e5, np.nan, 2e5],
+    "gift_amount":         [5000, 250, 10000, 750],
+})
+X_test = pd.DataFrame({
+    "estimated_net_worth": [np.nan, 2e6],
+    "real_estate_value":   [5e5, np.nan],
+    "gift_amount":         [1000, 3000],
+})
+
+imp = WealthScreeningImputer(
+    wealth_cols=["estimated_net_worth", "real_estate_value"],
+    strategy="median",
+    add_indicator=True,
+)
+imp.fit(X_train)
+print(imp.fill_values_)
+# {'estimated_net_worth': 2000000.0, 'real_estate_value': 300000.0}
+
+X_test_out = imp.transform(X_test)
+# estimated_net_worth__was_missing and real_estate_value__was_missing columns added
+print(X_test_out["estimated_net_worth__was_missing"].tolist())  # [1, 0]
 ```
 
 ---
@@ -254,10 +329,79 @@ result = transformer.fit_transform(df)
 
 print(result[["gift_date", "fiscal_year", "fiscal_quarter"]])
 #    gift_date  fiscal_year  fiscal_quarter
-# 0  2023-07-01        2024             NaN
-# 1  2023-06-30        2023             NaN
-# 2  2024-01-15        2024             NaN
+# 0  2023-07-01        2024               1   # July  = FY-Q1
+# 1  2023-06-30        2023               4   # June  = FY-Q4
+# 2  2024-01-15        2024               3   # Jan   = FY-Q3
 ```
+
+---
+
+#### `EncounterTransformer`
+
+Bridges the clinical data warehouse with the advancement CRM by merging hospital encounter (discharge) records with philanthropic gift histories. Produces two continuous temporal features that are strong signals in major-gift propensity models for academic medical centres (AMCs).
+
+**Features produced:**
+
+| Output column | Description |
+|---------------|-------------|
+| `days_since_last_discharge` | Integer days between the donor's most recent discharge (at `fit` time) and the gift date. Pre-discharge gifts → `NaN` by default (`allow_negative_days=False`). |
+| `encounter_frequency_score` | `log1p(encounter_count)` — log-scaled total encounter count, normalising the heavy right-skew typical in AMC data. Donors with no record → `0.0`. |
+
+**Privacy guarantee:** all identifier-like columns (`merge_key`, plus any column name containing `_id`, `mrn`, `ssn`, `name`, `dob`, `zip`) are **silently dropped** from the output before it is returned.
+
+**Leakage guarantee:** `encounter_summary_` is computed exclusively from `encounter_df` at `fit()` time. Post-fit mutation of `encounter_df` cannot alter `transform()` output. Donors absent from the training-period encounter table always receive `NaN` / `0.0`.
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `encounter_df` | `pd.DataFrame` | — | Reference table of clinical encounters (must contain `merge_key` and `discharge_col`). |
+| `discharge_col` | `str` | `"discharge_date"` | Column in `encounter_df` holding discharge timestamps. |
+| `gift_date_col` | `str` | `"gift_date"` | Column in `X` holding gift dates. |
+| `merge_key` | `str` | `"donor_id"` | Column present in both `encounter_df` and `X` used to join the tables. Dropped from output. |
+| `allow_negative_days` | `bool` | `False` | If `True`, retain negative `days_since_last_discharge` (gift predates discharge). |
+| `id_cols_to_drop` | `list[str] \| None` | `None` | Extra identifier columns to strip beyond the PII heuristic. |
+
+**Fitted attributes:** `encounter_summary_` (DataFrame), `dropped_cols_` (list), `n_features_in_` (int)
+
+```python
+import pandas as pd
+from philanthropy.preprocessing import EncounterTransformer
+
+# Clinical encounter records (from EHR / data warehouse)
+enc_df = pd.DataFrame({
+    "donor_id":       [101, 101, 102, 103],
+    "discharge_date": ["2022-03-15", "2023-06-01", "2021-11-20", "2020-08-10"],
+})
+
+# Gift-level CRM records (training split)
+gift_df = pd.DataFrame({
+    "donor_id":    [101, 102, 103, 104],   # donor 104 has no encounter record
+    "gift_date":   ["2023-08-01", "2022-02-15", "2021-09-30", "2023-01-01"],
+    "gift_amount": [10_000.0, 500.0, 250.0, 1_000.0],
+})
+
+t = EncounterTransformer(
+    encounter_df=enc_df,
+    discharge_col="discharge_date",
+    gift_date_col="gift_date",
+    merge_key="donor_id",
+)
+out = t.fit_transform(gift_df)
+
+print(out.columns.tolist())
+# ['gift_amount', 'days_since_last_discharge', 'encounter_frequency_score']
+# donor_id and gift_date are stripped automatically
+
+print(out[["days_since_last_discharge", "encounter_frequency_score"]])
+#    days_since_last_discharge  encounter_frequency_score
+# 0                      61.0                   1.098612   # log1p(2 encounters)
+# 1                        NaN                   1.098612   # gift before discharge
+# 2                        NaN                   0.693147
+# 3                        NaN                   0.000000   # donor 104 unknown
+```
+
+---
 
 ---
 
@@ -387,6 +531,69 @@ from philanthropy.models import LapsePredictor
 predictor = LapsePredictor(lapse_window_years=3, threshold=0.3)
 predictor.fit(X, y)
 at_risk = predictor.predict(X)   # 1 = at risk of lapsing
+```
+
+---
+
+#### `ShareOfWalletRegressor`
+
+Predicts a donor's **total philanthropic capacity** in dollars — the fundraising concept of "share of wallet". Unlike `DonorPropensityModel` (binary: will they give?), this regressor answers "*how much* could they give?" and surfaces untapped major-gift potential via `predict_capacity_ratio()`.
+
+Powered by `HistGradientBoostingRegressor` under the hood, which handles missing CRM and wealth-screening values **natively** — no upstream imputation step required.
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `learning_rate` | `float` | `0.1` | Boosting step size. |
+| `max_iter` | `int` | `100` | Number of boosting trees. Increase to 300–500 for production prospect pools. |
+| `max_depth` | `int \| None` | `None` | Maximum tree depth. |
+| `l2_regularization` | `float` | `0.0` | L2 leaf-weight regularization. Increase to `1.0` for sparse prospect datasets. |
+| `min_samples_leaf` | `int` | `20` | Minimum samples per leaf. |
+| `random_state` | `int \| None` | `None` | Reproducibility seed. |
+| `capacity_floor` | `float` | `1.0` | Minimum predicted capacity in dollars (clips semantically-impossible negatives). |
+
+**Fitted attributes:** `estimator_` (HistGradientBoostingRegressor), `n_features_in_` (int)
+
+**Methods:**
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `.fit(X, y)` | `self` | Fit on capacity labels. `X` may contain `NaN`. |
+| `.predict(X)` | `ndarray (n,)` | Predicted capacity in dollars, clipped to `[capacity_floor, ∞)`. |
+| `.predict_capacity_ratio(X, historical_giving)` | `ndarray (n,)` | `predicted_capacity / max(historical_giving, 1.0)`. Ratios ≥ 5× flag strong untapped-potential candidates. |
+
+**Capacity ratio interpretation:**
+
+| Ratio | Recommended action |
+|-------|-------------------|
+| **≥ 10×** | Dramatically under-asked — schedule discovery call immediately |
+| **5–9×** | Significant untapped potential — major-gift candidate |
+| **2–4×** | Moderate upside — consider upgrade ask |
+| **< 2×** | Near capacity — focus on retention and stewardship |
+
+```python
+import numpy as np
+from philanthropy.models import ShareOfWalletRegressor
+from philanthropy.datasets import generate_synthetic_donor_data
+
+df = generate_synthetic_donor_data(n_samples=500, random_state=0)
+feature_cols = ["total_gift_amount", "years_active", "event_attendance_count"]
+X = df[feature_cols].to_numpy()
+
+# Simulate capacity labels (in practice: prospect-research ratings)
+capacity = df["total_gift_amount"].to_numpy() * np.random.default_rng(0).uniform(1, 10, 500)
+historical = df["total_gift_amount"].to_numpy()
+
+model = ShareOfWalletRegressor(max_iter=200, random_state=42)
+model.fit(X, capacity)
+
+# Predicted dollar capacity per prospect
+caps = model.predict(X)
+
+# Untapped-potential ratio — the gift-officer priority metric
+ratios = model.predict_capacity_ratio(X, historical_giving=historical)
+print(ratios[:5])   # e.g. [3.2, 8.7, 1.1, 12.4, 2.9]
 ```
 
 ---
@@ -615,7 +822,115 @@ print(fy_summary)
 
 ---
 
+### Medical Philanthropy Pipeline
+
+Combine `EncounterTransformer` and `WealthScreeningImputer` with `DonorPropensityModel` in a single, leakage-safe pipeline:
+
+```python
+import pandas as pd
+import numpy as np
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import train_test_split
+
+from philanthropy.preprocessing import (
+    CRMCleaner,
+    WealthScreeningImputer,
+    EncounterTransformer,
+    FiscalYearTransformer,
+)
+from philanthropy.models import DonorPropensityModel
+
+# --- Clinical encounter records from the EHR data warehouse ---
+enc_df = pd.DataFrame({
+    "donor_id":       [101, 101, 102, 103, 104],
+    "discharge_date": ["2022-01-10", "2023-06-01", "2022-03-05",
+                       "2022-07-20", "2023-02-14"],
+})
+
+# --- Gift-level CRM export with partial wealth-screening data ---
+gift_df = pd.DataFrame({
+    "donor_id":            [101, 102, 103, 104, 105],
+    "gift_date":           ["2023-08-01", "2023-10-15", "2023-08-01",
+                            "2023-11-01", "2023-09-20"],
+    "gift_amount":         [10_000.0, 500.0, 250.0, 2_000.0, 750.0],
+    "estimated_net_worth": [np.nan, 1_500_000.0, np.nan, 800_000.0, np.nan],
+    "real_estate_value":   [200_000.0, np.nan, 300_000.0, np.nan, 150_000.0],
+    "is_major_donor":      [1, 0, 0, 0, 0],
+})
+
+# Step 1: fit EncounterTransformer to clinical data
+enc_transformer = EncounterTransformer(encounter_df=enc_df, merge_key="donor_id")
+gift_features = enc_transformer.fit_transform(gift_df.drop(columns=["is_major_donor"]))
+
+# Step 2: build the rest of the pipeline
+wealth_imp = WealthScreeningImputer(
+    wealth_cols=["estimated_net_worth", "real_estate_value"],
+    strategy="median",
+    add_indicator=True,
+)
+cleaner = CRMCleaner(wealth_imputer=wealth_imp)
+
+# gift_features now has numeric columns only (PII stripped by EncounterTransformer)
+X = cleaner.fit_transform(gift_features).select_dtypes(include="number").to_numpy()
+y = gift_df["is_major_donor"].to_numpy()
+
+model = DonorPropensityModel(n_estimators=100, class_weight="balanced", random_state=42)
+model.fit(X, y)
+scores = model.predict_affinity_score(X)
+print(scores)   # e.g. [87.5, 12.3, 5.0, 34.2, 8.1]
+```
+
+---
+
+### Share-of-Wallet Capacity Ranking
+
+Use `ShareOfWalletRegressor` to build a **dollar-capacity priority list** for your major-gift team:
+
+```python
+import numpy as np
+import pandas as pd
+from philanthropy.datasets import generate_synthetic_donor_data
+from philanthropy.models import ShareOfWalletRegressor
+
+df = generate_synthetic_donor_data(n_samples=500, random_state=0)
+feature_cols = ["total_gift_amount", "years_active", "event_attendance_count"]
+X = df[feature_cols].to_numpy()
+
+# Simulate capacity labels (replace with prospect-research ratings in production)
+rng = np.random.default_rng(0)
+capacity_labels = df["total_gift_amount"].to_numpy() * rng.uniform(1, 15, 500)
+
+model = ShareOfWalletRegressor(max_iter=200, l2_regularization=0.5, random_state=42)
+model.fit(X, capacity_labels)
+
+# Two-stage portfolio view: propensity × capacity
+df["predicted_capacity"]  = model.predict(X)
+df["capacity_ratio"]      = model.predict_capacity_ratio(
+    X, historical_giving=df["total_gift_amount"].to_numpy()
+)
+
+# Rank by untapped potential — the gift-officer priority metric
+priority_list = (
+    df.sort_values("capacity_ratio", ascending=False)
+    .head(10)[["total_gift_amount", "predicted_capacity", "capacity_ratio", "years_active"]]
+    .rename(columns={
+        "total_gift_amount":  "Historical Giving",
+        "predicted_capacity": "Predicted Capacity",
+        "capacity_ratio":     "Untapped Ratio",
+        "years_active":       "Years Active",
+    })
+)
+print(priority_list.to_string(index=False))
+# Historical Giving  Predicted Capacity  Untapped Ratio  Years Active
+#          2,341.18          187,293.44           79.99            27
+#          5,213.45          312,807.00           59.99            24
+#          ...
+```
+
+---
+
 ### Donor Retention Reporting
+
 
 Calculate year-over-year retention and acquisition cost from your enriched DataFrame:
 
@@ -692,7 +1007,10 @@ print(f"Best params:  {grid.best_params_}")
 | `generate_synthetic_donor_data` | `philanthropy.datasets` | function |
 | `CRMCleaner` | `philanthropy.preprocessing` | Transformer |
 | `FiscalYearTransformer` | `philanthropy.preprocessing` | Transformer |
+| `WealthScreeningImputer` | `philanthropy.preprocessing` | Transformer |
+| `EncounterTransformer` | `philanthropy.preprocessing` | Transformer |
 | `DonorPropensityModel` | `philanthropy.models` | Classifier |
+| `ShareOfWalletRegressor` | `philanthropy.models` | Regressor |
 | `PropensityScorer` | `philanthropy.models` | Classifier |
 | `LapsePredictor` | `philanthropy.models` | Classifier |
 | `donor_retention_rate` | `philanthropy.metrics` | function |
@@ -755,16 +1073,27 @@ pytest tests/test_donor_propensity_model.py -v
 pytest tests/test_donor_propensity_model.py -k "sklearn_estimator_checks" -v
 ```
 
-**Test coverage summary (120 tests):**
+**Test coverage summary (161 tests):**
 
 | Test file | Tests | What's covered |
 |-----------|------:|----------------|
-| `test_datasets.py` | 23 | Schema, dtypes, ranges, reproducibility, domain correlations, edge cases |
-| `test_donor_propensity_model.py` | 97 | All public methods, Golden Rules, 45 `check_estimator` checks, Pipeline, `clone()`, `GridSearchCV` |
-| `test_preprocessing.py` | 4 | `CRMCleaner`, `FiscalYearTransformer`, edge cases |
-| `test_propensity.py` | 3 | `PropensityScorer`, `LapsePredictor` |
+| `test_datasets.py` | 19 | Schema, dtypes, ranges, reproducibility, domain correlations, edge cases |
+| `test_donor_propensity_model.py` | 84 | All public methods, Golden Rules, 45 `check_estimator` checks, Pipeline, `clone()`, `GridSearchCV` |
+| `test_preprocessing.py` | 38 | `CRMCleaner` (+ `WealthScreeningImputer` integration), `FiscalYearTransformer` (6 hypothesis property-based invariants across leap years, pre-1970 dates, all 12 fiscal start months, timezone offsets), `WealthScreeningImputer` (all 3 strategies, indicator columns, leakage freeze), `EncounterTransformer` (PII stripping, NaN logic, frequency scoring, fit purity) |
+| `test_leakage.py` | 7 | Temporal leakage prevention: `encounter_summary_` freeze, `WealthScreeningImputer` fill-value immutability post-transform, train/test split invariance |
 | `test_metrics.py` | 6 | `donor_retention_rate`, `donor_acquisition_cost` |
+| `test_propensity.py` | 3 | `PropensityScorer`, `LapsePredictor` |
 | `test_utils.py` | 4 | `make_donor_dataset` fixture |
+
+> **Property-based testing**: `test_preprocessing.py` uses [hypothesis](https://hypothesis.readthedocs.io/) to generate thousands of randomised datetime inputs, mathematically guaranteeing `FiscalYearTransformer` stability across the full input space. Run with `pytest tests/test_preprocessing.py -v`.
+
+```bash
+# Run only the property-based hypothesis tests
+pytest tests/test_preprocessing.py -k "Hypothesis" -v
+
+# Run the leakage prevention suite
+pytest tests/test_leakage.py -v
+```
 
 ---
 
@@ -781,6 +1110,12 @@ Contributions are welcome! Please follow these steps:
 
 ### Roadmap
 
+- [x] `philanthropy.preprocessing.CRMCleaner` — leakage-safe CRM standardisation with embedded `WealthScreeningImputer`
+- [x] `philanthropy.preprocessing.WealthScreeningImputer` — median/mean/zero imputation for 30–70%-missing vendor data
+- [x] `philanthropy.preprocessing.EncounterTransformer` — clinical discharge → philanthropic feature engineering
+- [x] `philanthropy.models.ShareOfWalletRegressor` — continuous capacity regression + `predict_capacity_ratio()`
+- [x] Property-based testing (hypothesis) for `FiscalYearTransformer` across leap years, pre-1970 dates, all start months
+- [x] Temporal leakage prevention test suite (`test_leakage.py`)
 - [ ] `philanthropy.preprocessing.RFMTransformer` — compute Recency, Frequency, Monetary features
 - [ ] `philanthropy.models.MajorGiftClassifier` — gradient-boosted variant with calibrated probabilities
 - [ ] `philanthropy.models.LapsePredictor` — production RF implementation (currently stub)

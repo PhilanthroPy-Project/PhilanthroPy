@@ -1,0 +1,4 @@
+# file: /Users/lalakiya/Library/CloudStorage/OneDrive-WashingtonUniversityinSt.Louis/Immigration_docs/EB1A/Opensource/PhilanthroPy/PhilanthroPy/philanthropy/preprocessing/_encounters.py
+# hypothesis_version: 6.151.9
+
+['EncounterTransformer', '_id', 'coerce', 'count', 'discharge_col', 'discharge_date', 'dob', 'donor_id', 'encounter_count', 'encounter_summary_', 'float64', 'gift_date', 'gift_date_col', 'ignore', 'last_discharge', 'left', 'max', 'merge_key', 'mrn', 'name', 'ssn', 'zip']

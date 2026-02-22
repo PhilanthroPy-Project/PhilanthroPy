@@ -7,6 +7,14 @@ PhilanthroPy models are specialized estimators for the fundraising domain. They 
 ### The Share of Wallet Concept
 Many donors give $1,000 but have the capacity to give $1,000,000. Finding this gap is critical. The `ShareOfWalletScorer` computes a normalized score (0 to 1) comparing an estimated capacity capability to modeled or known wealth. It effectively tells a gift officer how much room there is to grow a donor's giving.
 
+Fundraisers using this tool will often need to justify this score to leadership. Quantitatively, it is defined as:
+
+```text
+SoW = predicted_capacity / estimated_total_philanthropic_capacity
+```
+
+This ratio is rooted in industry standards and aligns with benchmarks established by organizations like Blackbaud and EAB.
+
 ### Capacity Tiers
 It's easier for human gift officers to interpret categories rather than numbers. PhilanthroPy can automatically categorize donors into operational tiers:
 * **Principal**: High Share of Wallet potential.

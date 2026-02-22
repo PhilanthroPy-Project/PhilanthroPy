@@ -1,0 +1,45 @@
+:root {
+    --md-primary-fg-color: #00adb5;
+    --md-primary-fg-color--light: #393e46;
+    --md-primary-fg-color--dark: #222831;
+    --md-accent-fg-color: #fca311;
+    --md-code-font-family: "Fira Code", "Roboto Mono", monospace;
+}
+
+[data-md-color-scheme="slate"] {
+    --md-hue: 210;
+    --md-default-bg-color: #0d1117;
+    --md-default-bg-color--light: #161b22;
+    --md-default-bg-color--lighter: #21262d;
+    --md-primary-fg-color: #2f81f7;
+    --md-accent-fg-color: #ff7b72;
+}
+
+/* Make headers more prominent */
+h1 {
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    background: -webkit-linear-gradient(45deg, #2f81f7, #a371f7);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Adjust grid cards nicely */
+.md-typeset .grid.cards>ul>li {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border-radius: 8px;
+    background-color: var(--md-default-bg-color--light);
+    border: 1px solid var(--md-default-bg-color--lighter);
+}
+
+.md-typeset .grid.cards>ul>li:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    border-color: var(--md-primary-fg-color);
+}
+
+.md-typeset .grid.cards>ul>li>hr {
+    margin: 1em 0;
+    border-bottom: 1px solid var(--md-default-bg-color--lighter);
+}

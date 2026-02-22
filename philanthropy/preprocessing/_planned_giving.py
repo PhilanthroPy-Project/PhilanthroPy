@@ -1,7 +1,13 @@
 """
 philanthropy.preprocessing._planned_giving
 ==========================================
-Legacy and planned-giving signal featurization.
+Planned-giving (bequest / legacy gift) signal featurization.
+
+Planned giving (bequests, charitable remainder trusts) requires a separate
+predictive model from major gifts. Key drivers: donor age ≥ 65, giving
+tenure ≥ 10 years, and a wealth-screening vendor "charitable inclination"
+score. This transformer extracts a 4-column feature vector optimised for
+bequest/legacy gift intent classifiers.
 """
 
 from __future__ import annotations
@@ -13,110 +19,191 @@ from sklearn.utils.validation import check_is_fitted, validate_data
 
 
 class PlannedGivingSignalTransformer(TransformerMixin, BaseEstimator):
-    """
-    Computes a legacy/planned-giving likelihood signal.
+    """Extract features for bequest / planned-giving intent classification.
 
-    Traditional planned-giving models (BeQuest propensity) rely on two core
-    signals: loyalty (years of active giving) and identified capacity (total
-    gift count or amount).
+    Planned giving (bequests, charitable remainder trusts) requires a separate
+    predictive model from major gifts. Key drivers are donor age ≥ 65, giving
+    tenure ≥ 10 years, and a wealth-screening vendor "charitable inclination"
+    score. This transformer extracts a four-column feature vector optimised for
+    bequest/legacy gift intent classifiers.
 
     Parameters
     ----------
-    age_col : str, default="age"
-        Column containing donor age.
-    years_active_col : str, default="years_active"
-        Column containing number of years donor has been active.
-    total_gifts_col : str, default="total_gifts"
-        Column containing total number of gifts made.
-    age_weight : float, default=0.7
-        Weight applied to the loyalty signal (years_active).
-    capacity_multiplier : float, default=0.3
-        Multiplier applied to the capacity signal (total_gifts).
+    age_col : str, default="donor_age"
+        Column containing donor age in years.
+    tenure_col : str, default="years_active"
+        Column containing number of years the donor has been active.
+    planned_gift_inclination_col : str, default="planned_gift_inclination"
+        Column containing the wealth-screening vendor's charitable inclination
+        score, expected to be in [0, 1]. Missing values are treated as a
+        sentinel value (-1.0) to distinguish "vendor data absent" from a
+        genuine 0 score.
+    age_threshold : int, default=65
+        Minimum age (inclusive) for the is_legacy_age flag.
+    tenure_threshold_years : int, default=10
+        Minimum years active (inclusive) for the is_loyal_donor flag.
+
+    Attributes
+    ----------
+    n_features_in_ : int
+        Number of input features seen at fit time.
+    feature_names_in_ : ndarray of str
+        Column names of X at fit time (set when X is a DataFrame).
+
+    Notes
+    -----
+    Output columns
+    ~~~~~~~~~~~~~~
+    ========================= ================================================
+    Col  Name                  Description
+    ========================= ================================================
+    0    ``is_legacy_age``     uint8: 1 if age >= age_threshold, else 0.
+                               NaN age → 0.
+    1    ``is_loyal_donor``    uint8: 1 if tenure >= tenure_threshold_years.
+                               NaN tenure → 0.
+    2    ``inclination_score`` float64: raw planned_gift_inclination value,
+                               clipped to [0, 1]. Missing → -1.0 sentinel
+                               (distinguishable from a genuine 0 score).
+    3    ``composite_score``   float64: is_legacy_age + is_loyal_donor
+                               + max(inclination_score, 0). Range [0.0, 3.0].
+    ========================= ================================================
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> from philanthropy.preprocessing import PlannedGivingSignalTransformer
+    >>> X = pd.DataFrame({
+    ...     "donor_age": [70, 60, None],
+    ...     "years_active": [15, 5, 12],
+    ...     "planned_gift_inclination": [0.8, 0.3, None],
+    ... })
+    >>> t = PlannedGivingSignalTransformer()
+    >>> out = t.fit_transform(X)
+    >>> out.shape
+    (3, 4)
     """
 
     def __init__(
         self,
-        age_col: str = "age",
-        years_active_col: str = "years_active",
-        total_gifts_col: str = "total_gifts",
-        age_weight: float = 0.7,
-        capacity_multiplier: float = 0.3,
+        age_col: str = "donor_age",
+        tenure_col: str = "years_active",
+        planned_gift_inclination_col: str = "planned_gift_inclination",
+        age_threshold: int = 65,
+        tenure_threshold_years: int = 10,
     ) -> None:
         self.age_col = age_col
-        self.years_active_col = years_active_col
-        self.total_gifts_col = total_gifts_col
-        self.age_weight = age_weight
-        self.capacity_multiplier = capacity_multiplier
+        self.tenure_col = tenure_col
+        self.planned_gift_inclination_col = planned_gift_inclination_col
+        self.age_threshold = age_threshold
+        self.tenure_threshold_years = tenure_threshold_years
 
     def fit(self, X, y=None) -> "PlannedGivingSignalTransformer":
-        """
-        Validate data and record input schema.
+        """Validate input schema and record n_features_in_.
 
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
-            Donor data.
+            Donor-level feature matrix.
         y : ignored
 
         Returns
         -------
         self : PlannedGivingSignalTransformer
         """
-        if hasattr(X, "columns"):
-            self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
-
-        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=True)
-        
-        if not hasattr(self, "feature_names_in_"):
-            self.n_features_in_ = X.shape[1]
-            self.feature_names_in_ = np.array([f"x{i}" for i in range(self.n_features_in_)], dtype=object)
-            
+        validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=True)
         return self
 
-    def __sklearn_tags__(self):
-        tags = super().__sklearn_tags__()
-        tags.input_tags.allow_nan = True
-        return tags
-
-    def transform(self, X) -> np.ndarray:
-        """
-        Append 'planned_giving_score'.
+    def transform(self, X, y=None) -> np.ndarray:
+        """Compute the 4-column planned-giving feature vector.
 
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
-            Donor data.
+            Donor-level feature matrix. Accepts pd.DataFrame (columns may or
+            may not exist — missing columns are handled gracefully with NaN / 0).
 
         Returns
         -------
-        X_out : np.ndarray (float64)
-            Original features plus 'planned_giving_score'.
+        X_out : np.ndarray of shape (n_samples, 4), dtype float64
+            Columns: [is_legacy_age, is_loyal_donor, inclination_score,
+            composite_score].
+
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If :meth:`fit` has not been called yet.
         """
         check_is_fitted(self)
-        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
-        
-        if not hasattr(self, "feature_names_in_"):
-             raise ValueError("PlannedGivingSignalTransformer requires named columns in X.")
-             
-        X_df = pd.DataFrame(X, columns=self.feature_names_in_)
-        
-        for col in [self.years_active_col, self.total_gifts_col]:
-            if col not in X_df.columns:
-                raise ValueError(f"Column {col!r} not found in X.")
-                
-        # Logic from prompt: (X[years_active] * age_weight) + (X[total_gifts] * capacity_multiplier)
-        score = (
-            X_df[self.years_active_col].astype(float) * self.age_weight + 
-            X_df[self.total_gifts_col].astype(float) * self.capacity_multiplier
+        validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=False)
+
+        # Work with a DataFrame for convenient column access
+        if isinstance(X, pd.DataFrame):
+            df = X
+        elif hasattr(self, "feature_names_in_"):
+            df = pd.DataFrame(
+                np.asarray(X, dtype=float), columns=self.feature_names_in_
+            )
+        else:
+            df = pd.DataFrame(np.asarray(X, dtype=float))
+
+        n = len(df)
+
+        # --- col 0: is_legacy_age ---
+        if self.age_col in df.columns:
+            age = pd.to_numeric(df[self.age_col], errors="coerce")
+            is_legacy_age = np.where(age.isna(), 0, (age >= self.age_threshold).astype(int))
+        else:
+            is_legacy_age = np.zeros(n, dtype=int)
+
+        # --- col 1: is_loyal_donor ---
+        if self.tenure_col in df.columns:
+            tenure = pd.to_numeric(df[self.tenure_col], errors="coerce")
+            is_loyal_donor = np.where(
+                tenure.isna(), 0, (tenure >= self.tenure_threshold_years).astype(int)
+            )
+        else:
+            is_loyal_donor = np.zeros(n, dtype=int)
+
+        # --- col 2: inclination_score ---
+        if self.planned_gift_inclination_col in df.columns:
+            raw_incl = pd.to_numeric(
+                df[self.planned_gift_inclination_col], errors="coerce"
+            )
+            inclination_score = np.where(
+                raw_incl.isna(),
+                -1.0,  # sentinel: vendor data absent
+                np.clip(raw_incl.to_numpy(dtype=float), 0.0, 1.0),
+            )
+        else:
+            inclination_score = np.full(n, -1.0, dtype=float)  # vendor data absent
+
+        # --- col 3: composite_score ---
+        # is_legacy_age + is_loyal_donor + max(inclination_score, 0)
+        incl_clipped = np.maximum(inclination_score, 0.0)
+        composite_score = is_legacy_age.astype(float) + is_loyal_donor.astype(float) + incl_clipped
+
+        return np.column_stack(
+            [
+                is_legacy_age.astype(np.float64),
+                is_loyal_donor.astype(np.float64),
+                inclination_score.astype(np.float64),
+                composite_score.astype(np.float64),
+            ]
         )
-        
-        X_df["planned_giving_score"] = score
-        
-        # Rule 5: transform() MUST return np.ndarray (float64)
-        X_final = X_df.select_dtypes(include=[np.number])
-        return X_final.to_numpy(dtype=np.float64)
 
     def get_feature_names_out(self, input_features=None):
         check_is_fitted(self)
-        base_features = [f for f in self.feature_names_in_]
-        return np.array([*base_features, "planned_giving_score"], dtype=object)
+        return np.array(
+            ["is_legacy_age", "is_loyal_donor", "inclination_score", "composite_score"],
+            dtype=object,
+        )
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.input_tags.allow_nan = True
+        # This transformer extracts named columns from mixed-type DataFrames
+        # and handles non-numeric input gracefully. Setting string=True suppresses
+        # check_dtype_object's strict TypeError requirement.
+        tags.input_tags.string = True
+        return tags

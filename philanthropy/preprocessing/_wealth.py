@@ -201,9 +201,6 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
             If ``strategy`` is not ``"median"``, ``"mean"``, or ``"zero"``.
         """
         import warnings
-        X = validate_data(self, X, dtype="numeric",
-                          ensure_all_finite="allow-nan",
-                          reset=True)
 
         if self.strategy not in self._VALID_STRATEGIES:
             raise ValueError(
@@ -211,11 +208,25 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
                 f"got {self.strategy!r}."
             )
 
+        # Extract column names BEFORE validate_data converts DataFrame → ndarray
         if hasattr(X, "columns"):
             input_cols = list(X.columns)
         else:
+            input_cols = None  # Will resolve after validate_data
+
+        X = validate_data(self, X, dtype="numeric",
+                          ensure_all_finite="allow-nan",
+                          reset=True)
+
+        # After validate_data, use feature_names_in_ if it was set (DataFrame input),
+        # otherwise fall back to generated names.
+        if input_cols is None:
             n_cols = X.shape[1]
-            input_cols = [f"x{i}" for i in range(n_cols)]
+            if hasattr(self, "feature_names_in_"):
+                input_cols = list(self.feature_names_in_)
+            else:
+                input_cols = [f"x{i}" for i in range(n_cols)]
+
         self.imputed_cols_ = self._resolve_cols(input_cols)
 
         # Warn about requested columns not found in X
@@ -257,28 +268,34 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
             If :meth:`fit` has not been called yet.
         """
         check_is_fitted(self, ["fill_values_", "imputed_cols_"])
-        
+
+        # Extract column names BEFORE validate_data converts DataFrame → ndarray
+        if hasattr(X, "columns"):
+            input_cols = list(X.columns)
+        else:
+            input_cols = None  # Will resolve after validate_data
+
         X = validate_data(self, X, dtype="numeric",
                           ensure_all_finite="allow-nan",
                           reset=False)
 
-        if hasattr(X, "columns"):
-            input_cols = list(X.columns)
-        else:
+        if input_cols is None:
             n_cols = X.shape[1]
-            input_cols = [f"x{i}" for i in range(n_cols)]
+            if hasattr(self, "feature_names_in_"):
+                input_cols = list(self.feature_names_in_)
+            else:
+                input_cols = [f"x{i}" for i in range(n_cols)]
 
         X_out = X.copy()
-        
         indicators = []
 
         for col in self.imputed_cols_:
             if col not in input_cols:
                 continue
             idx = input_cols.index(col)
-            
+
             mask = np.isnan(X_out[:, idx])
-            
+
             if self.add_indicator:
                 indicators.append(mask.astype(np.float64).reshape(-1, 1))
 

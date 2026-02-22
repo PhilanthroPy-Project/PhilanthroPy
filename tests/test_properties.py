@@ -22,11 +22,11 @@ gift_date_series = st.lists(valid_dates, min_size=1, max_size=500).map(
 wealth_dataframe = data_frames(
     columns=[
         column("estimated_net_worth", elements=st.one_of(
-            st.floats(min_value=0, max_value=1e9, allow_nan=True, allow_infinity=False),
+            st.floats(min_value=0, max_value=1e9, allow_nan=False, allow_infinity=False),
             st.just(float("nan")),
         )),
         column("real_estate_value", elements=st.one_of(
-            st.floats(min_value=0, max_value=5e8, allow_nan=True, allow_infinity=False),
+            st.floats(min_value=0, max_value=5e8, allow_nan=False, allow_infinity=False),
             st.just(float("nan")),
         )),
         column("gift_amount", elements=st.floats(min_value=1.0, max_value=1e7)),
@@ -90,7 +90,10 @@ class TestWealthScreeningImputerProperties:
     @settings(max_examples=300)
     @given(df=wealth_dataframe, strategy=st.sampled_from(["median", "mean", "zero"]))
     def test_no_nulls_in_imputed_columns_after_transform(self, df, strategy):
-        transformer = WealthScreeningImputer(strategy=strategy, add_indicator=False)
+        # Use set_output(transform="pandas") to get DataFrame output for column access
+        transformer = WealthScreeningImputer(
+            strategy=strategy, add_indicator=False
+        ).set_output(transform="pandas")
         out = transformer.fit_transform(df)
         assert out["estimated_net_worth"].isna().sum() == 0
         assert out["real_estate_value"].isna().sum() == 0
@@ -101,18 +104,20 @@ class TestWealthScreeningImputerProperties:
         transformer = WealthScreeningImputer(strategy=strategy)
         transformer.fit(df)
         initial_fills = transformer.fill_values_.copy()
-        
+
         # Mutate input
         df2 = df.copy()
         df2["estimated_net_worth"] = 999999.0
         transformer.transform(df2)
-        
+
         assert transformer.fill_values_ == initial_fills
 
     @settings(max_examples=300)
     @given(df=wealth_dataframe, strategy=st.sampled_from(["median", "mean", "zero"]))
     def test_indicator_columns_are_binary(self, df, strategy):
-        transformer = WealthScreeningImputer(strategy=strategy, add_indicator=True)
+        transformer = WealthScreeningImputer(
+            strategy=strategy, add_indicator=True
+        ).set_output(transform="pandas")
         out = transformer.fit_transform(df)
         for col in ["estimated_net_worth", "real_estate_value"]:
             ind_col = f"{col}__was_missing"
@@ -122,19 +127,28 @@ class TestWealthScreeningImputerProperties:
     @settings(max_examples=300)
     @given(df_train=wealth_dataframe, df_test=wealth_dataframe, strategy=st.sampled_from(["median", "mean", "zero"]))
     def test_train_test_fill_value_invariance(self, df_train, df_test, strategy):
-        transformer = WealthScreeningImputer(strategy=strategy, add_indicator=False)
+        transformer = WealthScreeningImputer(
+            strategy=strategy, add_indicator=False
+        ).set_output(transform="pandas")
         transformer.fit(df_train)
-        
-        df_test.loc[len(df_test)] = {"estimated_net_worth": np.nan, "real_estate_value": np.nan, "gift_amount": 100}
+
+        df_test = df_test.copy()
+        df_test.loc[len(df_test)] = {
+            "estimated_net_worth": np.nan,
+            "real_estate_value": np.nan,
+            "gift_amount": 100,
+        }
         out = transformer.transform(df_test)
-        
+
         assert out.iloc[-1]["estimated_net_worth"] == transformer.fill_values_["estimated_net_worth"]
         assert out.iloc[-1]["real_estate_value"] == transformer.fill_values_["real_estate_value"]
 
     @settings(max_examples=300)
     @given(df=wealth_dataframe, strategy=st.sampled_from(["median", "mean", "zero"]))
     def test_all_strategies_produce_finite_output(self, df, strategy):
-        transformer = WealthScreeningImputer(strategy=strategy, add_indicator=False)
+        transformer = WealthScreeningImputer(
+            strategy=strategy, add_indicator=False
+        ).set_output(transform="pandas")
         out = transformer.fit_transform(df)
         assert np.isfinite(out["estimated_net_worth"]).all()
         assert np.isfinite(out["real_estate_value"]).all()
@@ -144,7 +158,7 @@ class TestWealthPercentileTransformerProperties:
     @settings(max_examples=200)
     @given(df=wealth_dataframe)
     def test_output_percentiles_in_range(self, df):
-        transformer = WealthPercentileTransformer()
+        transformer = WealthPercentileTransformer().set_output(transform="pandas")
         out = transformer.fit_transform(df)
         for col in ["estimated_net_worth_pct_rank", "real_estate_value_pct_rank"]:
             if col in out.columns:
@@ -155,7 +169,7 @@ class TestWealthPercentileTransformerProperties:
     @settings(max_examples=200)
     @given(df=wealth_dataframe)
     def test_nan_input_produces_nan_output(self, df):
-        transformer = WealthPercentileTransformer()
+        transformer = WealthPercentileTransformer().set_output(transform="pandas")
         out = transformer.fit_transform(df)
         for col in ["estimated_net_worth", "real_estate_value"]:
             if col in df.columns and f"{col}_pct_rank" in out.columns:
@@ -165,19 +179,20 @@ class TestWealthPercentileTransformerProperties:
     @settings(max_examples=200)
     @given(df=wealth_dataframe)
     def test_rank_monotone(self, df):
-        transformer = WealthPercentileTransformer()
+        transformer = WealthPercentileTransformer().set_output(transform="pandas")
         out = transformer.fit_transform(df)
         for col in ["estimated_net_worth", "real_estate_value"]:
             if col in df.columns and f"{col}_pct_rank" in out.columns:
                 valid_dt = df[col].dropna()
                 valid_out = out[f"{col}_pct_rank"].dropna()
-                
+
                 if len(valid_dt) >= 2:
                     idx_a, idx_b = valid_dt.index[0], valid_dt.index[1]
                     val_a, val_b = valid_dt.loc[idx_a], valid_dt.loc[idx_b]
                     rank_a, rank_b = valid_out.loc[idx_a], valid_out.loc[idx_b]
-                    
+
                     if val_a > val_b:
                         assert rank_a >= rank_b
                     elif val_a < val_b:
                         assert rank_a <= rank_b
+

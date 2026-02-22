@@ -442,3 +442,111 @@ class TestFiscalYearNoLeakage:
         out2 = t.transform(df2)
         assert out2.iloc[0]["fiscal_year"] == 2024
 
+
+def test_fiscal_year_transformer_uses_no_future_data():
+    """
+    FiscalYearTransformer is stateless — fit on training split, transform
+    test split with completely disjoint date ranges; both must be correct.
+    """
+    from philanthropy.preprocessing import FiscalYearTransformer
+
+    train_df = pd.DataFrame({"gift_date": ["2020-07-01", "2020-12-31"]})
+    test_df = pd.DataFrame({"gift_date": ["2023-07-01", "2023-12-31"]})
+
+    t = FiscalYearTransformer(fiscal_year_start=7)
+    t.fit(train_df)
+
+    # Only n_features_in_ and feature_names_in_ should be set
+    fitted_attrs = [a for a in vars(t) if a.endswith("_")]
+    non_schema_attrs = [
+        a for a in fitted_attrs if a not in ("n_features_in_", "feature_names_in_")
+    ]
+    assert len(non_schema_attrs) == 0, (
+        f"FiscalYearTransformer must be stateless (no domain fitted attrs): "
+        f"{non_schema_attrs}"
+    )
+
+    out_train = t.transform(train_df)
+    out_test = t.transform(test_df)
+
+    # Training: July 1, 2020 → FY2021; Dec 31, 2020 → FY2021
+    assert out_train.iloc[0]["fiscal_year"] == 2021
+    assert out_train.iloc[1]["fiscal_year"] == 2021
+    # Test: July 1, 2023 → FY2024; Dec 31, 2023 → FY2024
+    assert out_test.iloc[0]["fiscal_year"] == 2024
+    assert out_test.iloc[1]["fiscal_year"] == 2024
+
+
+def test_encounter_transformer_summary_is_fit_time_snapshot():
+    """
+    Mutate encounter_df AFTER fit() completes.
+    Assert that transform() output is unchanged — proving encounter_summary_
+    is a snapshot, not a view into the original DataFrame.
+    """
+    enc_df = pd.DataFrame({
+        "donor_id": [1, 2],
+        "discharge_date": ["2022-01-01", "2022-06-01"],
+    })
+    X_train = pd.DataFrame({
+        "donor_id": [1, 2],
+        "gift_date": ["2022-09-01", "2022-10-01"],
+        "gift_amount": [1000.0, 500.0],
+    })
+    X_test = pd.DataFrame({
+        "donor_id": [1, 2],
+        "gift_date": ["2023-01-01", "2023-02-01"],
+        "gift_amount": [2000.0, 750.0],
+    })
+
+    t = EncounterTransformer(encounter_df=enc_df)
+    t.fit(X_train)
+    original_output = t.transform(X_test).copy()
+
+    # Mutate the original enc_df AFTER fit — should not affect transform()
+    enc_df.iloc[0, enc_df.columns.get_loc("discharge_date")] = "2099-01-01"
+    post_mutation_output = t.transform(X_test)
+
+    np.testing.assert_array_equal(
+        original_output,
+        post_mutation_output,
+        err_msg=(
+            "transform() output changed after mutating encounter_df — "
+            "encounter_summary_ must be a snapshot taken at fit() time."
+        ),
+    )
+
+
+def test_wealth_imputer_fill_statistics_are_fold_specific_in_cv():
+    """
+    In 5-fold CV, fill statistics computed in each training fold must NOT all
+    be identical — which would indicate the full dataset was used (leakage).
+    """
+    from sklearn.model_selection import StratifiedKFold
+
+    rng = np.random.default_rng(0)
+    n = 500
+    X = pd.DataFrame({
+        "estimated_net_worth": np.where(
+            rng.random(n) < 0.4, np.nan, rng.lognormal(14, 2, n)
+        )
+    })
+    y = rng.integers(0, 2, n)
+
+    fill_values_per_fold = []
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    for train_idx, _ in skf.split(X, y):
+        imp = WealthScreeningImputer(
+            wealth_cols=["estimated_net_worth"],
+            strategy="median",
+            add_indicator=False,
+        )
+        imp.fit(X.iloc[train_idx])
+        fill_values_per_fold.append(imp.fill_values_["estimated_net_worth"])
+
+    # If all fold fill values are identical, test-set leakage is likely
+    assert len(set(fill_values_per_fold)) > 1, (
+        "All fold fill values are identical — possible full-dataset leakage. "
+        f"Fill values: {fill_values_per_fold}"
+    )
+
+

@@ -31,3 +31,4 @@ coverage.xml
 docs/_build/
 docs/auto_examples/
 docs/generated/
+site/

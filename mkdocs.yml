@@ -1,0 +1,45 @@
+site_name: PhilanthroPy
+site_description: A scikit-learn compatible toolkit for predictive donor analytics.
+repo_url: https://github.com/PhilanthroPy-Project/PhilanthroPy
+
+theme:
+  name: material
+  palette:
+    primary: teal
+    accent: amber
+  features:
+    - navigation.tabs
+    - navigation.sections
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: numpy
+            show_source: false
+
+nav:
+  - Home: index.md
+  - Tutorials:
+    - tutorials/index.md
+    - tutorials/building_your_first_model.md
+  - How-To Guides:
+    - how-to/index.md
+    - how-to/handle_missing_wealth_data.md
+    - how-to/build_grateful_patient_features.md
+    - how-to/develop_and_test.md
+  - Explanation:
+    - explanation/index.md
+    - explanation/fundraising_metrics.md
+    - explanation/capacity_and_loyalty.md
+    - explanation/design_principles.md
+  - API Reference:
+    - reference/index.md
+    - reference/preprocessing.md
+    - reference/models.md
+    - reference/metrics.md
+    - reference/datasets.md
+    - reference/model_selection.md

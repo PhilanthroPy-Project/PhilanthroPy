@@ -50,13 +50,16 @@ plugins:
           paths: [.]
           options:
             docstring_style: numpy
-            show_source: false
+            show_source: true
+            members_order: source
 
 nav:
   - Home: index.md
   - Tutorials:
     - tutorials/index.md
     - tutorials/building_your_first_model.md
+    - tutorials/avoiding_temporal_data_leakage.md
+    - tutorials/building_a_grateful_patient_pipeline.md
   - How-To Guides:
     - how-to/index.md
     - how-to/handle_missing_wealth_data.md

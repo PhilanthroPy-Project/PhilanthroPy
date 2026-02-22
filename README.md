@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="docs/logo.png" alt="PhilanthroPy logo" width="180"/>
+  <img src="docs/assets/logo.png" alt="PhilanthroPy logo" width="180"/>
 </p>
 
 <p align="center">
-  <strong>A scikit-learn–compatible toolkit for predictive donor analytics in the nonprofit and medical philanthropy sector.</strong>
+  <strong>PhilanthroPy: Code for a cause—predictive analytics for advancement teams.</strong>
 </p>
 
 <p align="center">

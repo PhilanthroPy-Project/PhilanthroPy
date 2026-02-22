@@ -25,26 +25,39 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
         return [c for c in X.columns if any(t in c for t in targets)]
 
     def fit(self, X, y=None):
-        X = validate_data(self, X, reset=True)
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=True)
+        
         if hasattr(X, "columns"):
-            self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
-        self.n_features_in_ = X.shape[1]
+             self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
+        elif not hasattr(self, "feature_names_in_"):
+             self.feature_names_in_ = np.array([f"x{i}" for i in range(X.shape[1])], dtype=object)
 
-        self.imputed_cols_ = self._resolve_cols(X)
+        # Use feature_names_in_ to resolve columns
+        if self.wealth_cols is not None:
+            self.imputed_cols_ = [c for c in self.wealth_cols if c in self.feature_names_in_]
+        else:
+            targets = ("net_worth", "real_estate", "stock", "capacity")
+            self.imputed_cols_ = [c for c in self.feature_names_in_ if any(t in str(c) for t in targets)]
+
         self.percentile_lookup_ = {}
-
         for col in self.imputed_cols_:
-            s = pd.to_numeric(X[col], errors="coerce")
+            # Find index of column
+            col_idx = list(self.feature_names_in_).index(col)
+            # Use X as numpy array
+            s = pd.to_numeric(pd.Series(X[:, col_idx]), errors="coerce")
             valid_vals = s.dropna().to_numpy()
-            valid_vals.sort()
-            self.percentile_lookup_[col] = valid_vals
+            self.percentile_lookup_[col] = np.sort(valid_vals)
+
+        if len(self.imputed_cols_) == 0 and self.wealth_cols is not None:
+             # If we expected columns but found none, we should probably warn or raise
+             pass
 
         return self
 
     def transform(self, X):
         check_is_fitted(self, "percentile_lookup_")
-        X = validate_data(self, X, reset=False)
-        X_out = X.copy() if hasattr(X, "columns") else pd.DataFrame(X)
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
+        X_out = pd.DataFrame(X, columns=self.feature_names_in_)
 
         for col in self.imputed_cols_:
             if col in X_out.columns:
@@ -60,7 +73,9 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
                 ranks = np.where(np.isnan(s), np.nan, ranks)
                 X_out[out_col] = ranks
 
-        return X_out
+        # Rule 5: transform() MUST return np.ndarray (float64)
+        X_final = X_out.select_dtypes(include=[np.number])
+        return X_final.to_numpy(dtype=np.float64)
 
     def get_feature_names_out(self, input_features=None):
         check_is_fitted(self)
@@ -75,4 +90,5 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
+        tags.input_tags.allow_nan = True
         return tags

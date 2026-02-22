@@ -9,9 +9,10 @@ from .transformers import FiscalYearTransformer, CRMCleaner
 from ._wealth import WealthScreeningImputer
 from ._encounters import EncounterTransformer
 from ._rfm import RFMTransformer
-from ._planned_giving import PlannedGivingIndicator
+from ._planned_giving import PlannedGivingSignalTransformer
+from ._grateful_patient import GratefulPatientFeaturizer
+from ._solicitation_window import SolicitationWindowTransformer
 from ._wealth_percentile import WealthPercentileTransformer
-
 
 __all__ = [
     "FiscalYearTransformer",
@@ -19,6 +20,8 @@ __all__ = [
     "WealthScreeningImputer",
     "EncounterTransformer",
     "RFMTransformer",
-    "PlannedGivingIndicator",
+    "PlannedGivingSignalTransformer",
+    "GratefulPatientFeaturizer",
+    "SolicitationWindowTransformer",
     "WealthPercentileTransformer",
 ]

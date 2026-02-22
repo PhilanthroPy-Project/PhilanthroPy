@@ -57,18 +57,18 @@ class TestCRMCleaner:
     """Standard unit tests for CRMCleaner."""
 
     def test_fit_returns_self(self, donor_df):
-        cleaner = CRMCleaner()
+        cleaner = CRMCleaner().set_output(transform="pandas")
         result = cleaner.fit(donor_df)
         assert result is cleaner
 
     def test_fit_transform_preserves_shape(self, donor_df):
-        cleaner = CRMCleaner()
+        cleaner = CRMCleaner().set_output(transform="pandas")
         out = cleaner.fit_transform(donor_df)
         assert isinstance(out, pd.DataFrame)
         assert out.shape == donor_df.shape
 
     def test_feature_names_in_set(self, donor_df):
-        cleaner = CRMCleaner()
+        cleaner = CRMCleaner().set_output(transform="pandas")
         cleaner.fit(donor_df)
         assert hasattr(cleaner, "feature_names_in_")
         assert set(cleaner.feature_names_in_) == set(donor_df.columns)
@@ -82,14 +82,14 @@ class TestCRMCleaner:
         df = pd.DataFrame(
             {"gift_date": ["2023-07-01"], "gift_amount": ["$5,000"]}
         )
-        cleaner = CRMCleaner()
+        cleaner = CRMCleaner().set_output(transform="pandas")
         out = cleaner.fit_transform(df)
         # Non-parseable → NaN; dtype should be float64
         assert out["gift_amount"].dtype == np.float64 or out["gift_amount"].isna().all()
 
     def test_date_col_coerced_to_datetime(self):
         df = pd.DataFrame({"gift_date": ["2023-07-01"], "gift_amount": [100.0]})
-        cleaner = CRMCleaner()
+        cleaner = CRMCleaner().set_output(transform="pandas")
         out = cleaner.fit_transform(df)
         assert pd.api.types.is_datetime64_any_dtype(out["gift_date"])
 
@@ -105,7 +105,7 @@ class TestCRMCleanerWithWealthImputer:
                 "estimated_net_worth": [np.nan, 1_500_000.0],
             }
         )
-        imputer = WealthScreeningImputer(wealth_cols=["estimated_net_worth"])
+        imputer = WealthScreeningImputer(wealth_cols=["estimated_net_worth"]).set_output(transform="pandas")
         cleaner = CRMCleaner(wealth_imputer=imputer)
         cleaner.fit(X)
         # Imputer should now be fitted
@@ -123,7 +123,7 @@ class TestCRMCleanerWithWealthImputer:
         imputer = WealthScreeningImputer(
             wealth_cols=["estimated_net_worth", "real_estate_value"],
             strategy="median",
-        )
+        ).set_output(transform="pandas")
         cleaner = CRMCleaner(wealth_imputer=imputer)
         out = cleaner.fit_transform(X)
         assert out["estimated_net_worth"].isna().sum() == 0
@@ -167,20 +167,20 @@ class TestWealthScreeningImputer:
         imp = WealthScreeningImputer(
             wealth_cols=["estimated_net_worth", "real_estate_value"],
             strategy="median",
-        )
+        ).set_output(transform="pandas")
         out = imp.fit_transform(df)
         assert out["estimated_net_worth"].isna().sum() == 0
         assert out["real_estate_value"].isna().sum() == 0
 
     def test_zero_strategy(self):
         df = pd.DataFrame({"estimated_net_worth": [np.nan, 1e6, np.nan]})
-        imp = WealthScreeningImputer(wealth_cols=["estimated_net_worth"], strategy="zero")
+        imp = WealthScreeningImputer(wealth_cols=["estimated_net_worth"], strategy="zero").set_output(transform="pandas")
         out = imp.fit_transform(df)
         assert out.loc[0, "estimated_net_worth"] == pytest.approx(0.0)
 
     def test_mean_strategy(self):
         df = pd.DataFrame({"estimated_net_worth": [1e6, np.nan, 3e6]})
-        imp = WealthScreeningImputer(wealth_cols=["estimated_net_worth"], strategy="mean")
+        imp = WealthScreeningImputer(wealth_cols=["estimated_net_worth"], strategy="mean").set_output(transform="pandas")
         out = imp.fit_transform(df)
         assert out.loc[1, "estimated_net_worth"] == pytest.approx(2e6)
 
@@ -188,7 +188,7 @@ class TestWealthScreeningImputer:
         df = pd.DataFrame({"estimated_net_worth": [np.nan, 1e6]})
         imp = WealthScreeningImputer(
             wealth_cols=["estimated_net_worth"], add_indicator=True
-        )
+        ).set_output(transform="pandas")
         out = imp.fit_transform(df)
         assert "estimated_net_worth__was_missing" in out.columns
         assert out.loc[0, "estimated_net_worth__was_missing"] == 1
@@ -203,7 +203,7 @@ class TestWealthScreeningImputer:
         """Ensure test-set values do not affect fill statistics."""
         X_train = pd.DataFrame({"estimated_net_worth": [100.0, np.nan, 200.0]})
         X_test = pd.DataFrame({"estimated_net_worth": [np.nan, 900.0]})
-        imp = WealthScreeningImputer(wealth_cols=["estimated_net_worth"])
+        imp = WealthScreeningImputer(wealth_cols=["estimated_net_worth"]).set_output(transform="pandas")
         imp.fit(X_train)
         frozen_fill = imp.fill_values_["estimated_net_worth"]
         imp.transform(X_test)
@@ -228,7 +228,7 @@ class TestFiscalYearTransformer:
     """Standard unit tests for FiscalYearTransformer."""
 
     def test_adds_fiscal_year_and_quarter_columns(self, donor_df):
-        t = FiscalYearTransformer()
+        t = FiscalYearTransformer().set_output(transform="pandas")
         out = t.fit_transform(donor_df)
         assert "fiscal_year" in out.columns
         assert "fiscal_quarter" in out.columns
@@ -237,7 +237,7 @@ class TestFiscalYearTransformer:
         df = pd.DataFrame(
             {"gift_date": ["2023-07-01", "2023-06-30", "2024-01-15"]}
         )
-        t = FiscalYearTransformer(fiscal_year_start=7)
+        t = FiscalYearTransformer(fiscal_year_start=7).set_output(transform="pandas")
         out = t.fit_transform(df)
         # July 1, 2023 → FY2024 (fiscal year starting July 2023)
         assert out.loc[0, "fiscal_year"] == 2024
@@ -248,7 +248,7 @@ class TestFiscalYearTransformer:
 
     def test_january_start_logic(self):
         df = pd.DataFrame({"gift_date": ["2023-01-01", "2023-12-31"]})
-        t = FiscalYearTransformer(fiscal_year_start=1)
+        t = FiscalYearTransformer(fiscal_year_start=1).set_output(transform="pandas")
         out = t.fit_transform(df)
         # With January start, calendar year == fiscal year
         assert out.loc[0, "fiscal_year"] == 2024  # Jan 01 ≥ Jan → FY = year+1
@@ -259,7 +259,7 @@ class TestFiscalYearTransformer:
             "%Y-%m-%d"
         )
         df = pd.DataFrame({"gift_date": dates})
-        t = FiscalYearTransformer(fiscal_year_start=7)
+        t = FiscalYearTransformer(fiscal_year_start=7).set_output(transform="pandas")
         out = t.fit_transform(df)
         quarters = out["fiscal_quarter"].dropna().astype(int)
         assert quarters.min() >= 1
@@ -332,7 +332,7 @@ class TestFiscalYearTransformerHypothesis:
     def test_fiscal_year_always_integer(self, fiscal_year_start, n_rows, dates):
         """``fiscal_year`` must always be a finite integer value."""
         df = pd.DataFrame({"gift_date": dates})
-        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start)
+        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start).set_output(transform="pandas")
         out = t.fit_transform(df)
         fiscal_years = out["fiscal_year"]
         assert fiscal_years.notna().all(), "fiscal_year must not contain NaN."
@@ -355,7 +355,7 @@ class TestFiscalYearTransformerHypothesis:
     ):
         """fiscal_year ∈ {calendar_year, calendar_year + 1} for any input."""
         df = pd.DataFrame({"gift_date": [date_str]})
-        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start)
+        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start).set_output(transform="pandas")
         out = t.fit_transform(df)
         calendar_year = pd.to_datetime(date_str).year
         fiscal_year = int(out.loc[0, "fiscal_year"])
@@ -380,7 +380,7 @@ class TestFiscalYearTransformerHypothesis:
     def test_fiscal_quarter_always_1_to_4(self, fiscal_year_start, date_str):
         """fiscal_quarter must always be in {1, 2, 3, 4}."""
         df = pd.DataFrame({"gift_date": [date_str]})
-        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start)
+        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start).set_output(transform="pandas")
         out = t.fit_transform(df)
         q = int(out.loc[0, "fiscal_quarter"])
         assert 1 <= q <= 4, (
@@ -407,7 +407,7 @@ class TestFiscalYearTransformerHypothesis:
     def test_transform_idempotent_fiscal_year(self, fiscal_year_start, date_strs):
         """Calling transform twice on the same data must yield identical fiscal_year."""
         df = pd.DataFrame({"gift_date": date_strs})
-        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start)
+        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start).set_output(transform="pandas")
         t.fit(df)
         out1 = t.transform(df)
         out2 = t.transform(out1.rename(columns={"fiscal_year": "_fy_drop",
@@ -433,7 +433,7 @@ class TestFiscalYearTransformerHypothesis:
         """Feb 29 on actual leap years must be handled without exception."""
         date_str = f"{leap_year}-02-29"
         df = pd.DataFrame({"gift_date": [date_str]})
-        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start)
+        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start).set_output(transform="pandas")
         out = t.fit_transform(df)  # Must not raise
         # Feb is always before fiscal_start unless start == 1 or 2
         fy = int(out.loc[0, "fiscal_year"])
@@ -464,7 +464,7 @@ class TestFiscalYearTransformerHypothesis:
         abs_h = abs(utc_offset_hours)
         tz_str = f"{date_str}T12:00:00{sign}{abs_h:02d}:00"
         df = pd.DataFrame({"gift_date": [tz_str]})
-        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start)
+        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start).set_output(transform="pandas")
         # utcoffset-aware strings parsed by pd.to_datetime; check no exception
         try:
             out = t.fit_transform(df)
@@ -511,12 +511,12 @@ class TestEncounterTransformer:
     """Unit tests for EncounterTransformer."""
 
     def test_output_lacks_donor_id(self, encounter_df, gift_df_with_ids):
-        t = EncounterTransformer(encounter_df=encounter_df)
+        t = EncounterTransformer(encounter_df=encounter_df).set_output(transform="pandas")
         out = t.fit_transform(gift_df_with_ids)
         assert "donor_id" not in out.columns, "merge_key must be stripped from output."
 
     def test_new_columns_present(self, encounter_df, gift_df_with_ids):
-        t = EncounterTransformer(encounter_df=encounter_df)
+        t = EncounterTransformer(encounter_df=encounter_df).set_output(transform="pandas")
         out = t.fit_transform(gift_df_with_ids)
         assert "days_since_last_discharge" in out.columns
         assert "encounter_frequency_score" in out.columns
@@ -526,7 +526,7 @@ class TestEncounterTransformer:
         enc = pd.DataFrame(
             {"donor_id": [101], "discharge_date": ["2022-01-01"]}
         )
-        t = EncounterTransformer(encounter_df=enc)
+        t = EncounterTransformer(encounter_df=enc).set_output(transform="pandas")
         out = t.fit_transform(gift_df_with_ids)
         # donors 102, 103, 104 are not in enc
         unknown_rows = out[out.index.isin([1, 2, 3])]  # after reset_index
@@ -540,7 +540,7 @@ class TestEncounterTransformer:
         gifts = pd.DataFrame(
             {"donor_id": [1], "gift_date": ["2023-01-01"], "gift_amount": [100.0]}
         )
-        t = EncounterTransformer(encounter_df=enc, allow_negative_days=False)
+        t = EncounterTransformer(encounter_df=enc, allow_negative_days=False).set_output(transform="pandas")
         out = t.fit_transform(gifts)
         assert np.isnan(out.loc[0, "days_since_last_discharge"])
 
@@ -552,13 +552,13 @@ class TestEncounterTransformer:
         gifts = pd.DataFrame(
             {"donor_id": [1], "gift_date": ["2023-01-01"], "gift_amount": [100.0]}
         )
-        t = EncounterTransformer(encounter_df=enc, allow_negative_days=True)
+        t = EncounterTransformer(encounter_df=enc, allow_negative_days=True).set_output(transform="pandas")
         out = t.fit_transform(gifts)
         assert out.loc[0, "days_since_last_discharge"] < 0
 
     def test_encounter_frequency_score_log_scaled(self, encounter_df, gift_df_with_ids):
         """Encounter frequency should equal log1p(encounter_count)."""
-        t = EncounterTransformer(encounter_df=encounter_df)
+        t = EncounterTransformer(encounter_df=encounter_df).set_output(transform="pandas")
         t.fit(gift_df_with_ids)
         out = t.transform(gift_df_with_ids)
         # Donor 101 has 2 encounters → log1p(2) ≈ 1.099
@@ -586,7 +586,7 @@ class TestEncounterTransformer:
     def test_missing_merge_key_in_X_raises(self):
         enc = pd.DataFrame({"donor_id": [1], "discharge_date": ["2022-01-01"]})
         gifts = pd.DataFrame({"gift_date": ["2023-01-01"], "gift_amount": [100.0]})
-        t = EncounterTransformer(encounter_df=enc)
+        t = EncounterTransformer(encounter_df=enc).set_output(transform="pandas")
         with pytest.raises(ValueError, match="donor_id"):
             t.fit(gifts)
 
@@ -610,7 +610,7 @@ class TestEncounterTransformer:
                 "full_name": ["John Doe"],  # should be stripped
             }
         )
-        t = EncounterTransformer(encounter_df=enc)
+        t = EncounterTransformer(encounter_df=enc).set_output(transform="pandas")
         out = t.fit_transform(gifts)
         assert "patient_mrn" not in out.columns
         assert "full_name" not in out.columns

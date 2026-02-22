@@ -101,9 +101,7 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         detected via the PII heuristic.  Useful when non-standard identifiers
         (e.g., ``"pledge_record_key"``) are present in ``X``.
     fiscal_year_start : int, default=7
-        Month (1–12) that begins the organisation's fiscal year.  Inherited
-        from :class:`~philanthropy.base.BasePhilanthropyEstimator` for
-        pipeline compatibility.
+        Month (1–12) that begins the organisation's fiscal year.
 
     Attributes
     ----------
@@ -154,61 +152,57 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
 
     def __init__(
         self,
+        encounter_df: pd.DataFrame | None = None,
+        encounter_path: str | None = None,
         discharge_col: str = "discharge_date",
         gift_date_col: str = "gift_date",
         merge_key: str = "donor_id",
         allow_negative_days: bool = False,
         id_cols_to_drop: list[str] | None = None,
     ):
+        self.encounter_df = encounter_df
+        self.encounter_path = encounter_path
         self.discharge_col = discharge_col
         self.gift_date_col = gift_date_col
         self.merge_key = merge_key
         self.allow_negative_days = allow_negative_days
         self.id_cols_to_drop = id_cols_to_drop
 
-    def set_encounter_data(self, encounter_df: pd.DataFrame) -> "EncounterTransformer":
-        self._encounter_df_input = encounter_df
-        return self
-
     # ------------------------------------------------------------------
     # Validation helpers
     # ------------------------------------------------------------------
 
-    def _validate_encounter_df(self) -> None:
+    def _validate_encounter_df(self, raw_enc: pd.DataFrame) -> None:
         """Raise ``ValueError`` if ``encounter_df`` is structurally invalid."""
-        if not hasattr(self, "_encounter_df_input"):
-            raise ValueError("set_encounter_data() must be called before fit().")
-            
-        if not isinstance(self._encounter_df_input, pd.DataFrame):
+        if not isinstance(raw_enc, pd.DataFrame):
             raise TypeError(
                 f"`encounter_df` must be a pd.DataFrame, "
-                f"got {type(self._encounter_df_input).__name__!r}."
+                f"got {type(raw_enc).__name__!r}."
             )
         for col, label in [
             (self.merge_key, "merge_key"),
             (self.discharge_col, "discharge_col"),
         ]:
-            if col not in self._encounter_df_input.columns:
+            if col not in raw_enc.columns:
                 raise ValueError(
                     f"Column {col!r} (specified as `{label}`) was not found "
                     f"in `encounter_df`. Available columns: "
-                    f"{list(self._encounter_df_input.columns)}."
+                    f"{list(raw_enc.columns)}."
                 )
 
     def _validate_X(self, X: pd.DataFrame) -> None:
         """Raise ``ValueError`` if gift DataFrame ``X`` lacks required columns."""
         if not isinstance(X, pd.DataFrame):
-            raise TypeError(
-                f"`X` must be a pd.DataFrame, got {type(X).__name__!r}."
-            )
+            return  # validate_data will handle non-DataFrame inputs
         for col, label in [
             (self.merge_key, "merge_key"),
             (self.gift_date_col, "gift_date_col"),
         ]:
             if col not in X.columns:
                 raise ValueError(
-                    f"Column {col!r} (specified as `{label}`) was not found "
-                    f"in ``X``. Available columns: {list(X.columns)}."
+                    f"Required column {col!r} (specified as `{label}`) was not found "
+                    f"in input X. Please ensure X contains this column or update "
+                    f"the `{label}` parameter in EncounterTransformer."
                 )
 
 
@@ -260,17 +254,31 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         ValueError
             If required columns are missing from ``encounter_df`` or ``X``.
         """
-        self._validate_encounter_df()
-        self._validate_X(X)
-        X = validate_data(self, X, reset=True)
+        if self.encounter_path is not None:
+            raw_enc = pd.read_parquet(self.encounter_path)
+        elif self.encounter_df is not None:
+            raw_enc = self.encounter_df.copy()
+        else:
+            raise ValueError(
+                "EncounterTransformer requires either encounter_df or "
+                "encounter_path to be set."
+            )
 
-        # Record input schema (sklearn convention)
+        self._validate_encounter_df(raw_enc)
+        
         if hasattr(X, "columns"):
-            self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
+            input_cols = list(X.columns)
+        else:
+            # Although X must be a DataFrame based on _validate_X, we handle ndarray gracefully
+            n_cols = np.shape(X)[1] if len(np.shape(X)) > 1 else 1
+            input_cols = [f"x{i}" for i in range(n_cols)]
+            
+        self._validate_X(X)
+        X = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=True)
         self.n_features_in_ = X.shape[1]
 
         # --- Build encounter summary (fit-time only, no leakage from X) ---
-        enc = self._encounter_df_input[[self.merge_key, self.discharge_col]].copy()
+        enc = raw_enc[[self.merge_key, self.discharge_col]].copy()
         enc[self.discharge_col] = pd.to_datetime(
             enc[self.discharge_col], errors="coerce"
         )
@@ -303,8 +311,8 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
 
         Returns
         -------
-        X_out : pd.DataFrame
-            Enriched DataFrame with two new columns:
+        X_out : np.ndarray
+            Enriched array with two new columns:
 
             * ``days_since_last_discharge`` — Days elapsed between the donor's
               latest discharge and the gift date.  ``NaN`` for donors absent
@@ -323,10 +331,17 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
             If ``merge_key`` or ``gift_date_col`` is absent from ``X``.
         """
         check_is_fitted(self)
-        self._validate_X(X)
-        X = validate_data(self, X, reset=False)
+        
+        if hasattr(X, "columns"):
+            input_cols = list(X.columns)
+        else:
+            n_cols = np.shape(X)[1] if len(np.shape(X)) > 1 else 1
+            input_cols = [f"x{i}" for i in range(n_cols)]
 
-        X_out = X.copy() if hasattr(X, "columns") else pd.DataFrame(X)
+        X = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=False)
+        X_out = pd.DataFrame(X, columns=input_cols)
+        
+        self._validate_X(X_out)
         X_out[self.gift_date_col] = pd.to_datetime(
             X_out[self.gift_date_col], errors="coerce"
         )
@@ -366,7 +381,8 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         if self.gift_date_col in X_out.columns:
             X_out = X_out.drop(columns=[self.gift_date_col])
 
-        return X_out.reset_index(drop=True)
+        # Convert back to numpy array float64 as instructed
+        return X_out.to_numpy(dtype=np.float64)
 
     def get_feature_names_out(self, input_features=None):
         check_is_fitted(self)

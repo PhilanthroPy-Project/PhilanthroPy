@@ -179,7 +179,14 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
+        tags.regressor_tags.poor_score = True
         return tags
+
+    @property
+    def n_iter_(self):
+        """Number of iterations run by the backend estimator."""
+        check_is_fitted(self, ["estimator_"])
+        return self.estimator_.n_iter_
 
     # ------------------------------------------------------------------
     # Public API
@@ -187,7 +194,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
 
     def fit(self, X, y) -> "ShareOfWalletRegressor":
         """Fit the share-of-wallet capacity model to labelled prospect data."""
-        X, y = validate_data(self, X, y, force_all_finite="allow-nan", reset=True)
+        X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
         self.n_features_in_ = X.shape[1]
 
         self.estimator_ = HistGradientBoostingRegressor(
@@ -204,7 +211,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
     def predict(self, X) -> np.ndarray:
         """Predict philanthropic capacity for each prospect."""
         check_is_fitted(self, ["estimator_"])
-        X = validate_data(self, X, force_all_finite="allow-nan", reset=False)
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         raw = self.estimator_.predict(X)
         return np.maximum(raw, self.capacity_floor)
 

@@ -1,92 +1,122 @@
+"""
+philanthropy.preprocessing._planned_giving
+==========================================
+Legacy and planned-giving signal featurization.
+"""
+
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
-from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted, validate_data
 
 
-class PlannedGivingIndicator(TransformerMixin, BaseEstimator):
+class PlannedGivingSignalTransformer(TransformerMixin, BaseEstimator):
     """
-    Creates planned giving indicator features.
+    Computes a legacy/planned-giving likelihood signal.
+
+    Traditional planned-giving models (BeQuest propensity) rely on two core
+    signals: loyalty (years of active giving) and identified capacity (total
+    gift count or amount).
+
+    Parameters
+    ----------
+    age_col : str, default="age"
+        Column containing donor age.
+    years_active_col : str, default="years_active"
+        Column containing number of years donor has been active.
+    total_gifts_col : str, default="total_gifts"
+        Column containing total number of gifts made.
+    age_weight : float, default=0.7
+        Weight applied to the loyalty signal (years_active).
+    capacity_multiplier : float, default=0.3
+        Multiplier applied to the capacity signal (total_gifts).
     """
 
     def __init__(
         self,
         age_col: str = "age",
-        tenure_col: str = "years_active",
-        gift_count_col: str = "lifetime_gift_count",
-        has_children_col: str | None = None,
-        high_propensity_age_threshold: int = 65,
-        high_propensity_tenure_threshold: int = 15,
-    ):
+        years_active_col: str = "years_active",
+        total_gifts_col: str = "total_gifts",
+        age_weight: float = 0.7,
+        capacity_multiplier: float = 0.3,
+    ) -> None:
         self.age_col = age_col
-        self.tenure_col = tenure_col
-        self.gift_count_col = gift_count_col
-        self.has_children_col = has_children_col
-        self.high_propensity_age_threshold = high_propensity_age_threshold
-        self.high_propensity_tenure_threshold = high_propensity_tenure_threshold
+        self.years_active_col = years_active_col
+        self.total_gifts_col = total_gifts_col
+        self.age_weight = age_weight
+        self.capacity_multiplier = capacity_multiplier
 
-    def fit(self, X, y=None):
-        X = validate_data(self, X, reset=True)
+    def fit(self, X, y=None) -> "PlannedGivingSignalTransformer":
+        """
+        Validate data and record input schema.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Donor data.
+        y : ignored
+
+        Returns
+        -------
+        self : PlannedGivingSignalTransformer
+        """
         if hasattr(X, "columns"):
             self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
-        self.n_features_in_ = X.shape[1]
-        return self
 
-    def transform(self, X):
-        check_is_fitted(self)
-        X = validate_data(self, X, reset=False)
-        X_out = X.copy() if hasattr(X, "columns") else pd.DataFrame(X)
-
-        if self.age_col in X_out.columns:
-            age_s = pd.to_numeric(X_out[self.age_col], errors="coerce")
-            X_out["pg_age_band"] = pd.cut(
-                age_s,
-                bins=[-np.inf, 45, 60, 75, np.inf],
-                right=False,
-                labels=[0, 1, 2, 3]
-            ).astype("float64").astype("Int64")
-
-        if self.tenure_col in X_out.columns:
-            tenure_s = pd.to_numeric(X_out[self.tenure_col], errors="coerce")
-            X_out["pg_tenure_decades"] = tenure_s / 10.0
-
-        if self.gift_count_col in X_out.columns and self.tenure_col in X_out.columns:
-            gifts_s = pd.to_numeric(X_out[self.gift_count_col], errors="coerce")
-            tenure_s = pd.to_numeric(X_out[self.tenure_col], errors="coerce")
-            X_out["pg_loyalty_score"] = gifts_s * np.log1p(tenure_s)
-
-        if self.age_col in X_out.columns and self.tenure_col in X_out.columns:
-            age_s = pd.to_numeric(X_out[self.age_col], errors="coerce")
-            tenure_s = pd.to_numeric(X_out[self.tenure_col], errors="coerce")
-
-            cond_age = (age_s >= self.high_propensity_age_threshold)
-            cond_tenure = (tenure_s >= self.high_propensity_tenure_threshold)
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=True)
+        
+        if not hasattr(self, "feature_names_in_"):
+            self.n_features_in_ = X.shape[1]
+            self.feature_names_in_ = np.array([f"x{i}" for i in range(self.n_features_in_)], dtype=object)
             
-            cond_has_children = True
-            if self.has_children_col is not None and self.has_children_col in X_out.columns:
-                children_s = pd.to_numeric(X_out[self.has_children_col], errors="coerce").fillna(0).astype(bool)
-                cond_has_children = ~children_s
-
-            X_out["pg_high_propensity"] = (cond_age & cond_tenure & cond_has_children).astype(np.uint8)
-
-        return X_out
-
-    def get_feature_names_out(self, input_features=None):
-        check_is_fitted(self)
-        out = list(self.feature_names_in_)
-        if self.age_col in out:
-            out.append("pg_age_band")
-        if self.tenure_col in out:
-            out.append("pg_tenure_decades")
-        if self.gift_count_col in out and self.tenure_col in out:
-            out.append("pg_loyalty_score")
-        if self.age_col in out and self.tenure_col in out:
-            out.append("pg_high_propensity")
-        return np.array(out, dtype=object)
-
-    def _more_tags(self):
-        return {"X_types": ["2darray", "dataframe"]}
+        return self
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
+        tags.input_tags.allow_nan = True
         return tags
+
+    def transform(self, X) -> np.ndarray:
+        """
+        Append 'planned_giving_score'.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Donor data.
+
+        Returns
+        -------
+        X_out : np.ndarray (float64)
+            Original features plus 'planned_giving_score'.
+        """
+        check_is_fitted(self)
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
+        
+        if not hasattr(self, "feature_names_in_"):
+             raise ValueError("PlannedGivingSignalTransformer requires named columns in X.")
+             
+        X_df = pd.DataFrame(X, columns=self.feature_names_in_)
+        
+        for col in [self.years_active_col, self.total_gifts_col]:
+            if col not in X_df.columns:
+                raise ValueError(f"Column {col!r} not found in X.")
+                
+        # Logic from prompt: (X[years_active] * age_weight) + (X[total_gifts] * capacity_multiplier)
+        score = (
+            X_df[self.years_active_col].astype(float) * self.age_weight + 
+            X_df[self.total_gifts_col].astype(float) * self.capacity_multiplier
+        )
+        
+        X_df["planned_giving_score"] = score
+        
+        # Rule 5: transform() MUST return np.ndarray (float64)
+        X_final = X_df.select_dtypes(include=[np.number])
+        return X_final.to_numpy(dtype=np.float64)
+
+    def get_feature_names_out(self, input_features=None):
+        check_is_fitted(self)
+        base_features = [f for f in self.feature_names_in_]
+        return np.array([*base_features, "planned_giving_score"], dtype=object)

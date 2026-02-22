@@ -18,7 +18,7 @@ from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassif
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.utils import Tags
 from sklearn.utils.multiclass import unique_labels
-from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from sklearn.utils.validation import check_is_fitted, validate_data
 
 
 class DonorPropensityModel(ClassifierMixin, BaseEstimator):
@@ -208,7 +208,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
             If ``X`` and ``y`` have incompatible shapes, or if ``y``
             contains values outside ``{0, 1}``.
         """
-        X, y = check_X_y(X, y)
+        X, y = validate_data(self, X, y, reset=True)
 
         self.classes_ = unique_labels(y)
         self.n_features_in_ = X.shape[1]
@@ -246,7 +246,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
             If :meth:`fit` has not been called yet.
         """
         check_is_fitted(self)
-        X = check_array(X)
+        X = validate_data(self, X, reset=False)
         return self.estimator_.predict(X)
 
     def predict_proba(self, X) -> np.ndarray:
@@ -270,10 +270,33 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
             If :meth:`fit` has not been called yet.
         """
         check_is_fitted(self)
-        X = check_array(X)
+        X = validate_data(self, X, reset=False)
         return self.estimator_.predict_proba(X)
 
-    def predict_affinity_score(self, X) -> np.ndarray:
+    def decision_function(self, X: np.ndarray) -> np.ndarray:
+        """
+        Raw P(major_donor) scores. Used by sklearn scoring and calibration.
+
+        Returns
+        -------
+        np.ndarray of shape (n_samples,), dtype float64
+            Scores for each sample. Centered at 0 for binary case to match
+            predict threshold.
+        """
+        check_is_fitted(self)
+        X = validate_data(self, X, reset=False)
+        proba = self.estimator_.predict_proba(X)
+        if proba.shape[1] == 2:
+            return proba[:, 1] - 0.5
+        elif proba.shape[1] == 1:
+            # Single class case: if classes_ is [1], prob of class 1 is all 1.0.
+            # If classes_ is [0], prob of class 1 is all 0.0.
+            if self.classes_[0] == 1:
+                return np.ones(proba.shape[0]) - 0.5
+            return np.zeros(proba.shape[0]) - 0.5
+        return proba  # Multiclass
+
+    def predict_affinity_score(self, X: np.ndarray) -> np.ndarray:
         """Map major-donor probability to a 0–100 affinity score.
 
         This method is the primary interface for gift officers and CRM
@@ -319,9 +342,14 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
         >>> (scores >= 0).all() and (scores <= 100).all()
         True
         """
-        proba_positive = self.predict_proba(X)[:, 1]
-        affinity_scores = np.round(proba_positive * 100.0, 2)
-        return affinity_scores
+        df = self.decision_function(X)
+        if df.ndim == 1:
+            return np.round((df + 0.5) * 100, 2)
+        # Multiclass case: affinity score for "major gift" (usually class 1)
+        # We assume class 1 is at index 1 if it exists
+        if df.shape[1] > 1:
+            return np.round(df[:, 1] * 100, 2)
+        return np.round(df.ravel() * 100, 2)
 
 
 class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
@@ -343,7 +371,7 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         self.random_state = random_state
 
     def fit(self, X, y):
-        X, y = check_X_y(X, y, ensure_all_finite="allow-nan")
+        X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
         self.classes_ = unique_labels(y)
         self.n_features_in_ = X.shape[1]
         
@@ -359,14 +387,14 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
 
     def predict(self, X):
         check_is_fitted(self)
-        X = check_array(X, ensure_all_finite="allow-nan")
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self.estimator_.predict(X)
 
     def predict_proba(self, X):
         check_is_fitted(self)
-        X = check_array(X, ensure_all_finite="allow-nan")
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self.estimator_.predict_proba(X)
 
     def predict_affinity_score(self, X):
         proba_positive = self.predict_proba(X)[:, 1]
-        return np.round(proba_positive * 100.0).astype(int)
+        return np.round(proba_positive * 100.0, 2)

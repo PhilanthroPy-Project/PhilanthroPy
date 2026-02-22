@@ -130,7 +130,7 @@ class TestEncounterTransformerNoLeakage:
         and a *future* discharge of 2023-02-14.  The fitted transformer must
         use 2022-12-01, never 2023-02-14.
         """
-        t = EncounterTransformer(encounter_df=train_encounters)
+        t = EncounterTransformer(encounter_df=train_encounters).set_output(transform="pandas")
         t.fit(train_gift_df)
 
         # Verify frozen last_discharge for donor 1 is from training period
@@ -169,7 +169,7 @@ class TestEncounterTransformerNoLeakage:
         Donor 5 appears only in the test set.  After fitting on train_encounters,
         the transformer must NOT leak donor 5's future values — it must return NaN.
         """
-        t = EncounterTransformer(encounter_df=train_encounters)
+        t = EncounterTransformer(encounter_df=train_encounters).set_output(transform="pandas")
         t.fit(train_gift_df)
         test_out = t.transform(test_gift_df)
 
@@ -200,7 +200,7 @@ class TestEncounterTransformerNoLeakage:
         # Build a combined dataset that includes future gift amounts as labels
         future_amounts = np.array([1_000_000.0, 9_999_999.0, 5_555_555.0, 7_777_777.0])
 
-        t = EncounterTransformer(encounter_df=train_encounters)
+        t = EncounterTransformer(encounter_df=train_encounters).set_output(transform="pandas")
         # Attempt to fit with future gift amounts as y — this must be ignored by EncounterTransformer
         t.fit(train_gift_df, y=future_amounts)
 
@@ -325,7 +325,7 @@ class TestTemporalSplitLeakage:
         The training-split features must be identical whether we transform
         train_gift_df alone or after computing test-split features.
         """
-        t = EncounterTransformer(encounter_df=train_encounters)
+        t = EncounterTransformer(encounter_df=train_encounters).set_output(transform="pandas")
         t.fit(train_gift_df)
 
         out_train_A = t.transform(train_gift_df.copy())
@@ -351,7 +351,7 @@ class TestTemporalSplitLeakage:
         encounter_frequency_score for training donors must not change regardless
         of how many test rows are processed after fit().
         """
-        t = EncounterTransformer(encounter_df=train_encounters)
+        t = EncounterTransformer(encounter_df=train_encounters).set_output(transform="pandas")
         t.fit(train_gift_df)
 
         out_small_test = t.transform(train_gift_df.iloc[:1].copy())
@@ -377,8 +377,8 @@ class TestTemporalLeakagePrevention:
     @given(
         df_train=data_frames(
             columns=[
-                column("estimated_net_worth", elements=st.floats(0, 1e7, allow_nan=True)),
-                column("real_estate_value", elements=st.floats(0, 1e7, allow_nan=True))
+                column("estimated_net_worth", elements=st.one_of(st.floats(0, 1e7), st.just(np.nan))),
+                column("real_estate_value", elements=st.one_of(st.floats(0, 1e7), st.just(np.nan)))
             ],
             index=range_indexes(min_size=2, max_size=50)
         ),
@@ -398,8 +398,7 @@ class TestTemporalLeakagePrevention:
 
     def test_encounter_summary_frozen_after_fit(self, train_encounters, train_gift_df, test_gift_df):
         enc_df = train_encounters.copy()
-        t = EncounterTransformer()
-        t.set_encounter_data(enc_df)
+        t = EncounterTransformer(encounter_df=enc_df).set_output(transform="pandas")
         t.fit(train_gift_df)
         
         out1 = t.transform(test_gift_df)
@@ -413,8 +412,7 @@ class TestTemporalLeakagePrevention:
         future_row = pd.DataFrame({"donor_id": [1], "discharge_date": ["2025-01-01"]})
         enc_df = pd.concat([train_encounters, future_row], ignore_index=True)
         
-        t = EncounterTransformer(allow_negative_days=False)
-        t.set_encounter_data(enc_df)
+        t = EncounterTransformer(encounter_df=enc_df, allow_negative_days=False).set_output(transform="pandas")
         t.fit(train_gift_df)
         
         out = t.transform(train_gift_df)
@@ -423,4 +421,24 @@ class TestTemporalLeakagePrevention:
         donor1_mask = train_gift_df["donor_id"] == 1
         days = out.loc[donor1_mask, "days_since_last_discharge"]
         assert days.isna().all()
+
+
+class TestFiscalYearNoLeakage:
+    """Verify that FiscalYearTransformer only uses the provided columns in X."""
+
+    def test_fiscal_year_stateless(self):
+        """FiscalYearTransformer is stateless; verify it doesn't store data."""
+        from philanthropy.preprocessing import FiscalYearTransformer
+        df1 = pd.DataFrame({"gift_date": ["2023-01-01"]})
+        df2 = pd.DataFrame({"gift_date": ["2024-01-01"]})
+
+        t = FiscalYearTransformer(fiscal_year_start=7)
+        t.fit(df1)
+        out1 = t.transform(df1)
+        # 2023-01-01 (Jan) is FY23 if FY starts in July (7)
+        assert out1.iloc[0]["fiscal_year"] == 2023
+
+        # Transforming df2 should not be influenced by df1
+        out2 = t.transform(df2)
+        assert out2.iloc[0]["fiscal_year"] == 2024
 

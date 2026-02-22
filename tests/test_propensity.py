@@ -3,6 +3,7 @@ tests/test_propensity.py
 """
 
 import numpy as np
+import pandas as pd
 import pytest
 from philanthropy.models import PropensityScorer, LapsePredictor
 
@@ -34,9 +35,14 @@ def test_propensity_scorer_predict_proba_shape(dummy_Xy):
 
 
 def test_lapse_predictor_fit_predict(dummy_Xy):
-    X, y = dummy_Xy
-    clf = LapsePredictor()
-    clf.fit(X, y)
+    X, _ = dummy_Xy
+    # Generate some synthetic gift dates
+    rng = np.random.default_rng(2)
+    days_ago = rng.integers(0, 1500, size=40)
+    gift_dates = pd.Timestamp.today() - pd.to_timedelta(days_ago, unit="D")
+    
+    clf = LapsePredictor(lapse_window_years=2)
+    clf.fit(X, gift_dates)
     preds = clf.predict(X)
     assert preds.shape == (40,)
     assert set(preds).issubset({0, 1})

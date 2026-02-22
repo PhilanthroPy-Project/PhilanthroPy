@@ -155,36 +155,36 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _resolve_cols(self, X: pd.DataFrame) -> List[str]:
+    def _resolve_cols(self, input_cols: List[str]) -> List[str]:
         """Return the wealth columns that actually exist in ``X``."""
         candidates = (
             self.wealth_cols
             if self.wealth_cols is not None
             else _DEFAULT_WEALTH_COLS
         )
-        return [c for c in candidates if c in X.columns]
+        return [c for c in candidates if c in input_cols]
 
-    def _compute_fill(self, series: pd.Series) -> float:
+    def _compute_fill(self, array: np.ndarray) -> float:
         """Return the fill value for a single wealth column."""
         if self.strategy == "median":
-            val = series.median()
+            val = np.nanmedian(array)
         elif self.strategy == "mean":
-            val = series.mean()
+            val = np.nanmean(array)
         else:  # "zero"
             val = 0.0
         # If the column is entirely NaN, fall back to 0.0
-        return float(val) if pd.notna(val) else 0.0
+        return float(val) if not np.isnan(val) else 0.0
 
     # ------------------------------------------------------------------
     # fit / transform
     # ------------------------------------------------------------------
 
-    def fit(self, X: pd.DataFrame, y=None) -> "WealthScreeningImputer":
+    def fit(self, X, y=None) -> "WealthScreeningImputer":
         """Learn fill statistics from training data.
 
         Parameters
         ----------
-        X : pd.DataFrame
+        X : array-like of shape (n_samples, n_features)
             Training-set feature matrix.  Missing wealth columns are silently
             skipped (a ``UserWarning`` is issued for each absent column).
         y : ignored
@@ -201,6 +201,9 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
             If ``strategy`` is not ``"median"``, ``"mean"``, or ``"zero"``.
         """
         import warnings
+        X = validate_data(self, X, dtype="numeric",
+                          ensure_all_finite="allow-nan",
+                          reset=True)
 
         if self.strategy not in self._VALID_STRATEGIES:
             raise ValueError(
@@ -208,16 +211,16 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
                 f"got {self.strategy!r}."
             )
 
-        X = validate_data(self, X, reset=True)
         if hasattr(X, "columns"):
-            self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
-        self.n_features_in_ = X.shape[1]
-
-        self.imputed_cols_ = self._resolve_cols(X)
+            input_cols = list(X.columns)
+        else:
+            n_cols = X.shape[1]
+            input_cols = [f"x{i}" for i in range(n_cols)]
+        self.imputed_cols_ = self._resolve_cols(input_cols)
 
         # Warn about requested columns not found in X
         if self.wealth_cols is not None:
-            missing = [c for c in self.wealth_cols if c not in X.columns]
+            missing = [c for c in self.wealth_cols if c not in input_cols]
             for col in missing:
                 warnings.warn(
                     f"WealthScreeningImputer: column {col!r} was specified in "
@@ -225,24 +228,25 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
                     UserWarning,
                 )
 
-        computed_fills = {
-            col: self._compute_fill(X[col]) for col in self.imputed_cols_
-        }
-        self.fill_values_ = dict(computed_fills)
+        computed_fills = {}
+        for col in self.imputed_cols_:
+            idx = input_cols.index(col)
+            computed_fills[col] = self._compute_fill(X[:, idx])
+        self.fill_values_ = computed_fills
 
         return self
 
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+    def transform(self, X) -> np.ndarray:
         """Apply imputation with frozen fill values.
 
         Parameters
         ----------
-        X : pd.DataFrame
+        X : array-like of shape (n_samples, n_features)
             Feature matrix (training or held-out).
 
         Returns
         -------
-        X_out : pd.DataFrame
+        X_out : np.ndarray
             Copy of ``X`` with missing wealth columns filled and, if
             ``add_indicator=True``, binary missingness indicator columns
             appended.
@@ -253,32 +257,54 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
             If :meth:`fit` has not been called yet.
         """
         check_is_fitted(self, ["fill_values_", "imputed_cols_"])
-        X = validate_data(self, X, reset=False)
-        X_out = X.copy() if hasattr(X, "columns") else pd.DataFrame(X)
+        
+        X = validate_data(self, X, dtype="numeric",
+                          ensure_all_finite="allow-nan",
+                          reset=False)
+
+        if hasattr(X, "columns"):
+            input_cols = list(X.columns)
+        else:
+            n_cols = X.shape[1]
+            input_cols = [f"x{i}" for i in range(n_cols)]
+
+        X_out = X.copy()
+        
+        indicators = []
 
         for col in self.imputed_cols_:
-            if col not in X_out.columns:
+            if col not in input_cols:
                 continue
+            idx = input_cols.index(col)
+            
+            mask = np.isnan(X_out[:, idx])
+            
             if self.add_indicator:
-                indicator_col = f"{col}__was_missing"
-                X_out[indicator_col] = X_out[col].isna().astype("uint8")
-            X_out[col] = X_out[col].fillna(self.fill_values_[col])
+                indicators.append(mask.astype(np.float64).reshape(-1, 1))
 
+            X_out[mask, idx] = self.fill_values_[col]
+
+        if indicators:
+            return np.hstack([X_out] + indicators)
         return X_out
 
     def get_feature_names_out(self, input_features=None):
         check_is_fitted(self)
-        out = list(self.feature_names_in_)
+        if input_features is not None:
+            out = list(input_features)
+        elif hasattr(self, "feature_names_in_"):
+            out = list(self.feature_names_in_)
+        else:
+            out = [f"x{i}" for i in range(self.n_features_in_)]
+
         if self.add_indicator:
             for col in self.imputed_cols_:
-                if col in self.feature_names_in_:
+                if col in out:
                     out.append(f"{col}__was_missing")
         return np.array(out, dtype=object)
 
-    def _more_tags(self):
-        return {"X_types": ["2darray", "dataframe"]}
-
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
+        tags.input_tags.allow_nan = True
         return tags
 

@@ -1,7 +1,7 @@
 """
 philanthropy.preprocessing
 ==========================
-CRM data cleaning, Fiscal Year–aware feature engineering, and
+CRM data cleaning, Fiscal Year-aware feature engineering, and
 clinical-encounter feature engineering for medical philanthropy.
 """
 
@@ -13,6 +13,8 @@ from ._planned_giving import PlannedGivingSignalTransformer
 from ._grateful_patient import GratefulPatientFeaturizer
 from ._solicitation_window import SolicitationWindowTransformer
 from ._wealth_percentile import WealthPercentileTransformer
+from ._encounter_recency import EncounterRecencyTransformer
+from ._share_of_wallet import WealthScreeningImputerKNN, ShareOfWalletScorer
 
 __all__ = [
     "FiscalYearTransformer",
@@ -24,4 +26,7 @@ __all__ = [
     "GratefulPatientFeaturizer",
     "SolicitationWindowTransformer",
     "WealthPercentileTransformer",
+    "EncounterRecencyTransformer",
+    "WealthScreeningImputerKNN",
+    "ShareOfWalletScorer",
 ]

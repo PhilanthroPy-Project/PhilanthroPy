@@ -124,7 +124,7 @@ class TestCRMCleanerWithWealthImputer:
             wealth_cols=["estimated_net_worth", "real_estate_value"],
             strategy="median",
         ).set_output(transform="pandas")
-        cleaner = CRMCleaner(wealth_imputer=imputer)
+        cleaner = CRMCleaner(wealth_imputer=imputer).set_output(transform="pandas")
         out = cleaner.fit_transform(X)
         assert out["estimated_net_worth"].isna().sum() == 0
         assert out["real_estate_value"].isna().sum() == 0

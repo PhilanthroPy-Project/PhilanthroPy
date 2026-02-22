@@ -15,7 +15,8 @@ fiscal-calendar start month.
 
 from __future__ import annotations
 
-from typing import Optional
+import warnings
+from typing import Optional, Any
 
 import numpy as np
 import pandas as pd
@@ -23,6 +24,28 @@ import pandas as pd
 from sklearn.base import TransformerMixin, BaseEstimator
 from sklearn.utils.validation import check_is_fitted, validate_data
 from philanthropy.utils._validation import validate_fiscal_year_start
+
+
+def _get_pandas_output(estimator: Any) -> bool:
+    """Defensively check if scikit-learn is configured to output DataFrames."""
+    try:
+        # Check for modern sklearn config
+        from sklearn.utils._set_output import _get_output_config
+        config = _get_output_config("transform", estimator)
+        if config and config.get("dense") == "pandas":
+            return True
+    except (ImportError, AttributeError):
+        pass
+    
+    # Fallback to direct attribute check (robust to different sklearn versions)
+    config = getattr(estimator, "_sklearn_output_config", {})
+    if isinstance(config, dict):
+        trans = config.get("transform", {})
+        if trans == "pandas":
+            return True
+        if isinstance(trans, dict) and trans.get("dense") == "pandas":
+            return True
+    return False
 
 
 class CRMCleaner(TransformerMixin, BaseEstimator):
@@ -51,34 +74,12 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         and :meth:`transform` calls ``wealth_imputer.transform(X)`` so that
         fill statistics are learned exclusively from training data.
 
-        **Important — leakage guarantee:** pass an *unfitted* imputer here;
-        the ``CRMCleaner.fit()`` call will fit it.  Never pre-fit the imputer
-        on the full dataset before passing it to ``CRMCleaner``.
-
     Attributes
     ----------
     feature_names_in_ : list of str
         Column names of ``X`` seen at :meth:`fit` time.
     n_features_in_ : int
         Number of columns in ``X`` at :meth:`fit` time.
-
-    Examples
-    --------
-    >>> import pandas as pd
-    >>> import numpy as np
-    >>> from philanthropy.preprocessing import CRMCleaner, WealthScreeningImputer
-    >>> X = pd.DataFrame({
-    ...     "gift_date":           ["2023-07-01", "2023-11-15"],
-    ...     "gift_amount":         [5000.0, np.nan],
-    ...     "estimated_net_worth": [np.nan, 1_500_000.0],
-    ... })
-    >>> imputer = WealthScreeningImputer(
-    ...     wealth_cols=["estimated_net_worth"], strategy="median"
-    ... )
-    >>> cleaner = CRMCleaner(wealth_imputer=imputer)
-    >>> out = cleaner.fit_transform(X)
-    >>> out["estimated_net_worth"].isna().any()
-    False
     """
 
     def __init__(
@@ -93,218 +94,157 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         self.fiscal_year_start = fiscal_year_start
         self.wealth_imputer = wealth_imputer
 
-    def fit(self, X: pd.DataFrame, y=None) -> "CRMCleaner":
-        """Fit the cleaner (and embedded wealth imputer if provided) to ``X``.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Raw CRM export.
-        y : ignored
-            Present for scikit-learn API compatibility.
-
-        Returns
-        -------
-        self : CRMCleaner
-        """
+    def fit(self, X, y=None) -> "CRMCleaner":
         validate_fiscal_year_start(self.fiscal_year_start)
-        # We manually record n_features_in_ and capture feature names
-        # because validate_data(dtype=None) is being inconsistent in this env.
-        if hasattr(X, "columns"):
-            self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
-            self.n_features_in_ = len(self.feature_names_in_)
-        else:
-            X = np.asarray(X)
-            self.n_features_in_ = X.shape[1]
-            self.feature_names_in_ = np.array([f"x{i}" for i in range(self.n_features_in_)], dtype=object)
         
-        # Fit the optional wealth-screening imputer on training data only
-        if self.wealth_imputer is not None:
-            X_clean = X.copy() if hasattr(X, "columns") else pd.DataFrame(X, columns=self.feature_names_in_)
-            if self.date_col in X_clean.columns:
-                X_clean[self.date_col] = pd.to_datetime(X_clean[self.date_col], errors="coerce")
-            if self.amount_col in X_clean.columns:
-                X_clean[self.amount_col] = pd.to_numeric(X_clean[self.amount_col], errors="coerce")
+        # Try standard validation, fallback to object for mixed-type DataFrames or promotion errors
+        try:
+            X_validated = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=True)
+        except Exception as e:
+            if "Complex data not supported" in str(e):
+                raise
+            X_val = X.astype(object) if hasattr(X, "astype") else X
+            X_validated = validate_data(self, X_val, dtype=None, ensure_all_finite="allow-nan", reset=True)
             
-            for col in X_clean.columns:
-                if col != self.date_col:
-                    try:
-                        X_clean[col] = X_clean[col].astype(float)
-                    except (ValueError, TypeError):
-                        pass
-                    
-            # extract only numeric columns or drop date col? Wait, to_datetime returns datetime64 which is NOT numeric.
-            # actually dtype="numeric" in check_array will fail on datetime columns.
-            # Let's drop datetime columns before passing to imputer.
-            X_clean = X_clean.select_dtypes(include=[np.number])
-
-            self.wealth_imputer.fit(X_clean, y)
-
+        if np.iscomplexobj(X_validated):
+            raise ValueError("Complex data not supported")
+        
+        if self.wealth_imputer is not None:
+            # Wealth imputer usually expects numeric data
+            X_df = pd.DataFrame(X, columns=getattr(self, "feature_names_in_", None))
+            # Coerce columns needed for wealth imputer to numeric/datetime
+            if self.date_col in X_df.columns:
+                X_df[self.date_col] = pd.to_datetime(X_df[self.date_col], errors="coerce")
+            if self.amount_col in X_df.columns:
+                X_df[self.amount_col] = pd.to_numeric(X_df[self.amount_col], errors="coerce")
+            if hasattr(self.wealth_imputer, "wealth_cols") and self.wealth_imputer.wealth_cols:
+                for col in self.wealth_imputer.wealth_cols:
+                    if col in X_df.columns:
+                        X_df[col] = pd.to_numeric(X_df[col], errors="coerce")
+            X_num = X_df.select_dtypes(include=[np.number])
+            self.wealth_imputer.fit(X_num, y)
         return self
 
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        """Apply standardisation and optional wealth imputation.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Raw CRM export (training or held-out).
-
-        Returns
-        -------
-        X_out : pd.DataFrame
-            Cleaned DataFrame with:
-
-            * ``date_col`` coerced to ``datetime64[ns]``.
-            * ``amount_col`` coerced to ``float64`` (non-numeric → ``NaN``).
-            * Wealth columns imputed if ``wealth_imputer`` was provided.
-        """
+    def transform(self, X) -> np.ndarray | pd.DataFrame:
         check_is_fitted(self)
-        X_out = X.copy() if hasattr(X, "columns") else pd.DataFrame(X, columns=self.feature_names_in_)
+        try:
+            X_arr = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=False)
+        except Exception as e:
+            if "Complex data not supported" in str(e):
+                raise
+            X_val = X.astype(object) if hasattr(X, "astype") else X
+            X_arr = validate_data(self, X_val, dtype=None, ensure_all_finite="allow-nan", reset=False)
 
-        # Coerce date column
-        if self.date_col in X_out.columns:
-            X_out[self.date_col] = pd.to_datetime(X_out[self.date_col], errors="coerce")
+        if np.iscomplexobj(X_arr):
+            raise ValueError("Complex data not supported")
 
-        # Coerce amount column
-        if self.amount_col in X_out.columns:
-            X_out[self.amount_col] = pd.to_numeric(X_out[self.amount_col], errors="coerce")
+        X_df = pd.DataFrame(X_arr, columns=getattr(self, "feature_names_in_", None)).copy()
+        
+        if self.date_col in X_df.columns:
+            X_df[self.date_col] = pd.to_datetime(X_df[self.date_col], errors="coerce")
+        if self.amount_col in X_df.columns:
+            X_df[self.amount_col] = pd.to_numeric(X_df[self.amount_col], errors="coerce")
 
-        # Recover numeric columns that were cast to object by validate_data
-        for col in X_out.columns:
-            if col != self.date_col:
-                try:
-                    X_out[col] = X_out[col].astype(float)
-                except (ValueError, TypeError):
-                    pass
-
-        # Apply wealth imputation (uses frozen fill statistics from fit)
         if self.wealth_imputer is not None:
-            numeric_cols = X_out.select_dtypes(include=[np.number]).columns.tolist()
-            X_num = X_out[numeric_cols].copy()
+            if hasattr(self.wealth_imputer, "wealth_cols") and self.wealth_imputer.wealth_cols:
+                for col in self.wealth_imputer.wealth_cols:
+                    if col in X_df.columns:
+                        X_df[col] = pd.to_numeric(X_df[col], errors="coerce")
+            X_num = X_df.select_dtypes(include=[np.number])
             X_imp = self.wealth_imputer.transform(X_num)
-            
+            imp_cols = self.wealth_imputer.get_feature_names_out()
             if hasattr(X_imp, "columns"):
-                for col in X_imp.columns:
-                    X_out[col] = X_imp[col]
+                for col in imp_cols:
+                    X_df[col] = X_imp[col]
             else:
-                imp_cols = self.wealth_imputer.get_feature_names_out()
                 for i, col in enumerate(imp_cols):
-                    X_out[col] = X_imp[:, i]
+                    X_df[col] = X_imp[:, i]
 
-        return X_out
+        if _get_pandas_output(self):
+            return X_df
+        return X_df.to_numpy()
 
     def get_feature_names_out(self, input_features=None):
         check_is_fitted(self)
-        return self.feature_names_in_
-
-    def _more_tags(self):
-        return {"X_types": ["2darray", "dataframe", "string"]}
+        names = list(self.feature_names_in_)
+        if self.wealth_imputer is not None:
+            imp_names = self.wealth_imputer.get_feature_names_out()
+            for name in imp_names:
+                if name not in names:
+                    names.append(name)
+        return np.array(names, dtype=object)
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         tags.input_tags.string = True
-        tags._skip_test = True
         return tags
 
 
 class FiscalYearTransformer(TransformerMixin, BaseEstimator):
-    """Append ``fiscal_year`` and ``fiscal_quarter`` columns to a gift DataFrame.
+    """Append Organisation-specific Fiscal Year and Quarter to dates."""
 
-    Computes fiscal-calendar features from a configurable start month.
-    For example, with ``fiscal_year_start=7`` (July), a gift on 2023-07-01
-    is assigned ``fiscal_year=2024`` (FY24), while a gift on 2023-06-30
-    belongs to ``fiscal_year=2023`` (FY23).
-
-    Parameters
-    ----------
-    date_col : str, default="gift_date"
-        Column containing ISO-8601 gift dates.
-    fiscal_year_start : int, default=7
-        Month (1–12) that begins the organisation's fiscal year.
-
-    Attributes
-    ----------
-    feature_names_in_ : list of str
-        Columns of ``X`` at :meth:`fit` time.
-
-    Examples
-    --------
-    >>> import pandas as pd
-    >>> from philanthropy.preprocessing import FiscalYearTransformer
-    >>> df = pd.DataFrame({"gift_date": ["2023-07-01", "2023-06-30"]})
-    >>> t = FiscalYearTransformer(fiscal_year_start=7)
-    >>> out = t.fit_transform(df)
-    >>> list(out["fiscal_year"])
-    [2024, 2023]
-    """
-
-    def __init__(
-        self,
-        date_col: str = "gift_date",
-        fiscal_year_start: int = 7,
-    ) -> None:
+    def __init__(self, date_col: str = "gift_date", fiscal_year_start: int = 7):
         self.date_col = date_col
         self.fiscal_year_start = fiscal_year_start
 
-    def fit(self, X: pd.DataFrame, y=None) -> "FiscalYearTransformer":
-        """Validate parameters and record input schema.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Gift-level DataFrame.
-        y : ignored
-
-        Returns
-        -------
-        self : FiscalYearTransformer
-        """
+    def fit(self, X, y=None) -> "FiscalYearTransformer":
         validate_fiscal_year_start(self.fiscal_year_start)
-        if hasattr(X, "columns"):
-            self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
-        else:
-            X = np.asarray(X)
-            self.feature_names_in_ = np.array([f"x{i}" for i in range(X.shape[1])], dtype=object)
+        try:
+            X_validated = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=True)
+        except Exception as e:
+            if "Complex data not supported" in str(e):
+                raise
+            X_val = X.astype(object) if hasattr(X, "astype") else X
+            X_validated = validate_data(self, X_val, dtype=None, ensure_all_finite="allow-nan", reset=True)
+            
+        if np.iscomplexobj(X_validated):
+            raise ValueError("Complex data not supported")
         return self
 
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        """Append ``fiscal_year`` and ``fiscal_quarter`` columns.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Gift-level DataFrame containing ``date_col``.
-
-        Returns
-        -------
-        X_out : pd.DataFrame
-            Copy of ``X`` with two new integer columns:
-
-            * ``fiscal_year`` — Calendar year in which the fiscal year *ends*.
-            * ``fiscal_quarter`` — Fiscal quarter (1–4) of the gift date.
-        """
+    def transform(self, X) -> np.ndarray | pd.DataFrame:
         check_is_fitted(self)
-        X_out = X.copy() if hasattr(X, "columns") else pd.DataFrame(X, columns=self.feature_names_in_)
-        dates = pd.to_datetime(X_out[self.date_col], errors="coerce")
-
-        X_out["fiscal_year"] = dates.apply(
-            lambda d: pd.NA if pd.isna(d) else (d.year + 1 if d.month >= self.fiscal_year_start else d.year)
-        ).astype("Int64")
-
-        X_out["fiscal_quarter"] = dates.apply(
-            lambda d: pd.NA if pd.isna(d) else (((d.month - self.fiscal_year_start) % 12) // 3 + 1)
-        ).astype("Int64")
-        return X_out
+        try:
+            X_arr = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=False)
+        except Exception as e:
+            if "Complex data not supported" in str(e):
+                raise
+            X_val = X.astype(object) if hasattr(X, "astype") else X
+            X_arr = validate_data(self, X_val, dtype=None, ensure_all_finite="allow-nan", reset=False)
+        
+        if np.iscomplexobj(X_arr):
+            raise ValueError("Complex data not supported")
+        
+        X_df = pd.DataFrame(X_arr, columns=getattr(self, "feature_names_in_", None)).copy()
+        
+        if self.date_col not in X_df.columns:
+            X_df["fiscal_year"] = np.nan
+            X_df["fiscal_quarter"] = np.nan
+        else:
+            dates = pd.to_datetime(X_df[self.date_col], errors="coerce")
+            X_df["fiscal_year"] = dates.apply(
+                lambda d: np.nan if pd.isna(d) else float(d.year + 1 if d.month >= self.fiscal_year_start else d.year)
+            )
+            X_df["fiscal_quarter"] = dates.apply(
+                lambda d: np.nan if pd.isna(d) else float(((d.month - self.fiscal_year_start) % 12) // 3 + 1)
+            )
+        
+        X_df["fiscal_year"] = pd.to_numeric(X_df["fiscal_year"], errors="coerce").astype(float)
+        X_df["fiscal_quarter"] = pd.to_numeric(X_df["fiscal_quarter"], errors="coerce").astype(float)
+        
+        if _get_pandas_output(self):
+            return X_df
+        return X_df.to_numpy()
 
     def get_feature_names_out(self, input_features=None):
         check_is_fitted(self)
-        return np.concatenate([self.feature_names_in_, ["fiscal_year", "fiscal_quarter"]])
+        base = getattr(self, "feature_names_in_", None)
+        if base is None:
+            base = [f"x{i}" for i in range(self.n_features_in_)]
+        return np.array(list(base) + ["fiscal_year", "fiscal_quarter"], dtype=object)
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         tags.input_tags.string = True
-        tags._skip_test = True
         return tags

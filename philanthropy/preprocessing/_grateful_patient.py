@@ -200,7 +200,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
             ].nunique()
         else:
             summary_parts["primary_service_line"] = pd.Series(
-                "general", index=grouped.ngroups * ["general"]
+                "general", index=grouped.groups.keys()
             )
             summary_parts["distinct_service_lines"] = pd.Series(
                 0, dtype=int, index=grouped.groups.keys()

@@ -7,10 +7,15 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.0-blue" alt="version"/>
+  <img src="https://img.shields.io/badge/dynamic/toml?url=https://raw.githubusercontent.com/PhilanthroPy-Project/PhilanthroPy/main/pyproject.toml&query=$.project.version&label=version&color=blue" alt="version"/>
   <img src="https://img.shields.io/badge/python-3.9%2B-brightgreen" alt="python"/>
   <img src="https://img.shields.io/badge/sklearn-compatible-orange" alt="sklearn"/>
+  <img src="https://img.shields.io/badge/docs-GitHub%20Pages-informational" alt="documentation"/>
   <img src="https://img.shields.io/badge/tests-559%20passing-success" alt="tests"/>
+</p>
+
+<p align="center">
+  <strong><a href="https://PhilanthroPy-Project.github.io/PhilanthroPy/">🚀 View the Full Documentation Site</a></strong>
 </p>
 
 ---

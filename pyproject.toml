@@ -23,7 +23,18 @@ dependencies = [
 dev = [
     "pytest",
     "pytest-cov",
-    "hypothesis"
+    "hypothesis",
+    "flake8"
+]
+docs = [
+    "sphinx>=6.0",
+    "pydata-sphinx-theme",
+    "numpydoc",
+    "sphinx-gallery",
+    "sphinx-design",
+    "matplotlib",
+    "pandas",
+    "scikit-learn"
 ]
 
 [tool.setuptools.packages.find]

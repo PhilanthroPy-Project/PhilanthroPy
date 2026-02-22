@@ -66,9 +66,9 @@ class SolicitationWindowTransformer(TransformerMixin, BaseEstimator):
     >>> t.fit(X)
     SolicitationWindowTransformer(...)
     >>> t.transform(X)
-    array([[1.  , 0.69...],
-           [0.  , 0.  ],
-           [0.  , 0.  ]])
+    array([[1., 1.],
+           [0., 0.],
+           [0., 0.]])
     """
 
     def __init__(

@@ -1,0 +1,56 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  sklearn-compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up conda or python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-cov hypothesis scikit-learn pandas numpy
+          pip install -e .
+      - name: Run sklearn compliance
+        run: pytest tests/test_sklearn_compat.py -v
+
+  property-based-tests:
+    needs: sklearn-compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-cov hypothesis scikit-learn pandas numpy
+          pip install -e .
+      - name: Run properties and leakage
+        run: |
+          pytest tests/test_transformers_property.py -v --hypothesis-seed=12345
+
+  full-suite-with-coverage:
+    needs: property-based-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-cov hypothesis scikit-learn pandas numpy
+          pip install -e .
+      - name: Run all tests with coverage
+        run: pytest tests/ --cov=philanthropy --cov-fail-under=85

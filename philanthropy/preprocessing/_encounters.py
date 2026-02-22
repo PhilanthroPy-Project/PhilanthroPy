@@ -33,6 +33,8 @@ Typical usage
 ...     gift_date_col="gift_date",
 ...     merge_key="donor_id",
 ... )
+>>> transformer.set_output(transform="pandas")  # doctest: +ELLIPSIS
+EncounterTransformer(...)
 >>> features = transformer.fit_transform(gift_df)
 >>> list(features.columns)  # doctest: +NORMALIZE_WHITESPACE
 ['gift_amount', 'days_since_last_discharge', 'encounter_frequency_score']
@@ -138,6 +140,8 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
     ...     "gift_amount": [10000.0, 750.0, 250.0],
     ... })
     >>> t = EncounterTransformer(encounter_df=enc, merge_key="donor_id")
+    >>> t.set_output(transform="pandas")  # doctest: +ELLIPSIS
+    EncounterTransformer(...)
     >>> out = t.fit_transform(gifts)
     >>> "donor_id" not in out.columns
     True

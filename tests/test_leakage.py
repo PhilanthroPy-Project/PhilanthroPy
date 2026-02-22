@@ -432,7 +432,7 @@ class TestFiscalYearNoLeakage:
         df1 = pd.DataFrame({"gift_date": ["2023-01-01"]})
         df2 = pd.DataFrame({"gift_date": ["2024-01-01"]})
 
-        t = FiscalYearTransformer(fiscal_year_start=7)
+        t = FiscalYearTransformer(fiscal_year_start=7).set_output(transform="pandas")
         t.fit(df1)
         out1 = t.transform(df1)
         # 2023-01-01 (Jan) is FY23 if FY starts in July (7)
@@ -453,7 +453,7 @@ def test_fiscal_year_transformer_uses_no_future_data():
     train_df = pd.DataFrame({"gift_date": ["2020-07-01", "2020-12-31"]})
     test_df = pd.DataFrame({"gift_date": ["2023-07-01", "2023-12-31"]})
 
-    t = FiscalYearTransformer(fiscal_year_start=7)
+    t = FiscalYearTransformer(fiscal_year_start=7).set_output(transform="pandas")
     t.fit(train_df)
 
     # Only n_features_in_ and feature_names_in_ should be set

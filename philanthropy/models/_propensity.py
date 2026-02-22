@@ -100,7 +100,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
     >>> model.fit(X, y)
     DonorPropensityModel(random_state=42)
     >>> scores = model.predict_affinity_score(X)
-    >>> scores.min() >= 0 and scores.max() <= 100
+    >>> bool(scores.min() >= 0 and scores.max() <= 100)
     True
 
     **Pipeline integration:**
@@ -339,7 +339,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
         >>> scores = model.predict_affinity_score(X)
         >>> scores.shape
         (500,)
-        >>> (scores >= 0).all() and (scores <= 100).all()
+        >>> bool((scores >= 0).all() and (scores <= 100).all())
         True
         """
         df = self.decision_function(X)

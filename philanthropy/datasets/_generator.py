@@ -70,7 +70,7 @@ def generate_synthetic_donor_data(
     (500, 5)
     >>> df.dtypes["is_major_donor"]
     dtype('int64')
-    >>> df["is_major_donor"].isin([0, 1]).all()
+    >>> bool(df["is_major_donor"].isin([0, 1]).all())
     True
 
     Notes

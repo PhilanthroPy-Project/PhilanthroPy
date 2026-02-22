@@ -39,7 +39,7 @@ class TestFiscalYearTransformerProperties:
     @settings(max_examples=500)
     @given(df=gift_date_series, fy_start=fiscal_start_months)
     def test_fiscal_year_is_integer(self, df, fy_start):
-        transformer = FiscalYearTransformer(fiscal_year_start=fy_start)
+        transformer = FiscalYearTransformer(fiscal_year_start=fy_start).set_output(transform="pandas")
         out = transformer.fit_transform(df)
         assert pd.api.types.is_numeric_dtype(out["fiscal_year"])
         assert out["fiscal_year"].isna().sum() == 0
@@ -47,7 +47,7 @@ class TestFiscalYearTransformerProperties:
     @settings(max_examples=500)
     @given(df=gift_date_series, fy_start=fiscal_start_months)
     def test_fiscal_quarter_range(self, df, fy_start):
-        transformer = FiscalYearTransformer(fiscal_year_start=fy_start)
+        transformer = FiscalYearTransformer(fiscal_year_start=fy_start).set_output(transform="pandas")
         out = transformer.fit_transform(df)
         assert out["fiscal_quarter"].isin([1, 2, 3, 4]).all()
 
@@ -55,15 +55,15 @@ class TestFiscalYearTransformerProperties:
     @given(fy_start=fiscal_start_months)
     def test_boundary_month_is_quarter_one(self, fy_start):
         df = pd.DataFrame({"gift_date": [pd.Timestamp(f"2023-{fy_start:02d}-01")]})
-        transformer = FiscalYearTransformer(fiscal_year_start=fy_start)
+        transformer = FiscalYearTransformer(fiscal_year_start=fy_start).set_output(transform="pandas")
         out = transformer.fit_transform(df)
         assert out["fiscal_quarter"].iloc[0] == 1
 
     @settings(max_examples=500)
     @given(df=gift_date_series, fy_start=fiscal_start_months)
     def test_idempotent_transform(self, df, fy_start):
-        t1 = FiscalYearTransformer(fiscal_year_start=fy_start)
-        t2 = FiscalYearTransformer(fiscal_year_start=fy_start)
+        t1 = FiscalYearTransformer(fiscal_year_start=fy_start).set_output(transform="pandas")
+        t2 = FiscalYearTransformer(fiscal_year_start=fy_start).set_output(transform="pandas")
         out1 = t1.fit_transform(df)
         t2.fit(df)
         out2 = t2.transform(df)
@@ -73,7 +73,7 @@ class TestFiscalYearTransformerProperties:
     @given(fy_start=fiscal_start_months)
     def test_leap_year_feb29_does_not_crash(self, fy_start):
         df = pd.DataFrame({"gift_date": [pd.Timestamp("2000-02-29")]})
-        transformer = FiscalYearTransformer(fiscal_year_start=fy_start)
+        transformer = FiscalYearTransformer(fiscal_year_start=fy_start).set_output(transform="pandas")
         out = transformer.fit_transform(df)
         assert len(out) == 1
 
@@ -81,7 +81,7 @@ class TestFiscalYearTransformerProperties:
     @given(fy_start=fiscal_start_months)
     def test_pre_unix_epoch_dates(self, fy_start):
         df = pd.DataFrame({"gift_date": [pd.Timestamp("1899-12-31"), pd.Timestamp("1923-07-04")]})
-        transformer = FiscalYearTransformer(fiscal_year_start=fy_start)
+        transformer = FiscalYearTransformer(fiscal_year_start=fy_start).set_output(transform="pandas")
         out = transformer.fit_transform(df)
         assert (out["fiscal_year"] > 0).all()
 

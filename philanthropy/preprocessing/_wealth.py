@@ -124,8 +124,10 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
     ...     strategy="median",
     ...     add_indicator=True,
     ... )
+    >>> imp.set_output(transform="pandas")  # doctest: +ELLIPSIS
+    WealthScreeningImputer(...)
     >>> X_out = imp.fit_transform(X)
-    >>> X_out["estimated_net_worth"].isna().any()
+    >>> bool(X_out["estimated_net_worth"].isna().any())
     False
     >>> "estimated_net_worth__was_missing" in X_out.columns
     True

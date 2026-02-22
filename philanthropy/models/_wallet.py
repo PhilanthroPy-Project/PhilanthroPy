@@ -37,7 +37,7 @@ ShareOfWalletRegressor(random_state=0)
 >>> caps.shape
 (100,)
 >>> ratios = model.predict_capacity_ratio(X, historical_giving=rng.uniform(0, 500_000, 100))
->>> (ratios > 0).all()
+>>> bool((ratios > 0).all())
 True
 """
 
@@ -116,7 +116,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
     >>> model.predict(X[:3]).shape
     (3,)
     >>> ratios = model.predict_capacity_ratio(X[:3], historical_giving=historical[:3])
-    >>> (ratios >= 0).all()
+    >>> bool((ratios >= 0).all())
     True
 
     **Pipeline usage:**
@@ -266,7 +266,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         >>> ratios = model.predict_capacity_ratio(X, historical_giving=hist)
         >>> ratios.shape
         (50,)
-        >>> (ratios > 0).all()
+        >>> bool((ratios > 0).all())
         True
         """
         check_is_fitted(self, ["estimator_"])

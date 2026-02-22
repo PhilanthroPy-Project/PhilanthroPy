@@ -123,19 +123,32 @@ scores = pipe.predict_proba(X_test)[:, 1]
 
 ---
 
-## Grateful Patient (AMC) Pipeline
+## Medical Philanthropy Pipeline
 
 ```python
-from philanthropy.preprocessing import GratefulPatientFeaturizer, PlannedGivingSignalTransformer
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from philanthropy.preprocessing import EncounterTransformer, CRMCleaner
 
-gpf = GratefulPatientFeaturizer(
-    encounter_df=encounter_df,     # EHR encounter table
-    use_capacity_weights=True,     # AMC service-line benchmarks
+# 1. EHR data extraction
+encounter_features = EncounterTransformer(
+    encounter_df=encounter_df,
+    encounter_date_col="discharge_date",
+    donor_id_col="mrn"
 )
-clinical_features = gpf.fit_transform(donor_df)
 
-pg = PlannedGivingSignalTransformer(age_threshold=65, tenure_threshold_years=10)
-planned_giving_features = pg.fit_transform(donor_df)
+# 2. Use ColumnTransformer to merge EHR features with numeric CRM data
+# This prevents the silent dropping of original CRM columns like estimated_net_worth
+preprocessor = ColumnTransformer(
+    transformers=[
+        ("encounters", encounter_features, ["mrn", "gift_date"]),
+        ("crm_nums", CRMCleaner(), ["estimated_net_worth", "real_estate_value"]),
+    ],
+    remainder="passthrough"
+)
+
+# 3. Fit pipeline on original dataset (gift_df)
+gift_features = preprocessor.fit_transform(gift_df)
 ```
 
 ---

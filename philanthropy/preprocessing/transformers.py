@@ -4,8 +4,8 @@ philanthropy.preprocessing.transformers
 CRM data cleaning and Fiscal Year–aware feature engineering transformers.
 
 ``CRMCleaner`` is the recommended first stage of any PhilanthroPy preprocessing
-pipeline.  It standardises raw CRM exports and, optionally, delegates leakage-safe
-imputation of missing third-party wealth-screening values to an embedded
+pipeline.  It standardises raw CRM exports. If you need to impute third-party 
+wealth-screening data, use a ``Pipeline`` to chain ``CRMCleaner`` with
 :class:`~philanthropy.preprocessing.WealthScreeningImputer`.
 
 ``FiscalYearTransformer`` enriches a gift-level DataFrame with numeric
@@ -49,14 +49,12 @@ def _get_pandas_output(estimator: Any) -> bool:
 
 
 class CRMCleaner(TransformerMixin, BaseEstimator):
-    """Standardise raw CRM exports and optionally impute wealth-screening data.
+    """Standardise raw CRM exports.
 
     ``CRMCleaner`` performs lightweight, defensive cleaning of CRM datasets
     exported from systems such as Salesforce NPSP, Raiser's Edge NXT, or
-    Ellucian Advance.  When a ``WealthScreeningImputer`` instance is provided
-    via the ``wealth_imputer`` parameter, it is fitted on the training data
-    during :meth:`fit` and applied during :meth:`transform`, ensuring that no
-    imputation statistics from held-out rows contaminate training distributions.
+    Ellucian Advance. It is designed to be chained in a `sklearn.pipeline.Pipeline`
+    along with `WealthScreeningImputer` to handle missing wealth values.
 
     Parameters
     ----------
@@ -68,11 +66,6 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         :meth:`transform`; non-numeric values become ``NaN``.
     fiscal_year_start : int, default=7
         Month (1–12) that begins the organisation's fiscal year.
-    wealth_imputer : WealthScreeningImputer or None, default=None
-        An **unfitted** :class:`~philanthropy.preprocessing.WealthScreeningImputer`
-        instance.  When provided, :meth:`fit` calls ``wealth_imputer.fit(X)``
-        and :meth:`transform` calls ``wealth_imputer.transform(X)`` so that
-        fill statistics are learned exclusively from training data.
 
     Attributes
     ----------
@@ -87,12 +80,10 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         date_col: str = "gift_date",
         amount_col: str = "gift_amount",
         fiscal_year_start: int = 7,
-        wealth_imputer=None,
     ) -> None:
         self.date_col = date_col
         self.amount_col = amount_col
         self.fiscal_year_start = fiscal_year_start
-        self.wealth_imputer = wealth_imputer
 
     def fit(self, X, y=None) -> "CRMCleaner":
         validate_fiscal_year_start(self.fiscal_year_start)
@@ -109,20 +100,6 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         if np.iscomplexobj(X_validated):
             raise ValueError("Complex data not supported")
         
-        if self.wealth_imputer is not None:
-            # Wealth imputer usually expects numeric data
-            X_df = pd.DataFrame(X, columns=getattr(self, "feature_names_in_", None))
-            # Coerce columns needed for wealth imputer to numeric/datetime
-            if self.date_col in X_df.columns:
-                X_df[self.date_col] = pd.to_datetime(X_df[self.date_col], errors="coerce")
-            if self.amount_col in X_df.columns:
-                X_df[self.amount_col] = pd.to_numeric(X_df[self.amount_col], errors="coerce")
-            if hasattr(self.wealth_imputer, "wealth_cols") and self.wealth_imputer.wealth_cols:
-                for col in self.wealth_imputer.wealth_cols:
-                    if col in X_df.columns:
-                        X_df[col] = pd.to_numeric(X_df[col], errors="coerce")
-            X_num = X_df.select_dtypes(include=[np.number])
-            self.wealth_imputer.fit(X_num, y)
         return self
 
     def transform(self, X) -> np.ndarray | pd.DataFrame:
@@ -145,21 +122,6 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         if self.amount_col in X_df.columns:
             X_df[self.amount_col] = pd.to_numeric(X_df[self.amount_col], errors="coerce")
 
-        if self.wealth_imputer is not None:
-            if hasattr(self.wealth_imputer, "wealth_cols") and self.wealth_imputer.wealth_cols:
-                for col in self.wealth_imputer.wealth_cols:
-                    if col in X_df.columns:
-                        X_df[col] = pd.to_numeric(X_df[col], errors="coerce")
-            X_num = X_df.select_dtypes(include=[np.number])
-            X_imp = self.wealth_imputer.transform(X_num)
-            imp_cols = self.wealth_imputer.get_feature_names_out()
-            if hasattr(X_imp, "columns"):
-                for col in imp_cols:
-                    X_df[col] = X_imp[col]
-            else:
-                for i, col in enumerate(imp_cols):
-                    X_df[col] = X_imp[:, i]
-
         if _get_pandas_output(self):
             return X_df
         return X_df.to_numpy()
@@ -167,11 +129,6 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
     def get_feature_names_out(self, input_features=None):
         check_is_fitted(self)
         names = list(self.feature_names_in_)
-        if self.wealth_imputer is not None:
-            imp_names = self.wealth_imputer.get_feature_names_out()
-            for name in imp_names:
-                if name not in names:
-                    names.append(name)
         return np.array(names, dtype=object)
 
     def __sklearn_tags__(self):
@@ -229,19 +186,18 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
                 lambda d: np.nan if pd.isna(d) else float(((d.month - self.fiscal_year_start) % 12) // 3 + 1)
             )
         
-        X_df["fiscal_year"] = pd.to_numeric(X_df["fiscal_year"], errors="coerce").astype(float)
-        X_df["fiscal_quarter"] = pd.to_numeric(X_df["fiscal_quarter"], errors="coerce").astype(float)
+        out_df = pd.DataFrame({
+            "fiscal_year": pd.to_numeric(X_df["fiscal_year"], errors="coerce").astype(float),
+            "fiscal_quarter": pd.to_numeric(X_df["fiscal_quarter"], errors="coerce").astype(float)
+        })
         
         if _get_pandas_output(self):
-            return X_df
-        return X_df.to_numpy()
+            return out_df
+        return out_df.to_numpy()
 
     def get_feature_names_out(self, input_features=None):
         check_is_fitted(self)
-        base = getattr(self, "feature_names_in_", None)
-        if base is None:
-            base = [f"x{i}" for i in range(self.n_features_in_)]
-        return np.array(list(base) + ["fiscal_year", "fiscal_quarter"], dtype=object)
+        return np.array(["fiscal_year", "fiscal_quarter"], dtype=object)
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()

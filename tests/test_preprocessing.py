@@ -94,49 +94,6 @@ class TestCRMCleaner:
         assert pd.api.types.is_datetime64_any_dtype(out["gift_date"])
 
 
-class TestCRMCleanerWithWealthImputer:
-    """Tests for CRMCleaner integrated with WealthScreeningImputer."""
-
-    def test_imputer_fitted_during_crm_fit(self):
-        X = pd.DataFrame(
-            {
-                "gift_date": ["2023-07-01", "2023-08-01"],
-                "gift_amount": [1000.0, 2000.0],
-                "estimated_net_worth": [np.nan, 1_500_000.0],
-            }
-        )
-        imputer = WealthScreeningImputer(wealth_cols=["estimated_net_worth"]).set_output(transform="pandas")
-        cleaner = CRMCleaner(wealth_imputer=imputer)
-        cleaner.fit(X)
-        # Imputer should now be fitted
-        assert hasattr(imputer, "fill_values_")
-
-    def test_no_nan_after_transform(self):
-        X = pd.DataFrame(
-            {
-                "gift_date": ["2023-07-01", "2023-08-01", "2023-09-01"],
-                "gift_amount": [1000.0, 2000.0, 3000.0],
-                "estimated_net_worth": [np.nan, 1_500_000.0, np.nan],
-                "real_estate_value": [200_000.0, np.nan, 300_000.0],
-            }
-        )
-        imputer = WealthScreeningImputer(
-            wealth_cols=["estimated_net_worth", "real_estate_value"],
-            strategy="median",
-        ).set_output(transform="pandas")
-        cleaner = CRMCleaner(wealth_imputer=imputer).set_output(transform="pandas")
-        out = cleaner.fit_transform(X)
-        assert out["estimated_net_worth"].isna().sum() == 0
-        assert out["real_estate_value"].isna().sum() == 0
-
-    def test_no_leakage_imputer_not_prefitted(self):
-        """Verify imputer is NOT pre-fitted before CRMCleaner.fit() is called."""
-        imputer = WealthScreeningImputer(wealth_cols=["estimated_net_worth"])
-        assert not hasattr(imputer, "fill_values_"), (
-            "Imputer must not be fitted before CRMCleaner.fit(); "
-            "pre-fitting risks leakage of test-set statistics."
-        )
-
 
 # ===========================================================================
 # 2. WealthScreeningImputer — standard unit tests

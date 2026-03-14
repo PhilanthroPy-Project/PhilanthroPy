@@ -76,11 +76,26 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         -------
         scores : ndarray of shape (n_samples,)
         """
+        return self.predict_intent_score(X)
+
+    def predict_intent_score(self, X) -> np.ndarray:
+        """
+        Return P(planned giving intent) × 100, rounded to 2 decimal places.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+
+        Returns
+        -------
+        scores : ndarray of shape (n_samples,)
+            Values in range [0.0, 100.0].
+        """
         proba = self.predict_proba(X)
         if proba.shape[1] < 2:
-            scores = np.zeros(X.shape[0], dtype=float)
+            scores = np.zeros(proba.shape[0], dtype=float)
         else:
-            scores = proba[:, 1] * 100.0
+            scores = np.round(proba[:, 1] * 100.0, 2)
         return scores
 
     def __sklearn_tags__(self):

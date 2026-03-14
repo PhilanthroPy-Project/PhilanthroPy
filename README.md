@@ -109,6 +109,20 @@ scores = model.predict_affinity_score(X)   # 0–100 affinity scale
 
 ---
 
+### DischargeToSolicitationWindowTransformer
+
+Post-discharge solicitation window featurization. Flags donors within the optimal window (days post-discharge) and emits proximity scores.
+
+| Parameter               | Type | Default | Description                    |
+|-------------------------|------|---------|--------------------------------|
+| min_days_post_discharge | int  | 90      | Start of solicitation window   |
+| max_days_post_discharge | int  | 365     | End of solicitation window     |
+| days_since_discharge_col| str  | "days_since_last_discharge" | Column name for days since discharge |
+
+**Output columns:** `in_solicitation_window` (0/1), `window_position_score` [0,1], `discharge_recency_tier` [0–4].
+
+---
+
 ### LapsePredictor
 
 Production Random Forest classifier for donor lapse risk. Predicts whether a donor will lapse within a configurable window.
@@ -200,15 +214,30 @@ scores = model.predict_affinity_score(X_with_nan)
 
 ---
 
+### PlannedGivingIntentScorer
+
+Bequest/planned giving intent classifier. GradientBoostingClassifier + CalibratedClassifierCV for calibrated probabilities.
+
+| Parameter     | Type          | Default | Description           |
+|---------------|---------------|---------|-----------------------|
+| n_estimators  | int           | 100     | Boosting stages       |
+| random_state  | int or None   | None    | Reproducibility seed  |
+
+**Methods:** `.fit(X, y)`, `.predict(X)`, `.predict_proba(X)`, `.predict_intent_score(X)` — P(intent) × 100, [0.0, 100.0].
+
+---
+
 ### API quick reference
 
-| Component             | Module                  | Description                                      |
-|-----------------------|-------------------------|--------------------------------------------------|
-| DonorPropensityModel  | philanthropy.models     | Random Forest, predict_affinity_score()          |
-| MajorGiftClassifier   | philanthropy.models     | Calibrated HGB, predict_affinity_score(), NaN-native |
-| LapsePredictor        | philanthropy.models     | RF lapse risk, predict_lapse_score()             |
-| ShareOfWalletRegressor| philanthropy.models     | Capacity regression, predict_capacity_ratio()    |
-| RFMTransformer        | philanthropy.preprocessing | Recency, Frequency, Monetary features         |
+| Component                          | Module                    | Type        |
+|------------------------------------|---------------------------|-------------|
+| DonorPropensityModel               | philanthropy.models       | Classifier  |
+| MajorGiftClassifier                | philanthropy.models       | Classifier  |
+| LapsePredictor                     | philanthropy.models       | Classifier  |
+| PlannedGivingIntentScorer          | philanthropy.models       | Classifier  |
+| ShareOfWalletRegressor             | philanthropy.models       | Regressor   |
+| DischargeToSolicitationWindowTransformer | philanthropy.preprocessing | Transformer |
+| RFMTransformer                     | philanthropy.preprocessing | Transformer |
 
 ---
 
@@ -329,6 +358,21 @@ pytest tests/test_leakage.py -v
 - **sklearn-native** — all estimators pass `check_estimator`; support `set_output(transform="pandas")`, `clone()`, `get_params()` / `set_params()`
 - **NaN-transparent** — wealth and clinical transformers declare `allow_nan = True`; no silent data loss
 - **PII-aware** — `EncounterTransformer` auto-drops PII-like columns before returning features
+
+---
+
+## Contributing
+
+After cloning, run `sh scripts/install_hooks.sh` to install the pre-push hook. This runs the full test suite before every push, preventing collection errors from reaching CI.
+
+Before committing a new test file, always verify:
+
+```bash
+python -m pytest <new_test_file.py> --collect-only -q
+# Must show: X tests collected, 0 errors
+```
+
+Use `git push --no-verify` only in an emergency to bypass the hook.
 
 ---
 

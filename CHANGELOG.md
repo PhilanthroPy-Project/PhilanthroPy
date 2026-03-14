@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- DischargeToSolicitationWindowTransformer: post-discharge solicitation window featurization (in_window, window_position_score, discharge_recency_tier)
+- PlannedGivingIntentScorer: bequest intent classifier with predict_intent_score() (GradientBoostingClassifier + CalibratedClassifierCV)
 - LapsePredictor: production RandomForestClassifier backend with
   predict_lapse_score(), class_weight, max_depth, random_state params
 - tests/test_share_of_wallet.py — 25-test suite for ShareOfWalletRegressor

@@ -41,6 +41,7 @@ include = ["philanthropy*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--import-mode=importlib"
 
 [tool.hypothesis]
 suppress_health_check = ["too_slow"]

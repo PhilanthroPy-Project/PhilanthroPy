@@ -155,6 +155,63 @@ scores  = predictor.predict_lapse_score(X)  # 0–100 lapse risk score
 
 ---
 
+### MajorGiftClassifier
+
+Calibrated gradient-boosted classifier for major-gift propensity. Uses HistGradientBoostingClassifier wrapped in CalibratedClassifierCV for well-calibrated probabilities on skewed datasets. Handles NaN values natively — no upstream imputation needed.
+
+| Parameter     | Type          | Default | Description           |
+|---------------|---------------|---------|-----------------------|
+| learning_rate | float         | 0.1     | Boosting step size    |
+| max_iter      | int           | 100     | Number of boosting trees |
+| max_depth     | int or None   | None    | Maximum tree depth    |
+| random_state  | int or None   | None    | Reproducibility seed  |
+
+**Fitted attributes**
+
+| Attribute     | Description                                                         |
+|---------------|---------------------------------------------------------------------|
+| estimator_    | CalibratedClassifierCV wrapping HistGradientBoostingClassifier      |
+| classes_      | Array of class labels                                               |
+| n_features_in_ | Feature count from fit                                            |
+
+**Methods**
+
+| Method                    | Returns       | Description                                         |
+|---------------------------|---------------|-----------------------------------------------------|
+| .fit(X, y)                | self          | Train model                                         |
+| .predict(X)               | ndarray (n,)  | Binary predictions                                  |
+| .predict_proba(X)         | ndarray (n,2) | Calibrated probabilities (rows sum to 1.0)          |
+| .predict_affinity_score(X) | ndarray (n,) | P(major gift) × 100, integer, range [0, 100]        |
+
+> **Key distinction from DonorPropensityModel:** DonorPropensityModel uses Random Forest with raw probabilities and float affinity scores. MajorGiftClassifier uses HistGradientBoosting + calibration, handles NaN natively, produces integer affinity scores, and provides better-calibrated probabilities on skewed datasets.
+
+```python
+from philanthropy.models import MajorGiftClassifier
+import numpy as np
+
+model = MajorGiftClassifier(max_iter=200, random_state=42)
+model.fit(X, y)
+
+# Works with NaN values — no upstream imputation needed
+X_with_nan = X.copy().astype(float)
+X_with_nan[0, 1] = np.nan
+scores = model.predict_affinity_score(X_with_nan)
+```
+
+---
+
+### API quick reference
+
+| Component             | Module                  | Description                                      |
+|-----------------------|-------------------------|--------------------------------------------------|
+| DonorPropensityModel  | philanthropy.models     | Random Forest, predict_affinity_score()          |
+| MajorGiftClassifier   | philanthropy.models     | Calibrated HGB, predict_affinity_score(), NaN-native |
+| LapsePredictor        | philanthropy.models     | RF lapse risk, predict_lapse_score()             |
+| ShareOfWalletRegressor| philanthropy.models     | Capacity regression, predict_capacity_ratio()    |
+| RFMTransformer        | philanthropy.preprocessing | Recency, Frequency, Monetary features         |
+
+---
+
 ## sklearn Pipeline Example
 
 ```python

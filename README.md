@@ -262,6 +262,47 @@ scores = pipe.predict_proba(X_test)[:, 1]
 
 ---
 
+## Package Overview
+
+```
+philanthropy/
+├── datasets/
+│   └── _generator.py
+├── preprocessing/
+│   ├── transformers.py
+│   ├── _wealth.py
+│   ├── _wealth_percentile.py
+│   ├── _encounters.py
+│   ├── _encounter_recency.py
+│   ├── _rfm.py
+│   ├── _discharge_window.py
+│   ├── _solicitation_window.py   # alias → _discharge_window
+│   ├── _grateful_patient.py
+│   ├── _planned_giving.py
+│   └── _share_of_wallet.py
+├── models/
+│   ├── propensity.py
+│   ├── _propensity.py
+│   ├── _wallet.py
+│   ├── _lapse.py
+│   ├── _planned_giving.py
+│   └── _moves.py
+├── metrics/
+│   ├── scoring.py
+│   └── _financial.py
+├── model_selection/
+│   └── __init__.py
+├── experimental/
+│   └── _lapse.py
+├── visualisation/
+│   └── _plots.py
+└── utils/
+    ├── testing.py
+    └── _validation.py
+```
+
+---
+
 ## Medical Philanthropy Pipeline
 
 ```python
@@ -296,17 +337,31 @@ gift_features = preprocessor.fit_transform(gift_df)
 
 | Test file                        | Tests | What's covered |
 |----------------------------------|-------|----------------|
-| test_datasets.py                 | 19    | (unchanged) |
-| test_donor_propensity_model.py   | 84    | (unchanged) |
-| test_preprocessing.py            | 35    | (unchanged) |
-| test_leakage.py                  | 14    | WealthScreeningImputer API, fill-value freeze |
-| test_metrics.py                  | 18    | donor_retention_rate, donor_acquisition_cost, donor_lifetime_value — edge cases |
+| test_sklearn_compliance.py       | 417   | check_estimator for all public estimators |
+| test_sklearn_compat.py           | 230   | sklearn API compliance |
+| test_donor_propensity_model.py   | 84    | DonorPropensityModel — affinity, pipeline, edge cases |
 | test_propensity.py               | 75    | PropensityScorer, LapsePredictor — full production coverage |
-| test_utils.py                    | 4     | (unchanged) |
+| test_preprocessing.py            | 35    | FiscalYearTransformer, CRMCleaner, WealthScreeningImputer |
 | test_share_of_wallet.py          | 25    | ShareOfWalletRegressor — capacity_floor, NaN inputs, predict_capacity_ratio |
 | test_rfm_transformer.py          | 20    | RFMTransformer — recency/frequency/monetary, reference_date, leakage freeze |
 | test_major_gift_classifier.py    | 20    | MajorGiftClassifier — calibrated proba, affinity score, check_estimator |
+| test_datasets.py                 | 19    | generate_synthetic_donor_data |
+| test_metrics.py                  | 18    | donor_retention_rate, donor_acquisition_cost, donor_lifetime_value |
+| test_planned_giving.py           | 15    | PlannedGivingIntentScorer, PlannedGivingSignalTransformer |
+| test_grateful_patient_featurizer.py | 15  | GratefulPatientFeaturizer |
+| test_properties.py               | 14    | Hypothesis property-based tests |
+| test_leakage.py                  | 14    | WealthScreeningImputer API, fill-value freeze |
 | test_visualisation.py            | 12    | plot_affinity_distribution headless, all public plot functions |
+| test_solicitation_window.py      | 12    | DischargeToSolicitationWindowTransformer |
+| test_coverage_boost.py           | 6     | Coverage expansion tests |
+| test_financial.py                | 5     | donor_lifetime_value |
+| test_utils.py                    | 4     | make_donor_dataset, validation |
+| test_rfm.py                      | 4     | RFMTransformer |
+| test_preprocessing_properties.py | 3     | Hypothesis for preprocessing |
+| test_estimators.py               | 3     | Estimator checks |
+| test_transformers_property.py    | 2     | Transformer property tests |
+
+**1052 tests** across 23 test files.
 
 ```bash
 # Full suite
@@ -328,27 +383,31 @@ pytest tests/test_leakage.py -v
 
 ### ✅ Completed
 
-- `philanthropy.preprocessing.CRMCleaner` — leakage-safe CRM standardisation
-- `philanthropy.preprocessing.WealthScreeningImputer` — median/mean/zero imputation
-- `philanthropy.preprocessing.EncounterTransformer` — clinical discharge → feature engineering
-- `philanthropy.preprocessing.RFMTransformer` — Recency, Frequency, Monetary features
-- `philanthropy.models.ShareOfWalletRegressor` — capacity regression + predict_capacity_ratio()
-- `philanthropy.models.MajorGiftClassifier` — gradient-boosted with calibrated probabilities
-- `philanthropy.models.LapsePredictor` — production RF with predict_lapse_score()
-- `philanthropy.metrics.donor_lifetime_value()` — NPV LTV with discount rate
-- `philanthropy.visualisation` — affinity score plots, retention waterfall charts
+- CRMCleaner — leakage-safe CRM standardisation
+- WealthScreeningImputer — median/mean/zero imputation
+- EncounterTransformer — clinical discharge → feature engineering
+- RFMTransformer — Recency, Frequency, Monetary features
+- DischargeToSolicitationWindowTransformer — solicitation window features
+- ShareOfWalletRegressor — capacity regression + predict_capacity_ratio()
+- MajorGiftClassifier — gradient-boosted with calibrated probabilities
+- LapsePredictor — production RF with predict_lapse_score()
+- PlannedGivingIntentScorer — planned giving intent classifier
+- donor_lifetime_value() — NPV LTV with discount rate
+- philanthropy.visualisation — affinity score plots
 - Property-based Hypothesis testing for FiscalYearTransformer
-- Temporal leakage prevention test suite (test_leakage.py)
-- GitHub Actions CI with Python 3.10/3.11 matrix
+- Temporal leakage prevention test suite
+- GitHub Actions CI (Python 3.10 + 3.11 matrix)
+- Coverage gate (≥ 85%)
+- Makefile (make ci)
+- Branch protection + PR workflow
 
 ### 🔜 Next
 
-- Full Sphinx documentation site (readthedocs.io deployment)
-- PyPI package release (pip install philanthropy)
-- `philanthropy.visualisation.plot_retention_waterfall()` — multi-year retention chart
-- `philanthropy.visualisation.plot_capacity_heatmap()` — prospect pool heat map
-- `philanthropy.preprocessing.CRMCleaner` — Salesforce NPSP and Veeva field-map presets
-- `philanthropy.models.EnsemblePropensityModel` — stacked LapsePredictor + DonorPropensityModel
+- Full Sphinx documentation site (readthedocs.io)
+- PyPI release (pip install philanthropy)
+- philanthropy.visualisation.plot_retention_waterfall()
+- philanthropy.visualisation.plot_capacity_heatmap()
+- EnsemblePropensityModel (stacked LapsePredictor + DonorPropensityModel)
 
 ---
 

@@ -162,6 +162,20 @@ gift_features = preprocessor.fit_transform(gift_df)
 
 ## Testing
 
+| Test file                        | Tests | What's covered |
+|----------------------------------|-------|----------------|
+| test_datasets.py                 | 19    | (unchanged) |
+| test_donor_propensity_model.py   | 84    | (unchanged) |
+| test_preprocessing.py            | 35    | (unchanged) |
+| test_leakage.py                  | 14    | WealthScreeningImputer API, fill-value freeze |
+| test_metrics.py                  | 18    | donor_retention_rate, donor_acquisition_cost, donor_lifetime_value — edge cases |
+| test_propensity.py               | 75    | PropensityScorer, LapsePredictor — full production coverage |
+| test_utils.py                    | 4     | (unchanged) |
+| test_share_of_wallet.py          | 25    | ShareOfWalletRegressor — capacity_floor, NaN inputs, predict_capacity_ratio |
+| test_rfm_transformer.py          | 20    | RFMTransformer — recency/frequency/monetary, reference_date, leakage freeze |
+| test_major_gift_classifier.py    | 20    | MajorGiftClassifier — calibrated proba, affinity score, check_estimator |
+| test_visualisation.py            | 12    | plot_affinity_distribution headless, all public plot functions |
+
 ```bash
 # Full suite
 pytest tests/ -q

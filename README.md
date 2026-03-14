@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/python-3.9%2B-brightgreen" alt="python"/>
   <img src="https://img.shields.io/badge/sklearn-compatible-orange" alt="sklearn"/>
   <img src="https://img.shields.io/badge/docs-GitHub%20Pages-informational" alt="documentation"/>
-  <img src="https://img.shields.io/badge/tests-passing-success" alt="tests"/>
+  [![Tests](https://github.com/PhilanthroPy-Project/PhilanthroPy/actions/workflows/ci.yml/badge.svg)](https://github.com/PhilanthroPy-Project/PhilanthroPy/actions/workflows/ci.yml)
 </p>
 
 <p align="center">

@@ -11,7 +11,7 @@ from hypothesis import given, strategies as st, settings, HealthCheck
 from philanthropy.preprocessing import (
     FiscalYearTransformer,
     WealthScreeningImputer,
-    SolicitationWindowTransformer,
+    DischargeToSolicitationWindowTransformer,
 )
 
 # ---------------------------------------------------------------------------
@@ -117,7 +117,7 @@ def test_wealth_imputer_properties(df):
 
 
 # ---------------------------------------------------------------------------
-# SolicitationWindowTransformer properties
+# DischargeToSolicitationWindowTransformer properties
 # ---------------------------------------------------------------------------
 
 @settings(max_examples=200, suppress_health_check=[HealthCheck.too_slow], deadline=None)
@@ -132,11 +132,10 @@ def test_wealth_imputer_properties(df):
     )
 )
 def test_solicitation_window_properties(days):
-    """SolicitationWindowTransformer should return binary in_window and score in [0, 1]."""
-    # Build a simple numeric DataFrame with days_since_discharge
+    """DischargeToSolicitationWindowTransformer returns 3 columns: in_window, score, recency_tier."""
     parsed = [float(d) if d is not None else np.nan for d in days]
     df = pd.DataFrame({"days_since_last_discharge": parsed})
-    t = SolicitationWindowTransformer(
+    t = DischargeToSolicitationWindowTransformer(
         days_since_discharge_col="days_since_last_discharge",
         min_days_post_discharge=100,
         max_days_post_discharge=200,
@@ -144,14 +143,19 @@ def test_solicitation_window_properties(days):
     t.fit(df)
     out = t.transform(df)
     assert isinstance(out, np.ndarray), "transform() must return np.ndarray"
-    assert out.shape == (len(days), 2)
+    assert out.shape == (len(days), 3), f"expected 3 columns (in_window, score, recency_tier), got {out.shape[1]}"
     assert len(out) == len(days)
     # in_window column (col 0) must be binary
-    assert set(np.unique(out[~np.isnan(out[:, 0]), 0])).issubset(
-        {0.0, 1.0}
-    ), "in_window flag must be 0 or 1"
-    # window_score column (col 1) must be in [0, 1]
+    in_window_vals = out[~np.isnan(out[:, 0]), 0]
+    if len(in_window_vals) > 0:
+        assert set(np.unique(in_window_vals)).issubset({0.0, 1.0})
+    # window_position_score column (col 1) must be in [0, 1]
     scores = out[:, 1]
     non_nan_scores = scores[~np.isnan(scores)]
     if len(non_nan_scores) > 0:
         assert (non_nan_scores >= 0.0).all() and (non_nan_scores <= 1.0).all()
+    # discharge_recency_tier (col 2) must be in [0, 4]
+    tiers = out[:, 2]
+    non_nan_tiers = tiers[~np.isnan(tiers)]
+    if len(non_nan_tiers) > 0:
+        assert (non_nan_tiers >= 0).all() and (non_nan_tiers <= 4).all()

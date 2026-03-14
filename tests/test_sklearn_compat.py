@@ -7,7 +7,7 @@ from philanthropy.preprocessing import (
     CRMCleaner,
     FiscalYearTransformer
 )
-from philanthropy.model_selection import TemporalDonorSplitter
+from philanthropy.model_selection import FiscalYearGroupedSplitter
 
 ALL_ESTIMATORS = [
     EncounterRecencyTransformer(),

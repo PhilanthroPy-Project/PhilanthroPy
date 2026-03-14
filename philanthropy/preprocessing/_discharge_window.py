@@ -4,8 +4,8 @@ philanthropy.preprocessing._discharge_window
 Post-discharge solicitation window featurization for grateful patient programs.
 
 Given a clinical discharge date and a solicitation window (in days), determines
-whether each gift falls within N days after discharge. Produces in_window,
-window_position_score, and discharge_recency_tier columns.
+whether each gift falls within N days after discharge. Produces in_window
+and window_position_score columns.
 """
 
 from __future__ import annotations
@@ -19,10 +19,9 @@ from sklearn.utils.validation import check_is_fitted, validate_data
 class DischargeToSolicitationWindowTransformer(TransformerMixin, BaseEstimator):
     """Flag donors in the clinical fundraising post-discharge solicitation window.
 
-    This transformer outputs three features:
+    This transformer outputs two features:
     - ``in_solicitation_window`` (col 0): 1 if within window, 0 otherwise.
     - ``window_position_score`` (col 1): proximity to midpoint [0.0, 1.0].
-    - ``discharge_recency_tier`` (col 2): recency tier 0–4.
 
     Parameters
     ----------
@@ -67,7 +66,7 @@ class DischargeToSolicitationWindowTransformer(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X, y=None) -> np.ndarray:
-        """Transform X to three columns: in_window, score, recency_tier.
+        """Transform X to two columns: in_window, window_position_score.
 
         Parameters
         ----------
@@ -76,8 +75,8 @@ class DischargeToSolicitationWindowTransformer(TransformerMixin, BaseEstimator):
 
         Returns
         -------
-        out : ndarray of shape (n_samples, 3)
-            Columns: in_window (0/1), window_position_score [0,1], discharge_recency_tier [0,4].
+        out : ndarray of shape (n_samples, 2)
+            Columns: in_window (0/1), window_position_score [0,1].
         """
         check_is_fitted(self)
 
@@ -102,7 +101,6 @@ class DischargeToSolicitationWindowTransformer(TransformerMixin, BaseEstimator):
         n = len(days_raw)
         in_window = np.zeros(n, dtype=np.float64)
         window_score = np.zeros(n, dtype=np.float64)
-        recency_tier = np.zeros(n, dtype=np.float64)
 
         for i in range(n):
             d = days_raw[i]
@@ -113,24 +111,13 @@ class DischargeToSolicitationWindowTransformer(TransformerMixin, BaseEstimator):
                 in_window[i] = 1.0
                 window_score[i] = 1.0 - abs(d - midpoint) / half_range
 
-            if d <= 30:
-                recency_tier[i] = 4.0
-            elif d <= 90:
-                recency_tier[i] = 3.0
-            elif d <= 180:
-                recency_tier[i] = 2.0
-            elif d <= 365:
-                recency_tier[i] = 1.0
-            else:
-                recency_tier[i] = 0.0
-
-        return np.column_stack([in_window, window_score, recency_tier])
+        return np.column_stack([in_window, window_score])
 
     def get_feature_names_out(self, input_features=None):
         """Get output feature names."""
         check_is_fitted(self)
         return np.array(
-            ["in_solicitation_window", "window_position_score", "discharge_recency_tier"],
+            ["in_solicitation_window", "window_position_score"],
             dtype=object,
         )
 

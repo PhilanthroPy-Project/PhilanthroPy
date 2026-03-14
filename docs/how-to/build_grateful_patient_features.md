@@ -31,11 +31,11 @@ The `GratefulPatientFeaturizer` automatically weights occurrences. You can provi
 
 ## The Solicitation Window
 
-Patients in a 6-to-24 month window post-discharge are often the warmest prospects. The `SolicitationWindowTransformer` measures proximity to this optimal sweet spot perfectly:
+Patients in a 6-to-24 month window post-discharge are often the warmest prospects. The `DischargeToSolicitationWindowTransformer` measures proximity to this optimal sweet spot perfectly:
 
 ```python
-from philanthropy.preprocessing import SolicitationWindowTransformer
+from philanthropy.preprocessing import DischargeToSolicitationWindowTransformer
 
-window = SolicitationWindowTransformer()
+window = DischargeToSolicitationWindowTransformer()
 # X_out = window.fit_transform(X)
 ```

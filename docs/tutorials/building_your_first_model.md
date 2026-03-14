@@ -48,13 +48,13 @@ PhilanthroPy components drop directly into scikit-learn pipelines.
 
 ```python
 from sklearn.pipeline import Pipeline
-from philanthropy.preprocessing import FiscalYearTransformer, WealthScreeningImputer, SolicitationWindowTransformer
+from philanthropy.preprocessing import FiscalYearTransformer, WealthScreeningImputer, DischargeToSolicitationWindowTransformer
 from philanthropy.models import DonorPropensityModel
 
 pipe = Pipeline([
     ("fy", FiscalYearTransformer(date_col="gift_date")),
     ("wealth", WealthScreeningImputer(wealth_cols=["estimated_net_worth"])),
-    ("window", SolicitationWindowTransformer()),
+    ("window", DischargeToSolicitationWindowTransformer()),
     ("model", DonorPropensityModel(n_estimators=200, random_state=0)),
 ])
 

@@ -7,7 +7,7 @@ from philanthropy.preprocessing import (
     ShareOfWalletScorer,
     GratefulPatientFeaturizer,
 )
-from philanthropy.model_selection import TemporalDonorSplitter
+from philanthropy.model_selection import FiscalYearGroupedSplitter
 from philanthropy.models import MovesManagementClassifier
 
 def test_encounter_recency_transformer_edge_cases():
@@ -93,16 +93,16 @@ def test_temporal_donor_splitter_coverage():
     groups = [2018, 2018, 2019, 2019, 2020, 2020, 2021, 2021, 2022, 2022]
     
     # Gap years
-    splitter = TemporalDonorSplitter(n_splits=2, gap_years=1)
+    splitter = FiscalYearGroupedSplitter(n_splits=2, gap_years=1)
     splits = list(splitter.split(X, groups=groups))
     assert len(splits) == 2
     
     # Insufficient years (set gap_years high)
     with pytest.raises(ValueError, match="Not enough fiscal years"):
-        list(TemporalDonorSplitter(n_splits=2, gap_years=5).split(X, groups=groups))
+        list(FiscalYearGroupedSplitter(n_splits=2, gap_years=5).split(X, groups=groups))
 
     # get_params / repr
-    assert "TemporalDonorSplitter" in repr(splitter)
+    assert "FiscalYearGroupedSplitter" in repr(splitter)
     assert splitter.get_n_splits(groups=groups) == 2
 
 def test_moves_management_classifier_coverage():

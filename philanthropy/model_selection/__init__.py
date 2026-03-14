@@ -8,7 +8,7 @@ which routinely introduces **temporal leakage** in donor analytics:
 future gift history — which would not be available at scoring time —
 leaks into training folds.
 
-``TemporalDonorSplitter`` implements a walk-forward (expanding-window)
+``FiscalYearGroupedSplitter`` implements a walk-forward (expanding-window)
 cross-validation strategy anchored to the organisation's **fiscal year**
 calendar.  Each ``(train, test)`` split is a contiguous time boundary:
 
@@ -21,10 +21,10 @@ with :func:`sklearn.model_selection.cross_val_score`.
 Typical usage
 -------------
 >>> import numpy as np
->>> from philanthropy.model_selection import TemporalDonorSplitter
+>>> from philanthropy.model_selection import FiscalYearGroupedSplitter
 >>> X = np.zeros((100, 3))
 >>> fiscal_years = np.array([2019]*20 + [2020]*30 + [2021]*25 + [2022]*25)
->>> splitter = TemporalDonorSplitter(n_splits=3)
+>>> splitter = FiscalYearGroupedSplitter(n_splits=3)
 >>> splits = list(splitter.split(X, groups=fiscal_years))
 >>> len(splits)
 3
@@ -42,7 +42,7 @@ from sklearn.model_selection import BaseCrossValidator
 from sklearn.utils.validation import column_or_1d
 
 
-class TemporalDonorSplitter(BaseCrossValidator):
+class FiscalYearGroupedSplitter(BaseCrossValidator):
     """Walk-forward fiscal-year cross-validator for donor analytics.
 
     This cross-validator implements a **temporal expanding-window** strategy
@@ -91,10 +91,10 @@ class TemporalDonorSplitter(BaseCrossValidator):
     Examples
     --------
     >>> import numpy as np
-    >>> from philanthropy.model_selection import TemporalDonorSplitter
+    >>> from philanthropy.model_selection import FiscalYearGroupedSplitter
     >>> X = np.zeros((200, 5))
     >>> fy = np.array([2018]*40 + [2019]*50 + [2020]*55 + [2021]*30 + [2022]*25)
-    >>> splitter = TemporalDonorSplitter(n_splits=3, gap_years=0)
+    >>> splitter = FiscalYearGroupedSplitter(n_splits=3, gap_years=0)
     >>> for train_idx, test_idx in splitter.split(X, groups=fy):
     ...     train_fy = np.unique(fy[train_idx])
     ...     test_fy  = np.unique(fy[test_idx])
@@ -121,7 +121,7 @@ class TemporalDonorSplitter(BaseCrossValidator):
     **Why not TimeSeriesSplit?** :class:`sklearn.model_selection.TimeSeriesSplit`
     splits on row *index*, not on a semantic grouping variable.  Donor
     datasets are rarely sorted by date, and donors may have multiple rows
-    (one per gift).  ``TemporalDonorSplitter`` uses ``groups`` to correctly
+    (one per gift).  ``FiscalYearGroupedSplitter`` uses ``groups`` to correctly
     assign all gifts from a given fiscal year to the same fold regardless
     of row order.
 
@@ -183,7 +183,7 @@ class TemporalDonorSplitter(BaseCrossValidator):
         """
         if groups is None:
             raise ValueError(
-                "TemporalDonorSplitter requires `groups` to be an array of "
+                "FiscalYearGroupedSplitter requires `groups` to be an array of "
                 "fiscal year labels (integer per sample).  Pass `groups=` to "
                 "`split()` or to `cross_val_score(groups=...)`."
             )
@@ -202,7 +202,7 @@ class TemporalDonorSplitter(BaseCrossValidator):
 
         if n_fy < 2:
             raise ValueError(
-                f"TemporalDonorSplitter requires at least 2 distinct fiscal "
+                f"FiscalYearGroupedSplitter requires at least 2 distinct fiscal "
                 f"years in `groups`, found {n_fy}."
             )
 

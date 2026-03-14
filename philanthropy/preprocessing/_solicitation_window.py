@@ -122,3 +122,7 @@ class DischargeToSolicitationWindowTransformer(TransformerMixin, BaseEstimator):
         tags.input_tags.allow_nan = True
         tags.input_tags.string = True
         return tags
+
+
+# Backward compatibility: support both import names (CI / older __init__.py may use this)
+SolicitationWindowTransformer = DischargeToSolicitationWindowTransformer

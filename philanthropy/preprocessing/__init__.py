@@ -11,7 +11,7 @@ from ._encounters import EncounterTransformer
 from ._rfm import RFMTransformer
 from ._planned_giving import PlannedGivingSignalTransformer
 from ._grateful_patient import GratefulPatientFeaturizer
-from ._solicitation_window import SolicitationWindowTransformer
+from ._discharge_window import DischargeToSolicitationWindowTransformer
 from ._wealth_percentile import WealthPercentileTransformer
 from ._encounter_recency import EncounterRecencyTransformer
 from ._share_of_wallet import WealthScreeningImputerKNN, ShareOfWalletScorer
@@ -24,7 +24,7 @@ __all__ = [
     "RFMTransformer",
     "PlannedGivingSignalTransformer",
     "GratefulPatientFeaturizer",
-    "SolicitationWindowTransformer",
+    "DischargeToSolicitationWindowTransformer",
     "WealthPercentileTransformer",
     "EncounterRecencyTransformer",
     "WealthScreeningImputerKNN",

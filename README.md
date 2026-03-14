@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/python-3.9%2B-brightgreen" alt="python"/>
   <img src="https://img.shields.io/badge/sklearn-compatible-orange" alt="sklearn"/>
   <img src="https://img.shields.io/badge/docs-GitHub%20Pages-informational" alt="documentation"/>
-  <img src="https://img.shields.io/badge/tests-559%20passing-success" alt="tests"/>
+  <img src="https://img.shields.io/badge/tests-passing-success" alt="tests"/>
 </p>
 
 <p align="center">
@@ -72,7 +72,7 @@ scores = model.predict_affinity_score(X)   # 0–100 affinity scale
 | `RFMTransformer` | Recency–Frequency–Monetary value feature engineering for donor segmentation |
 | `EncounterTransformer` | Bridge hospital EHR encounter records with philanthropy CRM; computes `days_since_last_discharge` and `encounter_frequency_score`; snapshot at `fit()` prevents leakage |
 | `GratefulPatientFeaturizer` ⭐ **NEW** | Clinical gravity score + AMC service-line capacity weights (cardiac 3.2×, oncology 2.9×, neuroscience 2.7×); outputs `clinical_gravity_score`, `distinct_service_lines`, `distinct_physicians`, `total_drg_weight` |
-| `SolicitationWindowTransformer` ⭐ **NEW** | Post-discharge solicitation window flag + midpoint proximity score; outputs `in_window` (0/1) and `window_score` (1.0 at midpoint, 0.0 at edges); NaN → 0 |
+| `DischargeToSolicitationWindowTransformer` ⭐ **NEW** | Post-discharge solicitation window flags tracking recency; outputs `in_solicitation_window` (0/1), `window_position_score` (1.0 at midpoint, 0.0 at edges), and `discharge_recency_tier` (int 0-4); NaN → 0 |
 | `PlannedGivingSignalTransformer` ⭐ **NEW** | Bequest / legacy-gift intent vector: `is_legacy_age`, `is_loyal_donor`, `inclination_score` (−1 sentinel for absent data), `composite_score` [0–3] |
 
 ### 🤖 Models
@@ -82,9 +82,16 @@ scores = model.predict_affinity_score(X)   # 0–100 affinity scale
 | `DonorPropensityModel` | Random Forest classifier with `predict_affinity_score()` returning a 0–100 scale |
 | `MajorGiftClassifier` | Calibrated `HistGradientBoostingClassifier` — NaN-native, with `predict_affinity_score()` |
 | `ShareOfWalletRegressor` | Estimates total giving capacity and untapped-potential ratio |
-| `LapsePredictor` | Predicts donor lapse within a configurable window (HistGBM, class-balanced) |
+| `LapsePredictor` | Random Forest classifier for donor lapse; standard fit(X,y), `predict_lapse_score()` 0–100 |
 | `MovesManagementClassifier` | Multi-class portfolio stage predictor |
 | `PropensityScorer` | Lightweight logistic propensity baseline |
+| `PlannedGivingIntentScorer` ⭐ **NEW** | Wraps GradientBoostingClassifier to predict bequest intent scores (0-100 scale) |
+
+### 🔀 Model Selection
+
+| Splitter | Description |
+|---|---|
+| `FiscalYearGroupedSplitter` ⭐ **NEW** | Walk-forward cross-validator preventing fiscal year data leakage |
 
 ### 📊 Metrics
 
@@ -107,14 +114,14 @@ scores = model.predict_affinity_score(X)   # 0–100 affinity scale
 ```python
 from sklearn.pipeline import Pipeline
 from philanthropy.preprocessing import (
-    FiscalYearTransformer, WealthScreeningImputer, SolicitationWindowTransformer
+    FiscalYearTransformer, WealthScreeningImputer, DischargeToSolicitationWindowTransformer
 )
 from philanthropy.models import DonorPropensityModel
 
 pipe = Pipeline([
     ("fy",      FiscalYearTransformer(date_col="gift_date")),
     ("wealth",  WealthScreeningImputer(wealth_cols=["estimated_net_worth"])),
-    ("window",  SolicitationWindowTransformer()),
+    ("window",  DischargeToSolicitationWindowTransformer()),
     ("model",   DonorPropensityModel(n_estimators=200, random_state=0)),
 ])
 pipe.fit(X_train, y_train)
@@ -156,7 +163,7 @@ gift_features = preprocessor.fit_transform(gift_df)
 ## Testing
 
 ```bash
-# Full suite (559 tests)
+# Full suite
 pytest tests/ -q
 
 # sklearn check_estimator compliance

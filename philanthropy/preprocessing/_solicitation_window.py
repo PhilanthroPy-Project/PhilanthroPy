@@ -12,12 +12,10 @@ a continuous proximity score (1.0 at the window midpoint, 0.0 at edges).
 
 from __future__ import annotations
 
-import numbers
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted, validate_data
-from sklearn.utils._param_validation import validate_params, Interval
 
 
 class DischargeToSolicitationWindowTransformer(TransformerMixin, BaseEstimator):
@@ -43,14 +41,6 @@ class DischargeToSolicitationWindowTransformer(TransformerMixin, BaseEstimator):
         Column name containing days since last discharge.
     """
 
-    @validate_params(
-        {
-            "min_days_post_discharge": [Interval(numbers.Integral, 0, None, closed="left")],
-            "max_days_post_discharge": [Interval(numbers.Integral, 1, None, closed="left")],
-            "days_since_discharge_col": [str],
-        },
-        prefer_skip_nested_validation=True,
-    )
     def __init__(
         self,
         min_days_post_discharge: int = 90,

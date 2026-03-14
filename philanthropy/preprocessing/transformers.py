@@ -15,7 +15,6 @@ fiscal-calendar start month.
 
 from __future__ import annotations
 
-import numbers
 import warnings
 from typing import Optional, Any
 
@@ -24,7 +23,6 @@ import pandas as pd
 
 from sklearn.base import TransformerMixin, BaseEstimator
 from sklearn.utils.validation import check_is_fitted, validate_data
-from sklearn.utils._param_validation import validate_params, Interval
 from philanthropy.utils._validation import validate_fiscal_year_start
 
 
@@ -77,14 +75,6 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         Number of columns in ``X`` at :meth:`fit` time.
     """
 
-    @validate_params(
-        {
-            "date_col": [str],
-            "amount_col": [str],
-            "fiscal_year_start": [Interval(numbers.Integral, 1, 12, closed="both")],
-        },
-        prefer_skip_nested_validation=True,
-    )
     def __init__(
         self,
         date_col: str = "gift_date",
@@ -151,13 +141,6 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
 class FiscalYearTransformer(TransformerMixin, BaseEstimator):
     """Append Organisation-specific Fiscal Year and Quarter to dates."""
 
-    @validate_params(
-        {
-            "date_col": [str],
-            "fiscal_year_start": [Interval(numbers.Integral, 1, 12, closed="both")],
-        },
-        prefer_skip_nested_validation=True,
-    )
     def __init__(self, date_col: str = "gift_date", fiscal_year_start: int = 7):
         self.date_col = date_col
         self.fiscal_year_start = fiscal_year_start

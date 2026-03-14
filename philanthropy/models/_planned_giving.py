@@ -6,13 +6,11 @@ Models for predicting planned giving (bequest) intent.
 
 from __future__ import annotations
 
-import numbers
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.utils.validation import check_is_fitted, validate_data
-from sklearn.utils._param_validation import validate_params, Interval
 
 
 class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
@@ -30,13 +28,6 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         Controls the randomness of the estimator.
     """
 
-    @validate_params(
-        {
-            "n_estimators": [Interval(numbers.Integral, 1, None, closed="left")],
-            "random_state": ["random_state"],
-        },
-        prefer_skip_nested_validation=True,
-    )
     def __init__(
         self,
         n_estimators: int = 100,

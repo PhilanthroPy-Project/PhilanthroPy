@@ -49,7 +49,7 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         self.estimator_ = CalibratedClassifierCV(
             estimator=base_estimator,
             method="sigmoid",
-            cv=5
+            cv=2,
         )
         self.estimator_.fit(X, y)
         return self

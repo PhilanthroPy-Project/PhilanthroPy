@@ -10,6 +10,7 @@ score (0–100) for use by prospect-management officers and gift officers.
 
 from __future__ import annotations
 
+import numbers
 from typing import Optional
 
 import numpy as np
@@ -19,6 +20,7 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.utils import Tags
 from sklearn.utils.multiclass import unique_labels
 from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.utils._param_validation import validate_params, Interval, StrOptions, HasMethods
 
 
 class DonorPropensityModel(ClassifierMixin, BaseEstimator):
@@ -162,6 +164,18 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
         tags.classifier_tags.multi_class = True
         return tags
 
+    @validate_params(
+        {
+            "n_estimators": [Interval(numbers.Integral, 1, None, closed="left")],
+            "max_depth": [Interval(numbers.Integral, 1, None, closed="left"), None],
+            "min_samples_split": [Interval(numbers.Integral, 2, None, closed="left"), Interval(numbers.Real, 0.0, 1.0, closed="right")],
+            "min_samples_leaf": [Interval(numbers.Integral, 1, None, closed="left"), Interval(numbers.Real, 0.0, 1.0, closed="right")],
+            "min_weight_fraction_leaf": [Interval(numbers.Real, 0.0, 0.5, closed="both")],
+            "class_weight": [dict, StrOptions({"balanced", "balanced_subsample"}), None],
+            "random_state": ["random_state"],
+        },
+        prefer_skip_nested_validation=True,
+    )
     def __init__(
         self,
         n_estimators: int = 100,
@@ -365,6 +379,14 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         tags.classifier_tags.multi_class = True
         return tags
     
+    @validate_params(
+        {
+            "max_iter": [Interval(numbers.Integral, 1, None, closed="left")],
+            "learning_rate": [Interval(numbers.Real, 0.0, None, closed="neither")],
+            "random_state": ["random_state"],
+        },
+        prefer_skip_nested_validation=True,
+    )
     def __init__(self, max_iter=100, learning_rate=0.1, random_state=None):
         self.max_iter = max_iter
         self.learning_rate = learning_rate

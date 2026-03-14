@@ -25,6 +25,7 @@ from philanthropy.models import (
     LapsePredictor,
     MajorGiftClassifier,
     ShareOfWalletRegressor,
+    PlannedGivingIntentScorer,
 )
 from philanthropy.preprocessing import (
     EncounterTransformer,
@@ -32,7 +33,7 @@ from philanthropy.preprocessing import (
     GratefulPatientFeaturizer,
     PlannedGivingSignalTransformer,
     RFMTransformer,
-    SolicitationWindowTransformer,
+    DischargeToSolicitationWindowTransformer,
     WealthPercentileTransformer,
     WealthScreeningImputer,
 )
@@ -45,7 +46,8 @@ from philanthropy.preprocessing import (
 _STANDARD_ESTIMATORS = [
     DonorPropensityModel(n_estimators=10, random_state=0),
     ShareOfWalletRegressor(max_iter=20, random_state=0),
-    # LapsePredictor excluded: non-standard fit signature (gift_dates)
+    PlannedGivingIntentScorer(n_estimators=10, random_state=0),
+    # LapsePredictor: tested separately in test_propensity (parametrize_with_checks)
     MajorGiftClassifier(),
     FiscalYearTransformer(date_col="gift_date", fiscal_year_start=7),
     WealthScreeningImputer(
@@ -54,7 +56,7 @@ _STANDARD_ESTIMATORS = [
         add_indicator=False,    # indicator=False for numeric-only check_estimator
     ),
     RFMTransformer(),
-    SolicitationWindowTransformer(),
+    DischargeToSolicitationWindowTransformer(),
     PlannedGivingSignalTransformer(),
 ]
 

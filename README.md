@@ -192,6 +192,34 @@ pytest tests/test_leakage.py -v
 
 ---
 
+## Roadmap
+
+### ✅ Completed
+
+- `philanthropy.preprocessing.CRMCleaner` — leakage-safe CRM standardisation
+- `philanthropy.preprocessing.WealthScreeningImputer` — median/mean/zero imputation
+- `philanthropy.preprocessing.EncounterTransformer` — clinical discharge → feature engineering
+- `philanthropy.preprocessing.RFMTransformer` — Recency, Frequency, Monetary features
+- `philanthropy.models.ShareOfWalletRegressor` — capacity regression + predict_capacity_ratio()
+- `philanthropy.models.MajorGiftClassifier` — gradient-boosted with calibrated probabilities
+- `philanthropy.models.LapsePredictor` — production RF with predict_lapse_score()
+- `philanthropy.metrics.donor_lifetime_value()` — NPV LTV with discount rate
+- `philanthropy.visualisation` — affinity score plots, retention waterfall charts
+- Property-based Hypothesis testing for FiscalYearTransformer
+- Temporal leakage prevention test suite (test_leakage.py)
+- GitHub Actions CI with Python 3.10/3.11 matrix
+
+### 🔜 Next
+
+- Full Sphinx documentation site (readthedocs.io deployment)
+- PyPI package release (pip install philanthropy)
+- `philanthropy.visualisation.plot_retention_waterfall()` — multi-year retention chart
+- `philanthropy.visualisation.plot_capacity_heatmap()` — prospect pool heat map
+- `philanthropy.preprocessing.CRMCleaner` — Salesforce NPSP and Veeva field-map presets
+- `philanthropy.models.EnsemblePropensityModel` — stacked LapsePredictor + DonorPropensityModel
+
+---
+
 ## Design Principles
 
 - **Leakage-safe by design** — fill statistics, encounter summaries, and encounter snapshots are all frozen at `fit()` time; `transform()` is fully idempotent

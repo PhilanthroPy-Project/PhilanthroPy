@@ -38,7 +38,6 @@ import pandas as pd
 import pytest
 
 from philanthropy.preprocessing import (
-    CRMCleaner,
     EncounterTransformer,
     WealthScreeningImputer,
 )
@@ -263,39 +262,36 @@ class TestWealthImputerNoLeakage:
             "mutation after fit() is a leakage vector."
         )
 
-    def test_crm_cleaner_wealth_imputer_does_not_see_test_set_during_fit(self):
+    def test_wealth_imputer_fill_frozen_from_train_transform_test_no_leakage(self):
         """
-        CRMCleaner with embedded WealthScreeningImputer: the imputer's fit()
-        must ONLY use X_train, even if X_test is later piped through transform().
+        WealthScreeningImputer fit on X_train: fill_values_ must ONLY use X_train.
+        transform(X_test) with extreme future wealth must NOT update fill_values_.
         """
         X_train = pd.DataFrame(
             {
-                "gift_date": ["2022-01-01", "2022-06-01", "2022-09-01"],
-                "gift_amount": [100.0, 200.0, 300.0],
+                "estimated_net_worth": [100_000.0, np.nan, 300_000.0],
                 "real_estate_value": [np.nan, 500_000.0, np.nan],
             }
         )
         X_test = pd.DataFrame(
             {
-                "gift_date": ["2023-01-01"],
-                "gift_amount": [999_999.0],       # extreme future gift
-                "real_estate_value": [50_000_000.0],  # extreme future wealth
+                "estimated_net_worth": [99_000_000.0],
+                "real_estate_value": [50_000_000.0],
             }
         )
 
         imputer = WealthScreeningImputer(
-            wealth_cols=["real_estate_value"], strategy="median"
+            wealth_cols=["estimated_net_worth", "real_estate_value"],
+            strategy="median",
         )
-        cleaner = CRMCleaner(wealth_imputer=imputer)
-        cleaner.fit(X_train)
+        imputer.fit(X_train)
 
-        # Training fill = median of [500_000] = 500_000
+        # Training median of real_estate_value: [500_000] = 500_000
         assert imputer.fill_values_["real_estate_value"] == pytest.approx(500_000.0), (
-            "After CRMCleaner.fit(X_train), fill should be 500_000 (training median)."
+            "After fit(X_train), fill should be 500_000 (training median)."
         )
 
-        # Transform test set
-        out_test = cleaner.transform(X_test)
+        _ = imputer.transform(X_test)
 
         # Fill value must still be 500_000, not contaminated by 50_000_000
         final_fill = imputer.fill_values_["real_estate_value"]

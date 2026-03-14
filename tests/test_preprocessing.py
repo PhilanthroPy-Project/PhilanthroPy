@@ -22,6 +22,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
+try:
+    from sklearn.utils._param_validation import InvalidParameterError
+except ImportError:
+    InvalidParameterError = ValueError
+
 from philanthropy.preprocessing import (
     CRMCleaner,
     EncounterTransformer,
@@ -74,8 +79,8 @@ class TestCRMCleaner:
         assert set(cleaner.feature_names_in_) == set(donor_df.columns)
 
     def test_invalid_fiscal_year_start_raises(self):
-        cleaner = CRMCleaner(fiscal_year_start=13)
-        with pytest.raises(ValueError, match="fiscal_year_start"):
+        with pytest.raises((ValueError, InvalidParameterError), match="fiscal_year_start"):
+            cleaner = CRMCleaner(fiscal_year_start=13)
             cleaner.fit(pd.DataFrame({"gift_date": ["2023-01-01"], "gift_amount": [100.0]}))
 
     def test_amount_col_coerced_to_float(self):
@@ -152,8 +157,8 @@ class TestWealthScreeningImputer:
         assert out.loc[1, "estimated_net_worth__was_missing"] == 0
 
     def test_invalid_strategy_raises(self):
-        imp = WealthScreeningImputer(strategy="mode")
-        with pytest.raises(ValueError, match="strategy"):
+        with pytest.raises((ValueError, InvalidParameterError), match="strategy"):
+            imp = WealthScreeningImputer(strategy="mode")
             imp.fit(pd.DataFrame({"estimated_net_worth": [1e6]}))
 
     def test_fill_value_frozen_from_train(self):
@@ -223,8 +228,8 @@ class TestFiscalYearTransformer:
         assert quarters.max() <= 4
 
     def test_invalid_fiscal_year_start(self):
-        t = FiscalYearTransformer(fiscal_year_start=0)
-        with pytest.raises(ValueError, match="fiscal_year_start"):
+        with pytest.raises((ValueError, InvalidParameterError), match="fiscal_year_start"):
+            t = FiscalYearTransformer(fiscal_year_start=0)
             t.fit(pd.DataFrame({"gift_date": ["2023-01-01"]}))
 
 

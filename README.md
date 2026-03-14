@@ -387,6 +387,14 @@ When adding a new test file that imports a new class:
 - THEN run `make ci`
 - THEN git add + commit + push
 
+A single test file must never assert contradictory shapes or column counts for the same transformer. Before committing a test file, run:
+
+```bash
+grep -n "shape\|columns\|n_by" tests/<file>.py
+```
+
+and confirm all shape assertions are consistent with each other.
+
 ### Additional checks
 
 After cloning, run `sh scripts/install_hooks.sh` to install the pre-push hook. This runs the full test suite before every push, preventing collection errors from reaching CI.

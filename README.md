@@ -82,7 +82,7 @@ scores = model.predict_affinity_score(X)   # 0–100 affinity scale
 | `DonorPropensityModel` | Random Forest classifier with `predict_affinity_score()` returning a 0–100 scale |
 | `MajorGiftClassifier` | Calibrated `HistGradientBoostingClassifier` — NaN-native, with `predict_affinity_score()` |
 | `ShareOfWalletRegressor` | Estimates total giving capacity and untapped-potential ratio |
-| `LapsePredictor` | Random Forest classifier for donor lapse; standard fit(X,y), `predict_lapse_score()` 0–100 |
+| `LapsePredictor` | Random Forest classifier for donor lapse; see full docs below |
 | `MovesManagementClassifier` | Multi-class portfolio stage predictor |
 | `PropensityScorer` | Lightweight logistic propensity baseline |
 | `PlannedGivingIntentScorer` ⭐ **NEW** | Wraps GradientBoostingClassifier to predict bequest intent scores (0-100 scale) |
@@ -106,6 +106,52 @@ scores = model.predict_affinity_score(X)   # 0–100 affinity scale
 | Function | Description |
 |---|---|
 | `generate_synthetic_donor_data` | Reproducible synthetic prospect pool — `n_samples`, `random_state` |
+
+---
+
+### LapsePredictor
+
+Production Random Forest classifier for donor lapse risk. Predicts whether a donor will lapse within a configurable window.
+
+| Parameter       | Type                 | Default | Description                |
+|-----------------|----------------------|---------|----------------------------|
+| n_estimators    | int                  | 100     | Number of trees            |
+| max_depth       | int or None          | None    | Maximum tree depth         |
+| min_samples_leaf| int                  | 1       | Min samples per leaf       |
+| class_weight    | dict/"balanced"/None | None    | Class weighting            |
+| lapse_window_years | int               | 2       | Prediction window in years |
+| random_state    | int or None          | None    | Reproducibility seed       |
+
+**Fitted attributes**
+
+| Attribute   | Description                            |
+|-------------|----------------------------------------|
+| estimator_  | Trained RandomForestClassifier         |
+| classes_    | Array of class labels                  |
+| n_features_in_ | Feature count from fit              |
+
+**Methods**
+
+| Method               | Returns         | Description                               |
+|----------------------|-----------------|-------------------------------------------|
+| .fit(X, y)           | self            | Train on features and binary lapse label  |
+| .predict(X)          | ndarray (n,)    | Binary predictions (1 = at-risk)          |
+| .predict_proba(X)    | ndarray (n,2)   | Class probabilities                       |
+| .predict_lapse_score(X) | ndarray (n,) | P(lapse) × 100, range [0.0, 100.0]        |
+
+```python
+from philanthropy.models import LapsePredictor
+
+predictor = LapsePredictor(
+    n_estimators=200,
+    lapse_window_years=3,
+    class_weight="balanced",
+    random_state=42,
+)
+predictor.fit(X, y)
+at_risk = predictor.predict(X)           # 1 = at risk of lapsing
+scores  = predictor.predict_lapse_score(X)  # 0–100 lapse risk score
+```
 
 ---
 

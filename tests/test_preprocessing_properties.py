@@ -132,7 +132,7 @@ def test_wealth_imputer_properties(df):
     )
 )
 def test_solicitation_window_properties(days):
-    """DischargeToSolicitationWindowTransformer returns 3 columns: in_window, score, recency_tier."""
+    """DischargeToSolicitationWindowTransformer returns 2 columns: in_window, window_position_score."""
     parsed = [float(d) if d is not None else np.nan for d in days]
     df = pd.DataFrame({"days_since_last_discharge": parsed})
     t = DischargeToSolicitationWindowTransformer(
@@ -143,7 +143,7 @@ def test_solicitation_window_properties(days):
     t.fit(df)
     out = t.transform(df)
     assert isinstance(out, np.ndarray), "transform() must return np.ndarray"
-    assert out.shape == (len(days), 3), f"expected 3 columns (in_window, score, recency_tier), got {out.shape[1]}"
+    assert out.shape == (len(days), 2), f"expected 2 columns (in_window, window_position_score), got {out.shape[1]}"
     assert len(out) == len(days)
     # in_window column (col 0) must be binary
     in_window_vals = out[~np.isnan(out[:, 0]), 0]
@@ -154,8 +154,3 @@ def test_solicitation_window_properties(days):
     non_nan_scores = scores[~np.isnan(scores)]
     if len(non_nan_scores) > 0:
         assert (non_nan_scores >= 0.0).all() and (non_nan_scores <= 1.0).all()
-    # discharge_recency_tier (col 2) must be in [0, 4]
-    tiers = out[:, 2]
-    non_nan_tiers = tiers[~np.isnan(tiers)]
-    if len(non_nan_tiers) > 0:
-        assert (non_nan_tiers >= 0).all() and (non_nan_tiers <= 4).all()

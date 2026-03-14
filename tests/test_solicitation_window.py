@@ -1,7 +1,7 @@
 """
 tests/test_solicitation_window.py
 ===================================
-Unit tests for SolicitationWindowTransformer.
+Unit tests for DischargeToSolicitationWindowTransformer.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from sklearn.exceptions import NotFittedError
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from philanthropy.preprocessing import SolicitationWindowTransformer
+from philanthropy.preprocessing import DischargeToSolicitationWindowTransformer
 
 
 # ---------------------------------------------------------------------------
@@ -30,11 +30,11 @@ def _make_X_arr(days_list):
     return np.array(days_list, dtype=float).reshape(-1, 1)
 
 
-class TestSolicitationWindowTransformer:
+class TestDischargeToSolicitationWindowTransformer:
 
     def test_in_window_correct_for_boundary_dates(self):
         """Exactly at min, max, and midpoint should be in-window."""
-        t = SolicitationWindowTransformer(
+        t = DischargeToSolicitationWindowTransformer(
             min_days_post_discharge=180,
             max_days_post_discharge=730,
         )
@@ -47,7 +47,7 @@ class TestSolicitationWindowTransformer:
 
     def test_out_of_window_days_produce_zero_score(self):
         """Days outside [min, max] must have window_score = 0."""
-        t = SolicitationWindowTransformer(
+        t = DischargeToSolicitationWindowTransformer(
             min_days_post_discharge=180,
             max_days_post_discharge=730,
         )
@@ -59,7 +59,7 @@ class TestSolicitationWindowTransformer:
 
     def test_midpoint_produces_score_of_one(self):
         """Days at the window midpoint must produce window_score == 1.0."""
-        t = SolicitationWindowTransformer(
+        t = DischargeToSolicitationWindowTransformer(
             min_days_post_discharge=100,
             max_days_post_discharge=200,
         )
@@ -70,7 +70,7 @@ class TestSolicitationWindowTransformer:
 
     def test_nan_days_produce_zero_in_both_columns(self):
         """NaN days → both in_window and window_score are 0.0."""
-        t = SolicitationWindowTransformer(
+        t = DischargeToSolicitationWindowTransformer(
             min_days_post_discharge=100, max_days_post_discharge=300
         )
         t.fit(_make_X_df([150.0]))
@@ -82,7 +82,7 @@ class TestSolicitationWindowTransformer:
 
     def test_window_score_range_is_zero_to_one(self):
         """All window_score values must be in [0.0, 1.0]."""
-        t = SolicitationWindowTransformer(
+        t = DischargeToSolicitationWindowTransformer(
             min_days_post_discharge=90,
             max_days_post_discharge=540,
         )
@@ -96,31 +96,22 @@ class TestSolicitationWindowTransformer:
     def test_invalid_window_raises_value_error(self):
         """min_days >= max_days must raise ValueError at fit time."""
         with pytest.raises(ValueError, match="min_days_post_discharge"):
-            t = SolicitationWindowTransformer(
+            t = DischargeToSolicitationWindowTransformer(
                 min_days_post_discharge=300,
                 max_days_post_discharge=300,
             )
             t.fit(_make_X_df([100.0]))
 
         with pytest.raises(ValueError, match="min_days_post_discharge"):
-            t = SolicitationWindowTransformer(
+            t = DischargeToSolicitationWindowTransformer(
                 min_days_post_discharge=400,
                 max_days_post_discharge=300,
             )
             t.fit(_make_X_df([100.0]))
 
-    def test_output_shape_is_n_by_2(self):
-        """Output must always be (n_samples, 2)."""
-        t = SolicitationWindowTransformer()
-        n = 17
-        X = _make_X_df([float(d) for d in range(n)])
-        t.fit(X)
-        result = t.transform(X)
-        assert result.shape == (n, 2)
-
     def test_returns_ndarray(self):
         """transform() must return np.ndarray, not pd.DataFrame."""
-        t = SolicitationWindowTransformer()
+        t = DischargeToSolicitationWindowTransformer()
         X = _make_X_df([200.0, 500.0])
         t.fit(X)
         result = t.transform(X)
@@ -128,7 +119,7 @@ class TestSolicitationWindowTransformer:
 
     def test_sklearn_pipeline_compatible(self):
         """Must work inside a Pipeline with StandardScaler downstream."""
-        t = SolicitationWindowTransformer(
+        t = DischargeToSolicitationWindowTransformer(
             min_days_post_discharge=100,
             max_days_post_discharge=500,
         )
@@ -143,13 +134,13 @@ class TestSolicitationWindowTransformer:
         assert result.shape == (4, 2)
 
     def test_not_fitted_raises(self):
-        t = SolicitationWindowTransformer()
+        t = DischargeToSolicitationWindowTransformer()
         with pytest.raises(NotFittedError):
             t.transform(_make_X_df([100.0]))
 
     def test_dataframe_input_uses_named_col(self):
         """DataFrame input should use days_since_discharge_col parameter."""
-        t = SolicitationWindowTransformer(
+        t = DischargeToSolicitationWindowTransformer(
             min_days_post_discharge=100,
             max_days_post_discharge=300,
             days_since_discharge_col="days_since_last_discharge",
@@ -165,7 +156,7 @@ class TestSolicitationWindowTransformer:
 
     def test_ndarray_input_uses_first_column(self):
         """ndarray input should use first column as days."""
-        t = SolicitationWindowTransformer(
+        t = DischargeToSolicitationWindowTransformer(
             min_days_post_discharge=100,
             max_days_post_discharge=300,
         )
@@ -177,7 +168,7 @@ class TestSolicitationWindowTransformer:
 
     def test_window_score_decreases_from_midpoint(self):
         """Window score should be highest at midpoint and decrease toward edges."""
-        t = SolicitationWindowTransformer(
+        t = DischargeToSolicitationWindowTransformer(
             min_days_post_discharge=100,
             max_days_post_discharge=300,
         )

@@ -363,6 +363,32 @@ pytest tests/test_leakage.py -v
 
 ## Contributing
 
+### Before pushing any commit
+
+Always run the full local gate first:
+
+```bash
+make ci
+```
+
+This runs in the exact same order as GitHub Actions:
+1. Collection check — catches missing imports immediately
+2. Full test suite
+3. Coverage gate (≥ 85%)
+
+If `make ci` passes, your push will pass CI.
+Never use `git push --no-verify`.
+
+When adding a new test file that imports a new class:
+- Implement the class FIRST
+- Add the export to `__init__.py` FIRST
+- Verify: `python -c "from philanthropy.X import Y; print('OK')"`
+- THEN write the test file
+- THEN run `make ci`
+- THEN git add + commit + push
+
+### Additional checks
+
 After cloning, run `sh scripts/install_hooks.sh` to install the pre-push hook. This runs the full test suite before every push, preventing collection errors from reaching CI.
 
 Before committing a new test file, always verify:

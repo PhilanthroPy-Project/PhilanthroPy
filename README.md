@@ -85,7 +85,7 @@ from philanthropy.ingest import read_constituent_events, constituent_events_to_f
 from philanthropy.models import DonorPropensityModel
 
 # 1. Load whatever UniSchema egressed — a .ndjson batch, a .json file, or a directory
-events = read_constituent_events("unischema_egress/")
+events = read_constituent_events("data/egress/")
 
 # 2. Aggregate to one row per donor — columns match the Quick Start above
 features = constituent_events_to_features(events)
@@ -134,7 +134,7 @@ features["affinity_score"] = model.predict_affinity_score(X)
 | `ShareOfWalletRegressor` | Estimates total giving capacity and untapped-potential ratio |
 | `LapsePredictor` | Random Forest classifier for donor lapse; see full docs below |
 | `MovesManagementClassifier` | Multi-class portfolio stage predictor |
-| `PropensityScorer` | Lightweight logistic propensity baseline |
+| `PropensityScorer` | Constant-probability baseline (P=0.5) — a floor to beat; use `DonorPropensityModel` for real scoring |
 | `PlannedGivingIntentScorer` ⭐ **NEW** | Wraps GradientBoostingClassifier to predict bequest intent scores (0-100 scale) |
 | `FinancialForecastModel` ⭐ **NEW** | Hybrid LSTM-ARIMA revenue/giving forecaster with `predict_revenue_forecast(X, horizon)`; leakage-safe, dependency-free, sklearn-native |
 
@@ -371,7 +371,8 @@ philanthropy/
 │   ├── _wallet.py
 │   ├── _lapse.py
 │   ├── _planned_giving.py
-│   └── _moves.py
+│   ├── _moves.py
+│   └── _forecast.py
 ├── metrics/
 │   ├── scoring.py
 │   └── _financial.py
@@ -420,33 +421,9 @@ gift_features = preprocessor.fit_transform(gift_df)
 
 ## Testing
 
-| Test file                        | Tests | What's covered |
-|----------------------------------|-------|----------------|
-| test_sklearn_compliance.py       | 417   | check_estimator for all public estimators |
-| test_sklearn_compat.py           | 230   | sklearn API compliance |
-| test_donor_propensity_model.py   | 84    | DonorPropensityModel — affinity, pipeline, edge cases |
-| test_propensity.py               | 75    | PropensityScorer, LapsePredictor — full production coverage |
-| test_preprocessing.py            | 35    | FiscalYearTransformer, CRMCleaner, WealthScreeningImputer |
-| test_share_of_wallet.py          | 25    | ShareOfWalletRegressor — capacity_floor, NaN inputs, predict_capacity_ratio |
-| test_rfm_transformer.py          | 20    | RFMTransformer — recency/frequency/monetary, reference_date, leakage freeze |
-| test_major_gift_classifier.py    | 20    | MajorGiftClassifier — calibrated proba, affinity score, check_estimator |
-| test_datasets.py                 | 19    | generate_synthetic_donor_data |
-| test_metrics.py                  | 18    | donor_retention_rate, donor_acquisition_cost, donor_lifetime_value |
-| test_planned_giving.py           | 15    | PlannedGivingIntentScorer, PlannedGivingSignalTransformer |
-| test_grateful_patient_featurizer.py | 15  | GratefulPatientFeaturizer |
-| test_properties.py               | 14    | Hypothesis property-based tests |
-| test_leakage.py                  | 14    | WealthScreeningImputer API, fill-value freeze |
-| test_visualisation.py            | 12    | plot_affinity_distribution headless, all public plot functions |
-| test_solicitation_window.py      | 12    | DischargeToSolicitationWindowTransformer |
-| test_coverage_boost.py           | 6     | Coverage expansion tests |
-| test_financial.py                | 5     | donor_lifetime_value |
-| test_utils.py                    | 4     | make_donor_dataset, validation |
-| test_rfm.py                      | 4     | RFMTransformer |
-| test_preprocessing_properties.py | 3     | Hypothesis for preprocessing |
-| test_estimators.py               | 3     | Estimator checks |
-| test_transformers_property.py    | 2     | Transformer property tests |
-
-**1158 tests** across 26 test files.
+**1158 tests** across 26 files — `check_estimator` compliance for every public
+estimator, property-based (Hypothesis) suites, and a dedicated temporal-leakage
+suite.
 
 ```bash
 # Full suite
@@ -486,14 +463,14 @@ pytest tests/test_leakage.py -v
 - Makefile (make ci)
 - Branch protection + PR workflow
 - `philanthropy.ingest` — UniSchema `ConstituentEvent` → donor feature bridge
+- MkDocs Material documentation site (GitHub Pages)
+- PyPI release (`pip install philanthropy`)
+- `philanthropy.visualisation.plot_retention_waterfall()`
 
 ### 🔜 Next
 
-- Full Sphinx documentation site (readthedocs.io)
-- PyPI release (pip install philanthropy)
-- philanthropy.visualisation.plot_retention_waterfall()
-- philanthropy.visualisation.plot_capacity_heatmap()
-- EnsemblePropensityModel (stacked LapsePredictor + DonorPropensityModel)
+- `philanthropy.visualisation.plot_capacity_heatmap()`
+- `EnsemblePropensityModel` (stacked LapsePredictor + DonorPropensityModel)
 
 ---
 

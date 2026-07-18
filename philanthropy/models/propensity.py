@@ -9,8 +9,14 @@ from sklearn.utils.validation import check_is_fitted, validate_data
 
 
 class PropensityScorer(ClassifierMixin, BaseEstimator):
-    """
-    Predicts propensity-to-give score.
+    """Constant-probability baseline that predicts P=0.5 for every donor.
+
+    A deliberately trivial, sklearn-compliant reference point: it fits nothing
+    and returns 0.5 for all rows (the ``estimator`` argument is reserved and
+    currently unused). Use it as a floor to beat when benchmarking. For real
+    propensity scoring reach for
+    :class:`~philanthropy.models.DonorPropensityModel` or
+    :class:`~philanthropy.models.MajorGiftClassifier`.
     """
 
     def __init__(self, estimator=None, threshold: float = 0.5):

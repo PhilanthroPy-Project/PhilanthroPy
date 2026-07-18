@@ -26,7 +26,7 @@ FEATURES = ["total_gift_amount", "years_active", "event_attendance_count"]
 
 # A tiny in-memory ConstituentEvent batch, exactly as UniSchema egresses it.
 # In practice you'd load a .ndjson batch or a directory with
-# ``read_constituent_events("unischema_egress/")`` instead of inlining dicts.
+# ``read_constituent_events("data/egress/")`` instead of inlining dicts.
 EVENTS = [
     {"eventId": "1", "constituentEmail": "ada@uni.edu", "eventType": "DONATION",
      "sourceSystem": "GIVECAMPUS", "amount": 250.0, "createdAt": "2022-03-01T12:00:00Z"},

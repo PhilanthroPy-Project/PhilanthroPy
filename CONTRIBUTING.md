@@ -3,6 +3,18 @@
 Thanks for helping improve PhilanthroPy! This guide covers the local checks
 every change must pass before it reaches CI.
 
+## Setup
+
+```bash
+git clone https://github.com/PhilanthroPy-Project/PhilanthroPy.git
+cd PhilanthroPy
+pip install -e ".[dev]"          # editable install so the working tree is what's tested
+sh scripts/install_hooks.sh      # pre-push hook: runs the suite before every push
+```
+
+Install editable — a non-editable copy in site-packages will shadow your edits
+under pytest and silently run stale code.
+
 ## Before pushing any commit
 
 Always run the full local gate first:

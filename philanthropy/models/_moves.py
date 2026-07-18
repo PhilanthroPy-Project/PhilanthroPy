@@ -57,6 +57,13 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
         return self.estimator_.predict_proba(X)
 
     def predict_action_priority(self, X) -> dict:
+        """Predict the next-best stage per donor plus a portfolio rollup.
+
+        Unlike ``predict``/``predict_proba`` (which return ndarrays), this
+        returns a dict with keys ``"stage"`` (ndarray of predicted stage
+        labels), ``"confidence"`` (ndarray of max class probabilities), and
+        ``"portfolio_summary"`` (dict mapping each stage to its donor count).
+        """
         check_is_fitted(self)
         X = validate_data(self, X, reset=False)
         

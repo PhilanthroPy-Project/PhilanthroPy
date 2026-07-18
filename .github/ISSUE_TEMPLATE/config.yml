@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📖 Documentation
+    url: https://PhilanthroPy-Project.github.io/PhilanthroPy/
+    about: Check the docs first — many questions are answered there.
+  - name: 🔗 UniSchema (event source)
+    url: https://github.com/PhilanthroPy-Project/UniSchema
+    about: Issues about the ConstituentEvent stream itself belong in UniSchema.

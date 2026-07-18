@@ -1,4 +1,3 @@
-import pytest
 from sklearn.utils.estimator_checks import parametrize_with_checks
 from philanthropy.preprocessing import (
     EncounterRecencyTransformer,
@@ -7,7 +6,6 @@ from philanthropy.preprocessing import (
     CRMCleaner,
     FiscalYearTransformer
 )
-from philanthropy.model_selection import FiscalYearGroupedSplitter
 
 ALL_ESTIMATORS = [
     EncounterRecencyTransformer(),

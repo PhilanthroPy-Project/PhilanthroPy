@@ -6,7 +6,6 @@ Property-based tests for PhilanthroPy transformers using Hypothesis.
 
 import numpy as np
 import pandas as pd
-import pytest
 from hypothesis import given, strategies as st, settings, HealthCheck
 from philanthropy.preprocessing import (
     FiscalYearTransformer,

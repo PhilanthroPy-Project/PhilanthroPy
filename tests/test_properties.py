@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from hypothesis import given, settings, assume, strategies as st
+from hypothesis import given, settings, strategies as st
 from hypothesis.extra.pandas import data_frames, column, range_indexes
 from philanthropy.preprocessing import (
     FiscalYearTransformer,

@@ -248,7 +248,6 @@ def test_set_params_round_trip():
 # ---------------------------------------------------------------------------
 
 def test_accepts_pandas_dataframe():
-    import pandas as pd
     df = generate_synthetic_donor_data(n_samples=100, random_state=20)
     feature_cols = ["total_gift_amount", "years_active", "event_attendance_count"]
     X_df = df[feature_cols]

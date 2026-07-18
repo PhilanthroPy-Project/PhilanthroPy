@@ -359,7 +359,6 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
                     UserWarning,
                 )
                 n = len(df)
-                p = f"{prefix}__" if prefix else ""
                 parsed = pd.Series(pd.NaT, index=df.index)
                 parsed = self._parse_dates(pd.Series([None] * n))
 

@@ -1,0 +1,14 @@
+[flake8]
+# Lint for real defects — pyflakes (unused imports/vars, undefined names, f-string
+# bugs) and syntax errors (E9) — rather than fighting a formatter over whitespace
+# and line length. Run: make lint
+select = F,E9
+exclude =
+    .git,
+    __pycache__,
+    build,
+    dist,
+    site,
+    .hypothesis,
+    .pytest_cache,
+    *.egg-info

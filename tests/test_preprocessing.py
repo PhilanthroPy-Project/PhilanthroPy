@@ -40,8 +40,6 @@ from philanthropy.preprocessing import (
 try:
     from hypothesis import HealthCheck, given, settings
     from hypothesis import strategies as st
-    from hypothesis.extra.pandas import column, data_frames
-    import hypothesis.extra.pandas as hpd
 
     _HYPOTHESIS_AVAILABLE = True
 except ImportError:

@@ -90,7 +90,7 @@ def plot_retention_waterfall(starting_donors, acquired, lapsed, recovered) -> pl
     ]
     
     fig, ax = plt.subplots(figsize=(10, 6))
-    bars = ax.bar(categories, values, bottom=bottoms, color=colors, edgecolor='black')
+    ax.bar(categories, values, bottom=bottoms, color=colors, edgecolor='black')
     
     ax.set_title("Donor Retention Waterfall")
     ax.set_ylabel("Number of Donors")

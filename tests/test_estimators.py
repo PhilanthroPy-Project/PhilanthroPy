@@ -1,4 +1,3 @@
-import pytest
 from sklearn.utils.estimator_checks import check_estimator
 from philanthropy.models import MajorGiftClassifier, LapsePredictor
 import numpy as np

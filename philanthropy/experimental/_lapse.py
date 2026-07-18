@@ -1,4 +1,3 @@
-import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.utils.validation import check_X_y, check_is_fitted, check_array

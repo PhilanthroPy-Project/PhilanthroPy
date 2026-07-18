@@ -43,6 +43,8 @@ _EMAIL_CLICK = "EMAIL_CLICK"
 # so an empty batch still yields a correctly-typed, downstream-safe frame.
 _FEATURE_DTYPES: "dict[str, object]" = {
     "constituent_email": "object",
+    "first_name": "object",
+    "last_name": "object",
     "total_gift_amount": "float64",
     "gift_count": "int64",
     "event_attendance_count": "int64",
@@ -70,8 +72,9 @@ def constituent_events_to_features(
     events : iterable of mapping, or DataFrame
         Records following UniSchema's ``ConstituentEvent`` schema.  Each event
         carries at least ``constituentEmail``, ``eventType``, ``sourceSystem``,
-        and ``createdAt`` (ISO-8601); ``amount``, ``externalConstituentId``, and
-        ``eventId`` are optional.  Accepts the output of
+        and ``createdAt`` (ISO-8601); ``amount``, ``externalConstituentId``,
+        ``eventId``, ``firstName``, and ``lastName`` are optional.  Accepts the
+        output of
         :func:`read_constituent_events`, a list of dicts, or a DataFrame of the
         same fields.
     reference_date : str or datetime-like, optional
@@ -89,8 +92,9 @@ def constituent_events_to_features(
     features : pandas.DataFrame
         One row per constituent, indexed by ``constituent_id`` (the
         ``externalConstituentId`` when present, else ``constituentEmail``), with
-        the columns declared in ``_FEATURE_DTYPES``.  Rows are sorted by
-        ``constituent_id`` for determinism.
+        the columns declared in ``_FEATURE_DTYPES`` (``first_name`` /
+        ``last_name`` are populated from the feed when available, else null).
+        Rows are sorted by ``constituent_id`` for determinism.
 
     Warns
     -----
@@ -173,6 +177,12 @@ def constituent_events_to_features(
     grouped = df.groupby("_constituent_id", sort=True)
     out = pd.DataFrame(index=grouped.size().index)
     out["constituent_email"] = grouped["constituentEmail"].first()
+    # Optional identity fields — carried through when the feed supplies them
+    # (the output is a donor-level table, not a de-identified feature store, so
+    # it already holds constituent_email). ``.first()`` skips nulls, so a donor
+    # whose name rode in on only some events still resolves. Absent column -> None.
+    for out_col, src in (("first_name", "firstName"), ("last_name", "lastName")):
+        out[out_col] = grouped[src].first() if src in df.columns else None
     out["total_gift_amount"] = grouped["_gift_amount"].sum()
     out["gift_count"] = grouped["_is_donation"].sum()
     out["event_attendance_count"] = grouped["_is_event"].sum()

@@ -18,7 +18,7 @@ from philanthropy.ingest._constituent_events import _FEATURE_DTYPES
 
 
 def _event(email, etype, created, *, amount=None, source="GIVECAMPUS",
-           external=None, event_id=None):
+           external=None, event_id=None, first=None, last=None):
     ev = {
         "constituentEmail": email,
         "eventType": etype,
@@ -31,6 +31,10 @@ def _event(email, etype, created, *, amount=None, source="GIVECAMPUS",
         ev["externalConstituentId"] = external
     if event_id is not None:
         ev["eventId"] = event_id
+    if first is not None:
+        ev["firstName"] = first
+    if last is not None:
+        ev["lastName"] = last
     return ev
 
 
@@ -225,6 +229,26 @@ def test_parsing_emits_no_warning():
     with warnings.catch_warnings():
         warnings.simplefilter("error")  # any warning becomes an error
         constituent_events_to_features(events)
+
+
+def test_carries_first_last_name_when_present():
+    events = [
+        _event("ada@uni.edu", "DONATION", "2025-01-01T00:00:00Z", amount=100,
+               first="Ada", last="Lovelace"),
+        # A later event without names must not overwrite the resolved name.
+        _event("ada@uni.edu", "EVENT_REGISTRATION", "2025-02-01T00:00:00Z"),
+    ]
+    feats = constituent_events_to_features(events)
+    assert feats.loc["ada@uni.edu", "first_name"] == "Ada"
+    assert feats.loc["ada@uni.edu", "last_name"] == "Lovelace"
+
+
+def test_names_absent_yields_null_column_not_crash():
+    events = [_event("a@x.edu", "DONATION", "2025-01-01T00:00:00Z", amount=10)]
+    feats = constituent_events_to_features(events)
+    assert "first_name" in feats.columns and "last_name" in feats.columns
+    assert pd.isna(feats.loc["a@x.edu", "first_name"])
+    assert pd.isna(feats.loc["a@x.edu", "last_name"])
 
 
 def test_mixed_currency_warns():

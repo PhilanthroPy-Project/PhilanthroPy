@@ -4,6 +4,19 @@ All notable changes to PhilanthroPy are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
+### Added
+- `examples/quickstart.py` and `examples/unischema_to_scores.py` — runnable,
+  end-to-end scripts (train + score; UniSchema `ConstituentEvent` stream →
+  features → score). Smoke-tested in `tests/test_examples.py`.
+
+### Fixed
+- `EncounterRecencyTransformer` no longer raises `OverflowError` when two
+  encounter dates span more than ~292 years (a `datetime64[ns]` timedelta
+  overflows int64); it falls back to day-resolution differencing.
+
+### Changed
+- README leads installation with `pip install philanthropy`; fixed the Tests
+  badge and the UniSchema scoring snippet.
 
 ## [0.4.0] - 2026-07-17
 ### Added

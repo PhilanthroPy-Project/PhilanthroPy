@@ -4,6 +4,18 @@ All notable changes to PhilanthroPy are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
+### Added
+- `constituent_events_to_features` carries `first_name` / `last_name` through to
+  the donor feature table when the UniSchema feed supplies them (guarded; null
+  when absent).
+- Community health files: `.github` issue/PR templates,
+  `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), and `SECURITY.md`.
+- flake8 lint gate — `.flake8` (enforces pyflakes `F` + syntax `E9` defects),
+  a `make lint` target folded into `make ci`, and a CI step.
+
+### Fixed
+- Cleared 31 real-defect lint violations (unused imports/variables) across the
+  package and tests, including two dead code blocks.
 
 ## [0.4.0] - 2026-07-18
 ### Added

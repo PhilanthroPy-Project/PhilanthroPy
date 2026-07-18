@@ -35,6 +35,7 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
+from pandas.errors import OutOfBoundsTimedelta
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted, validate_data
 
@@ -204,7 +205,13 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         else:
             ref_ts = ref
 
-        delta_days = (ref_ts - dates).dt.days.astype("float64")
+        try:
+            delta_days = (ref_ts - dates).dt.days.astype("float64")
+        except (OverflowError, OutOfBoundsTimedelta):
+            # A datetime64[ns] timedelta overflows int64 once two representable
+            # dates span >~292 years — never real encounter data, but don't crash
+            # on it. Day-resolution differencing always fits in int64 days.
+            delta_days = self._days_since_day_resolution(ref_ts, dates)
 
         # encounter_in_last_90d: 1.0 if <=90 days ago and non-NaN
         in_90d = np.where(dates.isna(), 0.0, (delta_days <= 90.0).astype(np.float64))
@@ -221,6 +228,24 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         cols[f"{p}fiscal_year_of_encounter"] = fy.values
 
         return pd.DataFrame(cols)
+
+    @staticmethod
+    def _days_since_day_resolution(ref_ts, dates: pd.Series) -> pd.Series:
+        """Overflow-safe ``days_since`` for extreme date spans (>~292 years).
+
+        Differences at day resolution so the delta stays inside int64; ``NaT``
+        maps to ``NaN``, matching the nanosecond path.
+        """
+        d = dates
+        if d.dt.tz is not None:
+            d = d.dt.tz_convert("UTC").dt.tz_localize(None)
+        ref = pd.Timestamp(ref_ts)
+        if ref.tzinfo is not None:
+            ref = ref.tz_convert("UTC").tz_localize(None)
+        delta = np.datetime64(ref, "D") - d.to_numpy(dtype="datetime64[D]")
+        return pd.Series(
+            delta / np.timedelta64(1, "D"), index=dates.index
+        ).astype("float64")
 
     # ------------------------------------------------------------------
     # fit / transform

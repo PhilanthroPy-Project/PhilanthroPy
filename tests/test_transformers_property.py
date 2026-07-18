@@ -55,3 +55,13 @@ def test_encounter_transformer_on_dates(df):
         assert result.shape[1] == 3
     except (ValueError, TypeError):
         pass
+
+
+def test_encounter_transformer_no_overflow_on_extreme_span():
+    # Two representable dates >292 years apart overflow a datetime64[ns]
+    # timedelta (int64). The transformer must fall back to day-resolution
+    # instead of raising OverflowError. Regression for that crash.
+    df = pd.DataFrame({"last_encounter_date": ["1806-01-01", "2099-01-01"]})
+    out = EncounterRecencyTransformer().fit_transform(df)
+    assert out.shape == (2, 3)
+    assert np.isfinite(out[:, 0]).all()  # days_since finite for both rows

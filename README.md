@@ -7,11 +7,12 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/dynamic/toml?url=https://raw.githubusercontent.com/PhilanthroPy-Project/PhilanthroPy/main/pyproject.toml&query=$.project.version&label=version&color=blue" alt="version"/>
-  <img src="https://img.shields.io/badge/python-3.9%2B-brightgreen" alt="python"/>
-  <img src="https://img.shields.io/badge/sklearn-compatible-orange" alt="sklearn"/>
-  <img src="https://img.shields.io/badge/docs-GitHub%20Pages-informational" alt="documentation"/>
-  [![Tests](https://github.com/PhilanthroPy-Project/PhilanthroPy/actions/workflows/ci.yml/badge.svg)](https://github.com/PhilanthroPy-Project/PhilanthroPy/actions/workflows/ci.yml)
+  <a href="https://pypi.org/project/philanthropy/"><img src="https://img.shields.io/pypi/v/philanthropy?color=blue" alt="PyPI version"/></a>
+  <img src="https://img.shields.io/pypi/pyversions/philanthropy" alt="Python versions"/>
+  <a href="https://github.com/PhilanthroPy-Project/PhilanthroPy/actions/workflows/ci.yml"><img src="https://github.com/PhilanthroPy-Project/PhilanthroPy/actions/workflows/ci.yml/badge.svg" alt="Tests"/></a>
+  <img src="https://img.shields.io/badge/sklearn-compatible-orange" alt="sklearn compatible"/>
+  <a href="https://PhilanthroPy-Project.github.io/PhilanthroPy/"><img src="https://img.shields.io/badge/docs-GitHub%20Pages-informational" alt="documentation"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/pypi/l/philanthropy?color=green" alt="License"/></a>
 </p>
 
 <p align="center">
@@ -29,6 +30,13 @@ PhilanthroPy is a production-ready Python library that slots directly into `skle
 ## Installation
 
 ```bash
+pip install philanthropy
+```
+
+<details>
+<summary>From source (for development)</summary>
+
+```bash
 git clone https://github.com/PhilanthroPy-Project/PhilanthroPy.git
 cd PhilanthroPy
 pip install -e ".[dev]"
@@ -39,6 +47,7 @@ Or with Conda:
 conda env create -f environment.yml && conda activate Philanthropy
 pip install -e ".[dev]"
 ```
+</details>
 
 ---
 
@@ -56,6 +65,8 @@ model = DonorPropensityModel(n_estimators=200, random_state=0)
 model.fit(X, y)
 scores = model.predict_affinity_score(X)   # 0–100 affinity scale
 ```
+
+> **Runnable scripts:** [`examples/quickstart.py`](examples/quickstart.py) and [`examples/unischema_to_scores.py`](examples/unischema_to_scores.py) run end to end and are smoke-tested in CI.
 
 <p align="center">
   <img src="docs/assets/affinity_distribution.png" alt="Affinity score distribution separating major from non-major donors" width="640"/>
@@ -79,9 +90,10 @@ events = read_constituent_events("unischema_egress/")
 # 2. Aggregate to one row per donor — columns match the Quick Start above
 features = constituent_events_to_features(events)
 
-# 3. Score
+# 3. Score with a model trained on your labelled giving history (X_train, y_train).
+#    Runnable end-to-end version: examples/unischema_to_scores.py
 X = features[["total_gift_amount", "years_active", "event_attendance_count"]].to_numpy()
-model = DonorPropensityModel(n_estimators=200, random_state=0).fit(X, y_train)
+model = DonorPropensityModel(n_estimators=200, random_state=0).fit(X_train, y_train)
 features["affinity_score"] = model.predict_affinity_score(X)
 ```
 
@@ -434,7 +446,7 @@ gift_features = preprocessor.fit_transform(gift_df)
 | test_estimators.py               | 3     | Estimator checks |
 | test_transformers_property.py    | 2     | Transformer property tests |
 
-**1052 tests** across 23 test files.
+**1158 tests** across 26 test files.
 
 ```bash
 # Full suite

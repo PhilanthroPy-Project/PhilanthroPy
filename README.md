@@ -65,7 +65,39 @@ scores = model.predict_affinity_score(X)   # 0–100 affinity scale
 
 ---
 
-## Feature Overview — v0.3.0
+## From UniSchema events to scores
+
+PhilanthroPy is the modeling half of an ecosystem. [UniSchema](https://github.com/PhilanthroPy-Project/UniSchema) normalizes fragmented advancement webhooks (GiveCampus, Slate, NPSP, Cvent, …) into a single `ConstituentEvent` stream. `philanthropy.ingest` turns that stream into the donor-level feature table the estimators expect — no glue code between the two projects:
+
+```python
+from philanthropy.ingest import read_constituent_events, constituent_events_to_features
+from philanthropy.models import DonorPropensityModel
+
+# 1. Load whatever UniSchema egressed — a .ndjson batch, a .json file, or a directory
+events = read_constituent_events("unischema_egress/")
+
+# 2. Aggregate to one row per donor — columns match the Quick Start above
+features = constituent_events_to_features(events)
+
+# 3. Score
+X = features[["total_gift_amount", "years_active", "event_attendance_count"]].to_numpy()
+model = DonorPropensityModel(n_estimators=200, random_state=0).fit(X, y_train)
+features["affinity_score"] = model.predict_affinity_score(X)
+```
+
+`constituent_events_to_features` is **leakage-safe** (recency anchored to an explicit `reference_date` or the batch's latest event, never a moving "now") and **at-least-once-safe** (deduplicates redelivered webhooks by `eventId`). Output, one row per constituent indexed by `constituent_id`:
+
+| Column | Built from |
+|---|---|
+| `total_gift_amount`, `gift_count`, `first_gift_date`, `last_gift_date` | `DONATION` events |
+| `event_attendance_count` | `EVENT_REGISTRATION` events |
+| `email_click_count` | `EMAIL_CLICK` events |
+| `years_active`, `recency_days` | first / last event vs. reference date |
+| `distinct_source_systems` | channel breadth |
+
+---
+
+## Feature Overview — v0.4.0
 
 ### 🧹 Preprocessing
 
@@ -113,6 +145,13 @@ scores = model.predict_affinity_score(X)   # 0–100 affinity scale
 | Function | Description |
 |---|---|
 | `generate_synthetic_donor_data` | Reproducible synthetic prospect pool — `n_samples`, `random_state` |
+
+### 🔌 Ingest ⭐ **NEW**
+
+| Function | Description |
+|---|---|
+| `constituent_events_to_features` | Aggregate a UniSchema `ConstituentEvent` stream into a one-row-per-donor feature table; leakage-safe, deduplicates by `eventId` |
+| `read_constituent_events` | Load UniSchema's JSON / NDJSON / directory egress into a list of event dicts |
 
 ---
 
@@ -298,6 +337,8 @@ scores = pipe.predict_proba(X_test)[:, 1]
 
 ```
 philanthropy/
+├── ingest/
+│   └── _constituent_events.py   # UniSchema ConstituentEvent → donor features
 ├── datasets/
 │   └── _generator.py
 ├── preprocessing/
@@ -432,6 +473,7 @@ pytest tests/test_leakage.py -v
 - Coverage gate (≥ 85%)
 - Makefile (make ci)
 - Branch protection + PR workflow
+- `philanthropy.ingest` — UniSchema `ConstituentEvent` → donor feature bridge
 
 ### 🔜 Next
 

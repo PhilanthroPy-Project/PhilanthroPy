@@ -5,6 +5,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-17
+### Added
+- `philanthropy.ingest` — the UniSchema on-ramp. `constituent_events_to_features()`
+  aggregates a UniSchema `ConstituentEvent` stream into a one-row-per-donor
+  feature table whose columns (`total_gift_amount`, `years_active`,
+  `event_attendance_count`, `last_gift_date`, ...) feed the estimators directly;
+  `read_constituent_events()` loads UniSchema's JSON / NDJSON egress files.
+  Leakage-safe (recency anchored to an explicit `reference_date` or the batch's
+  latest event), at-least-once-safe (deduplicates by `eventId`).
+- `constituent_events_to_features` and `read_constituent_events` re-exported at
+  the top level (`from philanthropy import constituent_events_to_features`).
+- tests/test_ingest.py (aggregation, identity resolution, dedup, file/dir
+  readers, estimator integration)
+
 ## [0.3.0] - 2026-07-17
 ### Added
 - FinancialForecastModel: hybrid LSTM-ARIMA revenue/giving forecaster

@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use PhilanthroPy in your research, please cite it as below."
+title: "PhilanthroPy: A scikit-learn compatible toolkit for predictive donor analytics"
+abstract: >-
+  PhilanthroPy is a production-ready, scikit-learn native library for nonprofit
+  and academic medical center (AMC) fundraising analytics — donor propensity,
+  lapse prediction, planned-giving intent, wealth screening, and hybrid
+  revenue forecasting — with leakage-safe, pipeline-compatible estimators.
+type: software
+authors:
+  - family-names: Lalakiya
+    given-names: Shivam
+    email: shivamlalakiya151299@gmail.com
+version: 0.3.0
+date-released: "2026-07-17"
+license: MIT
+repository-code: "https://github.com/PhilanthroPy-Project/PhilanthroPy"
+url: "https://PhilanthroPy-Project.github.io/PhilanthroPy/"
+keywords:
+  - nonprofit
+  - fundraising
+  - scikit-learn
+  - donor-analytics
+  - healthcare-philanthropy

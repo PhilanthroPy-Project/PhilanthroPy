@@ -4,13 +4,37 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "philanthropy"
-version = "0.2.0"
+version = "0.3.0"
 description = "A scikit-learn compatible toolkit for predictive donor analytics in the nonprofit sector."
-authors = [
-    { name = "Your Name", email = "your.email@example.com" }
-]
 readme = "README.md"
 requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Shivam Lalakiya", email = "shivamlalakiya151299@gmail.com" }
+]
+keywords = [
+    "nonprofit",
+    "fundraising",
+    "scikit-learn",
+    "donor-analytics",
+    "healthcare-philanthropy",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
 dependencies = [
     "scikit-learn",
     "pandas",
@@ -34,6 +58,13 @@ docs = [
     "pandas",
     "scikit-learn"
 ]
+
+[project.urls]
+Homepage = "https://github.com/PhilanthroPy-Project/PhilanthroPy"
+Documentation = "https://PhilanthroPy-Project.github.io/PhilanthroPy/"
+Repository = "https://github.com/PhilanthroPy-Project/PhilanthroPy"
+Changelog = "https://github.com/PhilanthroPy-Project/PhilanthroPy/blob/main/CHANGELOG.md"
+Issues = "https://github.com/PhilanthroPy-Project/PhilanthroPy/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]

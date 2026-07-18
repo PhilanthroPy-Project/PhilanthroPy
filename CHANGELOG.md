@@ -5,6 +5,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-17
+### Added
+- FinancialForecastModel: hybrid LSTM-ARIMA revenue/giving forecaster
+  (linear ARIMA-surrogate + neural residual component) with
+  `predict_revenue_forecast(X, horizon)`; leakage-safe — fill values and
+  autoregressive coefficients frozen at `fit()`; passes sklearn
+  `check_estimator`
+- tests/test_forecast_model.py (fit/predict, forecast horizon, leakage,
+  NaN handling, check_estimator compliance)
+- PyPI packaging: complete project metadata, classifiers, keywords, and
+  project URLs (docs / repo / changelog / issues); version bumped to 0.3.0
+- MANIFEST.in so the sdist ships source only (no tests/dev artifacts)
+- PyPI Trusted Publishing workflow (.github/workflows/publish.yml) — OIDC,
+  no stored token, fires on published GitHub Releases (v*.*.*)
+- CONTRIBUTING.md split out of the README
+- CITATION.cff for Zenodo/DOI archival
+- README "Research" section mapping the literature to concrete estimators,
+  and an affinity-distribution visual
+
 ## [0.2.0] - 2026-03-14
 ### Added
 - GitHub Actions CI workflow (Python 3.10 + 3.11 matrix)

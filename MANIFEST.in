@@ -1,0 +1,16 @@
+include LICENSE README.md CHANGELOG.md CITATION.cff
+
+prune tests
+prune docs
+prune site
+prune scripts
+prune .github
+prune .hypothesis
+
+exclude test_val.py
+exclude .coverage
+exclude environment.yml
+exclude mkdocs.yml
+
+global-exclude *.py[cod]
+global-exclude __pycache__

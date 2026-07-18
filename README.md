@@ -57,9 +57,15 @@ model.fit(X, y)
 scores = model.predict_affinity_score(X)   # 0–100 affinity scale
 ```
 
+<p align="center">
+  <img src="docs/assets/affinity_distribution.png" alt="Affinity score distribution separating major from non-major donors" width="640"/>
+  <br/>
+  <em>Output of <code>plot_affinity_distribution()</code>: the 0–100 affinity scores cleanly separate major from non-major donors.</em>
+</p>
+
 ---
 
-## Feature Overview — v0.2.0
+## Feature Overview — v0.3.0
 
 ### 🧹 Preprocessing
 
@@ -86,6 +92,7 @@ scores = model.predict_affinity_score(X)   # 0–100 affinity scale
 | `MovesManagementClassifier` | Multi-class portfolio stage predictor |
 | `PropensityScorer` | Lightweight logistic propensity baseline |
 | `PlannedGivingIntentScorer` ⭐ **NEW** | Wraps GradientBoostingClassifier to predict bequest intent scores (0-100 scale) |
+| `FinancialForecastModel` ⭐ **NEW** | Hybrid LSTM-ARIMA revenue/giving forecaster with `predict_revenue_forecast(X, horizon)`; leakage-safe, dependency-free, sklearn-native |
 
 ### 🔀 Model Selection
 
@@ -227,6 +234,30 @@ Bequest/planned giving intent classifier. GradientBoostingClassifier + Calibrate
 
 ---
 
+### FinancialForecastModel
+
+Hybrid **LSTM-ARIMA** revenue/giving forecaster. Decomposes a giving series into a linear (ARIMA-surrogate) component fitted with `LinearRegression` and a nonlinear (LSTM-surrogate) residual component fitted with `MLPRegressor` — reproducing the additive hybrid `y = linear(X) + nonlinear_residual(X)` with **no heavy dependencies** (no TensorFlow / statsmodels). Multi-step forecasts roll a frozen autoregressive model forward. All fitted statistics (fill values, sub-models, AR coefficients) are frozen at `fit()` for leakage safety.
+
+| Parameter          | Type          | Default | Description                                    |
+|--------------------|---------------|---------|------------------------------------------------|
+| ar_order           | int           | 3       | Order of the autoregressive roll-forward       |
+| hidden_layer_sizes | tuple         | (64,)   | Residual network architecture (LSTM stand-in)  |
+| max_iter           | int           | 300     | Max optimisation iterations for the network    |
+| alpha              | float         | 1e-4    | L2 regularisation of the residual network      |
+| random_state       | int or None   | None    | Reproducibility seed                           |
+
+**Methods:** `.fit(X, y)`, `.predict(X)` → ndarray (n,), `.predict_revenue_forecast(X, horizon)` → ndarray (horizon,).
+
+```python
+from philanthropy.models import FinancialForecastModel
+
+model = FinancialForecastModel(ar_order=3, random_state=42)
+model.fit(X, y)                                   # y = period giving revenue
+forecast = model.predict_revenue_forecast(X, horizon=4)   # next 4 periods
+```
+
+---
+
 ### API quick reference
 
 | Component                          | Module                    | Type        |
@@ -236,6 +267,7 @@ Bequest/planned giving intent classifier. GradientBoostingClassifier + Calibrate
 | LapsePredictor                     | philanthropy.models       | Classifier  |
 | PlannedGivingIntentScorer          | philanthropy.models       | Classifier  |
 | ShareOfWalletRegressor             | philanthropy.models       | Regressor   |
+| FinancialForecastModel             | philanthropy.models       | Regressor   |
 | DischargeToSolicitationWindowTransformer | philanthropy.preprocessing | Transformer |
 | RFMTransformer                     | philanthropy.preprocessing | Transformer |
 
@@ -422,50 +454,9 @@ pytest tests/test_leakage.py -v
 
 ## Contributing
 
-### Before pushing any commit
-
-Always run the full local gate first:
-
-```bash
-make ci
-```
-
-This runs in the exact same order as GitHub Actions:
-1. Collection check — catches missing imports immediately
-2. Full test suite
-3. Coverage gate (≥ 85%)
-
-If `make ci` passes, your push will pass CI.
-Never use `git push --no-verify`.
-
-When adding a new test file that imports a new class:
-- Implement the class FIRST
-- Add the export to `__init__.py` FIRST
-- Verify: `python -c "from philanthropy.X import Y; print('OK')"`
-- THEN write the test file
-- THEN run `make ci`
-- THEN git add + commit + push
-
-A single test file must never assert contradictory shapes or column counts for the same transformer. Before committing a test file, run:
-
-```bash
-grep -n "shape\|columns\|n_by" tests/<file>.py
-```
-
-and confirm all shape assertions are consistent with each other.
-
-### Additional checks
-
-After cloning, run `sh scripts/install_hooks.sh` to install the pre-push hook. This runs the full test suite before every push, preventing collection errors from reaching CI.
-
-Before committing a new test file, always verify:
-
-```bash
-python -m pytest <new_test_file.py> --collect-only -q
-# Must show: X tests collected, 0 errors
-```
-
-Use `git push --no-verify` only in an emergency to bypass the hook.
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full local test gate, the
+new-test-file workflow, and pre-push hook setup. In short: run `make ci` before
+every push, and never use `git push --no-verify`.
 
 ---
 

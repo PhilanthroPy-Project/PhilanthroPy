@@ -11,8 +11,8 @@ authors:
   - family-names: Lalakiya
     given-names: Shivam
     email: shivamlalakiya151299@gmail.com
-version: 0.3.0
-date-released: "2026-07-17"
+version: 0.4.0
+date-released: "2026-07-18"
 license: MIT
 repository-code: "https://github.com/PhilanthroPy-Project/PhilanthroPy"
 url: "https://PhilanthroPy-Project.github.io/PhilanthroPy/"

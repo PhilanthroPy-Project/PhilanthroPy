@@ -4,15 +4,25 @@ All notable changes to PhilanthroPy are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
+
+## [0.4.0] - 2026-07-18
 ### Added
+- `philanthropy.ingest` — the UniSchema on-ramp. `constituent_events_to_features()`
+  aggregates a UniSchema `ConstituentEvent` stream into a one-row-per-donor
+  feature table whose columns (`total_gift_amount`, `years_active`,
+  `event_attendance_count`, `last_gift_date`, ...) feed the estimators directly;
+  `read_constituent_events()` loads UniSchema's JSON / NDJSON egress files.
+  Leakage-safe (recency anchored to an explicit `reference_date` or the batch's
+  latest event), at-least-once-safe (deduplicates by `eventId`).
+- `constituent_events_to_features` and `read_constituent_events` re-exported at
+  the top level (`from philanthropy import constituent_events_to_features`).
 - `examples/quickstart.py` and `examples/unischema_to_scores.py` — runnable,
   end-to-end scripts (train + score; UniSchema `ConstituentEvent` stream →
   features → score). Smoke-tested in `tests/test_examples.py`.
+- tests/test_ingest.py (aggregation, identity resolution, dedup, file/dir
+  readers, mixed-currency warning, estimator integration)
 
 ### Fixed
-- `EncounterRecencyTransformer` no longer raises `OverflowError` when two
-  encounter dates span more than ~292 years (a `datetime64[ns]` timedelta
-  overflows int64); it falls back to day-resolution differencing.
 - Pinned `scikit-learn>=1.6`; the code relies on `validate_data` and
   `__sklearn_tags__`, both 1.6+ APIs, so an unpinned install on 1.3–1.5
   imported broken.
@@ -23,6 +33,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   that made `conda env create` fail.
 - `constituent_events_to_features` warns on a mixed-currency batch instead of
   silently summing unlike amounts into `total_gift_amount`.
+- `EncounterRecencyTransformer` no longer raises `OverflowError` when two
+  encounter dates span more than ~292 years (a `datetime64[ns]` timedelta
+  overflows int64); it falls back to day-resolution differencing.
 
 ### Changed
 - README leads installation with `pip install philanthropy`; fixed the Tests
@@ -36,20 +49,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `PropensityScorer` documented as a constant P=0.5 baseline (points to
   `DonorPropensityModel`); added docstrings for the metrics helpers and
   `predict_action_priority`; `CONTRIBUTING.md` gained a Setup section.
-
-## [0.4.0] - 2026-07-17
-### Added
-- `philanthropy.ingest` — the UniSchema on-ramp. `constituent_events_to_features()`
-  aggregates a UniSchema `ConstituentEvent` stream into a one-row-per-donor
-  feature table whose columns (`total_gift_amount`, `years_active`,
-  `event_attendance_count`, `last_gift_date`, ...) feed the estimators directly;
-  `read_constituent_events()` loads UniSchema's JSON / NDJSON egress files.
-  Leakage-safe (recency anchored to an explicit `reference_date` or the batch's
-  latest event), at-least-once-safe (deduplicates by `eventId`).
-- `constituent_events_to_features` and `read_constituent_events` re-exported at
-  the top level (`from philanthropy import constituent_events_to_features`).
-- tests/test_ingest.py (aggregation, identity resolution, dedup, file/dir
-  readers, estimator integration)
 
 ## [0.3.0] - 2026-07-17
 ### Added

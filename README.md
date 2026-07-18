@@ -421,7 +421,7 @@ gift_features = preprocessor.fit_transform(gift_df)
 
 ## Testing
 
-**1158 tests** across 26 files — `check_estimator` compliance for every public
+**1160 tests** across 26 files — `check_estimator` compliance for every public
 estimator, property-based (Hypothesis) suites, and a dedicated temporal-leakage
 suite.
 

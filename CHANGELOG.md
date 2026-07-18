@@ -13,10 +13,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `EncounterRecencyTransformer` no longer raises `OverflowError` when two
   encounter dates span more than ~292 years (a `datetime64[ns]` timedelta
   overflows int64); it falls back to day-resolution differencing.
+- Pinned `scikit-learn>=1.6`; the code relies on `validate_data` and
+  `__sklearn_tags__`, both 1.6+ APIs, so an unpinned install on 1.3–1.5
+  imported broken.
+- `MovesManagementClassifier` now imports on Python 3.9 (added
+  `from __future__ import annotations`; its `str | dict | None` annotation
+  was evaluated eagerly and crashed the advertised 3.9).
+- Removed the nonexistent `philanthropy==0.2.0` pin from `environment.yml`
+  that made `conda env create` fail.
+- `constituent_events_to_features` warns on a mixed-currency batch instead of
+  silently summing unlike amounts into `total_gift_amount`.
 
 ### Changed
 - README leads installation with `pip install philanthropy`; fixed the Tests
   badge and the UniSchema scoring snippet.
+- Sharpened the PyPI `description`, added `machine-learning` /
+  `predictive-analytics` / `data-science` / `python` keywords, and added the
+  UniSchema project URL (pyproject + CITATION.cff).
+- README roadmap corrected (docs site, PyPI, and retention-waterfall plot moved
+  to Completed); dropped the stale per-file test table; ingest docs/example now
+  point at UniSchema's real `data/egress/` path.
+- `PropensityScorer` documented as a constant P=0.5 baseline (points to
+  `DonorPropensityModel`); added docstrings for the metrics helpers and
+  `predict_action_priority`; `CONTRIBUTING.md` gained a Setup section.
 
 ## [0.4.0] - 2026-07-17
 ### Added

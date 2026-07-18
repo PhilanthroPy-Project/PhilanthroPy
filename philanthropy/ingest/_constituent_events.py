@@ -25,6 +25,7 @@ event timestamp in the batch, never a moving "now".
 from __future__ import annotations
 
 import json
+import warnings
 from pathlib import Path
 from typing import Iterable, Mapping, Optional, Union
 
@@ -91,6 +92,13 @@ def constituent_events_to_features(
         the columns declared in ``_FEATURE_DTYPES``.  Rows are sorted by
         ``constituent_id`` for determinism.
 
+    Warns
+    -----
+    UserWarning
+        If the batch mixes currencies (more than one distinct ``currency``).
+        ``total_gift_amount`` is a plain sum with no FX conversion, so a
+        single-currency feed is assumed; normalise upstream if it isn't.
+
     Examples
     --------
     >>> events = [
@@ -109,6 +117,17 @@ def constituent_events_to_features(
     df = _to_frame(events)
     if df.empty:
         return _empty_feature_frame()
+
+    # total_gift_amount sums raw amounts; UniSchema carries a per-event
+    # `currency` but no FX rates, so a mixed-currency feed would sum apples and
+    # oranges. Warn rather than convert (rates aren't in the stream) or crash.
+    if "currency" in df.columns and df["currency"].dropna().nunique() > 1:
+        warnings.warn(
+            "ConstituentEvent feed mixes currencies "
+            f"({sorted(df['currency'].dropna().unique())}); total_gift_amount "
+            "is summed without FX conversion. Normalise to one currency first.",
+            stacklevel=2,
+        )
 
     if deduplicate and "eventId" in df.columns:
         # Collapse only rows that share a real eventId.  A missing eventId is not

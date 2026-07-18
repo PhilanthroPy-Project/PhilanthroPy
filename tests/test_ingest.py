@@ -4,6 +4,7 @@ Tests for the philanthropy.ingest UniSchema ConstituentEvent bridge.
 """
 
 import json
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -223,6 +224,29 @@ def test_parsing_emits_no_warning():
     events = [_event("a@x.edu", "DONATION", "2025-01-01T00:00:00Z", amount=10)]
     with warnings.catch_warnings():
         warnings.simplefilter("error")  # any warning becomes an error
+        constituent_events_to_features(events)
+
+
+def test_mixed_currency_warns():
+    events = [
+        _event("a@x.edu", "DONATION", "2025-01-01T00:00:00Z", amount=100),
+        _event("a@x.edu", "DONATION", "2025-02-01T00:00:00Z", amount=200),
+    ]
+    events[0]["currency"] = "USD"
+    events[1]["currency"] = "EUR"
+    with pytest.warns(UserWarning, match="mixes currencies"):
+        constituent_events_to_features(events)
+
+
+def test_single_currency_does_not_warn():
+    events = [
+        _event("a@x.edu", "DONATION", "2025-01-01T00:00:00Z", amount=100),
+        _event("a@x.edu", "DONATION", "2025-02-01T00:00:00Z", amount=200),
+    ]
+    for ev in events:
+        ev["currency"] = "USD"
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         constituent_events_to_features(events)
 
 

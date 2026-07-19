@@ -1,8 +1,19 @@
-import matplotlib.pyplot as plt
-import seaborn as sns
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pandas as pd
 
-def plot_affinity_distribution(scores, labels=None) -> plt.Axes:
+if TYPE_CHECKING:  # only for the return-type hints; never imported at runtime
+    import matplotlib.axes
+
+# matplotlib and seaborn are an optional extra (`pip install philanthropy[viz]`),
+# imported lazily inside each plotting function so importing the package — or
+# building a Pipeline — never requires the plotting stack. `from __future__ import
+# annotations` keeps the return hints from evaluating at import time.
+
+
+def plot_affinity_distribution(scores, labels=None) -> matplotlib.axes.Axes:
     """
     Plots a Seaborn KDE or histogram of the 0-100 affinity scores. 
     If actual major-gift labels are provided, plots overlaid distributions 
@@ -20,6 +31,9 @@ def plot_affinity_distribution(scores, labels=None) -> plt.Axes:
     matplotlib.axes.Axes
         The underlying axes object for further customization.
     """
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
     fig, ax = plt.subplots(figsize=(8, 5))
     
     if labels is not None:
@@ -51,7 +65,7 @@ def plot_affinity_distribution(scores, labels=None) -> plt.Axes:
     
     return ax
 
-def plot_retention_waterfall(starting_donors, acquired, lapsed, recovered) -> plt.Axes:
+def plot_retention_waterfall(starting_donors, acquired, lapsed, recovered) -> matplotlib.axes.Axes:
     """
     Generates a step-by-step waterfall chart showing the net change 
     in the donor file year-over-year.
@@ -72,6 +86,8 @@ def plot_retention_waterfall(starting_donors, acquired, lapsed, recovered) -> pl
     matplotlib.axes.Axes
         The underlying axes object for further customization.
     """
+    import matplotlib.pyplot as plt
+
     categories = ['Starting', 'Acquired', 'Lapsed', 'Recovered', 'Ending']
     
     # Lapsed acts as a negative flow
@@ -90,7 +106,7 @@ def plot_retention_waterfall(starting_donors, acquired, lapsed, recovered) -> pl
     ]
     
     fig, ax = plt.subplots(figsize=(10, 6))
-    bars = ax.bar(categories, values, bottom=bottoms, color=colors, edgecolor='black')
+    ax.bar(categories, values, bottom=bottoms, color=colors, edgecolor='black')
     
     ax.set_title("Donor Retention Waterfall")
     ax.set_ylabel("Number of Donors")

@@ -4,9 +4,7 @@ tests/test_datasets.py
 Unit tests for philanthropy.datasets.generate_synthetic_donor_data.
 """
 
-import numpy as np
 import pandas as pd
-import pytest
 
 from philanthropy.datasets import generate_synthetic_donor_data
 

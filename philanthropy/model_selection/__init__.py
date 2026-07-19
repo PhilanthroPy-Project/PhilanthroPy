@@ -35,8 +35,6 @@ True
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 from sklearn.model_selection import BaseCrossValidator
 from sklearn.utils.validation import column_or_1d

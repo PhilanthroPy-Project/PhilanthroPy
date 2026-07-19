@@ -1,7 +1,8 @@
 # Contributing to PhilanthroPy
 
 Thanks for helping improve PhilanthroPy! This guide covers the local checks
-every change must pass before it reaches CI.
+every change must pass before it reaches CI. By participating you agree to abide
+by our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Setup
 

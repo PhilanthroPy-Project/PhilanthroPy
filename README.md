@@ -101,6 +101,7 @@ features["affinity_score"] = model.predict_affinity_score(X)
 
 | Column | Built from |
 |---|---|
+| `constituent_email`, `first_name`, `last_name` | identity fields, carried through when present |
 | `total_gift_amount`, `gift_count`, `first_gift_date`, `last_gift_date` | `DONATION` events |
 | `event_attendance_count` | `EVENT_REGISTRATION` events |
 | `email_click_count` | `EMAIL_CLICK` events |

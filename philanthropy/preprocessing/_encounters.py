@@ -43,7 +43,7 @@ EncounterTransformer(...)
 from __future__ import annotations
 
 import warnings
-from typing import List, Optional
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -270,13 +270,6 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
 
         self._validate_encounter_df(raw_enc)
         
-        if hasattr(X, "columns"):
-            input_cols = list(X.columns)
-        else:
-            # Although X must be a DataFrame based on _validate_X, we handle ndarray gracefully
-            n_cols = np.shape(X)[1] if len(np.shape(X)) > 1 else 1
-            input_cols = [f"x{i}" for i in range(n_cols)]
-            
         self._validate_X(X)
         X = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=True)
         self.n_features_in_ = X.shape[1]

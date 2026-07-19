@@ -48,7 +48,7 @@ from typing import Optional
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.ensemble import HistGradientBoostingRegressor
-from sklearn.utils.validation import check_array, check_is_fitted, check_X_y, validate_data
+from sklearn.utils.validation import check_is_fitted, validate_data
 
 
 class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):

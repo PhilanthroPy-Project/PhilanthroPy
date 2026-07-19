@@ -3,12 +3,18 @@ tests/test_visualisation.py
 Headless test suite for philanthropy.visualisation.
 """
 
+import pytest
+
+# Visualisation is an optional extra (`pip install philanthropy[viz]`); skip this
+# whole module rather than error-collect when matplotlib/seaborn aren't installed.
+pytest.importorskip("matplotlib")
+pytest.importorskip("seaborn")
+
 import matplotlib
 matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pytest
 
 from philanthropy.visualisation import plot_affinity_distribution, plot_retention_waterfall
 

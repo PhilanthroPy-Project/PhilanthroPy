@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pandas as pd
 from sklearn.base import ClassifierMixin, BaseEstimator
 from sklearn.utils.validation import check_is_fitted, validate_data
 from sklearn.preprocessing import LabelEncoder

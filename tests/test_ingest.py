@@ -18,7 +18,7 @@ from philanthropy.ingest._constituent_events import _FEATURE_DTYPES
 
 
 def _event(email, etype, created, *, amount=None, source="GIVECAMPUS",
-           external=None, event_id=None):
+           external=None, event_id=None, first=None, last=None):
     ev = {
         "constituentEmail": email,
         "eventType": etype,
@@ -31,6 +31,10 @@ def _event(email, etype, created, *, amount=None, source="GIVECAMPUS",
         ev["externalConstituentId"] = external
     if event_id is not None:
         ev["eventId"] = event_id
+    if first is not None:
+        ev["firstName"] = first
+    if last is not None:
+        ev["lastName"] = last
     return ev
 
 
@@ -227,6 +231,26 @@ def test_parsing_emits_no_warning():
         constituent_events_to_features(events)
 
 
+def test_carries_first_last_name_when_present():
+    events = [
+        _event("ada@uni.edu", "DONATION", "2025-01-01T00:00:00Z", amount=100,
+               first="Ada", last="Lovelace"),
+        # A later event without names must not overwrite the resolved name.
+        _event("ada@uni.edu", "EVENT_REGISTRATION", "2025-02-01T00:00:00Z"),
+    ]
+    feats = constituent_events_to_features(events)
+    assert feats.loc["ada@uni.edu", "first_name"] == "Ada"
+    assert feats.loc["ada@uni.edu", "last_name"] == "Lovelace"
+
+
+def test_names_absent_yields_null_column_not_crash():
+    events = [_event("a@x.edu", "DONATION", "2025-01-01T00:00:00Z", amount=10)]
+    feats = constituent_events_to_features(events)
+    assert "first_name" in feats.columns and "last_name" in feats.columns
+    assert pd.isna(feats.loc["a@x.edu", "first_name"])
+    assert pd.isna(feats.loc["a@x.edu", "last_name"])
+
+
 def test_mixed_currency_warns():
     events = [
         _event("a@x.edu", "DONATION", "2025-01-01T00:00:00Z", amount=100),
@@ -301,6 +325,63 @@ def test_read_empty_file(tmp_path):
     f = tmp_path / "empty.ndjson"
     f.write_text("")
     assert read_constituent_events(f) == []
+
+
+def _write_partitioned(root, vendor, day, event_id, ev):
+    # Mirror UniSchema's {prefix}/{vendor}/{yyyy}/{mm}/{dd}/{eventId}.json layout.
+    d = root / vendor / "2026" / "07" / day
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{event_id}.json").write_text(json.dumps(ev))
+
+
+def test_read_recurses_into_date_partitioned_egress(tmp_path):
+    # UniSchema egress: events live several levels down, none in the top dir.
+    _write_partitioned(tmp_path, "givecampus", "19", "e1",
+                       _event("a@x.edu", "DONATION", "2026-07-19T00:00:00Z", amount=10))
+    _write_partitioned(tmp_path, "npsp", "20", "e2",
+                       _event("b@x.edu", "DONATION", "2026-07-20T00:00:00Z", amount=20))
+    events = read_constituent_events(tmp_path)
+    assert len(events) == 2
+    feats = constituent_events_to_features(events)
+    assert set(feats.index) == {"a@x.edu", "b@x.edu"}
+
+
+def test_read_skips_manifest_sidecars(tmp_path):
+    _write_partitioned(tmp_path, "npsp", "19", "e1",
+                       _event("a@x.edu", "DONATION", "2026-07-19T00:00:00Z", amount=10))
+    # A batch .manifest.json sidecar must be ignored (metadata, not an event).
+    (tmp_path / "npsp" / "2026" / "07" / "batch.manifest.json").write_text(
+        json.dumps({"batchId": "b1", "count": 1}))
+    events = read_constituent_events(tmp_path)
+    assert events == [_event("a@x.edu", "DONATION", "2026-07-19T00:00:00Z", amount=10)]
+
+
+def test_read_mixes_nested_json_and_ndjson(tmp_path):
+    _write_partitioned(tmp_path, "givecampus", "19", "e1",
+                       _event("a@x.edu", "DONATION", "2026-07-19T00:00:00Z", amount=10))
+    nd = tmp_path / "slate" / "2026" / "07" / "20"
+    nd.mkdir(parents=True, exist_ok=True)
+    (nd / "batch.ndjson").write_text("\n".join(json.dumps(e) for e in [
+        _event("b@x.edu", "DONATION", "2026-07-20T00:00:00Z", amount=20),
+        _event("c@x.edu", "EMAIL_CLICK", "2026-07-20T01:00:00Z"),
+    ]) + "\n")
+    events = read_constituent_events(tmp_path)
+    assert len(events) == 3
+    assert {e["constituentEmail"] for e in events} == {"a@x.edu", "b@x.edu", "c@x.edu"}
+
+
+def test_read_directory_ordering_is_deterministic(tmp_path):
+    for vendor, day, eid, email in [
+        ("slate", "21", "e3", "c@x.edu"),
+        ("givecampus", "19", "e1", "a@x.edu"),
+        ("npsp", "20", "e2", "b@x.edu"),
+    ]:
+        _write_partitioned(tmp_path, vendor, day, eid,
+                           _event(email, "DONATION", "2026-07-19T00:00:00Z", amount=1))
+    order = [e["constituentEmail"] for e in read_constituent_events(tmp_path)]
+    # Sorted by relative path: givecampus < npsp < slate.
+    assert order == ["a@x.edu", "b@x.edu", "c@x.edu"]
+    assert order == [e["constituentEmail"] for e in read_constituent_events(tmp_path)]
 
 
 # --------------------------------------------------------------------------- #

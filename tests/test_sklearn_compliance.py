@@ -22,7 +22,6 @@ from sklearn.utils.estimator_checks import parametrize_with_checks
 from philanthropy.datasets import generate_synthetic_donor_data
 from philanthropy.models import (
     DonorPropensityModel,
-    LapsePredictor,
     MajorGiftClassifier,
     ShareOfWalletRegressor,
     PlannedGivingIntentScorer,
@@ -34,7 +33,6 @@ from philanthropy.preprocessing import (
     PlannedGivingSignalTransformer,
     RFMTransformer,
     DischargeToSolicitationWindowTransformer,
-    WealthPercentileTransformer,
     WealthScreeningImputer,
 )
 
@@ -222,7 +220,6 @@ def test_donor_propensity_model_in_pipeline_with_5fold_cv():
 
 def test_wealth_imputer_in_pipeline_does_not_contaminate_folds():
     """In 5-fold CV, fill stats must NOT be identical across all folds."""
-    from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import KFold
 
     rng = np.random.default_rng(42)
@@ -233,15 +230,6 @@ def test_wealth_imputer_in_pipeline_does_not_contaminate_folds():
         )
     })
     y = rng.integers(0, 2, n)
-
-    pipe = Pipeline([
-        ("imp", WealthScreeningImputer(
-            wealth_cols=["estimated_net_worth"],
-            strategy="median",
-            add_indicator=False,
-        )),
-        ("clf", LogisticRegression(max_iter=200)),
-    ])
 
     fill_values = []
     kf = KFold(n_splits=5, shuffle=True, random_state=42)

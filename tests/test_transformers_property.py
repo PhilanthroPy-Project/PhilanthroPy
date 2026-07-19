@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 import pandas as pd
 from hypothesis import given, settings, HealthCheck
 from hypothesis import strategies as st

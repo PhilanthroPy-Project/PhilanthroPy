@@ -51,6 +51,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pytest pytest-cov hypothesis scikit-learn pandas numpy
-          pip install -e .
+          pip install -e ".[viz]"
       - name: Run all tests with coverage
         run: pytest tests/ --cov=philanthropy --cov-fail-under=85

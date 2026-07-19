@@ -213,8 +213,11 @@ def read_constituent_events(
 
     * a single ``.json`` file holding one event (object) or many (array);
     * a ``.ndjson`` / ``.jsonl`` batch, one event per line;
-    * a directory, in which case every ``*.json``, ``*.ndjson``, and ``*.jsonl``
-      file directly inside it is read and concatenated (sorted by name).
+    * a directory, which is walked **recursively** — every ``*.json``,
+      ``*.ndjson``, and ``*.jsonl`` file at any depth is read and concatenated,
+      sorted by relative path.  This handles UniSchema's date-partitioned egress
+      (``{prefix}/{vendor}/{yyyy}/{mm}/{dd}/{eventId}.json``); a flat directory
+      still works too.  ``*.manifest.json`` batch sidecars are skipped.
 
     Parameters
     ----------
@@ -228,10 +231,22 @@ def read_constituent_events(
     """
     p = Path(path)
     if p.is_dir():
+        # UniSchema's local egress is date-partitioned — it writes each event to
+        # {prefix}/{vendor}/{yyyy}/{mm}/{dd}/{eventId}.json (see UniSchema
+        # src/egress/objectKey.ts), so the files sit several levels down and a
+        # non-recursive scan of the top dir finds nothing. Walk the whole tree.
         events: "list[dict]" = []
-        for child in sorted(p.iterdir()):
-            if child.suffix.lower() in {".json", ".ndjson", ".jsonl"}:
-                events.extend(_read_events_file(child))
+        files = [
+            f
+            for f in p.rglob("*")
+            if f.is_file()
+            and f.suffix.lower() in {".json", ".ndjson", ".jsonl"}
+            # Skip S3 batch sidecars — batch metadata, not ConstituentEvents.
+            and not f.name.lower().endswith(".manifest.json")
+        ]
+        # Sort by relative path so ordering is deterministic across platforms.
+        for child in sorted(files, key=lambda f: f.relative_to(p).as_posix()):
+            events.extend(_read_events_file(child))
         return events
     return _read_events_file(p)
 

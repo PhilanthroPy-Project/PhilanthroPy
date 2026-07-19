@@ -42,17 +42,21 @@ classifiers = [
 dependencies = [
     "scikit-learn>=1.6",
     "pandas",
-    "numpy",
-    "matplotlib",
-    "seaborn"
+    "numpy"
 ]
 
 [project.optional-dependencies]
+viz = [
+    "matplotlib",
+    "seaborn"
+]
 dev = [
     "pytest",
     "pytest-cov",
     "hypothesis",
-    "flake8"
+    "flake8",
+    "matplotlib",
+    "seaborn"
 ]
 docs = [
     "mkdocs>=1.4.0",

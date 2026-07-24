@@ -1,45 +1,274 @@
+/* ==========================================================================
+   PhilanthroPy docs — Apple-style visual system
+   San Francisco system type · airy light canvas · one restrained blue accent.
+   The signature: a "verified guarantees" spec row (leakage-safe, estimator-check
+   clean) styled like Apple's tech-spec strips — true to a library whose whole
+   pitch is rigor.
+   ========================================================================== */
+
 :root {
-    --md-primary-fg-color: #00adb5;
-    --md-primary-fg-color--light: #393e46;
-    --md-primary-fg-color--dark: #222831;
-    --md-accent-fg-color: #fca311;
-    --md-code-font-family: "Fira Code", "Roboto Mono", monospace;
+  /* System font stack — renders as San Francisco on Apple platforms, graceful
+     fallbacks elsewhere (the same approach apple.com uses). */
+  --md-text-font: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Helvetica Neue", "Segoe UI", Helvetica, Arial, sans-serif;
+  --md-code-font: "SF Mono", ui-monospace, "JetBrains Mono", "Fira Code",
+    Menlo, Consolas, monospace;
+
+  /* Apple palette */
+  --ap-blue: #0071e3;
+  --ap-blue-strong: #0077ed;
+  --ap-green: #1a7f37;
+  --ap-radius: 18px;
+  --ap-radius-sm: 12px;
+  --ap-shadow: 0 2px 10px rgba(0, 0, 0, 0.06), 0 8px 30px rgba(0, 0, 0, 0.05);
+  --ap-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.08), 0 14px 44px rgba(0, 0, 0, 0.08);
 }
 
+/* ---- Light scheme (default) --------------------------------------------- */
+[data-md-color-scheme="default"] {
+  --ap-bg: #fbfbfd;
+  --ap-surface: #ffffff;
+  --ap-ink: #1d1d1f;
+  --ap-ink-2: #6e6e73;
+  --ap-hairline: #d2d2d7;
+
+  --md-default-bg-color: var(--ap-bg);
+  --md-default-fg-color: var(--ap-ink);
+  --md-typeset-color: var(--ap-ink);
+  --md-typeset-a-color: var(--ap-blue);
+  --md-accent-fg-color: var(--ap-blue-strong);
+  --md-code-bg-color: #f5f5f7;
+  --md-code-fg-color: #1d1d1f;
+}
+
+/* ---- Dark scheme (refined, still Apple-quiet) --------------------------- */
 [data-md-color-scheme="slate"] {
-    --md-hue: 210;
-    --md-default-bg-color: #0d1117;
-    --md-default-bg-color--light: #161b22;
-    --md-default-bg-color--lighter: #21262d;
-    --md-primary-fg-color: #2f81f7;
-    --md-accent-fg-color: #ff7b72;
+  --md-hue: 220;
+  --ap-bg: #000000;
+  --ap-surface: #1c1c1e;
+  --ap-ink: #f5f5f7;
+  --ap-ink-2: #a1a1a6;
+  --ap-hairline: #38383a;
+
+  --md-default-bg-color: var(--ap-bg);
+  --md-default-fg-color: var(--ap-ink);
+  --md-typeset-color: var(--ap-ink);
+  --md-typeset-a-color: #2997ff;
+  --md-accent-fg-color: #2997ff;
+  --md-code-bg-color: #1c1c1e;
+  --md-code-fg-color: #f5f5f7;
+  --ap-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 8px 30px rgba(0, 0, 0, 0.4);
+  --ap-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.6), 0 14px 44px rgba(0, 0, 0, 0.5);
 }
 
-/* Make headers more prominent */
-h1 {
-    font-weight: 800;
-    letter-spacing: -0.025em;
-    background: -webkit-linear-gradient(45deg, #2f81f7, #a371f7);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+/* ---- Header: flat, hairline-separated, no shadow ------------------------ */
+.md-header {
+  background-color: color-mix(in srgb, var(--ap-bg) 82%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  color: var(--ap-ink);
+  border-bottom: 1px solid var(--ap-hairline);
+  box-shadow: none;
+}
+.md-header__title { font-weight: 600; letter-spacing: -0.01em; }
+.md-tabs {
+  background-color: transparent;
+  color: var(--ap-ink-2);
+  border-bottom: 1px solid var(--ap-hairline);
+}
+.md-tabs__link { opacity: 1; color: var(--ap-ink-2); font-weight: 450; }
+.md-tabs__link--active, .md-tabs__link:hover { color: var(--ap-ink); }
+
+/* ---- Typography: tight, confident, solid (no gradient text) ------------- */
+.md-typeset {
+  font-feature-settings: "kern" 1, "liga" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.md-typeset h1 {
+  color: var(--ap-ink);
+  font-weight: 600;
+  font-size: 2.75rem;
+  line-height: 1.07;
+  letter-spacing: -0.015em;
+  margin-bottom: 0.6em;
+}
+.md-typeset h2 {
+  color: var(--ap-ink);
+  font-weight: 600;
+  font-size: 1.9rem;
+  line-height: 1.12;
+  letter-spacing: -0.012em;
+  margin-top: 2.2em;
+}
+.md-typeset h3 {
+  color: var(--ap-ink);
+  font-weight: 600;
+  letter-spacing: -0.008em;
+}
+.md-typeset { font-size: 0.86rem; }
+.md-typeset p, .md-typeset li { line-height: 1.6; color: var(--ap-ink); }
+
+/* ---- Links: Apple blue, underline on hover only ------------------------- */
+.md-typeset a { text-decoration: none; }
+.md-typeset a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---- Code: rounded, quiet surface --------------------------------------- */
+.md-typeset pre > code,
+.md-typeset .highlight { border-radius: var(--ap-radius-sm); }
+.md-typeset code {
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
+  font-size: 0.85em;
 }
 
-/* Adjust grid cards nicely */
-.md-typeset .grid.cards>ul>li {
-    transition: transform 0.2s, box-shadow 0.2s;
-    border-radius: 8px;
-    background-color: var(--md-default-bg-color--light);
-    border: 1px solid var(--md-default-bg-color--lighter);
+/* ---- Hero (homepage) ---------------------------------------------------- */
+.ap-hero {
+  text-align: center;
+  padding: 3.2rem 1rem 1.4rem;
+  margin: 0 auto;
+  max-width: 46rem;
+}
+.ap-hero__eyebrow {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ap-blue);
+  margin-bottom: 0.6rem;
+}
+.md-typeset .ap-hero__title {
+  font-size: 3.2rem;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  margin: 0 0 0.4rem;
+}
+.ap-hero__sub {
+  font-size: 1.25rem;
+  line-height: 1.4;
+  color: var(--ap-ink-2);
+  font-weight: 400;
+  margin: 0 auto 1.6rem;
+  max-width: 34rem;
+}
+.ap-cta { display: flex; gap: 0.8rem; justify-content: center; flex-wrap: wrap; }
+
+/* ---- Buttons: Apple pills ----------------------------------------------- */
+.md-typeset .md-button {
+  border-radius: 980px;
+  border: none;
+  background: var(--ap-blue);
+  color: #fff;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  padding: 0.6em 1.4em;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.md-typeset .md-button:hover {
+  background: var(--ap-blue-strong);
+  color: #fff;
+  transform: none;
+  text-decoration: none;
+}
+.md-typeset .md-button--secondary {
+  background: transparent;
+  color: var(--ap-blue);
+  box-shadow: inset 0 0 0 1px var(--ap-hairline);
+}
+.md-typeset .md-button--secondary:hover {
+  background: color-mix(in srgb, var(--ap-blue) 8%, transparent);
+  color: var(--ap-blue);
 }
 
-.md-typeset .grid.cards>ul>li:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    border-color: var(--md-primary-fg-color);
+/* ---- Signature: verified-guarantees spec row ---------------------------- */
+.ap-specs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1px;
+  background: var(--ap-hairline);
+  border: 1px solid var(--ap-hairline);
+  border-radius: var(--ap-radius);
+  overflow: hidden;
+  margin: 2.4rem 0;
+}
+.ap-specs__item {
+  background: var(--ap-surface);
+  padding: 1.4rem 1.2rem;
+  text-align: center;
+}
+.ap-specs__k {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ap-ink);
+}
+.ap-specs__v {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--ap-ink-2);
+}
+.ap-specs__k--ok::before {
+  content: "✓ ";
+  color: var(--ap-green);
+  font-weight: 700;
 }
 
-.md-typeset .grid.cards>ul>li>hr {
-    margin: 1em 0;
-    border-bottom: 1px solid var(--md-default-bg-color--lighter);
+/* ---- Grid cards: white surface, hairline, subtle Apple lift ------------- */
+.md-typeset .grid.cards > ul > li {
+  border-radius: var(--ap-radius);
+  background: var(--ap-surface);
+  border: 1px solid var(--ap-hairline);
+  box-shadow: var(--ap-shadow);
+  padding: 1.4rem;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.md-typeset .grid.cards > ul > li:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ap-shadow-hover);
+  border-color: color-mix(in srgb, var(--ap-blue) 45%, var(--ap-hairline));
+}
+.md-typeset .grid.cards > ul > li > hr {
+  margin: 0.9em 0;
+  border: 0;
+  border-top: 1px solid var(--ap-hairline);
+}
+.md-typeset .grid.cards .twemoji svg,
+.md-typeset .grid.cards .md-typeset .twemoji { fill: var(--ap-blue); }
+
+/* ---- Admonitions: softer, rounder --------------------------------------- */
+.md-typeset .admonition, .md-typeset details {
+  border-radius: var(--ap-radius-sm);
+  border-width: 1px;
+  box-shadow: none;
+}
+
+/* ---- Tables: hairline, roomy -------------------------------------------- */
+.md-typeset table:not([class]) {
+  border-radius: var(--ap-radius-sm);
+  border: 1px solid var(--ap-hairline);
+  box-shadow: none;
+}
+.md-typeset table:not([class]) th {
+  background: var(--md-code-bg-color);
+  font-weight: 600;
+}
+
+/* ---- Footer: quiet ------------------------------------------------------- */
+.md-footer { background: var(--ap-bg); color: var(--ap-ink-2); }
+.md-footer-meta { background: transparent; border-top: 1px solid var(--ap-hairline); }
+
+/* ---- Motion respect ------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  .md-typeset .grid.cards > ul > li,
+  .md-typeset .md-button { transition: none; }
+}
+
+/* ---- Mobile: tighten the hero ------------------------------------------- */
+@media screen and (max-width: 44.9375em) {
+  .md-typeset .ap-hero__title { font-size: 2.3rem; }
+  .ap-hero__sub { font-size: 1.05rem; }
+  .md-typeset h1 { font-size: 2.1rem; }
 }

@@ -6,10 +6,22 @@ theme:
   name: material
   logo: assets/logo.png
   favicon: assets/logo.png
+  font: false
   palette:
-    scheme: slate
-    primary: teal
-    accent: amber
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
   features:
     - navigation.tabs
     - navigation.sections
@@ -64,16 +76,21 @@ nav:
     - how-to/index.md
     - how-to/handle_missing_wealth_data.md
     - how-to/build_grateful_patient_features.md
+    - how-to/save_and_load_models.md
     - how-to/develop_and_test.md
   - Explanation:
     - explanation/index.md
     - explanation/fundraising_metrics.md
     - explanation/capacity_and_loyalty.md
     - explanation/design_principles.md
+    - explanation/compliance_considerations.md
+    - explanation/comparison_to_vendors.md
+    - explanation/benchmarks.md
   - API Reference:
     - reference/index.md
     - reference/preprocessing.md
     - reference/models.md
     - reference/metrics.md
+    - reference/inspection.md
     - reference/datasets.md
     - reference/model_selection.md

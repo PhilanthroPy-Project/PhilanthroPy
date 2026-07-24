@@ -1,8 +1,11 @@
+from __future__ import annotations
+
+
 def donor_lifetime_value(
-    average_donation: float, 
-    lifespan_years: float, 
-    discount_rate: float = 0.05, 
-    retention_rate: float = None
+    average_donation: float,
+    lifespan_years: float,
+    discount_rate: float = 0.05,
+    retention_rate: float | None = None
 ) -> float:
     """
     Computes the Net Present Value (NPV) of a donor's future giving.

@@ -75,10 +75,13 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         data, the log transform normalises the feature for downstream linear
         models.  Donors with zero encounters receive a score of ``0.0``.
 
-    All identifier columns (``merge_key`` and any column whose name contains
-    common PII substrings: ``"id"``, ``"mrn"``, ``"ssn"``, ``"name"``,
-    ``"dob"``, ``"zip"``) are silently dropped from the output DataFrame before
-    it is returned, preventing accidental downstream leakage.
+    Identifier columns (``merge_key`` plus any column whose name contains a
+    substring in :attr:`PII_PATTERNS`) are dropped from the output before it is
+    returned, as a defense-in-depth guard against accidental downstream leakage.
+    This is a **name-based heuristic, not de-identification**: it inspects column
+    *names* only (never cell values) and can miss identifiers whose names it does
+    not recognise. See ``docs/explanation/compliance_considerations.md``. Extend
+    or replace the patterns via the ``pii_patterns`` parameter.
 
     Parameters
     ----------
@@ -102,8 +105,11 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         Additional column names to explicitly drop on output, beyond those
         detected via the PII heuristic.  Useful when non-standard identifiers
         (e.g., ``"pledge_record_key"``) are present in ``X``.
-    fiscal_year_start : int, default=7
-        Month (1–12) that begins the organisation's fiscal year.
+    pii_patterns : tuple of str or None, default=None
+        Case-insensitive substrings used to flag identifier-like column names
+        for dropping. If ``None``, the class-level :attr:`PII_PATTERNS` default
+        is used. Provide your own tuple to broaden or narrow the heuristic — it
+        replaces (does not extend) the default when set.
 
     Attributes
     ----------
@@ -151,8 +157,14 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
     True
     """
 
-    # Heuristic substrings used to detect PII-like column names (case-insensitive)
-    PII_PATTERNS = ("_id", "mrn", "ssn", "name", "dob", "zip")
+    # Heuristic substrings used to detect PII-like column names (case-insensitive).
+    # Defense-in-depth, NOT a de-identification guarantee: matches column *names*
+    # only (never cell values) and can miss identifiers whose names it does not
+    # recognise. See docs/explanation/compliance_considerations.md.
+    PII_PATTERNS = (
+        "_id", "mrn", "ssn", "name", "dob", "birth", "zip",
+        "patient", "phone", "email", "address",
+    )
 
     def __init__(
         self,
@@ -163,6 +175,7 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         merge_key: str = "donor_id",
         allow_negative_days: bool = False,
         id_cols_to_drop: list[str] | None = None,
+        pii_patterns: tuple[str, ...] | None = None,
     ):
         self.encounter_df = encounter_df
         self.encounter_path = encounter_path
@@ -171,6 +184,7 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         self.merge_key = merge_key
         self.allow_negative_days = allow_negative_days
         self.id_cols_to_drop = id_cols_to_drop
+        self.pii_patterns = pii_patterns
 
     # ------------------------------------------------------------------
     # Validation helpers
@@ -217,9 +231,12 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
     def _identify_pii_columns(self, columns: pd.Index) -> List[str]:
         """Return column names that match PII heuristics or explicit drop list."""
         explicit = list(self.id_cols_to_drop or [])
+        patterns = (
+            self.pii_patterns if self.pii_patterns is not None else self.PII_PATTERNS
+        )
         heuristic = [
             c for c in columns
-            if any(sub in c.lower() for sub in self.PII_PATTERNS)
+            if any(sub in c.lower() for sub in patterns)
         ]
         # Always include the merge key itself
         merge_key_set = {self.merge_key}
@@ -294,6 +311,16 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
             last_discharge=(self.discharge_col, "max"),
             encounter_count=(self.discharge_col, "count"),
         )
+
+        if self.allow_negative_days:
+            warnings.warn(
+                "EncounterTransformer(allow_negative_days=True) retains gifts "
+                "dated before discharge, which can model solicitation before or "
+                "during active treatment. Review "
+                "docs/explanation/compliance_considerations.md and your donor-"
+                "relations policy before using this in production.",
+                UserWarning,
+            )
 
         return self
 

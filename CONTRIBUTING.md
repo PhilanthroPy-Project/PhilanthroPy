@@ -24,10 +24,12 @@ Always run the full local gate first:
 make ci
 ```
 
-This runs in the exact same order as GitHub Actions:
-1. Collection check — catches missing imports immediately
-2. Full test suite
-3. Coverage gate (≥ 85%)
+This runs the same checks as GitHub Actions, in order:
+1. Lint (flake8 — real defects only)
+2. Type check (mypy)
+3. Collection check — catches missing imports immediately
+4. Full test suite
+5. Coverage gate (≥ 85%)
 
 If `make ci` passes, your push will pass CI.
 Never use `git push --no-verify`.
@@ -63,3 +65,13 @@ python -m pytest <new_test_file.py> --collect-only -q
 ```
 
 Use `git push --no-verify` only in an emergency to bypass the hook.
+
+## Versioning & deprecation
+
+PhilanthroPy follows [Semantic Versioning](https://semver.org). While the
+project is pre-1.0, minor releases (`0.x.0`) may contain breaking changes; these
+are always called out under a **Breaking** heading in
+[CHANGELOG.md](CHANGELOG.md). Where feasible, a deprecated public API is kept for
+at least one minor release and emits a `DeprecationWarning` pointing at its
+replacement before removal. Supported versions are listed in
+[SECURITY.md](SECURITY.md).

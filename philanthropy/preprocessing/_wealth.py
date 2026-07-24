@@ -86,9 +86,6 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
         to learn that the absence of a vendor record itself carries information
         (e.g., very high-net-worth individuals are often *not* found in
         commercial databases because they actively shield their assets).
-    fiscal_year_start : int, default=7
-        Month (1–12) starting the organisation's fiscal year.  Inherited for
-        pipeline compatibility.
 
     Attributes
     ----------

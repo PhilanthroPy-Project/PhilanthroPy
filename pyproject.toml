@@ -83,6 +83,9 @@ UniSchema = "https://github.com/PhilanthroPy-Project/UniSchema"
 where = ["."]
 include = ["philanthropy*"]
 
+[tool.setuptools.package-data]
+"philanthropy.datasets" = ["data/*.csv"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--import-mode=importlib"

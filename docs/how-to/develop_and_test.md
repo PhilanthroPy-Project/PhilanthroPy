@@ -1,10 +1,10 @@
 # Develop and Test PhilanthroPy
 
-To ensure the reliability of donor analytics models, PhilanthroPy maintains a rigorous testing suite that mirrors our GitHub CI environment. Contributors and maintainers should run these tests locally before proposing changes.
+Run the test suite before you propose a change. These are the same checks that run in GitHub CI, so passing them locally means your work is ready to review. The suite guards the reliability of the donor analytics models.
 
 ## Prerequisites
 
-Ensure you have the development dependencies installed:
+Install the development dependencies:
 
 ```bash
 pip install -e ".[dev]"
@@ -12,11 +12,11 @@ pip install -e ".[dev]"
 
 ## Running Tests Locally
 
-PhilanthroPy uses `pytest` alongside `hypothesis` for property-based testing and `pytest-cov` for coverage analysis.
+The suite uses `pytest`, with `hypothesis` for property-based testing and `pytest-cov` for coverage.
 
 ### 1. High-Level Unit Tests & Coverage
 
-Run the core test suite and verify that code coverage remains above 85%:
+Run the core suite and confirm coverage stays above 85%:
 
 ```bash
 pytest tests/ --cov=philanthropy --cov-fail-under=85
@@ -24,7 +24,7 @@ pytest tests/ --cov=philanthropy --cov-fail-under=85
 
 ### 2. Scikit-Learn API Compliance
 
-Verify that all transformers and estimators strictly adhere to the scikit-learn API:
+Confirm every transformer and estimator adheres to the scikit-learn API:
 
 ```bash
 pytest tests/test_sklearn_compat.py -v
@@ -32,7 +32,7 @@ pytest tests/test_sklearn_compat.py -v
 
 ### 3. Property-Based Testing
 
-Verify the mathematical robustness of transformers using randomized data generation:
+Check the transformers against randomized data:
 
 ```bash
 pytest tests/test_transformers_property.py -v --hypothesis-seed=12345
@@ -40,7 +40,7 @@ pytest tests/test_transformers_property.py -v --hypothesis-seed=12345
 
 ### 4. Running Doctests
 
-Verify that all code examples in docstrings are functional:
+Check that the code examples in docstrings still run:
 
 ```bash
 pytest philanthropy --doctest-modules

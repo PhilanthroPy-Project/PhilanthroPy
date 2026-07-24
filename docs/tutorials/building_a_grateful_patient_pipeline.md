@@ -1,12 +1,13 @@
 # Building a Grateful Patient Pipeline from EHR Export to Major Gift Score
 
-Academic Medical Centers (AMCs) have a unique fundraising channel: grateful patients. Connecting hospital clinical encounters (from Electronic Health Records like Epic or Cerner) with CRM metrics unlocks powerful predictive capabilities.
+Academic medical centers (AMCs) have a fundraising channel most nonprofits don't: grateful patients. Linking clinical encounters from an electronic health record — Epic, Cerner — to your CRM metrics gives a propensity model signals it can learn from.
 
-This guide walks through using PhilanthroPy to ingest an EHR export, generate clinical features, and pass them into a propensity model.
+This tutorial takes an EHR export, turns it into clinical features, and passes them to a major-gift model. You build the pipeline one step at a time.
 
 ## Step 1: Loading the Data
 
-You will typicaly join two main tables:
+You start with two tables and join them:
+
 - **`encounter_df`**: Patient-level hospital discharge data.
 - **`donor_df`**: Gift transactions and CRM constituent metrics.
 
@@ -21,7 +22,7 @@ donor_df = pd.read_csv("donor_crm_export.csv")
 
 ## Step 2: The Grateful Patient Pipeline Structure
 
-We configure multiple steps: Extracting clinical encounters using `EncounterTransformer`, formatting CRM features using `CRMCleaner`, and passing both to a major gift propensity scorer.
+The pipeline has three parts: pull clinical encounters with `EncounterTransformer`, format CRM features with `CRMCleaner`, and pass both to a major-gift propensity scorer.
 
 ```python
 from sklearn.pipeline import Pipeline
@@ -67,4 +68,4 @@ print(scores)
 
 ## Next Steps
 
-Experiment with different models like `DonorPropensityModel` for random forest classifications, or evaluate your results using PhilanthroPy metrics!
+Try other models — `DonorPropensityModel` gives you random forest classification — or evaluate your results with the PhilanthroPy metrics.

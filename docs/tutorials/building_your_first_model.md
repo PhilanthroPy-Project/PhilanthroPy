@@ -1,10 +1,10 @@
 # Building Your First Model
 
-This tutorial will guide you through building a basic machine learning pipeline with PhilanthroPy and scikit-learn.
+Build a working machine learning pipeline with PhilanthroPy and scikit-learn. You start with raw donor data and finish with affinity scores a gift officer can act on.
 
 ## 1. Installation
 
-You can install PhilanthroPy using pip:
+Install PhilanthroPy with pip:
 
 ```bash
 pip install philanthropy
@@ -12,7 +12,7 @@ pip install philanthropy
 
 ## 2. Generating Synthetic Data
 
-Let's begin by generating some synthetic donor data. This simulates a real CRM export.
+Start with synthetic donor data that stands in for a real CRM export.
 
 ```python
 from philanthropy.datasets import generate_synthetic_donor_data
@@ -24,7 +24,7 @@ y = df["is_major_donor"].to_numpy()
 
 ## 3. Creating a Basic Model
 
-We can pass this data directly into the `DonorPropensityModel`.
+Pass the data straight into `DonorPropensityModel`.
 
 ```python
 from philanthropy.models import DonorPropensityModel
@@ -35,7 +35,7 @@ model.fit(X, y)
 
 ## 4. Predicting Affinity
 
-Instead of raw probabilities, the model provides an affinity score from 0-100, which is much more actionable for gift officers.
+The model returns an affinity score from 0-100 instead of a raw probability. That scale is easier for a gift officer to act on.
 
 ```python
 scores = model.predict_affinity_score(X)
@@ -44,7 +44,7 @@ print(scores[:5])
 
 ## 5. Using Pipelines
 
-PhilanthroPy components drop directly into scikit-learn pipelines.
+PhilanthroPy components drop into scikit-learn pipelines as-is.
 
 ```python
 from sklearn.pipeline import Pipeline

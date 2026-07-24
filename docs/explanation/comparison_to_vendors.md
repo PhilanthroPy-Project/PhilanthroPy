@@ -2,19 +2,19 @@
 
 Most advancement shops already pay for a wealth-screening or predictive-modeling
 vendor — DonorSearch, WealthEngine (Blackbaud), iWave, Windfall, and similar
-platforms. This page is an honest account of where PhilanthroPy fits alongside
-them, and — just as importantly — where it deliberately does **not** compete.
+platforms. This page shows where PhilanthroPy fits alongside them, and where it
+deliberately does **not** compete.
 
-The short version: PhilanthroPy is a **modeling library**, not a data service.
-Commercial vendors sell you *data and a hosted product*. PhilanthroPy gives you
-*transparent, self-hosted code* and expects you to bring your own data. These
-are different purchases that happen to overlap in the word "predictive."
+Here is the short version. PhilanthroPy is a **modeling library**, not a data
+service. Commercial vendors sell you *data and a hosted product*. PhilanthroPy
+gives you *transparent, self-hosted code* and expects you to bring your own data.
+These are different purchases that happen to overlap in the word "predictive."
 
 ## What PhilanthroPy is (and isn't)
 
 PhilanthroPy is an open-source, MIT-licensed, scikit-learn-native library that
-runs entirely on your own infrastructure. Its entire dependency footprint is
-`scikit-learn`, `pandas`, and `numpy` — there is no phone-home, no API key, no
+runs entirely on your own infrastructure. Its whole dependency footprint is
+`scikit-learn`, `pandas`, and `numpy`. There is no phone-home, no API key, no
 account, and no per-record billing.
 
 What that means in practice:
@@ -37,10 +37,9 @@ three.
 ## Comparison
 
 The table contrasts PhilanthroPy against the *category* of commercial
-wealth-screening and predictive vendors. It intentionally does not rank named
-products against each other — vendor feature sets, pricing, and data coverage
-change often and vary by contract, and we will not make claims about them we
-cannot verify.
+wealth-screening and predictive vendors. It does not rank named products against
+each other — vendor feature sets, pricing, and data coverage change often and
+vary by contract, and we will not make claims about them we cannot verify.
 
 | Dimension | PhilanthroPy | Commercial wealth/predictive vendors |
 |---|---|---|
@@ -54,7 +53,7 @@ cannot verify.
 
 ## When a commercial vendor is the better call
 
-Being candid cuts both ways. Reach for a paid vendor when:
+Candor cuts both ways. Reach for a paid vendor when:
 
 * **You need appended data you don't have.** PhilanthroPy cannot tell you a
   prospect's real-estate holdings or estimated net worth out of thin air — it

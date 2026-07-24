@@ -1,12 +1,12 @@
-# Save and Load Models
+# Save and load models
 
-Once you have trained a PhilanthroPy estimator, you will want to persist it so gift officers and downstream jobs can score prospects without retraining. This guide shows you how to save and reload a fitted model with `joblib` — the serialization tool scikit-learn recommends for estimators.
+Train an estimator once, then reuse it. This guide saves a fitted PhilanthroPy model to disk and reloads it, so gift officers and downstream jobs can score prospects without retraining. It uses `joblib`, the serialization tool scikit-learn recommends for estimators.
 
-Because PhilanthroPy estimators are scikit-learn native, the same `joblib.dump` / `joblib.load` calls work whether you are persisting a single estimator or a full `sklearn.pipeline.Pipeline`.
+PhilanthroPy estimators are scikit-learn native, so the same `joblib.dump` / `joblib.load` calls work whether you persist a single estimator or a full `sklearn.pipeline.Pipeline`.
 
-## Persisting a Single Estimator
+## Persist a single estimator
 
-Any fitted estimator can be written to disk and reloaded as-is. The reloaded object keeps every learned attribute (`estimator_`, `classes_`, `n_features_in_`), so its predictions are identical to the original.
+Write any fitted estimator to disk and reload it as-is. The reloaded object keeps every learned attribute (`estimator_`, `classes_`, `n_features_in_`), so its predictions match the original exactly.
 
 ```python
 import joblib
@@ -27,11 +27,11 @@ model = joblib.load("model.joblib")
 print(model.predict_affinity_score(X[:5]).round(2))
 ```
 
-## Persisting a Full Pipeline
+## Persist a full pipeline
 
-The recommendation is to persist the **entire** `Pipeline`, not just the final estimator. The pipeline captures your preprocessing (scaling, imputation, featurization) alongside the model, so the transforms applied at scoring time exactly match those applied at training time — the single most common source of train/serve skew.
+Persist the **entire** `Pipeline`, not just the final estimator. The pipeline captures your preprocessing (scaling, imputation, featurization) alongside the model, so the transforms applied at scoring time match those applied at training time. Mismatched transforms are the single most common source of train/serve skew.
 
-## Version Compatibility
+## Version compatibility
 
 !!! warning "Unpickling across scikit-learn versions is unsafe"
     scikit-learn does **not** guarantee that a model pickled under one version will load correctly under another. Loading an artifact built with a different scikit-learn version can raise an error, or — worse — load silently and produce wrong predictions. The same caution applies to the PhilanthroPy version, since a model's internal structure can change between releases.
@@ -47,9 +47,9 @@ To keep artifacts reproducible:
 
 * **Store the versions alongside the artifact.** Bundle the fitted object and the versions that produced it in a single dictionary, then verify the versions on load. If they do not match, retrain rather than trusting the reloaded model.
 
-## End-to-End Example
+## End-to-end example
 
-This example is fully self-contained — it builds its data from the synthetic generator, so it can run in CI without any external files. It trains a pipeline, dumps it with its versions, reloads it, checks the versions, and predicts.
+This example is self-contained. It builds its data from the synthetic generator, so it runs in CI without any external files. It trains a pipeline, dumps it with its versions, reloads it, checks the versions, and predicts.
 
 ```python
 import joblib

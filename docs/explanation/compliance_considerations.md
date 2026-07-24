@@ -1,13 +1,13 @@
-# Responsible Use & Compliance Considerations
+# Responsible use & compliance considerations
 
-PhilanthroPy's grateful-patient tooling touches data that may originate in a clinical system, so it sits close to regulated Protected Health Information (PHI). This page explains, in plain terms, what the library does and — just as importantly — what it does **not** do. It is written to help you scope a compliant deployment. It is **not legal advice**.
+PhilanthroPy's grateful-patient tooling touches data that may originate in a clinical system, so it sits close to regulated Protected Health Information (PHI). This page explains, in plain terms, what the library does and what it does **not** do, so you can scope a compliant deployment. It is **not legal advice**.
 
 !!! danger "This is not legal advice"
     Nothing on this page is legal advice, and PhilanthroPy makes no representation that any workflow built with it is HIPAA-compliant. Regulations, institutional policies, and Business Associate Agreements vary. **Involve your organization's Privacy Officer and legal counsel before moving any patient-derived pipeline into production.**
 
 ## What the tooling does — and does not do — with PHI
 
-The relevant components are `GratefulPatientFeaturizer` and `EncounterTransformer` in `philanthropy.preprocessing`. Their job is to turn clinical *encounter timing* (e.g., a most-recent discharge date and a count of encounters) into aggregate, non-identifying model features such as `days_since_last_discharge` and `encounter_frequency_score`.
+Two components do this work: `GratefulPatientFeaturizer` and `EncounterTransformer` in `philanthropy.preprocessing`. They turn clinical *encounter timing* — a most-recent discharge date, a count of encounters — into aggregate, non-identifying model features such as `days_since_last_discharge` and `encounter_frequency_score`.
 
 **What the tooling does:**
 

@@ -1,8 +1,8 @@
 # Model Validation & Benchmarks
 
-This page answers "how good is this, actually?" with reproducible numbers — and,
-just as importantly, explains why you should **not** trust them for your program
-without re-validating on your own data.
+Every model here ships with a reproducible benchmark number. This page shows you
+those numbers — and why you should **not** trust them for your own program until
+you re-validate on your own data.
 
 !!! warning "These numbers are on synthetic data"
     The table below is measured on `generate_synthetic_donor_data`, a reproducible
@@ -13,17 +13,18 @@ without re-validating on your own data.
 
 ## Reproducing this table
 
-The benchmark is a committed, dependency-free script:
+Run the benchmark yourself. It lives in the repo as a committed, dependency-free
+script:
 
 ```bash
 python scripts/benchmark_models.py
 ```
 
-It builds a 4,000-row synthetic pool (`random_state=42`), takes a stratified
-75/25 train/test split, fits every applicable binary classifier in
+The script builds a 4,000-row synthetic pool (`random_state=42`), takes a
+stratified 75/25 train/test split, and fits every applicable binary classifier in
 `philanthropy.models` on the documented feature set
 (`total_gift_amount`, `years_active`, `event_attendance_count`) against the
-`is_major_donor` label, and prints precision / recall / F1 / ROC-AUC on the
+`is_major_donor` label. It prints precision / recall / F1 / ROC-AUC on the
 held-out test set using `sklearn.metrics`.
 
 ## Results
@@ -44,18 +45,18 @@ differ.)*
 ## How to read this
 
 - **`PropensityScorer` is the floor.** It is a constant-probability baseline
-  (P=0.5): a ROC-AUC of 0.500 is exactly "no better than chance." Every real
-  model must beat it — here they all do, by a wide margin, but that margin is
-  inflated by the synthetic data's separability.
+  (P=0.5), so its ROC-AUC of 0.500 means exactly "no better than chance." Every
+  real model has to beat it. Here they all do, by a wide margin — but the
+  synthetic data's separability inflates that margin.
 - **`LapsePredictor` and `DonorPropensityModel` report identical numbers** on
-  this task because both wrap a default `RandomForestClassifier` with the same
-  `random_state` and features. That is expected, not a bug — `LapsePredictor` is
-  purpose-built for a lapse label, not `is_major_donor`; it appears here only
-  because its estimator is applicable.
-- **ROC-AUC is the most transferable metric** across base rates; precision and
+  this task. Both wrap a default `RandomForestClassifier` with the same
+  `random_state` and features, so the match is expected, not a bug.
+  `LapsePredictor` is purpose-built for a lapse label, not `is_major_donor`; it
+  appears here only because its estimator is applicable.
+- **ROC-AUC is the most transferable metric** across base rates. Precision and
   recall depend on the 0.5 decision threshold and this pool's 0.677 positive
-  rate, which is far higher than a real major-donor base rate (typically a few
-  percent). Expect precision to fall sharply on realistically imbalanced data.
+  rate — far higher than a real major-donor base rate, which is typically a few
+  percent. Expect precision to fall sharply on realistically imbalanced data.
 
 ## Validating on your own data
 

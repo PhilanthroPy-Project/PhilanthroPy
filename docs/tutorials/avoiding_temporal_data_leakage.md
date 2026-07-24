@@ -1,16 +1,16 @@
-# Avoiding Temporal Data Leakage in Fundraising Models
+# Avoiding temporal data leakage in fundraising models
 
-One of the most common pitfalls in predicting major gifts or donor retention is **temporal data leakage** — using information from the future to predict an outcome in the past. In PhilanthroPy, transformers and models are designed to be "leakage-safe by design." 
+Predicting major gifts or donor retention carries one common trap: **temporal data leakage** — using information from the future to predict an outcome in the past. PhilanthroPy's transformers and models are leakage-safe by design.
 
-This tutorial demonstrates how temporal leakage happens and how PhilanthroPy prevents it.
+This tutorial shows how temporal leakage happens and how PhilanthroPy prevents it.
 
-## The Problem: Naive Aggregation
+## The problem: naive aggregation
 
-Imagine creating a feature `total_lifetime_giving` and appending it to historical snapshots of donors. If you use the final, present-day `total_lifetime_giving` value when predicting whether a donor gave a major gift three years ago, you have trained your model on future information.
+Say you build a feature `total_lifetime_giving` and attach it to historical snapshots of each donor. If you use the final, present-day `total_lifetime_giving` value to predict whether a donor gave a major gift three years ago, you have trained the model on the future.
 
-## The Solution: Fit-Time Snapshots
+## The solution: fit-time snapshots
 
-PhilanthroPy transformers compute and freeze aggregrations during `fit()`. When you call `transform()` on new or temporal data, it uses only the frozen statistics from `fit()`.
+PhilanthroPy transformers compute and freeze their aggregations during `fit()`. Call `transform()` on new or temporal data, and it uses only the statistics frozen at `fit()` time.
 
 ```python
 from philanthropy.preprocessing import EncounterTransformer
@@ -48,8 +48,8 @@ donor_df_test = pd.DataFrame({
 features_test = transformer.transform(donor_df_test)
 ```
 
-## Best Practices
+## Best practices
 
-1. **Split First**: Always split your data into training and test sets *before* passing them to a pipeline.
-2. **Use Pipelines**: Encapsulate transformers inside a `sklearn.pipeline.Pipeline`.
-3. **Use Temporal Splits**: For time-series data like fundraising, consider the `FiscalYearGroupedSplitter` (see the CV documentation) to ensure test folds strictly succeed training folds in time.
+1. **Split first**: Split your data into training and test sets *before* passing them to a pipeline.
+2. **Use pipelines**: Wrap your transformers inside a `sklearn.pipeline.Pipeline`.
+3. **Use temporal splits**: For time-series data like fundraising, reach for `FiscalYearGroupedSplitter` (see the CV documentation) so test folds fall strictly after training folds in time.

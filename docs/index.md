@@ -51,7 +51,7 @@ PhilanthroPy provides a comprehensive suite of tools that are easy to understand
 - :material-hospital-building: **Grateful Patient Featurization**
 
     ---
-    Built for Academic Medical Centers (AMCs), these are HIPAA-safe tools that translate clinical encounter histories into powerful major-gift signals, entirely dropping sensitive patient identifiers (PHI). *Uses `GratefulPatientFeaturizer`.*
+    Built for Academic Medical Centers (AMCs), these tools translate clinical encounter histories into major-gift signals while decoupling them from explicit patient identifiers (PHI). This is designed to reduce compliance risk, but is **not** formal HIPAA de-identification — see [Compliance Considerations](explanation/compliance_considerations.md). *Uses `GratefulPatientFeaturizer`.*
 
 - :material-chart-bell-curve-cumulative: **Propensity & Share of Wallet**
 

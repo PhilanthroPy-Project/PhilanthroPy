@@ -8,7 +8,7 @@ in the nonprofit sector.
 __version__ = "0.4.0"
 __author__ = "Shivam Lalakiya"
 
-from . import preprocessing, models, metrics, utils, datasets, ingest
+from . import preprocessing, models, metrics, utils, datasets, ingest, inspection
 from .ingest import constituent_events_to_features, read_constituent_events
 
 __all__ = [
@@ -18,6 +18,7 @@ __all__ = [
     "utils",
     "datasets",
     "ingest",
+    "inspection",
     "constituent_events_to_features",
     "read_constituent_events",
 ]

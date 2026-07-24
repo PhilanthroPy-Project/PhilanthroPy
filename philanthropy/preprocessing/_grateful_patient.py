@@ -18,9 +18,14 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted, validate_data
 
-# Service-line capacity weights based on published AMC benchmarks.
-# Cardiac, oncology, and neuroscience generate ~70% of grateful patient major
-# gifts despite only ~35% of encounter volume.
+# Illustrative default service-line capacity weights. The relative ordering
+# reflects commonly-cited AMC development benchmarks (cardiac, oncology, and
+# neuroscience programs generate a disproportionate share of grateful-patient
+# major gifts relative to their encounter volume), but the exact multipliers are
+# defaults, not gospel: different foundations weight service lines differently.
+# Override per-institution via the ``capacity_weights`` constructor parameter and
+# have the values reviewed by your governance/advancement committee. See
+# docs/explanation/design_principles.md.
 _SERVICE_LINE_CAPACITY_WEIGHTS: dict[str, float] = {
     "cardiac": 3.2,
     "oncology": 2.9,
@@ -63,8 +68,14 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         Optional column holding DRG (Diagnosis Related Group) relative weights.
         If present, total DRG weight per donor is computed.
     use_capacity_weights : bool, default=True
-        If True, apply AMC-benchmarked service-line capacity weights to scale
-        the clinical gravity score.
+        If True, apply service-line capacity weights to scale the clinical
+        gravity score. Weights come from ``capacity_weights`` (or the illustrative
+        defaults in :data:`_SERVICE_LINE_CAPACITY_WEIGHTS` when unset).
+    capacity_weights : dict of {str: float} or None, default=None
+        Per-service-line multipliers applied when ``use_capacity_weights=True``.
+        Keys are normalised service-line names (lowercased, non-alpha collapsed to
+        ``_``); unknown lines fall back to ``1.0``. If ``None``, illustrative AMC
+        defaults are used — override with your foundation's board-approved values.
     merge_key : str, default="donor_id"
         Column name present in both the encounter table and ``X`` used to merge.
     discharge_col : str, default="discharge_date"
@@ -129,6 +140,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         physician_col: str = "attending_physician_id",
         drg_weight_col: str | None = None,
         use_capacity_weights: bool = True,
+        capacity_weights: dict[str, float] | None = None,
         merge_key: str = "donor_id",
         discharge_col: str = "discharge_date",
     ) -> None:
@@ -138,6 +150,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         self.physician_col = physician_col
         self.drg_weight_col = drg_weight_col
         self.use_capacity_weights = use_capacity_weights
+        self.capacity_weights = capacity_weights
         self.merge_key = merge_key
         self.discharge_col = discharge_col
 
@@ -237,10 +250,15 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
 
         # Step 6: Clinical gravity score
         if self.use_capacity_weights:
+            weights = (
+                self.capacity_weights
+                if self.capacity_weights is not None
+                else _SERVICE_LINE_CAPACITY_WEIGHTS
+            )
             encounter_summary["clinical_gravity_score"] = (
                 encounter_summary["total_encounters"].astype(float)
                 * encounter_summary["primary_service_line"].map(
-                    lambda s: _SERVICE_LINE_CAPACITY_WEIGHTS.get(s, 1.0)
+                    lambda s: weights.get(s, 1.0)
                 )
             )
         else:

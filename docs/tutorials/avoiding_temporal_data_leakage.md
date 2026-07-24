@@ -31,8 +31,8 @@ donor_df_train = pd.DataFrame({
 # EncounterTransformer calculates statistics (like recency or frequency) 
 # relative to the gift dates present AT FIT TIME.
 transformer = EncounterTransformer(
-    encounter_df=encounter_df, 
-    encounter_date_col='encounter_date'
+    encounter_df=encounter_df,
+    discharge_col='encounter_date'
 )
 
 # Statistics are frozen here using the gift dates in the training set

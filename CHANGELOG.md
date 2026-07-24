@@ -12,10 +12,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), and `SECURITY.md`.
 - flake8 lint gate — `.flake8` (enforces pyflakes `F` + syntax `E9` defects),
   a `make lint` target folded into `make ci`, and a CI step.
+- `philanthropy.inspection.donor_feature_importance` — model-agnostic permutation
+  feature importance (dependency-free interpretability; works on calibrated models
+  that lack `feature_importances_`).
+- `philanthropy.metrics.disparate_impact_ratio` and `selection_rate_by_group` —
+  four-fifths-rule fairness diagnostics for scored cohorts.
+- `philanthropy` command-line interface (`train` / `score` / `validate`) over CSV.
+- `EncounterTransformer(pii_patterns=...)` to override the PII column heuristic
+  (defaults broadened); `allow_negative_days=True` now emits a compliance `UserWarning`.
+- `GratefulPatientFeaturizer(capacity_weights=...)` to override service-line weights.
+- mypy type-check gate wired into `make ci` and CI.
+- Docs: Responsible Use & Compliance, Model Validation & Benchmarks, vendor
+  comparison, and model-persistence guides; `.github/CODEOWNERS`; a JOSS `paper/`.
 
 ### Fixed
 - Cleared 31 real-defect lint violations (unused imports/variables) across the
   package and tests, including two dead code blocks.
+- Corrected `EncounterTransformer` API drift in the grateful-patient tutorial and
+  the README example (invalid `encounter_date_col` / `donor_id_col` kwargs →
+  `discharge_col` / `merge_key`; pipeline scored via `predict_proba`).
+- README metrics table listed `retention_rate`; the real export is
+  `donor_retention_rate`.
+- Removed a documented-but-nonexistent `fiscal_year_start` parameter from the
+  `EncounterTransformer` and `WealthScreeningImputer` docstrings.
 
 ## [0.4.0] - 2026-07-18
 ### Added

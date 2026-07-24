@@ -4,4 +4,5 @@ How-To guides are goal-oriented recipes for specific, actionable tasks. They ass
 
 * [Handle Missing Wealth Data](handle_missing_wealth_data.md)
 * [Build Grateful Patient Features](build_grateful_patient_features.md)
+* [Save and Load Models](save_and_load_models.md)
 * [Develop and Test PhilanthroPy](develop_and_test.md)

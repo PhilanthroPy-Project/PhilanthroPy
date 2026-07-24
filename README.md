@@ -10,6 +10,7 @@
   <a href="https://pypi.org/project/philanthropy/"><img src="https://img.shields.io/pypi/v/philanthropy?color=blue" alt="PyPI version"/></a>
   <img src="https://img.shields.io/pypi/pyversions/philanthropy" alt="Python versions"/>
   <a href="https://github.com/PhilanthroPy-Project/PhilanthroPy/actions/workflows/ci.yml"><img src="https://github.com/PhilanthroPy-Project/PhilanthroPy/actions/workflows/ci.yml/badge.svg" alt="Tests"/></a>
+  <img src="https://img.shields.io/badge/coverage-%E2%89%A585%25-brightgreen" alt="Coverage at least 85 percent"/>
   <img src="https://img.shields.io/badge/sklearn-compatible-orange" alt="sklearn compatible"/>
   <a href="https://PhilanthroPy-Project.github.io/PhilanthroPy/"><img src="https://img.shields.io/badge/docs-GitHub%20Pages-informational" alt="documentation"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/pypi/l/philanthropy?color=green" alt="License"/></a>
@@ -24,6 +25,27 @@
 ## What is PhilanthroPy?
 
 PhilanthroPy is a production-ready Python library that slots directly into `sklearn.pipeline.Pipeline`. It covers the full predictive workflow for nonprofit and academic medical center (AMC) fundraising — from raw CRM cleaning and wealth imputation to major-gift propensity scoring, lapse prediction, and planned-giving intent.
+
+### Who it's for
+
+One toolkit, two audiences:
+
+- **General nonprofit & university advancement teams** (no PHI in scope) — CRM cleaning, RFM segmentation, wealth-screening imputation, and donor-propensity / lapse / planned-giving scoring. Start with `CRMCleaner`, `RFMTransformer`, `WealthScreeningImputer`, and `DonorPropensityModel`.
+- **Academic medical center (AMC) foundations running grateful-patient programs** (PHI in scope, higher scrutiny) — clinical-encounter featurization via `EncounterTransformer`, `GratefulPatientFeaturizer`, and `DischargeToSolicitationWindowTransformer`. **Before production use, read [Compliance Considerations](docs/explanation/compliance_considerations.md):** the PII handling here is a name-based heuristic, *not* formal HIPAA de-identification.
+
+### Maturity
+
+Single-maintainer MIT project at `v0.4.0` (Beta). The core — leakage-safe transformers, `check_estimator`-compliant estimators, a large test suite behind an 85% coverage gate — is stable; forecasting and `experimental.*` components are still settling.
+
+| Area | Status |
+|---|---|
+| Preprocessing (CRM, RFM, wealth, fiscal-year, encounter) | Stable |
+| Core models (`DonorPropensityModel`, `MajorGiftClassifier`, `LapsePredictor`) | Stable |
+| Grateful-patient / clinical featurization | Beta — review the compliance docs |
+| `philanthropy.ingest` (UniSchema bridge) | Beta |
+| `FinancialForecastModel`, `philanthropy.experimental.*` | Experimental |
+
+> **Maintenance:** maintained by one person on a best-effort basis. For vendor / OSS risk reviews: the bus factor is 1. Issues and PRs are welcome.
 
 ---
 
@@ -66,6 +88,8 @@ model.fit(X, y)
 scores = model.predict_affinity_score(X)   # 0–100 affinity scale
 ```
 
+> **Try it now — zero install:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/quickstart.ipynb)
+>
 > **Runnable scripts:** [`examples/quickstart.py`](examples/quickstart.py) and [`examples/unischema_to_scores.py`](examples/unischema_to_scores.py) run end to end and are smoke-tested in CI.
 
 <p align="center">
@@ -79,6 +103,15 @@ scores = model.predict_affinity_score(X)   # 0–100 affinity scale
 ## From UniSchema events to scores
 
 PhilanthroPy is the modeling half of an ecosystem. [UniSchema](https://github.com/PhilanthroPy-Project/UniSchema) normalizes fragmented advancement webhooks (GiveCampus, Slate, NPSP, Cvent, …) into a single `ConstituentEvent` stream. `philanthropy.ingest` turns that stream into the donor-level feature table the estimators expect — no glue code between the two projects:
+
+```mermaid
+flowchart LR
+    A["Advancement webhooks<br/>GiveCampus · Slate · NPSP · Cvent"] --> B["UniSchema<br/>normalise + egress"]
+    B --> C["ConstituentEvent stream<br/>data/egress/*.ndjson"]
+    C --> D["read_constituent_events()"]
+    D --> E["constituent_events_to_features()<br/>one row per donor"]
+    E --> F["DonorPropensityModel<br/>predict_affinity_score()"]
+```
 
 ```python
 from philanthropy.ingest import read_constituent_events, constituent_events_to_features
@@ -125,6 +158,10 @@ features["affinity_score"] = model.predict_affinity_score(X)
 | `GratefulPatientFeaturizer` ⭐ **NEW** | Clinical gravity score + AMC service-line capacity weights (cardiac 3.2×, oncology 2.9×, neuroscience 2.7×); outputs `clinical_gravity_score`, `distinct_service_lines`, `distinct_physicians`, `total_drg_weight` |
 | `DischargeToSolicitationWindowTransformer` ⭐ **NEW** | Post-discharge solicitation window flags tracking recency; outputs `in_solicitation_window` (0/1), `window_position_score` (1.0 at midpoint, 0.0 at edges), and `discharge_recency_tier` (int 0-4); NaN → 0 |
 | `PlannedGivingSignalTransformer` ⭐ **NEW** | Bequest / legacy-gift intent vector: `is_legacy_age`, `is_loyal_donor`, `inclination_score` (−1 sentinel for absent data), `composite_score` [0–3] |
+| `EncounterRecencyTransformer` | HIPAA-adjacent encounter-date columns → predictive recency features |
+| `SolicitationWindowTransformer` | Alias of `DischargeToSolicitationWindowTransformer` |
+| `WealthScreeningImputerKNN` | Leakage-safe KNN imputation for wealth-screening vendor columns |
+| `ShareOfWalletScorer` | Normalised Share-of-Wallet score + capacity-tier label |
 
 ### 🤖 Models
 
@@ -150,14 +187,17 @@ features["affinity_score"] = model.predict_affinity_score(X)
 | Function | Description |
 |---|---|
 | `donor_lifetime_value` | LTV with configurable discount rate |
-| `retention_rate` | Period-over-period donor retention |
+| `donor_retention_rate` | Period-over-period donor retention |
 | `donor_acquisition_cost` | CAC from campaign spend data |
+| `disparate_impact_ratio` | Four-fifths-rule disparate-impact diagnostic across protected groups |
+| `selection_rate_by_group` | Per-group selection rate for fairness auditing |
 
 ### 🗂 Datasets
 
 | Function | Description |
 |---|---|
 | `generate_synthetic_donor_data` | Reproducible synthetic prospect pool — `n_samples`, `random_state` |
+| `make_donor_dataset` | Richer labelled synthetic dataset (lapse + major-gift labels); in `philanthropy.utils` |
 
 ### 🔌 Ingest ⭐ **NEW**
 
@@ -165,6 +205,12 @@ features["affinity_score"] = model.predict_affinity_score(X)
 |---|---|
 | `constituent_events_to_features` | Aggregate a UniSchema `ConstituentEvent` stream into a one-row-per-donor feature table; leakage-safe, deduplicates by `eventId` |
 | `read_constituent_events` | Load UniSchema's JSON / NDJSON / directory egress into a list of event dicts |
+
+### 🔍 Inspection ⭐ **NEW**
+
+| Function | Description |
+|---|---|
+| `donor_feature_importance` | Model-agnostic permutation feature importance for any fitted estimator — dependency-free interpretability that works even on calibrated models without `feature_importances_` |
 
 ---
 
@@ -322,6 +368,7 @@ forecast = model.predict_revenue_forecast(X, horizon=4)   # next 4 periods
 | FinancialForecastModel             | philanthropy.models       | Regressor   |
 | DischargeToSolicitationWindowTransformer | philanthropy.preprocessing | Transformer |
 | RFMTransformer                     | philanthropy.preprocessing | Transformer |
+| donor_feature_importance           | philanthropy.inspection    | Function    |
 
 ---
 
@@ -400,8 +447,8 @@ from philanthropy.preprocessing import EncounterTransformer, CRMCleaner
 # 1. EHR data extraction
 encounter_features = EncounterTransformer(
     encounter_df=encounter_df,
-    encounter_date_col="discharge_date",
-    donor_id_col="mrn"
+    discharge_col="discharge_date",
+    merge_key="mrn"
 )
 
 # 2. Use ColumnTransformer to merge EHR features with numeric CRM data
@@ -422,9 +469,9 @@ gift_features = preprocessor.fit_transform(gift_df)
 
 ## Testing
 
-**1160 tests** across 26 files — `check_estimator` compliance for every public
-estimator, property-based (Hypothesis) suites, and a dedicated temporal-leakage
-suite.
+**1189 tests** across 30 files — `check_estimator` compliance for every public
+estimator, property-based (Hypothesis) suites, a dedicated temporal-leakage
+suite, and a doc-example executor that runs the fenced code in the docs.
 
 ```bash
 # Full suite
@@ -480,7 +527,27 @@ pytest tests/test_leakage.py -v
 - **Leakage-safe by design** — fill statistics, encounter summaries, and encounter snapshots are all frozen at `fit()` time; `transform()` is fully idempotent
 - **sklearn-native** — all estimators pass `check_estimator`; support `set_output(transform="pandas")`, `clone()`, `get_params()` / `set_params()`
 - **NaN-transparent** — wealth and clinical transformers declare `allow_nan = True`; no silent data loss
-- **PII-aware** — `EncounterTransformer` auto-drops PII-like columns before returning features
+- **PII-aware** — `EncounterTransformer` drops identifier-like columns via a configurable name-based heuristic. This is defense-in-depth, **not** formal HIPAA de-identification; see [Compliance Considerations](docs/explanation/compliance_considerations.md)
+
+---
+
+## Research
+
+Related academic work **by the library's author**. This is the author's own
+related research — not an independent or third-party evaluation of PhilanthroPy,
+and nothing below is a benchmark of this library.
+
+- S. A. Lalakiya, "AI for Advancement: Predictive Donor Analytics and Fundraising
+  Intelligence at Scale," *2025 IEEE 11th International Conference on Computing,
+  Engineering and Design (ICCED)*, IEEE, 2025,
+  doi: [10.1109/ICCED68324.2025.11325064](https://doi.org/10.1109/ICCED68324.2025.11325064).
+  Explores the same problem space this library targets — RFM donor features
+  (cf. `RFMTransformer`) and donor propensity / engagement classification
+  (cf. `DonorPropensityModel`, `MajorGiftClassifier`). It uses a different dataset
+  and its own models; it is not an evaluation of PhilanthroPy. *(Page numbers pending.)*
+
+The paper's SHAP-based feature attribution has a dependency-free parallel in this
+library — `philanthropy.inspection.donor_feature_importance` (permutation importance).
 
 ---
 

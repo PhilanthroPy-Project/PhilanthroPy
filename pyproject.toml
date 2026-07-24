@@ -55,6 +55,7 @@ dev = [
     "pytest-cov",
     "hypothesis",
     "flake8",
+    "mypy",
     "matplotlib",
     "seaborn"
 ]
@@ -66,6 +67,9 @@ docs = [
     "pandas",
     "scikit-learn"
 ]
+
+[project.scripts]
+philanthropy = "philanthropy.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/PhilanthroPy-Project/PhilanthroPy"
@@ -86,3 +90,7 @@ addopts = "--import-mode=importlib"
 [tool.hypothesis]
 suppress_health_check = ["too_slow"]
 max_examples = 200
+
+[tool.mypy]
+files = ["philanthropy"]
+ignore_missing_imports = true

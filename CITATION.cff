@@ -25,3 +25,17 @@ keywords:
   - machine-learning
   - predictive-analytics
   - data-science
+references:
+  # Related work by the author (not a citation of this library itself).
+  - type: conference-paper
+    title: "AI for Advancement: Predictive Donor Analytics and Fundraising Intelligence at Scale"
+    authors:
+      - family-names: Lalakiya
+        given-names: "Shivam Ashokbhai"
+    conference:
+      name: "2025 IEEE 11th International Conference on Computing, Engineering and Design (ICCED)"
+    publisher:
+      name: IEEE
+    year: 2025
+    doi: "10.1109/ICCED68324.2025.11325064"
+    # Start/end page numbers pending — add from the IEEE Xplore citation export.

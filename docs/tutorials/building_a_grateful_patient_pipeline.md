@@ -32,8 +32,8 @@ from philanthropy.models import MajorGiftClassifier
 # EncounterTransformer extracts clinical summaries from the EHR based on donor IDs.
 encounter_features = EncounterTransformer(
     encounter_df=encounter_df,
-    encounter_date_col='discharge_date',
-    donor_id_col='mrn'
+    discharge_col='discharge_date',
+    merge_key='mrn'
 )
 
 # 2. Setup the Pipeline
@@ -57,9 +57,11 @@ grateful_patient_pipeline = Pipeline([
 y_labels = donor_df["made_major_gift"].to_numpy()
 grateful_patient_pipeline.fit(donor_df, y_labels)
 
-# Generate major gift scores for a new campaign
+# Generate major gift scores for a new campaign.
+# Custom methods like predict_affinity_score are not proxied through an sklearn
+# Pipeline, so score via the delegated predict_proba on the positive class.
 prospects_df = pd.read_csv("new_prospects.csv")
-scores = grateful_patient_pipeline.predict_affinity_score(prospects_df)
+scores = grateful_patient_pipeline.predict_proba(prospects_df)[:, 1]
 print(scores)
 ```
 

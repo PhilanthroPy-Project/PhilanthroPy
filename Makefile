@@ -1,8 +1,12 @@
-.PHONY: lint check test coverage ci
+.PHONY: lint typecheck check test coverage ci
 
 lint:
 	@echo "==> Linting (flake8 — real defects)..."
 	python -m flake8 philanthropy tests examples
+
+typecheck:
+	@echo "==> Type checking (mypy)..."
+	python -m mypy philanthropy
 
 check:
 	@echo "==> Checking for collection errors..."
@@ -18,5 +22,5 @@ coverage: test
 	@echo "==> Checking coverage..."
 	python -m pytest tests/ --cov=philanthropy --cov-fail-under=85 --cov-report=term-missing
 
-ci: lint coverage
+ci: lint typecheck coverage
 	@echo "==> All CI checks passed locally."

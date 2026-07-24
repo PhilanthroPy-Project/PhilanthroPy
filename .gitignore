@@ -32,3 +32,6 @@ docs/_build/
 docs/auto_examples/
 docs/generated/
 site/
+
+# Saved model artifacts
+*.joblib

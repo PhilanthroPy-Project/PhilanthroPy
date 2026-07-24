@@ -4,7 +4,7 @@ Academic Medical Centers (AMCs) track hospital visits across different service l
 
 ## Using `GratefulPatientFeaturizer`
 
-This HIPAA-safe transformer translates clinical encounter histories into powerful signals.
+This transformer translates clinical encounter histories into predictive signals from encounter metadata (service line, attending physician, dates). It drops identifier-like columns by name as defense-in-depth — **not** formal HIPAA de-identification. Review [Compliance Considerations](../explanation/compliance_considerations.md) before production use.
 
 ```python
 import pandas as pd

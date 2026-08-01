@@ -1,5 +1,5 @@
 """
-philanthropy.metrics.scoring
+philanthropy.metrics._scoring
 =============================
 """
 
@@ -27,6 +27,7 @@ def donor_retention_rate(
 
 
 def donor_acquisition_cost(
+    *,
     total_fundraising_expense: float,
     new_donors_acquired: int,
 ) -> float:
@@ -42,6 +43,7 @@ def donor_acquisition_cost(
 
 
 def cost_per_dollar_raised(
+    *,
     total_fundraising_expense: float,
     total_raised: float,
 ) -> float:
@@ -58,6 +60,7 @@ def cost_per_dollar_raised(
 
 
 def fundraising_roi(
+    *,
     total_raised: float,
     total_fundraising_expense: float,
 ) -> float:

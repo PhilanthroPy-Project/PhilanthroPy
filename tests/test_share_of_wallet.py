@@ -59,40 +59,40 @@ def test_predict_with_nan_inputs_no_error(wallet_Xy):
     assert not np.any(np.isnan(preds))
 
 
-def test_predict_capacity_ratio_formula(wallet_Xy):
+def test_capacity_ratio_formula(wallet_Xy):
     X, y = wallet_Xy
     model = ShareOfWalletRegressor(max_iter=20, random_state=0)
     model.fit(X, y)
     hist = np.array([100.0, 200.0, 300.0])
-    ratios = model.predict_capacity_ratio(X[:3], historical_giving=hist)
+    ratios = model.capacity_ratio(X[:3], historical_giving=hist)
     expected = model.predict(X[:3]) / np.maximum(hist, 1.0)
     np.testing.assert_array_almost_equal(ratios, expected)
 
 
-def test_predict_capacity_ratio_shape(wallet_Xy):
+def test_capacity_ratio_shape(wallet_Xy):
     X, y = wallet_Xy
     model = ShareOfWalletRegressor(max_iter=20, random_state=0)
     model.fit(X, y)
     hist = np.ones(100) * 1000.0
-    ratios = model.predict_capacity_ratio(X, historical_giving=hist)
+    ratios = model.capacity_ratio(X, historical_giving=hist)
     assert ratios.shape == (100,)
 
 
-def test_predict_capacity_ratio_dtype(wallet_Xy):
+def test_capacity_ratio_dtype(wallet_Xy):
     X, y = wallet_Xy
     model = ShareOfWalletRegressor(max_iter=20, random_state=0)
     model.fit(X, y)
     hist = np.ones(100) * 1000.0
-    ratios = model.predict_capacity_ratio(X, historical_giving=hist)
+    ratios = model.capacity_ratio(X, historical_giving=hist)
     assert np.issubdtype(ratios.dtype, np.floating)
 
 
-def test_predict_capacity_ratio_zero_historical_denominator_floor(wallet_Xy):
+def test_capacity_ratio_zero_historical_denominator_floor(wallet_Xy):
     X, y = wallet_Xy
     model = ShareOfWalletRegressor(max_iter=20, random_state=0)
     model.fit(X, y)
     hist = np.zeros(3)
-    ratios = model.predict_capacity_ratio(X[:3], historical_giving=hist)
+    ratios = model.capacity_ratio(X[:3], historical_giving=hist)
     assert ratios.shape == (3,)
     assert not np.any(np.isnan(ratios))
     assert not np.any(np.isinf(ratios))
@@ -105,11 +105,11 @@ def test_not_fitted_raises_predict(wallet_Xy):
         model.predict(X)
 
 
-def test_not_fitted_raises_predict_capacity_ratio(wallet_Xy):
+def test_not_fitted_raises_capacity_ratio(wallet_Xy):
     X, y = wallet_Xy
     model = ShareOfWalletRegressor()
     with pytest.raises(NotFittedError):
-        model.predict_capacity_ratio(X, historical_giving=np.ones(100))
+        model.capacity_ratio(X, historical_giving=np.ones(100))
 
 
 def test_pipeline_compatibility(wallet_Xy):
@@ -183,12 +183,12 @@ def test_estimator_attribute_accessible(wallet_Xy):
     assert isinstance(model.estimator_, HistGradientBoostingRegressor)
 
 
-def test_predict_capacity_ratio_length_mismatch_raises(wallet_Xy):
+def test_capacity_ratio_length_mismatch_raises(wallet_Xy):
     X, y = wallet_Xy
     model = ShareOfWalletRegressor(max_iter=20, random_state=0)
     model.fit(X, y)
     with pytest.raises(ValueError, match="same length"):
-        model.predict_capacity_ratio(X, historical_giving=np.ones(50))
+        model.capacity_ratio(X, historical_giving=np.ones(50))
 
 
 def test_fit_returns_self(wallet_Xy):
@@ -213,11 +213,11 @@ def test_predict_single_sample(wallet_Xy):
     assert pred.shape == (1,)
 
 
-def test_predict_capacity_ratio_single_sample(wallet_Xy):
+def test_capacity_ratio_single_sample(wallet_Xy):
     X, y = wallet_Xy
     model = ShareOfWalletRegressor(max_iter=20, random_state=0)
     model.fit(X, y)
-    ratios = model.predict_capacity_ratio(X[:1], historical_giving=np.array([1000.0]))
+    ratios = model.capacity_ratio(X[:1], historical_giving=np.array([1000.0]))
     assert ratios.shape == (1,)
 
 
@@ -235,7 +235,7 @@ def test_negative_historical_giving_uses_floor(wallet_Xy):
     model = ShareOfWalletRegressor(max_iter=20, random_state=0)
     model.fit(X, y)
     hist = np.array([-100.0, -200.0, -300.0])
-    ratios = model.predict_capacity_ratio(X[:3], historical_giving=hist)
+    ratios = model.capacity_ratio(X[:3], historical_giving=hist)
     expected = model.predict(X[:3]) / 1.0
     np.testing.assert_array_almost_equal(ratios, expected)
 

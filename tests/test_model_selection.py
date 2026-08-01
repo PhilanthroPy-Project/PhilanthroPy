@@ -89,6 +89,6 @@ def test_not_enough_fiscal_years_names_the_shortfall():
 def test_repr_and_get_n_splits_reflect_the_groups():
     splitter = FiscalYearGroupedSplitter(n_splits=2, gap_years=1)
     assert repr(splitter) == (
-        "FiscalYearGroupedSplitter(n_splits=2, fiscal_year_start=7, gap_years=1)"
+        "FiscalYearGroupedSplitter(n_splits=2, gap_years=1)"
     )
     assert splitter.get_n_splits(groups=_FY_GROUPS) == 2

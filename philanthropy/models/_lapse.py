@@ -6,8 +6,6 @@ Predictive model for donor lapse using RandomForestClassifier.
 
 from __future__ import annotations
 
-import warnings
-
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import RandomForestClassifier
@@ -24,8 +22,6 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
     ----------
     n_estimators : int, default=100
         Number of trees in the RandomForestClassifier.
-    lapse_window_years : int, default=2
-        Documentation parameter: the time window over which lapse is defined.
     max_depth : int or None, default=None
         Maximum depth of trees. None means nodes expand until pure.
     class_weight : dict, "balanced", "balanced_subsample" or None, default=None
@@ -43,13 +39,11 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
     def __init__(
         self,
         n_estimators: int = 100,
-        lapse_window_years: int = 2,
         max_depth: int | None = None,
         class_weight=None,
         random_state: int | None = None,
     ):
         self.n_estimators = n_estimators
-        self.lapse_window_years = lapse_window_years
         self.max_depth = max_depth
         self.class_weight = class_weight
         self.random_state = random_state
@@ -68,14 +62,6 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         -------
         self : LapsePredictor
         """
-        if self.lapse_window_years != 2:
-            warnings.warn(
-                "LapsePredictor(lapse_window_years=...) has no effect: the "
-                "window is a property of how you labelled y, not of the fit. "
-                "The parameter is deprecated and will be removed in 0.7.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
         X, y = check_X_y(X, y, ensure_all_finite="allow-nan")
         self.classes_ = np.unique(y)
         self.n_features_in_ = X.shape[1]

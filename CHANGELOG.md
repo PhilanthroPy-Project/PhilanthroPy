@@ -5,6 +5,43 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.7.0] - TBD
+
+The removal release. Every shim below shipped in 0.6.0 emitting a
+`DeprecationWarning` for one full published minor.
+
+### Breaking
+- **Four deprecated method aliases removed.** Use the replacement in every case:
+
+  | Removed | Use instead |
+  |---|---|
+  | `AskAmountRecommender.predict_ask_array` | `ask_ladder` |
+  | `ShareOfWalletRegressor.predict_capacity_ratio` | `capacity_ratio` |
+  | `MovesManagementClassifier.predict_action_priority` | `action_priority` |
+  | `PlannedGivingIntentScorer.predict_bequest_intent_score` | `predict_intent_score` |
+
+- **Three dead constructor parameters removed.** Passing any of them is now a
+  `TypeError`: `LapsePredictor(lapse_window_years=...)` (the window is a
+  property of how you labelled `y`), `PropensityScorer(estimator=...)` (the
+  baseline is a constant 0.5), `FiscalYearGroupedSplitter(fiscal_year_start=...)`
+  (`groups` already carries fiscal-year labels).
+- **`donor_acquisition_cost`, `cost_per_dollar_raised` and `fundraising_roi` are
+  keyword-only.** They do not share an argument order —
+  `cost_per_dollar_raised` takes expense first, `fundraising_roi` takes raised
+  first — so a positional call was silently accepted and returned a plausible
+  wrong number. It is now a `TypeError`.
+- **Four accidental second import paths moved behind underscores** so 1.0 does
+  not freeze them: `metrics.scoring` → `metrics._scoring`,
+  `preprocessing.transformers` → `preprocessing._transformers`,
+  `models.propensity` → `models._propensity_baseline`, `utils.testing` →
+  `utils._testing`. Every public symbol is unchanged and still exported from its
+  subpackage; only a direct `from philanthropy.metrics.scoring import ...`
+  breaks. Import from the subpackage instead.
+- `philanthropy/utils/_deprecation.py` is gone — nothing is deprecated at 0.7.0.
+
+### Removed
+- `tests/test_deprecations.py`, which existed solely to police the shims.
+
 ## [0.6.0] - 2026-08-01
 
 ### Breaking

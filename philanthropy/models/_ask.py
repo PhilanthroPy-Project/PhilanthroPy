@@ -47,7 +47,6 @@ import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.utils.validation import check_is_fitted, validate_data
-from ..utils._deprecation import deprecated_alias
 
 
 class AskAmountRecommender(RegressorMixin, BaseEstimator):
@@ -209,10 +208,6 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         raw = self.estimator_.predict(X)
         return np.maximum(raw, self.ask_floor)
-
-    @deprecated_alias("ask_ladder", removed_in="0.7.0")
-    def predict_ask_array(self, X, multipliers=None):
-        """Return the conservative/target/stretch ask ladder."""
 
     def ask_ladder(
         self,

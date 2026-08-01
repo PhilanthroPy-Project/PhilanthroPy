@@ -75,13 +75,13 @@ at least one minor release and emits a `DeprecationWarning` pointing at its
 replacement before removal. Supported versions are listed in
 [SECURITY.md](SECURITY.md).
 
-Deprecations use one mechanism, `philanthropy/utils/_deprecation.py`:
-`@deprecated_alias(new_name, removed_in=...)` for a renamed method, and an
-inline `warnings.warn(..., DeprecationWarning)` in `fit`/`split` for a parameter
-that no longer does anything. Every shim needs a test in
-`tests/test_deprecations.py` — `test_every_alias_is_registered_here` fails
-otherwise. Per-symbol stability tiers live in
-[docs/reference/index.md](docs/reference/index.md).
+Nothing is deprecated at 0.7.0. When you next need to deprecate something,
+reintroduce the one mechanism 0.6.0 used: a `deprecated_alias(new_name,
+removed_in=...)` decorator in `philanthropy/utils/_deprecation.py` for a renamed
+method, and an inline `warnings.warn(..., DeprecationWarning)` in `fit`/`split`
+for a parameter that no longer does anything — plus a `tests/test_deprecations.py`
+whose registry meta-test fails when a shim ships untested. Per-symbol stability
+tiers live in [docs/reference/index.md](docs/reference/index.md).
 
 ## RELEASE CHECKLIST
 

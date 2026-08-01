@@ -1,9 +1,7 @@
 """
-philanthropy.models.propensity
+philanthropy.models._propensity_baseline
 ================================
 """
-
-import warnings
 
 import numpy as np
 from sklearn.base import ClassifierMixin, BaseEstimator
@@ -15,16 +13,14 @@ class PropensityScorer(ClassifierMixin, BaseEstimator):
     """Constant-probability baseline that predicts P=0.5 for every donor.
 
     A deliberately trivial, sklearn-compliant reference point: it fits nothing
-    and returns 0.5 for all rows (the ``estimator`` argument is reserved and
-    currently unused). Use it as a floor to beat when benchmarking. For real
+    and returns 0.5 for all rows. Use it as a floor to beat when benchmarking.
+    For real
     propensity scoring reach for
     :class:`~philanthropy.models.DonorPropensityModel` or
     :class:`~philanthropy.models.MajorGiftClassifier`.
 
     Parameters
     ----------
-    estimator : object, default=None
-        Reserved and unused.  Kept for backwards compatibility only.
     threshold : float, default=0.5
         Decision threshold on ``predict_proba(X)[:, 1]``.  The comparison is
         **strict** (``proba > threshold``), so at the default the constant 0.5
@@ -40,19 +36,10 @@ class PropensityScorer(ClassifierMixin, BaseEstimator):
         In :meth:`fit`, if ``y`` has more than two classes.
     """
 
-    def __init__(self, estimator=None, threshold: float = 0.5):
-        self.estimator = estimator
+    def __init__(self, threshold: float = 0.5):
         self.threshold = threshold
 
     def fit(self, X, y):
-        if self.estimator is not None:
-            warnings.warn(
-                "PropensityScorer(estimator=...) is unused: this baseline "
-                "always predicts a constant 0.5. The parameter is deprecated "
-                "and will be removed in 0.7.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
         X, y = validate_data(self, X, y, reset=True)
         check_classification_targets(y)
         y_type = type_of_target(y, input_name="y", raise_unknown=True)

@@ -6,7 +6,6 @@ from sklearn.utils.validation import check_is_fitted, validate_data
 from sklearn.utils.multiclass import check_classification_targets
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import HistGradientBoostingClassifier
-from ..utils._deprecation import deprecated_alias
 
 MOVES_STAGES = ["IDENTIFY", "QUALIFY", "CULTIVATE", "SOLICIT", "STEWARD"]
 
@@ -62,10 +61,6 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
         check_is_fitted(self)
         X = validate_data(self, X, reset=False)
         return self.estimator_.predict_proba(X)
-
-    @deprecated_alias("action_priority", removed_in="0.7.0")
-    def predict_action_priority(self, X):
-        """Return the next-best stage per donor plus a portfolio rollup."""
 
     def action_priority(self, X) -> dict:
         """Predict the next-best stage per donor plus a portfolio rollup.

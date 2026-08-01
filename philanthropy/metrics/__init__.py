@@ -4,7 +4,7 @@ philanthropy.metrics
 Donor KPI calculators.
 """
 
-from .scoring import (
+from ._scoring import (
     donor_retention_rate,
     donor_acquisition_cost,
     cost_per_dollar_raised,

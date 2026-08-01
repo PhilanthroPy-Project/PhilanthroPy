@@ -38,7 +38,7 @@ def test_ask_array_shape_and_monotonic(ask_Xy):
     X, y = ask_Xy
     model = AskAmountRecommender(max_iter=20, random_state=0)
     model.fit(X, y)
-    ladder = model.predict_ask_array(X)
+    ladder = model.ask_ladder(X)
     assert ladder.shape == (100, 3)
     # Columns ascend with the (ascending) default multipliers, elementwise.
     assert (ladder[:, 1] >= ladder[:, 0]).all()
@@ -50,7 +50,7 @@ def test_ask_array_matches_base_times_multipliers(ask_Xy):
     model = AskAmountRecommender(max_iter=20, random_state=0)
     model.fit(X, y)
     multipliers = (1.0, 1.5, 2.5)
-    ladder = model.predict_ask_array(X, multipliers=multipliers)
+    ladder = model.ask_ladder(X, multipliers=multipliers)
     expected = model.predict(X)[:, None] * np.asarray(multipliers)[None, :]
     np.testing.assert_array_almost_equal(ladder, expected)
 
@@ -77,14 +77,14 @@ def test_ask_array_rejects_empty_multipliers(ask_Xy):
     X, y = ask_Xy
     model = AskAmountRecommender(max_iter=20, random_state=0).fit(X, y)
     with pytest.raises(ValueError):
-        model.predict_ask_array(X, multipliers=())
+        model.ask_ladder(X, multipliers=())
 
 
 def test_ask_array_rejects_negative_multipliers(ask_Xy):
     X, y = ask_Xy
     model = AskAmountRecommender(max_iter=20, random_state=0).fit(X, y)
     with pytest.raises(ValueError):
-        model.predict_ask_array(X, multipliers=(1.0, -2.0))
+        model.ask_ladder(X, multipliers=(1.0, -2.0))
 
 
 def test_fit_returns_self(ask_Xy):

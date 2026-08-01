@@ -34,7 +34,7 @@ def test_action_priority_reports_a_stage_and_confidence_per_donor(stage_Xy):
     X, y = stage_Xy
     clf = MovesManagementClassifier(max_iter=10, random_state=0).fit(X, y)
 
-    priority = clf.predict_action_priority(X)
+    priority = clf.action_priority(X)
     assert set(priority) == {"stage", "confidence", "portfolio_summary"}
 
     assert len(priority["stage"]) == 30
@@ -52,6 +52,6 @@ def test_action_priority_summary_counts_every_donor(stage_Xy):
     X, y = stage_Xy
     clf = MovesManagementClassifier(max_iter=10, random_state=0).fit(X, y)
 
-    summary = clf.predict_action_priority(X)["portfolio_summary"]
+    summary = clf.action_priority(X)["portfolio_summary"]
     assert sum(summary.values()) == 30
     assert set(summary) <= set(_STAGES)

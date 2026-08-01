@@ -5,6 +5,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [1.0.0] - TBD
+
+The API freeze. No code changes — 1.0.0 is a promise, not a feature.
+
+### Changed
+- `Development Status :: 5 - Production/Stable`.
+- **Tier 1 is now semver-protected.** A breaking change to any Tier 1 symbol
+  requires a major release, preceded by one full published minor emitting
+  `DeprecationWarning`. Tier 2 may still break in a minor; Tier 3 carries no
+  guarantee. The tiers are listed per-symbol in
+  [docs/reference/index.md](docs/reference/index.md).
+
+### Added
+- `test_stability_tier_table_covers_every_public_symbol` — the tier table is now
+  machine-checked against `__all__`, so a new public symbol cannot ship without
+  a stated tier. At 1.0 that table is the contract; an out-of-date one is a
+  broken promise, not a docs nit.
+
+### Notes
+The five 1.0 gates all hold at this commit: 0.7.0 published; the public-API
+contract test green with no exemption added since 0.7.0; no `deprecated_alias`
+anywhere in `philanthropy/`; `__version__ == importlib.metadata.version(...)`
+and `py.typed` in the wheel; every `__all__` symbol carries a tier and no Tier 1
+entry is mid-deprecation.
+
 ## [0.7.0] - TBD
 
 The removal release. Every shim below shipped in 0.6.0 emitting a

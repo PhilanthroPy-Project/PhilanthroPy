@@ -35,7 +35,7 @@ One toolkit, two audiences:
 
 ### Maturity
 
-Single-maintainer MIT project at `v0.7.0` (Beta). Preprocessing and the core classifiers are stable; grateful-patient featurization and `philanthropy.ingest` are Beta; `FinancialForecastModel` and `philanthropy.experimental.*` are Experimental and carry no API guarantees. Per-symbol stability tiers are in the [API reference](docs/reference/index.md).
+Single-maintainer MIT project at `v1.0.0`. Tier 1 symbols are semver-protected — a breaking change to any of them requires a major release preceded by one full published minor of `DeprecationWarning`. Preprocessing and the core classifiers are Tier 1; grateful-patient featurization and `philanthropy.ingest` are Tier 2 (Beta); `FinancialForecastModel` and `philanthropy.experimental.*` are Tier 3 (Experimental) and carry no API guarantees. Per-symbol stability tiers are in the [API reference](docs/reference/index.md).
 
 > **Maintenance:** maintained by one person on a best-effort basis. For vendor / OSS risk reviews: the bus factor is 1. Issues and PRs are welcome.
 

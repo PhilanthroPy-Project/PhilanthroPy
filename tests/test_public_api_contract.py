@@ -102,10 +102,6 @@ def _predict_methods(cls):
     for attr, obj in inspect.getmembers(cls, predicate=inspect.isfunction):
         if not attr.startswith("predict") or attr in _SKLEARN_PREDICTORS:
             continue
-        # Deprecated aliases are on their way out (see tests/test_deprecations.py);
-        # the contract governs the names that survive to 1.0.
-        if (obj.__doc__ or "").startswith("Deprecated alias of"):
-            continue
         out.append(attr)
     return out
 
@@ -303,3 +299,63 @@ def test_no_exemption_is_stale():
 def test_every_exemption_carries_a_reason():
     for name, reason in _EXEMPT.items():
         assert len(reason) > 40, f"{name}'s exemption reason is not an explanation"
+
+
+# ---------------------------------------------------------------------------
+# The stability-tier table is the 1.0 semver contract
+#
+# From 1.0 the tier a symbol carries decides what a breaking change to it costs.
+# A table that has drifted from __all__ is a broken promise, not a docs nit, so
+# it is checked here rather than read by hand at release time.
+# ---------------------------------------------------------------------------
+
+_TIER_HEADINGS = ("### Tier 1 — Stable", "### Tier 2 — Beta", "### Tier 3 — Experimental")
+
+
+def _tier_table_text():
+    text = (REFERENCE_DIR / "index.md").read_text()
+    start = text.index(_TIER_HEADINGS[0])
+    end = text.index("## Score scales")
+    return text[start:end]
+
+
+def test_reference_index_declares_all_three_tiers():
+    text = (REFERENCE_DIR / "index.md").read_text()
+    for heading in _TIER_HEADINGS:
+        assert heading in text, f"docs/reference/index.md is missing {heading!r}"
+
+
+@pytest.mark.parametrize("subpackage", sorted(_public_subpackages()))
+def test_stability_tier_table_covers_every_public_symbol(subpackage):
+    table = _tier_table_text()
+    module = getattr(philanthropy, subpackage)
+
+    missing = [
+        symbol for symbol in module.__all__
+        if f"`{symbol}`" not in table
+    ]
+    # metrics is covered by one blanket row rather than nine names.
+    if subpackage == "metrics" and "every function in `philanthropy.metrics`" in table:
+        missing = []
+
+    assert not missing, (
+        f"docs/reference/index.md assigns no stability tier to "
+        f"philanthropy.{subpackage}: {missing}. At 1.0 the tier table is the "
+        f"semver contract — a public symbol without one has no stated promise."
+    )
+
+
+def test_tier_table_names_no_symbol_that_is_no_longer_public():
+    table = _tier_table_text()
+    public = {
+        symbol
+        for name in _public_subpackages()
+        for symbol in getattr(philanthropy, name).__all__
+    }
+    listed = {
+        sym
+        for line in table.splitlines() if line.startswith("|")
+        for sym in re.findall(r"`([A-Z]\w+)`", line.split("|")[1])
+    }
+    stale = sorted(listed - public)
+    assert not stale, f"tier table lists non-public symbols: {stale}"

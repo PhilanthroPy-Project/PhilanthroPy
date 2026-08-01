@@ -39,3 +39,35 @@ def donor_acquisition_cost(
         return np.inf
 
     return total_fundraising_expense / new_donors_acquired
+
+
+def cost_per_dollar_raised(
+    total_fundraising_expense: float,
+    total_raised: float,
+) -> float:
+    """Fundraising expense per dollar of revenue raised.
+
+    A headline efficiency KPI: values below ~0.20 are typically healthy for a
+    mature program. Returns ``np.inf`` when ``total_raised`` is 0 (spend with
+    nothing raised), so the result is always safe to compare or plot.
+    """
+    if total_raised == 0:
+        return np.inf
+
+    return total_fundraising_expense / total_raised
+
+
+def fundraising_roi(
+    total_raised: float,
+    total_fundraising_expense: float,
+) -> float:
+    """Net return on fundraising investment, ``(raised - expense) / expense``.
+
+    ``0.0`` means the program broke even; ``3.0`` means every dollar spent
+    returned three dollars of net revenue. Returns ``np.inf`` when
+    ``total_fundraising_expense`` is 0 (revenue with no spend).
+    """
+    if total_fundraising_expense == 0:
+        return np.inf
+
+    return (total_raised - total_fundraising_expense) / total_fundraising_expense

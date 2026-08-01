@@ -6,6 +6,8 @@ Predictive model for donor lapse using RandomForestClassifier.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import RandomForestClassifier
@@ -66,6 +68,14 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         -------
         self : LapsePredictor
         """
+        if self.lapse_window_years != 2:
+            warnings.warn(
+                "LapsePredictor(lapse_window_years=...) has no effect: the "
+                "window is a property of how you labelled y, not of the fit. "
+                "The parameter is deprecated and will be removed in 0.7.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         X, y = check_X_y(X, y, ensure_all_finite="allow-nan")
         self.classes_ = np.unique(y)
         self.n_features_in_ = X.shape[1]
@@ -95,6 +105,12 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         """Return P(lapse) × 100 rounded to 2 decimal places (0–100 scale)."""
         check_is_fitted(self)
         X = check_array(X, ensure_all_finite="allow-nan")
-        # Column 1 is P(class=1), i.e. P(lapse) when classes_ is [0, 1]
-        proba_lapse = self.predict_proba(X)[:, 1]
+        proba = self.predict_proba(X)
+        if proba.shape[1] < 2:
+            # Single-class training fold (e.g. no donor lapsed in the window):
+            # P(lapse) is 1.0 iff the sole class is the positive one, else 0.0.
+            proba_lapse = np.full(proba.shape[0], 1.0 if 1 in self.classes_ else 0.0)
+        else:
+            # Column 1 is P(class=1), i.e. P(lapse) when classes_ is [0, 1].
+            proba_lapse = proba[:, 1]
         return np.round(proba_lapse * 100.0, 2)

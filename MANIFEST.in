@@ -8,9 +8,7 @@ prune scripts
 prune .github
 prune .hypothesis
 
-exclude test_val.py
 exclude .coverage
-exclude environment.yml
 exclude mkdocs.yml
 
 global-exclude *.py[cod]

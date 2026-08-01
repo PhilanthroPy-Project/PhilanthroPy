@@ -301,21 +301,6 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
 # ShareOfWalletScorer
 # ---------------------------------------------------------------------------
 
-# Tier boundaries (share-of-wallet score, lower-bound inclusive)
-_TIER_THRESHOLDS = [
-    (0.75, "Principal"),
-    (0.40, "Major"),
-    (0.00, "Leadership"),
-]
-
-
-def _assign_tier(score: float) -> str:
-    """Map a [0, 1] SoW score to a descriptive capacity tier label."""
-    for threshold, label in _TIER_THRESHOLDS:
-        if score >= threshold:
-            return label
-    return "Leadership"
-
 
 class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
     """Compute a normalised Share-of-Wallet score and capacity-tier label.

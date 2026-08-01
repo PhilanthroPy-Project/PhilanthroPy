@@ -32,9 +32,10 @@ Get up and running in seconds:
     pip install philanthropy
     ```
 
-=== "conda"
+=== "from source"
     ```bash
-    conda env create -f environment.yml && conda activate Philanthropy
+    git clone https://github.com/PhilanthroPy-Project/PhilanthroPy.git
+    cd PhilanthroPy
     pip install -e ".[dev]"
     ```
 

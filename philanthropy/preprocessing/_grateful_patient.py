@@ -12,6 +12,7 @@ programs, where donor engagement is anchored to high-intensity clinical encounte
 from __future__ import annotations
 
 import re
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -310,6 +311,14 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
                 X_df = X[[self.merge_key]].copy()
             else:
                 # No merge key available — return zeros
+                warnings.warn(
+                    f"merge_key {self.merge_key!r} is not in X (columns: "
+                    f"{list(X.columns)}); every clinical feature is 0.0. Route "
+                    f"this featurizer with a ColumnTransformer that keeps "
+                    f"{self.merge_key!r}, or set merge_key to a column that exists.",
+                    UserWarning,
+                    stacklevel=2,
+                )
                 n = len(X)
                 return np.zeros((n, 4), dtype=np.float64)
         elif hasattr(self, "feature_names_in_") and self.merge_key in list(
@@ -322,6 +331,13 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
             )
         else:
             # No merge key — cannot join, return zeros
+            warnings.warn(
+                f"merge_key {self.merge_key!r} could not be located in X; every "
+                f"clinical feature is 0.0. Pass a DataFrame carrying "
+                f"{self.merge_key!r}, or fit on one so feature_names_in_ records it.",
+                UserWarning,
+                stacklevel=2,
+            )
             n = np.asarray(X).shape[0]
             return np.zeros((n, 4), dtype=np.float64)
 

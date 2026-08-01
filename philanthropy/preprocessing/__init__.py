@@ -16,6 +16,7 @@ from ._solicitation_window import SolicitationWindowTransformer
 from ._wealth_percentile import WealthPercentileTransformer
 from ._encounter_recency import EncounterRecencyTransformer
 from ._share_of_wallet import WealthScreeningImputerKNN, ShareOfWalletScorer
+from ._matching_gift import MatchingGiftFeaturizer
 
 __all__ = [
     "FiscalYearTransformer",
@@ -31,4 +32,5 @@ __all__ = [
     "EncounterRecencyTransformer",
     "WealthScreeningImputerKNN",
     "ShareOfWalletScorer",
+    "MatchingGiftFeaturizer",
 ]

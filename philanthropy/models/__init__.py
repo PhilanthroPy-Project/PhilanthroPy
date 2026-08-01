@@ -5,6 +5,7 @@ Donor propensity, lapse prediction, and share-of-wallet capacity models.
 """
 
 from .propensity import PropensityScorer
+from ._ask import AskAmountRecommender
 from ._propensity import DonorPropensityModel, MajorGiftClassifier
 from ._wallet import ShareOfWalletRegressor
 from ._moves import MovesManagementClassifier
@@ -13,6 +14,7 @@ from ._planned_giving import PlannedGivingIntentScorer
 from ._forecast import FinancialForecastModel
 
 __all__ = [
+    "AskAmountRecommender",
     "DonorPropensityModel",
     "FinancialForecastModel",
     "LapsePredictor",

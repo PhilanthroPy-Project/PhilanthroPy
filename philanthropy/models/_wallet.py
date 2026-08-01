@@ -14,7 +14,7 @@ call the donor's **share of wallet (SoW)**.  This capacity prediction drives:
 
 ``ShareOfWalletRegressor`` predicts the continuous dollar-denominated total
 philanthropic capacity of each prospect from CRM and wealth-screening features.
-It also exposes :meth:`predict_capacity_ratio`, which compares the predicted
+It also exposes :meth:`capacity_ratio`, which compares the predicted
 capacity against historical cumulative giving and surfaces a **untapped-capacity
 ratio** — the primary metric used by major-gift officers to prioritise outreach.
 
@@ -36,7 +36,7 @@ ShareOfWalletRegressor(random_state=0)
 >>> caps = model.predict(X)
 >>> caps.shape
 (100,)
->>> ratios = model.predict_capacity_ratio(X, historical_giving=rng.uniform(0, 500_000, 100))
+>>> ratios = model.capacity_ratio(X, historical_giving=rng.uniform(0, 500_000, 100))
 >>> bool((ratios > 0).all())
 True
 """
@@ -49,6 +49,7 @@ import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.utils.validation import check_is_fitted, validate_data
+from ..utils._deprecation import deprecated_alias
 
 
 class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
@@ -65,7 +66,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
     upstream imputation step, reducing pipeline complexity and eliminating one
     source of potential leakage.
 
-    The companion method :meth:`predict_capacity_ratio` exposes the
+    The companion method :meth:`capacity_ratio` exposes the
     **untapped-capacity ratio** (predicted capacity ÷ historical cumulative
     giving), the primary metric gift officers use to prioritise discovery
     calls and major-gift portfolios.
@@ -115,7 +116,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
     >>> model = ShareOfWalletRegressor(random_state=42).fit(X, y)
     >>> model.predict(X[:3]).shape
     (3,)
-    >>> ratios = model.predict_capacity_ratio(X[:3], historical_giving=historical[:3])
+    >>> ratios = model.capacity_ratio(X[:3], historical_giving=historical[:3])
     >>> bool((ratios >= 0).all())
     True
 
@@ -215,7 +216,11 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         raw = self.estimator_.predict(X)
         return np.maximum(raw, self.capacity_floor)
 
-    def predict_capacity_ratio(
+    @deprecated_alias("capacity_ratio", removed_in="0.7.0")
+    def predict_capacity_ratio(self, X, historical_giving=None):
+        """Return predicted capacity divided by historical giving."""
+
+    def capacity_ratio(
         self,
         X,
         historical_giving: np.ndarray,
@@ -263,7 +268,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         >>> y = rng.uniform(1e4, 1e6, 50)
         >>> hist = rng.uniform(500, 1e5, 50)
         >>> model = ShareOfWalletRegressor(random_state=7).fit(X, y)
-        >>> ratios = model.predict_capacity_ratio(X, historical_giving=hist)
+        >>> ratios = model.capacity_ratio(X, historical_giving=hist)
         >>> ratios.shape
         (50,)
         >>> bool((ratios > 0).all())

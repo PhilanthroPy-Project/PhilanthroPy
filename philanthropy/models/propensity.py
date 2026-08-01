@@ -3,8 +3,11 @@ philanthropy.models.propensity
 ================================
 """
 
+import warnings
+
 import numpy as np
 from sklearn.base import ClassifierMixin, BaseEstimator
+from sklearn.utils.multiclass import check_classification_targets, type_of_target
 from sklearn.utils.validation import check_is_fitted, validate_data
 
 
@@ -17,6 +20,24 @@ class PropensityScorer(ClassifierMixin, BaseEstimator):
     propensity scoring reach for
     :class:`~philanthropy.models.DonorPropensityModel` or
     :class:`~philanthropy.models.MajorGiftClassifier`.
+
+    Parameters
+    ----------
+    estimator : object, default=None
+        Reserved and unused.  Kept for backwards compatibility only.
+    threshold : float, default=0.5
+        Decision threshold on ``predict_proba(X)[:, 1]``.  The comparison is
+        **strict** (``proba > threshold``), so at the default the constant 0.5
+        score falls *below* the threshold and :meth:`predict` returns
+        ``classes_[0]`` for every row.  scikit-learn requires
+        ``argmax(predict_proba) == predict``, and ``argmax`` of a tied
+        ``[0.5, 0.5]`` row is index 0, so a non-strict comparison here would
+        make the estimator self-inconsistent.
+
+    Raises
+    ------
+    ValueError
+        In :meth:`fit`, if ``y`` has more than two classes.
     """
 
     def __init__(self, estimator=None, threshold: float = 0.5):
@@ -24,20 +45,45 @@ class PropensityScorer(ClassifierMixin, BaseEstimator):
         self.threshold = threshold
 
     def fit(self, X, y):
+        if self.estimator is not None:
+            warnings.warn(
+                "PropensityScorer(estimator=...) is unused: this baseline "
+                "always predicts a constant 0.5. The parameter is deprecated "
+                "and will be removed in 0.7.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         X, y = validate_data(self, X, y, reset=True)
+        check_classification_targets(y)
+        y_type = type_of_target(y, input_name="y", raise_unknown=True)
+        if y_type not in ("binary",):
+            raise ValueError(
+                "Only binary classification is supported. The type of the "
+                f"target is {y_type}."
+            )
         self.classes_ = np.unique(y)
         return self
 
     def predict(self, X):
         check_is_fitted(self)
         X = validate_data(self, X, reset=False)
+        if len(self.classes_) == 1:
+            return np.full(X.shape[0], self.classes_[0])
         proba = self.predict_proba(X)[:, 1]
-        idx = (proba >= self.threshold).astype(int)
+        idx = (proba > self.threshold).astype(int)
         return self.classes_[idx]
 
     def predict_proba(self, X):
         check_is_fitted(self)
         X = validate_data(self, X, reset=False)
         n = X.shape[0]
+        if len(self.classes_) == 1:
+            return np.ones((n, 1))
         prob_pos = np.full(n, 0.5)
         return np.column_stack([1 - prob_pos, prob_pos])
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.classifier_tags.poor_score = True
+        tags.classifier_tags.multi_class = False
+        return tags

@@ -11,11 +11,18 @@ authors:
   - family-names: Lalakiya
     given-names: Shivam
     email: shivamlalakiya151299@gmail.com
-version: 0.4.0
-date-released: "2026-07-18"
+version: 0.6.0
+date-released: "2026-08-01"
 license: MIT
 repository-code: "https://github.com/PhilanthroPy-Project/PhilanthroPy"
 url: "https://PhilanthroPy-Project.github.io/PhilanthroPy/"
+# Zenodo concept DOI — resolves to the latest deposited release. Replace the
+# placeholder with the real value after the first Zenodo deposit (see the
+# RELEASE CHECKLIST in CONTRIBUTING.md); JOSS requires it at acceptance.
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.PENDING"
+    description: "Concept DOI for all versions of PhilanthroPy"
 keywords:
   - nonprofit
   - fundraising

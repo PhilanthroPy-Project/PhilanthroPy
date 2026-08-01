@@ -1,20 +1,18 @@
-from sklearn.utils.estimator_checks import check_estimator
-from philanthropy.models import MajorGiftClassifier, LapsePredictor
+"""Behavioural checks for MajorGiftClassifier.
+
+The check_estimator battery for every compliant estimator lives in exactly one
+place: tests/test_sklearn_compliance.py::_STANDARD_ESTIMATORS.
+"""
+
 import numpy as np
 
-def test_major_gift_classifier_sklearn_compatible():
-    # We test it with default parameters to ensure basic compatibility
-    estimator = MajorGiftClassifier()
-    check_estimator(estimator)
+from philanthropy.models import MajorGiftClassifier
 
-def test_lapse_predictor_sklearn_compatible():
-    # LapsePredictor has standard fit(X, y) and passes check_estimator
-    estimator = LapsePredictor()
-    check_estimator(estimator)
 
 def test_major_gift_predict_affinity_score():
-    X = np.random.rand(100, 5)
-    y = np.random.randint(0, 2, 100)
+    rng = np.random.default_rng(0)
+    X = rng.random((100, 5))
+    y = rng.integers(0, 2, 100)
 
     clf = MajorGiftClassifier(random_state=42)
     clf.fit(X, y)

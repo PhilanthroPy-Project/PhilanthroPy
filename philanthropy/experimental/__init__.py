@@ -3,6 +3,6 @@ Experimental estimators — not yet check_estimator compliant.
 API may change without notice. Do not use in production pipelines.
 """
 
-from ._lapse import LapsePredictor
+from ._uplift import UpliftTLearner
 
-__all__ = ["LapsePredictor"]
+__all__ = ["UpliftTLearner"]

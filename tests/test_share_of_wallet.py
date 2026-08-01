@@ -4,12 +4,14 @@ Test suite for ShareOfWalletRegressor.
 """
 
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
 from sklearn.pipeline import Pipeline
 
 from philanthropy.models import ShareOfWalletRegressor
+from philanthropy.preprocessing import ShareOfWalletScorer, WealthScreeningImputerKNN
 
 
 @pytest.fixture
@@ -156,20 +158,20 @@ def test_capacity_floor_respected(wallet_Xy):
     assert (preds >= floor).all()
 
 
-def test_l2_regularization_accepted(wallet_Xy):
+def test_l2_regularization_reaches_the_inner_estimator(wallet_Xy):
     X, y = wallet_Xy
     model = ShareOfWalletRegressor(l2_regularization=1.0, max_iter=20, random_state=0)
     model.fit(X, y)
-    preds = model.predict(X)
-    assert preds.shape == (100,)
+    # A shape assertion passes whether or not the param is wired through.
+    assert model.estimator_.l2_regularization == 1.0
 
 
-def test_max_iter_accepted(wallet_Xy):
+def test_max_iter_reaches_the_inner_estimator(wallet_Xy):
     X, y = wallet_Xy
     model = ShareOfWalletRegressor(max_iter=50, random_state=0)
     model.fit(X, y)
-    preds = model.predict(X)
-    assert preds.shape == (100,)
+    assert model.estimator_.max_iter == 50
+    assert model.n_iter_ <= 50
 
 
 def test_estimator_attribute_accessible(wallet_Xy):
@@ -236,3 +238,127 @@ def test_negative_historical_giving_uses_floor(wallet_Xy):
     ratios = model.predict_capacity_ratio(X[:3], historical_giving=hist)
     expected = model.predict(X[:3]) / 1.0
     np.testing.assert_array_almost_equal(ratios, expected)
+
+
+# --------------------------------------------------------------------------- #
+# WealthScreeningImputerKNN — the feature-name contract on money columns
+# (philanthropy/preprocessing/_share_of_wallet.py:279-292 was never executed)
+# --------------------------------------------------------------------------- #
+def _knn_frame():
+    rng = np.random.default_rng(7)
+    df = pd.DataFrame(
+        rng.uniform(0, 1e6, (40, 3)),
+        columns=["estimated_net_worth", "real_estate_value", "years_active"],
+    )
+    df.loc[df.index[:8], "estimated_net_worth"] = np.nan
+    df.loc[df.index[5:12], "real_estate_value"] = np.nan
+    return df
+
+
+def test_knn_feature_names_out_width_matches_transform():
+    df = _knn_frame()
+    imp = WealthScreeningImputerKNN(strategy="knn", n_neighbors=3).fit(df)
+    names = imp.get_feature_names_out()
+    out = imp.transform(df)
+    assert len(names) == out.shape[1]
+
+
+def test_knn_feature_names_out_appends_one_indicator_per_imputed_col():
+    df = _knn_frame()
+    imp = WealthScreeningImputerKNN(strategy="knn", n_neighbors=3).fit(df)
+    names = list(imp.get_feature_names_out())
+    assert names[:3] == list(df.columns)
+    assert names[3:] == [f"{c}__was_missing" for c in imp.imputed_cols_]
+    # `years_active` is not a wealth column, so it gets no indicator.
+    assert "years_active__was_missing" not in names
+
+
+def test_knn_feature_names_out_has_no_indicators_when_disabled():
+    df = _knn_frame()
+    imp = WealthScreeningImputerKNN(
+        strategy="knn", n_neighbors=3, add_indicator=False
+    ).fit(df)
+    assert list(imp.get_feature_names_out()) == list(df.columns)
+
+
+def test_knn_feature_names_out_honours_input_features():
+    df = _knn_frame()
+    imp = WealthScreeningImputerKNN(
+        strategy="knn", n_neighbors=3, add_indicator=False
+    ).fit(df)
+    renamed = ["a", "b", "c"]
+    assert list(imp.get_feature_names_out(renamed)) == renamed
+
+
+def test_knn_warns_for_a_requested_wealth_column_that_is_absent():
+    df = _knn_frame()
+    imp = WealthScreeningImputerKNN(
+        wealth_cols=["estimated_net_worth", "stock_holdings"],
+        strategy="knn",
+        n_neighbors=3,
+    )
+    with pytest.warns(UserWarning, match="'stock_holdings' not found in X"):
+        imp.fit(df)
+    assert "stock_holdings" not in imp.imputed_cols_
+
+
+# --------------------------------------------------------------------------- #
+# Parameter validation (moved here from the deleted tests/test_coverage_boost.py,
+# with each `match=` tightened to the full message).
+# --------------------------------------------------------------------------- #
+def test_knn_invalid_strategy_lists_the_valid_ones():
+    with pytest.raises(
+        ValueError,
+        match=r"`strategy` must be one of \['knn', 'mean', 'median', 'zero'\], "
+              r"got 'invalid'\.",
+    ):
+        WealthScreeningImputerKNN(strategy="invalid").fit(
+            pd.DataFrame({"net_worth": [1.0, 2.0]})
+        )
+
+
+def test_knn_n_neighbors_below_one_raises():
+    with pytest.raises(ValueError, match=r"`n_neighbors` must be >= 1, got 0\."):
+        WealthScreeningImputerKNN(strategy="knn", n_neighbors=0).fit(
+            pd.DataFrame({"net_worth": [1.0, 2.0]})
+        )
+
+
+def test_knn_resolves_wealth_columns_by_substring_when_unset():
+    X = pd.DataFrame({"donor_net_worth": [1e6, np.nan], "other": [1.0, 2.0]})
+    imp = WealthScreeningImputerKNN(wealth_cols=None).fit(X)
+    assert "donor_net_worth" in imp.imputed_cols_
+    assert "other" not in imp.imputed_cols_
+
+
+@pytest.mark.parametrize("strategy", ["median", "mean", "zero"])
+def test_knn_non_knn_strategies_still_append_indicators(strategy):
+    X = pd.DataFrame({
+        "real_estate": [100.0, np.nan, 300.0],
+        "net_worth": [1.0, 2.0, 3.0],
+    })
+    out = WealthScreeningImputerKNN(
+        strategy=strategy, add_indicator=True
+    ).fit_transform(X)
+    assert out.shape[1] == 4  # 2 original + 2 indicators (both match by substring)
+
+
+def test_share_of_wallet_scorer_negative_epsilon_raises():
+    with pytest.raises(ValueError, match=r"`epsilon` must be >= 0, got -1\."):
+        ShareOfWalletScorer(epsilon=-1).fit(np.ones((5, 2)))
+
+
+def test_share_of_wallet_scorer_negative_capacity_col_idx_raises():
+    with pytest.raises(ValueError, match=r"`capacity_col_idx` must be >= 0, got -1\."):
+        ShareOfWalletScorer(capacity_col_idx=-1).fit(np.ones((5, 2)))
+
+
+def test_share_of_wallet_scorer_tier_labels_are_exact():
+    # The old assertion was an `or` over all three labels, so it could not fail.
+    X = np.array([[100.0, 100.0], [10.0, 1_000_000.0], [50.0, 100.0]])
+    scorer = ShareOfWalletScorer(capacity_col_idx=0).fit(X)
+    np.testing.assert_array_equal(
+        scorer.get_tier_labels(X), np.array(["Major", "Leadership", "Leadership"],
+                                            dtype=object)
+    )
+    np.testing.assert_array_equal(scorer.transform(X)[:, 1], [1.0, 0.0, 0.0])

@@ -382,7 +382,11 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         )
         self.estimator_ = CalibratedClassifierCV(base_estimator)
         self.estimator_.fit(X, y)
-        self.n_iter_ = 1
+        # Mean boosting iterations across the calibration folds. Reporting a
+        # hardcoded 1 here just to satisfy check_estimator would be masking.
+        self.n_iter_ = int(
+            np.mean([c.estimator.n_iter_ for c in self.estimator_.calibrated_classifiers_])
+        )
         return self
 
     def predict(self, X):

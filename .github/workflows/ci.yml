@@ -6,24 +6,54 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  # Never cancel a push-to-main run mid-suite; only supersede PR pushes.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  test:
+  lint:
+    name: Lint and type check
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
+          cache: 'pip'
       - name: Install package with dev deps
         run: pip install -e ".[dev]"
       - name: Lint (flake8 — real defects)
         run: python -m flake8 philanthropy tests examples
       - name: Type check (mypy)
         run: python -m mypy philanthropy
+
+  test:
+    name: Test (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        include:
+          # `pd.Timestamp.today().normalize()` and America/New_York localisation
+          # are the code paths that differ off Linux, and JOSS reviewers install
+          # on macOS. One extra leg, not five.
+          - os: macos-latest
+            python-version: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      - name: Install package with dev deps
+        run: pip install -e ".[dev]"
       - name: Check for import/collection errors (fast gate)
         run: |
           python -m pytest tests/ --collect-only -q || {
@@ -32,7 +62,66 @@ jobs:
             echo "Fix all ImportErrors before pushing."
             exit 1
           }
-      - name: Run test suite
-        run: pytest tests/ -v --tb=short
+      - name: Docstring examples
+        run: python -m pytest philanthropy --doctest-modules -q --no-cov
+      # This step runs every test; pytest-cov honours fail_under from
+      # pyproject.toml, so there is no separate bare suite run.
       - name: Coverage gate
-        run: pytest tests/ --cov=philanthropy --cov-fail-under=85 --cov-report=term-missing
+        run: pytest tests/ --cov=philanthropy --cov-report=term-missing
+      # Measured 94% branch on this subtree; pinned one point under. The
+      # visualisation package is exempt by omission — a chart's correctness is
+      # not a line-coverage question.
+      - name: Risk-tier coverage floor
+        run: >
+          coverage report
+          --include='philanthropy/preprocessing/*,philanthropy/models/*,philanthropy/ingest/*,philanthropy/cli.py,philanthropy/utils/_persistence.py'
+          --fail-under=93
+
+  floors:
+    name: Declared dependency floors (lowest-direct)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      # Plain pip resolves the newest wheels even on the 3.9 leg, which is how
+      # a false `pandas>=1.5` floor survived. Install exactly what the metadata
+      # declares instead.
+      - name: Create 3.9 venv
+        run: uv venv --python 3.9
+      - name: Install at declared floors
+        run: uv pip install --resolution lowest-direct -e ".[dev]"
+      - name: Run test suite
+        run: uv run pytest tests/ -q
+
+  package:
+    name: Build and check distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      # Plain `python -m build`, matching publish.yml, so a bad
+      # [build-system] requires floor fails the PR and not the release.
+      - name: Build
+        run: |
+          python -m pip install --upgrade build twine
+          python -m build
+      - name: Verify metadata
+        run: python -m twine check dist/*
+
+  minimal:
+    name: Minimal install (no viz extra)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Every `test` leg installs [dev], which pulls matplotlib. This is the
+      # only job that proves importing the package does not need a plotting
+      # stack — the guarantee docs/explanation/comparison_to_vendors.md makes.
+      - name: Install runtime deps only
+        run: pip install .
+      - name: Import without matplotlib
+        run: python -c "import philanthropy, philanthropy.visualisation; print(philanthropy.__version__)"

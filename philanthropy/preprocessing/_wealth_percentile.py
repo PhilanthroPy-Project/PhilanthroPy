@@ -19,13 +19,6 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
         self.wealth_cols = wealth_cols
         self.output_suffix = output_suffix
 
-    def _resolve_cols(self, X: pd.DataFrame) -> list[str]:
-        if self.wealth_cols is not None:
-            return [c for c in self.wealth_cols if c in X.columns]
-        
-        targets = ("net_worth", "real_estate", "stock", "capacity")
-        return [c for c in X.columns if any(t in c for t in targets)]
-
     def fit(self, X, y=None):
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=True)
         
@@ -86,9 +79,6 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
             if col in self.feature_names_in_:
                 out.append(f"{col}{self.output_suffix}")
         return np.array(out, dtype=object)
-
-    def _more_tags(self):
-        return {"X_types": ["2darray", "dataframe"]}
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()

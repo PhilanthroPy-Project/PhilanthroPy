@@ -25,7 +25,7 @@ In short: the library helps you *model* on data that you have **already** made l
 
 ## Dropping columns by name is defense-in-depth, not de-identification
 
-`EncounterTransformer` drops columns whose **names** match a set of identifier heuristics — the class attribute `PII_PATTERNS` (substrings such as `_id`, `mrn`, `ssn`, `name`, `dob`, `zip`, `patient`, `phone`, `email`, `address`), plus anything you add through the `id_cols_to_drop` parameter. As of v0.4.0 you can override the heuristic entirely with the `pii_patterns` parameter, which **replaces** (does not extend) the built-in default.
+`EncounterTransformer` drops columns whose **names** match a set of identifier heuristics — the class attribute `PII_PATTERNS` (substrings such as `_id`, `mrn`, `ssn`, `name`, `dob`, `zip`, `patient`, `phone`, `email`, `address`), plus anything you add through the `id_cols_to_drop` parameter. You can override the heuristic entirely with the `pii_patterns` parameter, which **replaces** (does not extend) the built-in default.
 
 !!! warning "A name-based heuristic can only catch what it recognizes"
     This is **defense-in-depth**, not formal de-identification. The check inspects column *names* only — never the contents of any cell. It will silently miss:
@@ -60,7 +60,7 @@ PhilanthroPy does not enforce any of this. Honoring minimum-necessary scoping an
 By default `EncounterTransformer(allow_negative_days=False)` coerces negative `days_since_last_discharge` values to `NaN`, discarding gifts that predate a discharge. Setting `allow_negative_days=True` **retains** those gifts — which means the resulting features can encode, and the downstream model can learn from, solicitation that occurred *before or during* active treatment.
 
 !!! warning "`allow_negative_days=True` warns at fit time for a reason"
-    As of v0.4.0, fitting with `allow_negative_days=True` emits a `UserWarning`. Soliciting a patient during an active care episode raises ethical concerns well beyond HIPAA. Professional-conduct guidance — the Association of Fundraising Professionals (AFP) *Donor Bill of Rights* and the Association for Healthcare Philanthropy (AHP) guidelines on grateful-patient programs — counsels care around the timing of clinician-referred or care-adjacent solicitation. Enable this flag only for legitimate retrospective analysis, and confirm the use with your donor-relations policy and Privacy Officer first.
+    Fitting with `allow_negative_days=True` emits a `UserWarning`. Soliciting a patient during an active care episode raises ethical concerns well beyond HIPAA. Professional-conduct guidance — the Association of Fundraising Professionals (AFP) *Donor Bill of Rights* and the Association for Healthcare Philanthropy (AHP) guidelines on grateful-patient programs — counsels care around the timing of clinician-referred or care-adjacent solicitation. Enable this flag only for legitimate retrospective analysis, and confirm the use with your donor-relations policy and Privacy Officer first.
 
 ## Wealth and capacity features can be proxies for protected characteristics
 

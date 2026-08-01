@@ -3,8 +3,10 @@ from __future__ import annotations
 import numpy as np
 from sklearn.base import ClassifierMixin, BaseEstimator
 from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.utils.multiclass import check_classification_targets
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import HistGradientBoostingClassifier
+from ..utils._deprecation import deprecated_alias
 
 MOVES_STAGES = ["IDENTIFY", "QUALIFY", "CULTIVATE", "SOLICIT", "STEWARD"]
 
@@ -27,6 +29,9 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
 
     def fit(self, X, y):
         X, y = validate_data(self, X, y, reset=True)
+        # Reject continuous targets: this is a classifier, so a regression
+        # target must not be silently label-encoded into pseudo-classes.
+        check_classification_targets(y)
         if hasattr(X, "columns"):
             self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
         self.n_features_in_ = X.shape[1]
@@ -42,6 +47,9 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
             random_state=self.random_state,
         )
         self.estimator_.fit(X, y_encoded)
+        # Expose n_iter_ (project convention for any estimator taking max_iter;
+        # check_estimator requires it).
+        self.n_iter_ = self.estimator_.n_iter_
         return self
 
     def predict(self, X):
@@ -55,7 +63,11 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
         X = validate_data(self, X, reset=False)
         return self.estimator_.predict_proba(X)
 
-    def predict_action_priority(self, X) -> dict:
+    @deprecated_alias("action_priority", removed_in="0.7.0")
+    def predict_action_priority(self, X):
+        """Return the next-best stage per donor plus a portfolio rollup."""
+
+    def action_priority(self, X) -> dict:
         """Predict the next-best stage per donor plus a portfolio rollup.
 
         Unlike ``predict``/``predict_proba`` (which return ndarrays), this

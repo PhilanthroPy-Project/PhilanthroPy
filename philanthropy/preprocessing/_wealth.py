@@ -164,6 +164,10 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
 
     def _compute_fill(self, array: np.ndarray) -> float:
         """Return the fill value for a single wealth column."""
+        # An all-NaN column has no statistic. Short-circuit so nanmedian/nanmean
+        # do not emit "Mean of empty slice" for a NaN we discard immediately.
+        if np.all(np.isnan(array)):
+            return 0.0
         if self.strategy == "median":
             val = np.nanmedian(array)
         elif self.strategy == "mean":

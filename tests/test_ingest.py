@@ -411,3 +411,50 @@ def test_features_feed_donor_propensity_model():
     scores = model.predict_affinity_score(X)
     assert scores.shape == (len(feats),)
     assert ((scores >= 0) & (scores <= 100)).all()
+
+
+# --------------------------------------------------------------------------- #
+# read_constituent_events: filesystem and malformed-JSON boundaries
+# --------------------------------------------------------------------------- #
+def test_missing_path_raises_file_not_found(tmp_path):
+    with pytest.raises(FileNotFoundError, match="No such file or directory"):
+        read_constituent_events(tmp_path / "nope")
+
+    with pytest.raises(FileNotFoundError, match="No such file or directory"):
+        read_constituent_events(tmp_path / "absent_dir" / "events.jsonl")
+
+
+def test_ndjson_blank_lines_are_skipped(tmp_path):
+    p = tmp_path / "events.jsonl"
+    p.write_text(
+        json.dumps(_event("a@x.edu", "DONATION", "2025-01-01T00:00:00Z", amount=10.0))
+        + "\n\n   \n"
+        + json.dumps(_event("b@x.edu", "DONATION", "2025-01-02T00:00:00Z", amount=20.0))
+        + "\n"
+    )
+    events = read_constituent_events(p)
+    assert [e["constituentEmail"] for e in events] == ["a@x.edu", "b@x.edu"]
+
+
+def test_ndjson_truncated_record_names_file_and_line(tmp_path):
+    p = tmp_path / "events.jsonl"
+    p.write_text(
+        json.dumps(_event("a@x.edu", "DONATION", "2025-01-01T00:00:00Z", amount=10.0))
+        + '\n{"constituentEmail": "b@x.edu", "eventTy\n'
+    )
+    with pytest.raises(ValueError, match="Malformed JSON") as exc:
+        read_constituent_events(p)
+    assert "at line 2" in str(exc.value)
+
+
+def test_empty_json_file_yields_no_events(tmp_path):
+    p = tmp_path / "events.json"
+    p.write_text("   \n")
+    assert read_constituent_events(p) == []
+
+
+def test_unclosed_json_object_raises(tmp_path):
+    p = tmp_path / "events.json"
+    p.write_text("{")
+    with pytest.raises(ValueError, match="Malformed JSON"):
+        read_constituent_events(p)

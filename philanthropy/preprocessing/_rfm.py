@@ -34,6 +34,17 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
             self.feature_names_in_ = np.array([f"x{i}" for i in range(self.n_features_in_)], dtype=object)
         
         self._validate_input(X)
+
+        # Freeze the recency reference date from TRAINING data (leakage-safety
+        # contract: fitted statistics are computed in fit and frozen before
+        # transform). Mirrors EncounterRecencyTransformer.reference_date_.
+        if self.reference_date is not None:
+            self.reference_date_ = pd.to_datetime(self.reference_date)
+        else:
+            X_df = X if hasattr(X, "columns") else pd.DataFrame(
+                X, columns=self.feature_names_in_
+            )
+            self.reference_date_ = pd.to_datetime(X_df["gift_date"]).max()
         return self
 
     def transform(self, X):
@@ -48,12 +59,11 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         
         X_df = X.copy() if hasattr(X, "columns") else pd.DataFrame(X, columns=self.feature_names_in_)
         X_df['gift_date'] = pd.to_datetime(X_df['gift_date'])
-        
-        if self.reference_date is not None:
-            ref_date = pd.to_datetime(self.reference_date)
-        else:
-            ref_date = X_df['gift_date'].max()
-            
+
+        # Use the reference date frozen in fit — never the transform batch's
+        # max, which would make recency depend on which rows share the batch.
+        ref_date = self.reference_date_
+
         grouped = X_df.groupby('donor_id')
         
         # Recency: Days since the last gift relative to reference_date
@@ -85,12 +95,8 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         check_is_fitted(self)
         return np.array(['donor_id', 'recency', 'frequency', 'monetary'], dtype=object)
 
-    def _more_tags(self):
-        return {"X_types": ["2darray", "dataframe", "string"]}
-
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         tags.input_tags.string = True
-        tags._skip_test = True # Schema-dependent
         return tags

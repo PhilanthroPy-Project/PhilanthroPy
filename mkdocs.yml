@@ -74,8 +74,15 @@ nav:
     - tutorials/building_a_grateful_patient_pipeline.md
   - How-To Guides:
     - how-to/index.md
+    - how-to/use_the_cli.md
+    - how-to/ingest_unischema_events.md
     - how-to/handle_missing_wealth_data.md
     - how-to/build_grateful_patient_features.md
+    - how-to/recommend_ask_amounts.md
+    - how-to/score_matching_gift_eligibility.md
+    - how-to/measure_campaign_efficiency.md
+    - how-to/audit_score_fairness.md
+    - how-to/estimate_appeal_uplift.md
     - how-to/save_and_load_models.md
     - how-to/develop_and_test.md
   - Explanation:
@@ -94,3 +101,8 @@ nav:
     - reference/inspection.md
     - reference/datasets.md
     - reference/model_selection.md
+    - reference/ingest.md
+    - reference/visualisation.md
+    - reference/utils.md
+    - reference/experimental.md
+    - reference/cli.md

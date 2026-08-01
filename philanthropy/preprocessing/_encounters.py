@@ -324,7 +324,7 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
 
         return self
 
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
         """Append encounter features and strip identifying columns.
 
         Parameters
@@ -418,9 +418,6 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         out = [f for f in features if f not in dropped]
         out.extend(["days_since_last_discharge", "encounter_frequency_score"])
         return np.array(out, dtype=object)
-
-    def _more_tags(self):
-        return {"X_types": ["2darray", "dataframe"]}
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()

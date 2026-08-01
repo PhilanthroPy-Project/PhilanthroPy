@@ -39,6 +39,8 @@ from pandas.errors import OutOfBoundsTimedelta
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted, validate_data
 
+from ..utils._validation import validate_fiscal_year_start
+
 
 class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
     """Transform HIPAA-safe encounter-date columns into predictive recency features.
@@ -155,14 +157,19 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
     # ------------------------------------------------------------------
 
     def _validate_fiscal_year_start(self) -> None:
-        """Raise ValueError if fiscal_year_start is out of range."""
-        if not isinstance(self.fiscal_year_start, (int, np.integer)) or not (
-            1 <= int(self.fiscal_year_start) <= 12
-        ):
+        """Raise ValueError if fiscal_year_start is not an integer in [1, 12].
+
+        The type check stays here: ``validate_fiscal_year_start`` is also called
+        by ``CRMCleaner`` and ``FiscalYearTransformer``, which do not reject
+        non-integers today, and tightening a shared validator would change two
+        classes this method does not own.  The *range* rule is shared.
+        """
+        if not isinstance(self.fiscal_year_start, (int, np.integer)):
             raise ValueError(
                 f"`fiscal_year_start` must be an integer in [1, 12], "
                 f"got {self.fiscal_year_start!r}."
             )
+        validate_fiscal_year_start(int(self.fiscal_year_start))
 
     def _resolve_date_cols(self) -> list[str]:
         """Return the date column(s) as a list of strings."""
@@ -243,9 +250,10 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         if ref.tzinfo is not None:
             ref = ref.tz_convert("UTC").tz_localize(None)
         delta = np.datetime64(ref, "D") - d.to_numpy(dtype="datetime64[D]")
-        return pd.Series(
-            delta / np.timedelta64(1, "D"), index=dates.index
-        ).astype("float64")
+        # numpy stubs mis-infer the datetime64 subtraction above as datetime64
+        # rather than timedelta64, so the division reads as an invalid operand.
+        days = delta / np.timedelta64(1, "D")  # type: ignore[operator]
+        return pd.Series(days, index=dates.index).astype("float64")
 
     # ------------------------------------------------------------------
     # fit / transform

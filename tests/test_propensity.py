@@ -8,7 +8,6 @@ from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.utils.estimator_checks import parametrize_with_checks
 
 from philanthropy.models import PropensityScorer, LapsePredictor
 
@@ -213,9 +212,3 @@ def test_lapse_predictor_get_params_set_params():
     assert params["lapse_window_years"] == 3
     clf.set_params(n_estimators=30)
     assert clf.n_estimators == 30
-
-
-@parametrize_with_checks([LapsePredictor(n_estimators=10, random_state=0)])
-def test_lapse_predictor_sklearn_compliance(estimator, check):
-    """LapsePredictor must pass check_estimator (fit uses standard X, y)."""
-    check(estimator)

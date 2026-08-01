@@ -209,3 +209,43 @@ class TestGratefulPatientFeaturizer:
         # After normalisation, "Cardiac" → "cardiac" → weight 3.2
         result = gpf.transform(pd.DataFrame({"donor_id": [1]}))
         assert result[0, 0] == pytest.approx(1 * 3.2)
+
+
+# --------------------------------------------------------------------------- #
+# The two all-zero fallbacks must be loud (audit finding: 84% coverage file,
+# both branches previously returned a silent zeros((n, 4)) block).
+# --------------------------------------------------------------------------- #
+def test_warns_when_dataframe_lacks_merge_key():
+    enc = pd.DataFrame({
+        "donor_id": [1, 2],
+        "discharge_date": ["2022-01-01", "2022-02-01"],
+        "service_line": ["cardiac", "oncology"],
+        "attending_physician_id": ["P1", "P2"],
+    })
+    # An upstream transformer (e.g. FiscalYearTransformer) already replaced the
+    # donor_id column, so it is absent at fit *and* transform: sklearn's own
+    # feature-name check passes and the merge silently cannot happen.
+    no_key = pd.DataFrame({"fiscal_year": [2020.0, 2021.0]})
+    gpf = GratefulPatientFeaturizer(encounter_df=enc)
+    gpf.fit(no_key)
+
+    with pytest.warns(UserWarning, match="is not in X"):
+        out = gpf.transform(no_key)
+    assert out.shape == (2, 4)
+    assert not out.any()
+
+
+def test_warns_when_ndarray_has_no_recoverable_merge_key():
+    enc = pd.DataFrame({
+        "donor_id": [1, 2],
+        "discharge_date": ["2022-01-01", "2022-02-01"],
+        "service_line": ["cardiac", "oncology"],
+        "attending_physician_id": ["P1", "P2"],
+    })
+    gpf = GratefulPatientFeaturizer(encounter_df=enc)
+    gpf.fit(np.array([[1.0], [2.0]]))  # no feature names recorded
+
+    with pytest.warns(UserWarning, match="could not be located in X"):
+        out = gpf.transform(np.array([[1.0], [2.0]]))
+    assert out.shape == (2, 4)
+    assert not out.any()

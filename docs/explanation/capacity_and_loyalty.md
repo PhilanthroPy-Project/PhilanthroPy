@@ -18,11 +18,13 @@ This ratio is rooted in industry standards and aligns with benchmarks establishe
 
 ### Capacity Tiers
 
-Categories are easier to act on than raw numbers, so PhilanthroPy sorts donors into operational tiers automatically:
+Categories are easier to act on than raw numbers, so `ShareOfWalletScorer.transform` emits a second column, `capacity_tier`, alongside `sow_score`. It is a numeric encoding; `get_tier_labels(X)` returns the strings.
 
-* **Principal**: High Share of Wallet potential.
-* **Major**: Medium Share of Wallet potential.
-* **Leadership**: Currently maxing out given known capacity constraints.
+| `sow_score` | `capacity_tier` | Label | Recommended action |
+|---|---|---|---|
+| ≥ 0.75 | 2 | **Principal** | Schedule a personal visit with the campaign chair. |
+| 0.40 – 0.75 | 1 | **Major** | Assign a major gift officer. |
+| < 0.40 | 0 | **Leadership** | Include in leadership annual giving. |
 
 ## Retention & Loyalty
 

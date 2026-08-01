@@ -19,7 +19,6 @@ from __future__ import annotations
 import argparse
 import sys
 
-import joblib
 import pandas as pd
 
 from . import __version__
@@ -33,14 +32,11 @@ _MODEL_CHOICES = (
 
 
 def _resolve_model(name):
+    # argparse already rejects anything outside _MODEL_CHOICES, so there is no
+    # unknown-name branch to handle here.
     from . import models
 
-    try:
-        return getattr(models, name)
-    except AttributeError as exc:
-        raise SystemExit(
-            f"Unknown model {name!r}. Choose one of: {', '.join(_MODEL_CHOICES)}."
-        ) from exc
+    return getattr(models, name)
 
 
 def _read_csv(path):
@@ -66,13 +62,14 @@ def _split_features(features):
 
 
 def _load_bundle(path):
+    from .utils import load_model
+
     try:
-        bundle = joblib.load(path)
+        return load_model(path)
     except FileNotFoundError:
         raise SystemExit(f"Model file not found: {path}")
-    if not isinstance(bundle, dict) or "model" not in bundle:
-        raise SystemExit(f"{path} is not a PhilanthroPy model bundle.")
-    return bundle
+    except ValueError as exc:
+        raise SystemExit(str(exc))
 
 
 def _score_array(model, X):
@@ -81,26 +78,48 @@ def _score_array(model, X):
     return model.predict_proba(X)[:, 1]
 
 
+_CSV_INJECTION_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _neutralise_csv_injection(df):
+    """Prefix an apostrophe to object-dtype cells beginning with a spreadsheet
+    formula trigger (=, +, -, @, tab, CR).
+
+    The scored CSV echoes donor-controlled string fields (name, email, …) that
+    originate from third-party advancement webhooks. Without this, a cell like
+    ``=cmd|'/c calc'!A1`` executes when an analyst opens scores.csv in Excel or
+    Google Sheets (CSV formula injection, CWE-1236). Returns a copy; numeric
+    columns are untouched.
+    """
+    out = df.copy()
+    # Iterate every column and let the isinstance guard below decide. Selecting
+    # by dtype is not stable across pandas versions: pandas 4 stops returning
+    # `str`-dtype columns for include=["object"], which would silently switch
+    # neutralisation off for exactly the donor-supplied text this protects.
+    for col in out.columns:
+        mask = out[col].map(
+            lambda v: isinstance(v, str) and v.startswith(_CSV_INJECTION_PREFIXES)
+        )
+        if mask.any():
+            out.loc[mask, col] = "'" + out.loc[mask, col]
+    return out
+
+
 def _cmd_train(args):
     features = _split_features(args.features)
-    if features is None:
+    # Falsy, not `is None`: "--features ' , '" parses to [] and used to reach
+    # fit() with a zero-column matrix.
+    if not features:
         raise SystemExit("train requires --features (comma-separated column names).")
     df = _read_csv(args.data)
     _require_columns(df, features + [args.target], args.data)
 
-    import sklearn
+    from .utils import save_model
 
     model = _resolve_model(args.model)(random_state=args.random_state)
     model.fit(df[features].to_numpy(), df[args.target].to_numpy())
 
-    bundle = {
-        "model": model,
-        "features": features,
-        "target": args.target,
-        "philanthropy_version": __version__,
-        "sklearn_version": sklearn.__version__,
-    }
-    joblib.dump(bundle, args.out)
+    save_model(model, args.out, features=features, target=args.target)
     print(f"Trained {args.model} on {len(df)} rows; saved to {args.out}")
 
 
@@ -112,6 +131,7 @@ def _cmd_score(args):
 
     out = df.copy()
     out["score"] = _score_array(bundle["model"], df[features].to_numpy())
+    out = _neutralise_csv_injection(out)
     if args.out:
         out.to_csv(args.out, index=False)
         print(f"Wrote {len(out)} scored rows to {args.out}")
@@ -168,7 +188,12 @@ def _build_parser():
     train.set_defaults(func=_cmd_train)
 
     score = sub.add_parser("score", help="Score a CSV with a saved model.")
-    score.add_argument("--model", required=True, help="saved model bundle (.joblib)")
+    score.add_argument(
+        "--model",
+        required=True,
+        help="saved model bundle (.joblib). WARNING: a bundle is unpickled on "
+        "load and can execute arbitrary code — only load bundles you trust.",
+    )
     score.add_argument("--data", required=True, help="path to a CSV to score")
     score.add_argument("--features", default=None, help="override the bundle's features")
     score.add_argument("--out", default=None, help="output CSV path (default: stdout)")
@@ -177,7 +202,12 @@ def _build_parser():
     validate = sub.add_parser(
         "validate", help="Report precision/recall/F1/ROC-AUC on a labelled CSV."
     )
-    validate.add_argument("--model", required=True, help="saved model bundle (.joblib)")
+    validate.add_argument(
+        "--model",
+        required=True,
+        help="saved model bundle (.joblib). WARNING: a bundle is unpickled on "
+        "load and can execute arbitrary code — only load bundles you trust.",
+    )
     validate.add_argument("--data", required=True, help="path to a labelled CSV")
     validate.add_argument("--target", default=None, help="label column (else bundle's)")
     validate.add_argument("--features", default=None, help="override the bundle's features")

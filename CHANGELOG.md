@@ -4,7 +4,125 @@ All notable changes to PhilanthroPy are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
+
+## [0.6.0] - 2026-08-01
+
+### Breaking
+- `pandas>=2.0` is now the declared floor (was `>=1.5`). The ingest bridge pins
+  `format="ISO8601"`, which is pandas 2.0+; on a conforming 1.5.x install
+  `errors="coerce"` silently produced an all-NaT, zero-row feature frame. The
+  build backend floor moves to `setuptools>=77` for the PEP 639 license fields.
+- `DischargeToSolicitationWindowTransformer.transform` now raises `ValueError`
+  when given a DataFrame without `days_since_discharge_col`, instead of reading
+  `X.iloc[:, 0]`. That fallback made a serial `Pipeline` behind
+  `FiscalYearTransformer` score every donor `0.0` and exit cleanly. Route the
+  transformer with a `ColumnTransformer`; see
+  `docs/tutorials/building_your_first_model.md` for the migration.
+- `philanthropy.experimental.LapsePredictor` is **removed**. It collided by name
+  with `philanthropy.models.LapsePredictor` and took different positional
+  arguments. Tier 3, so no deprecation runway. Use `models.LapsePredictor`.
+- `PropensityScorer.predict` now uses a strict threshold comparison
+  (`proba > threshold`), flipping its default-threshold prediction from class 1
+  to class 0. scikit-learn requires `argmax(predict_proba) == predict`, and
+  `argmax` of a tied `[0.5, 0.5]` row is index 0. Arbitrary either way for a
+  constant scorer; only its ROC-AUC of 0.500 ever carried information.
+- `PropensityScorer.fit` now raises `ValueError` on a multiclass `y`.
+
 ### Added
+- `philanthropy.model_selection`, `.experimental` and `.visualisation` are now
+  importable from `import philanthropy` and listed in `__all__`; they raised
+  `AttributeError` before while the docs rendered reference pages for them.
+- `philanthropy/py.typed` — the package now ships its type information.
+- `joblib>=1.2` is declared; it was a direct import carried transitively.
+- `tests/test_public_api_contract.py` — an executable spec for the public API:
+  subpackage `__all__` completeness, reference-page coverage, the
+  `predict_<thing>_(score|forecast)` naming and shape contract, and
+  `get_feature_names_out` width. Two named exemptions, each with a reason.
+- `tests/test_metrics_oracles.py` — closed-form oracles for the money metrics:
+  the textbook Gini definition, a term-by-term discounted annuity, and the
+  EEOC four-fifths worked example.
+- Seven how-to guides: use the CLI, ingest UniSchema events, recommend ask
+  amounts, score matching-gift eligibility, measure campaign efficiency, audit
+  score fairness, estimate appeal uplift. Reference pages for `experimental`,
+  `utils` and `cli`. A stability-tier and score-scale table in
+  `docs/reference/index.md`.
+- `.zenodo.json` and a concept-DOI placeholder in `CITATION.cff`.
+
+### Deprecated
+All of the following still work and emit `DeprecationWarning`. **Removed in
+0.7.0.**
+
+| Deprecated | Use instead |
+|---|---|
+| `AskAmountRecommender.predict_ask_array` | `ask_ladder` |
+| `ShareOfWalletRegressor.predict_capacity_ratio` | `capacity_ratio` |
+| `MovesManagementClassifier.predict_action_priority` | `action_priority` |
+| `PlannedGivingIntentScorer.predict_bequest_intent_score` | `predict_intent_score` |
+
+The `predict_` prefix is now reserved for methods that take X alone and return
+one value per row. The first three returned a `(n, 3)` dollar matrix, required a
+second argument, and returned a dict respectively.
+
+Three constructor parameters have no effect and warn when set to a non-default
+value: `LapsePredictor(lapse_window_years=...)`,
+`PropensityScorer(estimator=...)`,
+`FiscalYearGroupedSplitter(fiscal_year_start=...)`. All removed in 0.7.0.
+
+### Fixed
+- `philanthropy.__version__` is read from installed metadata. It reported
+  `0.4.0` against a `0.5.0` package, and every bundle written by `save_model`
+  carried the wrong stamp.
+- `MajorGiftClassifier.n_iter_` reports the real mean boosting iterations across
+  the calibration folds instead of a hardcoded `1`.
+- `GratefulPatientFeaturizer.transform` emits a `UserWarning` before each
+  all-zero fallback instead of silently returning `zeros((n, 4))`.
+- `philanthropy train --features " , "` now exits with an error instead of
+  fitting on a zero-column matrix.
+- `read_constituent_events` raises `FileNotFoundError` for a missing path
+  instead of surfacing an opaque OSError from the single-file branch.
+- `WealthScreeningImputer` no longer emits a `Mean of empty slice`
+  `RuntimeWarning` on an all-NaN column.
+- `CRMCleaner.fiscal_year_start` is documented as validated-but-unused.
+- Doc corrections: `ShareOfWalletScorer` capacity-tier thresholds, PHI-dropping
+  attributed to `EncounterTransformer` rather than `CRMCleaner`, and the
+  `GratefulPatientFeaturizer` output columns.
+
+### Changed
+- The `check_estimator` battery is consolidated into one list in
+  `tests/test_sklearn_compliance.py`. `MajorGiftClassifier` runs at
+  `max_iter=10`, cutting suite runtime by roughly two thirds;
+  `PropensityScorer`, `WealthPercentileTransformer`,
+  `WealthScreeningImputerKNN`, `ShareOfWalletScorer`, `CRMCleaner`,
+  `EncounterRecencyTransformer` and bare-default variants were added.
+  `RFMTransformer` moved to an explicit contract class — its `_skip_test=True`
+  tag was running 1 check instead of 46.
+- Branch coverage is enabled and gated; the risk-tier subtree has its own floor.
+- `docs/explanation/benchmarks.md` reports mean and min–max across five seeds
+  instead of three decimals from one split.
+- CI: the duplicate full-suite run is gone, lint runs once instead of five
+  times, and there are new `floors` (lowest-direct dependency resolution),
+  `package`, and `minimal` (no-matplotlib import) jobs plus a macOS leg.
+- `publish.yml` gates on tag ↔ `pyproject.toml` ↔ `CHANGELOG.md` agreement, and
+  both third-party actions are SHA-pinned.
+
+## [0.5.0] - 2026-07-24
+### Added
+- Donor-base concentration metrics — `gift_concentration_gini` and
+  `top_donor_share` (`philanthropy.metrics`).
+- Campaign-efficiency metrics — `cost_per_dollar_raised` and `fundraising_roi`.
+- `philanthropy.utils.save_model` / `load_model` — self-describing model
+  bundles that warn on a scikit-learn / PhilanthroPy version mismatch at load
+  time; the CLI now persists and loads through them.
+- `AskAmountRecommender` — capacity regressor exposing a discrete gift-array
+  ask ladder (`predict_ask_array`).
+- `MatchingGiftFeaturizer` — corporate matching-gift features (`has_employer`,
+  `match_ratio`, `potential_matched_amount`), leakage-safe.
+- `philanthropy.experimental.UpliftTLearner` — two-model uplift (treatment-
+  effect) scorer for appeals (`predict_uplift_score`).
+- `MovesManagementClassifier` is now covered by the `check_estimator` battery.
+- Dependabot (`github-actions` + `pip`), a CodeQL scanning workflow, and a
+  `.pre-commit-config.yaml` running the flake8 / mypy gates locally.
+- `philanthropy.ingest` and `philanthropy.visualisation` API reference pages.
 - `constituent_events_to_features` carries `first_name` / `last_name` through to
   the donor feature table when the UniSchema feed supplies them (guarded; null
   when absent).
@@ -25,7 +143,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Docs: Responsible Use & Compliance, Model Validation & Benchmarks, vendor
   comparison, and model-persistence guides; `.github/CODEOWNERS`; a JOSS `paper/`.
 
+### Security
+- CLI `score` neutralizes spreadsheet formula-injection (CWE-1236) in
+  donor-controlled string cells before writing the output CSV.
+- Documented the model-bundle pickle trust boundary in `SECURITY.md` and the
+  `score` / `validate` `--help` text.
+- `read_constituent_events` skips symlinked files (path-traversal hardening)
+  and reports malformed JSON with the offending file and line number.
+- Least-privilege `permissions: contents: read` on all GitHub Actions
+  workflows.
+
 ### Fixed
+- `RFMTransformer` freezes the recency reference date in `fit`
+  (`reference_date_`) instead of recomputing it from the transform batch — a
+  leakage-contract violation that made a donor's recency depend on batchmates.
+- `LapsePredictor.predict_lapse_score` no longer raises `IndexError` when fit
+  on a single-class training fold.
+- `MovesManagementClassifier` rejects continuous targets and exposes `n_iter_`.
+- `disparate_impact_ratio` / `selection_rate_by_group` raise on missing
+  (`NaN`/`None`) group labels instead of silently returning `NaN`.
+- Removed dead code (`_assign_tier` / `_TIER_THRESHOLDS`, `_resolve_cols`,
+  redundant `_more_tags`) and cleared 4 pre-existing type-check errors.
 - Cleared 31 real-defect lint violations (unused imports/variables) across the
   package and tests, including two dead code blocks.
 - Corrected `EncounterTransformer` API drift in the grateful-patient tutorial and

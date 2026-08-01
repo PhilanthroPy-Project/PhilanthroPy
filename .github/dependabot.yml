@@ -1,0 +1,8 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+# No `pip` ecosystem entry: there is no lockfile and every dependency is an
+# open `>=` constraint, so Dependabot could never open a PR against it.

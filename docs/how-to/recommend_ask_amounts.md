@@ -51,7 +51,7 @@ assert aggressive.shape == (5, 4)
 ```
 
 !!! note "`ask_ladder`, not `predict_ask_array`"
-    The method was called `predict_ask_array` before 0.6.0. The `predict_` prefix is reserved for methods returning one value per row; this one returns a `(n, 3)` dollar matrix. The old name still works and emits a `DeprecationWarning`; it is removed in 0.7.0.
+    The method was called `predict_ask_array` before 0.6.0, deprecated in 0.6.0, and **removed in 0.7.0**. The `predict_` prefix is reserved for methods returning one value per row; this one returns a `(n, 3)` dollar matrix.
 
 ## Sequencing the portfolio
 
@@ -76,4 +76,4 @@ print(priority["portfolio_summary"])
 `action_priority` returns a dict, not an array — `stage` and `confidence` are per-donor, `portfolio_summary` counts donors per stage across the whole batch. Solicit the `SOLICIT` rows at the target rung; the `CULTIVATE` rows are not ready for a number yet.
 
 !!! note "`action_priority`, not `predict_action_priority`"
-    Same rename, same reason: it returns a dict, so it never satisfied the `predict_*` contract. The old name warns and is removed in 0.7.0.
+    Same rename, same reason: it returns a dict, so it never satisfied the `predict_*` contract. The old name was removed in 0.7.0.

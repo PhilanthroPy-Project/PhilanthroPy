@@ -89,7 +89,7 @@ def test_planned_giving_intent_score_contract():
     assert scores.shape == (60,)
     assert np.all(scores >= 0.0) and np.all(scores <= 100.0)
     # The two domain methods are the same contract.
-    np.testing.assert_array_equal(scores, m.predict_bequest_intent_score(X))
+    np.testing.assert_array_equal(scores, m.predict_intent_score(X))
     # Score is P(class=1) * 100, rounded to 2 dp.
     expected = np.round(m.predict_proba(X)[:, 1] * 100.0, 2)
     np.testing.assert_array_almost_equal(scores, expected)

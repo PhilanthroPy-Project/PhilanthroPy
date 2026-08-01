@@ -49,7 +49,6 @@ import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.utils.validation import check_is_fitted, validate_data
-from ..utils._deprecation import deprecated_alias
 
 
 class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
@@ -215,10 +214,6 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         raw = self.estimator_.predict(X)
         return np.maximum(raw, self.capacity_floor)
-
-    @deprecated_alias("capacity_ratio", removed_in="0.7.0")
-    def predict_capacity_ratio(self, X, historical_giving=None):
-        """Return predicted capacity divided by historical giving."""
 
     def capacity_ratio(
         self,

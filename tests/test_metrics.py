@@ -33,11 +33,11 @@ def test_retention_rate_empty_prior():
 
 
 def test_dac_basic():
-    assert math.isclose(donor_acquisition_cost(50_000, 200), 250.0)
+    assert math.isclose(donor_acquisition_cost(total_fundraising_expense=50_000, new_donors_acquired=200), 250.0)
 
 
 def test_dac_zero_donors():
-    assert donor_acquisition_cost(10_000, 0) == np.inf
+    assert donor_acquisition_cost(total_fundraising_expense=10_000, new_donors_acquired=0) == np.inf
 
 
 def test_retention_rate_empty_current():
@@ -88,7 +88,7 @@ def test_ltv_negative_discount_rate_raises():
 
 
 def test_dac_negative_expense_returns_negative():
-    result = donor_acquisition_cost(-1000, 50)
+    result = donor_acquisition_cost(total_fundraising_expense=-1000, new_donors_acquired=50)
     assert result < 0
 
 

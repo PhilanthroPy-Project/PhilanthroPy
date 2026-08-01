@@ -35,8 +35,6 @@ True
 
 from __future__ import annotations
 
-import warnings
-
 import numpy as np
 from sklearn.model_selection import BaseCrossValidator
 from sklearn.utils.validation import column_or_1d
@@ -65,11 +63,6 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
     n_splits : int, default=5
         Number of cross-validation folds.  Must be ``>= 1`` and ``<= n_distinct_fy - 1``
         (you cannot test on the *first* fiscal year as there is no prior training data).
-    fiscal_year_start : int, default=7
-        Month (1–12) on which the organisation's fiscal year begins.  This
-        parameter is reserved for future use when ``groups`` are date arrays
-        rather than pre-computed fiscal year integers; it is stored for
-        ``get_params`` / ``clone`` compatibility.
     gap_years : int, default=0
         Number of fiscal years to exclude between train and test as a
         **prophylactic leakage buffer**.  For example, if ``gap_years=1``,
@@ -141,12 +134,10 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
     def __init__(
         self,
         n_splits: int = 5,
-        fiscal_year_start: int = 7,
         gap_years: int = 0,
     ) -> None:
         # MUST call super().__init__() for BaseCrossValidator compat.
         self.n_splits = n_splits
-        self.fiscal_year_start = fiscal_year_start
         self.gap_years = gap_years
 
     # ------------------------------------------------------------------
@@ -181,15 +172,6 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
         ValueError
             If fewer than ``n_splits + 1`` distinct fiscal years are present.
         """
-        if self.fiscal_year_start != 7:
-            warnings.warn(
-                "FiscalYearGroupedSplitter(fiscal_year_start=...) has no "
-                "effect: `groups` is already an array of fiscal-year labels, "
-                "so the calendar has been applied upstream. The parameter is "
-                "deprecated and will be removed in 0.7.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
         if groups is None:
             raise ValueError(
                 "FiscalYearGroupedSplitter requires `groups` to be an array of "
@@ -289,7 +271,6 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
         return (
             f"{self.__class__.__name__}("
             f"n_splits={self.n_splits}, "
-            f"fiscal_year_start={self.fiscal_year_start}, "
             f"gap_years={self.gap_years})"
         )
 

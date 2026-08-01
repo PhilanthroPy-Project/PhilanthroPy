@@ -57,10 +57,10 @@ def test_top_donor_share_empty_and_zero():
 
 
 def test_cost_per_dollar_raised():
-    assert cost_per_dollar_raised(20, 100) == pytest.approx(0.2)
-    assert cost_per_dollar_raised(20, 0) == np.inf
+    assert cost_per_dollar_raised(total_fundraising_expense=20, total_raised=100) == pytest.approx(0.2)
+    assert cost_per_dollar_raised(total_fundraising_expense=20, total_raised=0) == np.inf
 
 
 def test_fundraising_roi():
-    assert fundraising_roi(400, 100) == pytest.approx(3.0)
-    assert fundraising_roi(100, 0) == np.inf
+    assert fundraising_roi(total_raised=400, total_fundraising_expense=100) == pytest.approx(3.0)
+    assert fundraising_roi(total_raised=100, total_fundraising_expense=0) == np.inf

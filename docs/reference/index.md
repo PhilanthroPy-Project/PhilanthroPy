@@ -81,15 +81,19 @@ Every domain method returns a number on its own scale. None of them are calibrat
 | `MovesManagementClassifier.action_priority` | `dict` | Not an array: `stage`, `confidence` (0–1), `portfolio_summary` |
 | `FinancialForecastModel.predict_revenue_forecast` | `(horizon,)` float | **Dollars per future period** — length is `horizon`, not `len(X)` |
 
-## Deprecations in flight
+## Deprecations
 
-Four methods were renamed in 0.6.0. The old names still work and emit a `DeprecationWarning`; they are removed in 0.7.0.
+Nothing is currently deprecated. The 0.6.0 shims — `predict_ask_array`,
+`predict_capacity_ratio`, `predict_action_priority`,
+`predict_bequest_intent_score` — and the three dead constructor parameters
+`LapsePredictor(lapse_window_years=...)`, `PropensityScorer(estimator=...)` and
+`FiscalYearGroupedSplitter(fiscal_year_start=...)` were all removed in 0.7.0
+after one full published minor of `DeprecationWarning` overlap.
 
-| Deprecated | Use instead |
-|---|---|
-| `AskAmountRecommender.predict_ask_array` | `ask_ladder` |
-| `ShareOfWalletRegressor.predict_capacity_ratio` | `capacity_ratio` |
-| `MovesManagementClassifier.predict_action_priority` | `action_priority` |
-| `PlannedGivingIntentScorer.predict_bequest_intent_score` | `predict_intent_score` |
-
-Three constructor parameters have no effect and warn when set to a non-default value: `LapsePredictor(lapse_window_years=...)`, `PropensityScorer(estimator=...)`, and `FiscalYearGroupedSplitter(fiscal_year_start=...)`. All three are removed in 0.7.0.
+0.7.0 also made `donor_acquisition_cost`, `cost_per_dollar_raised` and
+`fundraising_roi` keyword-only, and moved four accidental second import paths
+behind underscores: `metrics.scoring` → `metrics._scoring`,
+`preprocessing.transformers` → `preprocessing._transformers`,
+`models.propensity` → `models._propensity_baseline`, `utils.testing` →
+`utils._testing`. The public symbols they export are unchanged; import them
+from the subpackage, as the documented examples always have.

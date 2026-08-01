@@ -11,7 +11,6 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.utils.validation import check_is_fitted, validate_data
-from ..utils._deprecation import deprecated_alias
 
 
 class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
@@ -19,7 +18,7 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
     Predicts bequest/planned giving intent. Wraps GradientBoostingClassifier
     with CalibratedClassifierCV.
 
-    Exposes `.predict_bequest_intent_score(X)` returning a 0-100 float array.
+    Exposes `.predict_intent_score(X)` returning a 0-100 float array.
 
     Parameters
     ----------
@@ -64,10 +63,6 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         check_is_fitted(self)
         X = validate_data(self, X, reset=False)
         return self.estimator_.predict_proba(X)
-
-    @deprecated_alias("predict_intent_score", removed_in="0.7.0")
-    def predict_bequest_intent_score(self, X):
-        """Return the 0-100 bequest-intent score."""
 
     def predict_intent_score(self, X) -> np.ndarray:
         """

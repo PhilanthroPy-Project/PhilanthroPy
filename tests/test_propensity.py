@@ -48,7 +48,7 @@ def test_propensity_scorer_predict_proba_shape(dummy_Xy):
 
 def test_lapse_predictor_fit_predict(dummy_Xy):
     X, y = dummy_Xy
-    clf = LapsePredictor(lapse_window_years=2)
+    clf = LapsePredictor()
     clf.fit(X, y)
     preds = clf.predict(X)
     assert preds.shape == (40,)
@@ -117,13 +117,11 @@ def test_lapse_predictor_clone_compatibility(dummy_Xy):
     assert not hasattr(clf2, "estimator_")
 
 
-def test_lapse_predictor_lapse_window_years_values(dummy_Xy):
-    X, y = dummy_Xy
-    for years in [1, 2, 5, 10]:
-        clf = LapsePredictor(lapse_window_years=years)
-        clf.fit(X, y)
-        preds = clf.predict(X)
-        assert preds.shape == (40,)
+def test_lapse_predictor_no_longer_accepts_lapse_window_years(dummy_Xy):
+    # Removed in 0.7.0: the window is a property of how y was labelled, not of
+    # the fit. sklearn's BaseEstimator rejects unknown constructor kwargs.
+    with pytest.raises(TypeError, match="lapse_window_years"):
+        LapsePredictor(lapse_window_years=3)
 
 
 def test_lapse_predictor_class_weight_balanced(dummy_Xy):
@@ -206,9 +204,9 @@ def test_lapse_predictor_max_depth_int(dummy_Xy):
 
 
 def test_lapse_predictor_get_params_set_params():
-    clf = LapsePredictor(n_estimators=50, lapse_window_years=3)
+    clf = LapsePredictor(n_estimators=50)
     params = clf.get_params()
     assert params["n_estimators"] == 50
-    assert params["lapse_window_years"] == 3
+    assert "lapse_window_years" not in params
     clf.set_params(n_estimators=30)
     assert clf.n_estimators == 30

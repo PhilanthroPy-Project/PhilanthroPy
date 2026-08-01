@@ -4,7 +4,7 @@ Four numbers answer "was this campaign worth running?" — cost per dollar raise
 
 ## Pass arguments by keyword
 
-The efficiency functions do not share an argument order: `cost_per_dollar_raised` takes expense first, `fundraising_roi` takes raised first. Swapping them is silently accepted and returns a plausible wrong number. **Always use keyword arguments.** They become keyword-only in 0.7.0.
+The efficiency functions do not share an argument order: `cost_per_dollar_raised` takes expense first, `fundraising_roi` takes raised first. Swapping them is silently accepted and returns a plausible wrong number. These three are **keyword-only** as of 0.7.0, so a positional call is a `TypeError` rather than a plausible wrong number.
 
 ```python
 from philanthropy.metrics import (

@@ -138,27 +138,40 @@ def test_disparate_impact_is_min_over_max_across_three_groups():
 def test_campaign_efficiency_metrics_are_reciprocal_and_consistent():
     raised, expense, new_donors = 1_000_000.0, 250_000.0, 500
 
-    assert cost_per_dollar_raised(expense, raised) == pytest.approx(0.25)
-    # fundraising_roi is NET return, (raised - expense) / expense, so it is
-    # one less than the reciprocal of cost-per-dollar-raised. Note the argument
-    # order flips between the two: expense-first here, raised-first there.
-    assert fundraising_roi(raised, expense) == pytest.approx(3.0)
-    assert fundraising_roi(raised, expense) == pytest.approx(
-        1.0 / cost_per_dollar_raised(expense, raised) - 1.0
+    cpdr = cost_per_dollar_raised(
+        total_fundraising_expense=expense, total_raised=raised
     )
-    assert donor_acquisition_cost(expense, new_donors) == pytest.approx(500.0)
+    roi = fundraising_roi(
+        total_raised=raised, total_fundraising_expense=expense
+    )
+    assert cpdr == pytest.approx(0.25)
+    # fundraising_roi is NET return, (raised - expense) / expense, so it is
+    # one less than the reciprocal of cost-per-dollar-raised.
+    assert roi == pytest.approx(3.0)
+    assert roi == pytest.approx(1.0 / cpdr - 1.0)
+    assert donor_acquisition_cost(
+        total_fundraising_expense=expense, new_donors_acquired=new_donors
+    ) == pytest.approx(500.0)
 
 
 def test_fundraising_roi_is_zero_at_break_even():
-    assert fundraising_roi(100_000.0, 100_000.0) == pytest.approx(0.0)
+    assert fundraising_roi(
+        total_raised=100_000.0, total_fundraising_expense=100_000.0
+    ) == pytest.approx(0.0)
 
 
-def test_fundraising_roi_argument_order_is_not_symmetric():
-    # Swapping the arguments is silently accepted and returns a different,
-    # wrong number. W3.17 makes these keyword-only for exactly this reason.
-    assert fundraising_roi(1_000_000.0, 250_000.0) != pytest.approx(
-        fundraising_roi(250_000.0, 1_000_000.0)
-    )
+@pytest.mark.parametrize("fn, args", [
+    (donor_acquisition_cost, (50_000.0, 200)),
+    (cost_per_dollar_raised, (250_000.0, 1_000_000.0)),
+    (fundraising_roi, (1_000_000.0, 250_000.0)),
+])
+def test_money_metrics_reject_positional_arguments(fn, args):
+    # These three do not share an argument order — cost_per_dollar_raised takes
+    # expense first, fundraising_roi takes raised first. Positional calls used
+    # to be silently accepted and return a plausible wrong number. Keyword-only
+    # since 0.7.0.
+    with pytest.raises(TypeError, match="positional"):
+        fn(*args)
 
 
 def test_donor_retention_rate_is_the_overlap_over_the_prior_cohort():

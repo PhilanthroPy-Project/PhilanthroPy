@@ -19,7 +19,7 @@ jobs:
     name: Lint and type check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -46,7 +46,7 @@ jobs:
           - os: macos-latest
             python-version: "3.12"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -81,11 +81,11 @@ jobs:
     name: Declared dependency floors (lowest-direct)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # SHA-pinned like every other third-party action. This is the commit v5
       # resolved to on the run that first went green; Dependabot proposes
       # upgrades as normal PRs.
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
       # Plain pip resolves the newest wheels even on the 3.9 leg, which is how
       # a false `pandas>=1.5` floor survived. Install exactly what the metadata
       # declares instead.
@@ -100,7 +100,7 @@ jobs:
     name: Build and check distributions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -117,7 +117,7 @@ jobs:
     name: Minimal install (no viz extra)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

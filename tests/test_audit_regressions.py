@@ -186,3 +186,20 @@ def test_encounter_transformer_no_overflow_on_extreme_span():
     out = EncounterRecencyTransformer().fit_transform(df)
     assert out.shape == (2, 3)
     assert np.isfinite(out[:, 0]).all()  # days_since finite for both rows
+
+
+def test_csv_injection_neutralised_in_pandas_string_dtype_columns():
+    # The neutraliser used to iterate select_dtypes(include=["object"]).
+    # pandas 4 stops returning `str`-dtype columns for that query, which would
+    # silently leave donor-supplied text unescaped — the exact CWE-1236 hole
+    # the function exists to close. Column dtype must not decide this.
+    df = pd.DataFrame({
+        "name": pd.array(["=cmd|'/c calc'!A1", "safe"], dtype="string"),
+        "note": ["@SUM(1+1)", "fine"],
+        "score": [1.0, 2.0],
+    })
+    out = _neutralise_csv_injection(df)
+
+    assert list(out["name"]) == ["'=cmd|'/c calc'!A1", "safe"]
+    assert list(out["note"]) == ["'@SUM(1+1)", "fine"]
+    assert list(out["score"]) == [1.0, 2.0]

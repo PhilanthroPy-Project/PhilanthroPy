@@ -92,7 +92,11 @@ def _neutralise_csv_injection(df):
     columns are untouched.
     """
     out = df.copy()
-    for col in out.select_dtypes(include=["object"]).columns:
+    # Iterate every column and let the isinstance guard below decide. Selecting
+    # by dtype is not stable across pandas versions: pandas 4 stops returning
+    # `str`-dtype columns for include=["object"], which would silently switch
+    # neutralisation off for exactly the donor-supplied text this protects.
+    for col in out.columns:
         mask = out[col].map(
             lambda v: isinstance(v, str) and v.startswith(_CSV_INJECTION_PREFIXES)
         )

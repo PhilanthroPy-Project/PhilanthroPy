@@ -16,12 +16,12 @@ date-released: "2026-08-01"
 license: MIT
 repository-code: "https://github.com/PhilanthroPy-Project/PhilanthroPy"
 url: "https://PhilanthroPy-Project.github.io/PhilanthroPy/"
-# Zenodo concept DOI — resolves to the latest deposited release. Replace the
-# placeholder with the real value after the first Zenodo deposit (see the
-# RELEASE CHECKLIST in CONTRIBUTING.md); JOSS requires it at acceptance.
+# Zenodo concept DOI — always resolves to the latest deposited release. This is
+# deliberately NOT the per-version DOI (v0.6.0 is 10.5281/zenodo.21751097); the
+# concept DOI is the one to cite so the reference does not go stale.
 identifiers:
   - type: doi
-    value: "10.5281/zenodo.PENDING"
+    value: "10.5281/zenodo.21751096"
     description: "Concept DOI for all versions of PhilanthroPy"
 keywords:
   - nonprofit

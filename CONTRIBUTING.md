@@ -91,7 +91,9 @@ Run in order. Steps 1–6 are the gate `publish.yml` enforces; 7–9 are manual.
    tests/test_deprecations.py -q`.
 2. Bump `version` in `pyproject.toml`. Nothing else carries the version —
    `philanthropy.__version__` reads it from installed metadata.
-3. Add a `## [X.Y.Z]` section to `CHANGELOG.md`. A release that removes anything
+3. Add a `## [X.Y.Z] - YYYY-MM-DD` section to `CHANGELOG.md`. The date is
+   required — `publish.yml` rejects a heading still carrying `- TBD`, which is
+   what a release staged ahead of its window looks like. A release that removes anything
    needs a **Breaking** heading; a release that adds a shim needs a
    **Deprecated** heading naming every alias and dead parameter with the version
    that removes it.

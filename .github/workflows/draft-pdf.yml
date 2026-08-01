@@ -19,7 +19,7 @@ jobs:
     name: Build JOSS paper draft
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # SHA-pinned: upstream publishes no tags, so `@master` is a mutable
       # third-party branch. Dependabot keeps this pin current.

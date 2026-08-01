@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Collection, Dict
 
 import numpy as np
+import pandas as pd
 
 
 def selection_rate_by_group(
@@ -49,6 +50,12 @@ def selection_rate_by_group(
         )
     if y_pred.shape[0] == 0:
         raise ValueError("y_pred is empty; nothing to score.")
+    if pd.isna(groups).any():
+        raise ValueError(
+            "sensitive_features contains missing (NaN/None) group labels; a "
+            "missing label would silently NaN-out the diagnostic. Drop or "
+            "impute those rows before computing fairness metrics."
+        )
 
     selected = y_pred == pos_label
     return {g: float(selected[groups == g].mean()) for g in np.unique(groups)}

@@ -71,19 +71,30 @@ class DischargeToSolicitationWindowTransformer(TransformerMixin, BaseEstimator):
         Parameters
         ----------
         X : array-like or DataFrame of shape (n_samples, n_features)
-            Data with days_since_discharge column or first column as days.
+            A DataFrame must carry ``days_since_discharge_col``; a bare ndarray
+            is read positionally (first column, or the array itself if 1-D).
 
         Returns
         -------
         out : ndarray of shape (n_samples, 2)
             Columns: in_window (0/1), window_position_score [0,1].
+
+        Raises
+        ------
+        ValueError
+            If X is a DataFrame without ``days_since_discharge_col``.
         """
         check_is_fitted(self)
 
         if isinstance(X, pd.DataFrame) and self.days_since_discharge_col in X.columns:
             days_raw = X[self.days_since_discharge_col].to_numpy(dtype=float)
         elif isinstance(X, pd.DataFrame):
-            days_raw = X.iloc[:, 0].to_numpy(dtype=float)
+            raise ValueError(
+                f"{self.days_since_discharge_col!r} not found in X; columns are "
+                f"{list(X.columns)}. Route this transformer with a ColumnTransformer "
+                f"so it receives the days-since-discharge column, or set "
+                f"days_since_discharge_col to the correct name."
+            )
         else:
             arr = np.asarray(X, dtype=float)
             if arr.ndim == 1:

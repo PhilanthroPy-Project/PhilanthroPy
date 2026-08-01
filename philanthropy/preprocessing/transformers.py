@@ -64,7 +64,11 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         Column containing raw gift amounts.  Forced to ``float64`` during
         :meth:`transform`; non-numeric values become ``NaN``.
     fiscal_year_start : int, default=7
-        Month (1–12) that begins the organisation's fiscal year.
+        Month (1–12) that begins the organisation's fiscal year.  Validated in
+        :meth:`fit` but **not** used by :meth:`transform`, which only coerces
+        ``date_col`` and ``amount_col``.  It is carried here so a cleaner and
+        the :class:`FiscalYearTransformer` downstream of it can share one
+        fiscal-calendar setting via ``set_params``.
 
     Attributes
     ----------

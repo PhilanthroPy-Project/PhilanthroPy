@@ -5,6 +5,13 @@ on:
     paths:
       - paper/**
       - .github/workflows/draft-pdf.yml
+  pull_request:
+    paths:
+      - paper/**
+      - .github/workflows/draft-pdf.yml
+
+permissions:
+  contents: read
 
 jobs:
   paper:
@@ -14,8 +21,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # SHA-pinned: upstream publishes no tags, so `@master` is a mutable
+      # third-party branch. Dependabot keeps this pin current.
       - name: Build draft PDF
-        uses: openjournals/openjournals-draft-action@master
+        uses: openjournals/openjournals-draft-action@85a18372e48f551d8af9ddb7a747de685fbbb01c  # master @ 2026-08-01
         with:
           journal: joss
           paper-path: paper/paper.md

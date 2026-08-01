@@ -31,6 +31,8 @@ Run with:
 
 from __future__ import annotations
 
+import pathlib
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -383,9 +385,10 @@ class TestTemporalLeakagePrevention:
         imputer.fit(df_train)
         initial_fill = imputer.fill_values_.copy()
         
+        rng = np.random.default_rng(n_test_samples)
         df_test = pd.DataFrame({
-            "estimated_net_worth": np.random.uniform(0, 1e7, n_test_samples),
-            "real_estate_value": np.random.uniform(0, 1e7, n_test_samples)
+            "estimated_net_worth": rng.uniform(0, 1e7, n_test_samples),
+            "real_estate_value": rng.uniform(0, 1e7, n_test_samples)
         })
         imputer.transform(df_test)
         assert imputer.fill_values_ == initial_fill
@@ -544,3 +547,81 @@ def test_wealth_imputer_fill_statistics_are_fold_specific_in_cv():
     )
 
 
+
+
+# ---------------------------------------------------------------------------
+# Registry meta-test: every stateful transformer must have a leakage test
+#
+# "Stateful" is derived from the source, not from an author-maintained list, so
+# the registry cannot rot: any class in preprocessing.__all__ whose module
+# assigns a trailing-underscore attribute in fit() holds frozen fit-time state
+# and therefore has something to leak.
+# ---------------------------------------------------------------------------
+
+import inspect  # noqa: E402
+import re  # noqa: E402
+
+import philanthropy.preprocessing as _pp  # noqa: E402
+
+_FITTED_ATTR = re.compile(r"^\s*self\.([a-z_][a-z0-9_]*_)\s*=", re.MULTILINE)
+
+# Files whose tests establish the leakage contract for these classes.
+_LEAKAGE_TEST_FILES = (
+    "tests/test_leakage.py",
+    "tests/test_transformer_leakage_guards.py",
+    "tests/test_audit_regressions.py",
+)
+
+# Classes that hold fit-time state but cannot leak across transform batches,
+# with the reason. Keep this list short and argued.
+_NO_LEAKAGE_TEST_NEEDED = {
+    # Stores only feature_names_in_/n_features_in_ and coerces two columns.
+    "CRMCleaner",
+    # Pure row-wise arithmetic on the fiscal calendar; no fitted statistic.
+    "FiscalYearTransformer",
+    # Row-wise thresholds from constructor params only.
+    "DischargeToSolicitationWindowTransformer",
+    "SolicitationWindowTransformer",
+    "PlannedGivingSignalTransformer",
+}
+
+
+def _stateful_preprocessing_classes():
+    stateful = {}
+    for name in _pp.__all__:
+        cls = getattr(_pp, name)
+        source = inspect.getsource(inspect.getmodule(cls))
+        attrs = {
+            a for a in _FITTED_ATTR.findall(source)
+            if a not in {"n_features_in_", "feature_names_in_"}
+        }
+        if attrs:
+            stateful[name] = sorted(attrs)
+    return stateful
+
+
+def test_every_stateful_transformer_has_a_leakage_test():
+    repo_root = pathlib.Path(__file__).resolve().parent.parent
+    corpus = "\n".join(
+        (repo_root / f).read_text() for f in _LEAKAGE_TEST_FILES
+    )
+
+    stateful = _stateful_preprocessing_classes()
+    assert stateful, "source scan found no stateful transformers — regex broke"
+
+    missing = sorted(
+        name for name in stateful
+        if name not in _NO_LEAKAGE_TEST_NEEDED and name not in corpus
+    )
+    assert not missing, (
+        f"{missing} freeze fit-time state but no leakage test names them. "
+        f"Add one to {_LEAKAGE_TEST_FILES[1]}, or justify an entry in "
+        f"_NO_LEAKAGE_TEST_NEEDED."
+    )
+
+
+def test_no_leakage_exemption_is_stale():
+    """An exempted class that stopped being public (or stopped existing) must
+    not sit in the allowlist pretending to be accounted for."""
+    unknown = sorted(_NO_LEAKAGE_TEST_NEEDED - set(_pp.__all__))
+    assert not unknown, f"_NO_LEAKAGE_TEST_NEEDED names non-public classes: {unknown}"

@@ -21,39 +21,67 @@ from sklearn.utils.estimator_checks import parametrize_with_checks
 
 from philanthropy.datasets import generate_synthetic_donor_data
 from philanthropy.models import (
+    AskAmountRecommender,
     DonorPropensityModel,
+    LapsePredictor,
     MajorGiftClassifier,
+    MovesManagementClassifier,
+    PropensityScorer,
     ShareOfWalletRegressor,
     PlannedGivingIntentScorer,
 )
 from philanthropy.preprocessing import (
+    CRMCleaner,
+    EncounterRecencyTransformer,
     EncounterTransformer,
     FiscalYearTransformer,
     GratefulPatientFeaturizer,
     PlannedGivingSignalTransformer,
     RFMTransformer,
+    ShareOfWalletScorer,
     DischargeToSolicitationWindowTransformer,
+    WealthPercentileTransformer,
     WealthScreeningImputer,
+    WealthScreeningImputerKNN,
 )
 
 
 # ---------------------------------------------------------------------------
 # SECTION 1 — Standard estimators (no required args)
+#
+# This is the ONE place that answers "is X check_estimator compliant?".  Every
+# estimator that can run the battery belongs here, configured and/or at bare
+# defaults; anything that cannot is excluded by name in
+# tests/test_public_api_contract.py with a written reason.
 # ---------------------------------------------------------------------------
 
 _STANDARD_ESTIMATORS = [
+    # --- models ---
     DonorPropensityModel(n_estimators=10, random_state=0),
+    AskAmountRecommender(max_iter=20, random_state=0),
     ShareOfWalletRegressor(max_iter=20, random_state=0),
     PlannedGivingIntentScorer(n_estimators=10, random_state=0),
-    # LapsePredictor: tested separately in test_propensity (parametrize_with_checks)
-    MajorGiftClassifier(),
+    LapsePredictor(n_estimators=10, random_state=0),
+    # max_iter=10 rather than the default 100: CalibratedClassifierCV fits five
+    # inner boosters per check, which made this single entry 73% of suite runtime.
+    MajorGiftClassifier(max_iter=10, random_state=0),
+    MovesManagementClassifier(max_iter=20, random_state=0),
+    PropensityScorer(),
+    # --- transformers, configured ---
     FiscalYearTransformer(date_col="gift_date", fiscal_year_start=7),
     WealthScreeningImputer(
         wealth_cols=["x0"],     # sklearn uses "x0", "x1"... in generated arrays
         strategy="median",
         add_indicator=False,    # indicator=False for numeric-only check_estimator
     ),
-    RFMTransformer(),
+    EncounterRecencyTransformer(reference_date="2024-01-01"),
+    # --- transformers, bare defaults (a default-param regression is a real bug) ---
+    FiscalYearTransformer(),
+    WealthScreeningImputer(),
+    WealthScreeningImputerKNN(),
+    WealthPercentileTransformer(),
+    ShareOfWalletScorer(),
+    CRMCleaner(),
     DischargeToSolicitationWindowTransformer(),
     PlannedGivingSignalTransformer(),
 ]
@@ -69,6 +97,66 @@ def test_sklearn_compliance(estimator, check):
 # check_n_features_in if the indicator columns change the output shape.
 # This is a known limitation and is tracked in GitHub issue #43. The
 # add_indicator=False variant is tested above.
+
+
+# ---------------------------------------------------------------------------
+# SECTION 1b — RFMTransformer
+#
+# RFMTransformer is row-reducing (one row per donor, not per input row) and
+# returns a DataFrame whose first column is a string donor_id, so it is not a
+# Pipeline transformer and cannot run the generated battery.  It used to sit in
+# _STANDARD_ESTIMATORS with tags._skip_test = True, which silently ran 1 check
+# instead of 46.  These are the contracts that *do* apply.
+# ---------------------------------------------------------------------------
+
+_RFM_TRAIN = pd.DataFrame({
+    "donor_id": [1, 1, 2, 3],
+    "gift_date": ["2019-01-01", "2020-01-01", "2019-06-01", "2020-03-01"],
+    "gift_amount": [100.0, 200.0, 50.0, 75.0],
+})
+
+
+class TestRFMTransformerCompliance:
+
+    def test_get_params_covers_every_init_arg(self):
+        import inspect
+
+        t = RFMTransformer()
+        expected = set(inspect.signature(RFMTransformer.__init__).parameters) - {"self"}
+        assert set(t.get_params()) == expected
+
+    def test_set_params_round_trips_and_returns_self(self):
+        t = RFMTransformer()
+        assert t.set_params(agg_func="mean") is t
+        assert t.agg_func == "mean"
+
+    def test_fit_returns_self_and_sets_fitted_attrs(self):
+        t = RFMTransformer()
+        assert t.fit(_RFM_TRAIN) is t
+        assert hasattr(t, "reference_date_")
+        assert hasattr(t, "n_features_in_")
+
+    def test_clone_does_not_carry_fitted_state(self):
+        from sklearn.base import clone
+
+        t = RFMTransformer().fit(_RFM_TRAIN)
+        assert not hasattr(clone(t), "reference_date_")
+
+    def test_not_fitted_raises_not_fitted_error(self):
+        with pytest.raises(NotFittedError):
+            RFMTransformer().transform(_RFM_TRAIN)
+
+    def test_transform_is_row_reducing_and_idempotent(self):
+        t = RFMTransformer().fit(_RFM_TRAIN)
+        first = t.transform(_RFM_TRAIN)
+        second = t.transform(_RFM_TRAIN)
+        assert len(first) == _RFM_TRAIN["donor_id"].nunique() < len(_RFM_TRAIN)
+        pd.testing.assert_frame_equal(first, second)
+
+    def test_feature_names_out_match_transform_columns(self):
+        t = RFMTransformer().fit(_RFM_TRAIN)
+        out = t.transform(_RFM_TRAIN)
+        assert list(t.get_feature_names_out()) == list(out.columns)
 
 
 # ---------------------------------------------------------------------------

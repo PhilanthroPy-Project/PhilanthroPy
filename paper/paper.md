@@ -10,7 +10,6 @@ tags:
   - machine learning
 authors:
   - name: Shivam Lalakiya
-    orcid: 0000-0000-0000-0000
     affiliation: 1
 affiliations:
   - name: Northeastern University, Boston, MA, USA
@@ -94,6 +93,7 @@ the tools they already use.
 # Acknowledgements
 
 `PhilanthroPy` builds on the scientific Python ecosystem, in particular
-`scikit-learn`, `pandas`, and `numpy`.
+`scikit-learn`, `pandas`, and `numpy`. The author received no specific grant
+funding for this work.
 
 # References

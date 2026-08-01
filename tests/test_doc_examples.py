@@ -1,14 +1,14 @@
 """tests/test_doc_examples.py
 
-Executes the fenced ``python`` blocks in the tutorial and how-to docs so that a
-broken public API in the documentation fails CI instead of a user's copy-paste
-(see the P0-2 grateful-patient tutorial regression).
+Executes the fenced ``python`` blocks in every documentation page — ``docs/**``
+recursively plus the top-level ``README.md`` — so a broken public API in the
+documentation fails CI instead of a user's copy-paste.
 
-Each doc file's python blocks are concatenated in order and executed in a single
-fresh namespace (later blocks may rely on earlier imports/variables). A file is
-skipped — visibly — when it cannot run in CI because its code reads external
-data files or the network, or when it carries an explicit ``<!-- docs-notest -->``
-marker.
+Each file's python blocks are concatenated in order and executed in a single
+fresh namespace (later blocks may rely on earlier imports/variables). Files with
+no python fence are not collected at all. A file can only be muted by adding an
+explicit ``<!-- docs-notest -->`` marker *and* naming it in ``_NOTEST`` below —
+``test_notest_allowlist_is_exact`` makes muting a page a visible diff.
 """
 
 import os
@@ -24,27 +24,25 @@ try:  # keep any plotting in the docs headless
 except Exception:  # pragma: no cover - matplotlib is a dev/docs dependency
     pass
 
-DOCS_ROOT = Path(__file__).resolve().parent.parent / "docs"
-DOC_DIRS = ("tutorials", "how-to")
+REPO_ROOT = Path(__file__).resolve().parent.parent
+DOCS_ROOT = REPO_ROOT / "docs"
 
 _PY_FENCE = re.compile(r"```python\n(.*?)```", re.DOTALL)
-# If any of these appear in the file, its code touches state CI can't provide.
-_UNRUNNABLE_MARKERS = (
-    "read_csv",
-    "read_parquet",
-    "read_excel",
-    "open(",
-    "requests",
-    "urlopen",
-    "docs-notest",
-)
+_NOTEST_MARKER = "<!-- docs-notest -->"
+
+DOC_FILES = sorted(DOCS_ROOT.rglob("*.md")) + [REPO_ROOT / "README.md"]
+
+# Pages that cannot execute in CI. Every entry needs the marker in the file too.
+_NOTEST: set = set()
 
 
 def _doc_files():
-    files = []
-    for d in DOC_DIRS:
-        files.extend(sorted((DOCS_ROOT / d).glob("*.md")))
-    return files
+    return [p for p in DOC_FILES if "```python" in p.read_text()]
+
+
+def test_notest_allowlist_is_exact():
+    marked = {p.name for p in DOC_FILES if _NOTEST_MARKER in p.read_text()}
+    assert marked == _NOTEST
 
 
 @pytest.mark.parametrize(
@@ -52,11 +50,10 @@ def _doc_files():
 )
 def test_doc_python_blocks_execute(path, tmp_path):
     text = path.read_text()
+    if _NOTEST_MARKER in text:
+        pytest.skip("docs-notest")
+
     code = "\n\n".join(_PY_FENCE.findall(text))
-    if not code.strip():
-        pytest.skip("no python code blocks")
-    if any(marker in text for marker in _UNRUNNABLE_MARKERS):
-        pytest.skip("requires external data/network or marked docs-notest")
 
     # Execute inside a throwaway cwd so any files a doc writes (e.g. joblib
     # artifacts) land in the temp dir, not the repo.

@@ -20,27 +20,37 @@ script:
 python scripts/benchmark_models.py
 ```
 
-The script builds a 4,000-row synthetic pool (`random_state=42`), takes a
-stratified 75/25 train/test split, and fits every applicable binary classifier in
-`philanthropy.models` on the documented feature set
+For each of **five seeds** (42–46) the script builds a 4,000-row synthetic pool,
+takes a stratified 75/25 train/test split, and fits every applicable binary
+classifier in `philanthropy.models` on the documented feature set
 (`total_gift_amount`, `years_active`, `event_attendance_count`) against the
 `is_major_donor` label. It prints precision / recall / F1 / ROC-AUC on the
 held-out test set using `sklearn.metrics`.
 
+Five seeds rather than one on purpose. A single three-decimal score reads as a
+claim about the method when it is mostly a claim about the split; the spread
+below is the honest resolution of these numbers.
+
 ## Results
 
-Synthetic pool: 4,000 rows, positive rate 0.677; test split 1,000 rows.
+Synthetic pool: 4,000 rows, positive rate 0.678; test split 1,000 rows.
+**Each cell is the mean across five seeds, with the min–max range in
+parentheses.**
 
 | Model | Precision | Recall | F1 | ROC-AUC |
 |---|---:|---:|---:|---:|
-| `PropensityScorer` (baseline) | 0.677 | 1.000 | 0.807 | 0.500 |
-| `DonorPropensityModel` | 0.895 | 0.935 | 0.915 | 0.931 |
-| `MajorGiftClassifier` | 0.869 | 0.966 | 0.915 | 0.932 |
-| `LapsePredictor` | 0.895 | 0.935 | 0.915 | 0.931 |
-| `PlannedGivingIntentScorer` | 0.883 | 0.951 | 0.916 | 0.941 |
+| `PropensityScorer` (baseline) | 0.000 (0.000–0.000) | 0.000 (0.000–0.000) | 0.000 (0.000–0.000) | 0.500 (0.500–0.500) |
+| `DonorPropensityModel` | 0.891 (0.882–0.904) | 0.936 (0.922–0.943) | 0.913 (0.902–0.923) | 0.922 (0.906–0.936) |
+| `MajorGiftClassifier` | 0.873 (0.866–0.896) | 0.967 (0.962–0.971) | 0.918 (0.912–0.931) | 0.927 (0.917–0.936) |
+| `LapsePredictor` | 0.891 (0.882–0.904) | 0.936 (0.922–0.943) | 0.913 (0.902–0.923) | 0.922 (0.906–0.936) |
+| `PlannedGivingIntentScorer` | 0.888 (0.882–0.904) | 0.955 (0.951–0.958) | 0.920 (0.916–0.930) | 0.935 (0.922–0.945) |
 
 *(Measured with scikit-learn 1.7.2 on the synthetic dataset; your numbers will
 differ.)*
+
+The ranges are narrow — roughly ±0.01 on F1 and ±0.015 on ROC-AUC — so the
+models are genuinely close to each other on this task. Any comparison between
+them that turns on the third decimal is reading noise.
 
 ## How to read this
 
@@ -48,6 +58,13 @@ differ.)*
   (P=0.5), so its ROC-AUC of 0.500 means exactly "no better than chance." Every
   real model has to beat it. Here they all do, by a wide margin — but the
   synthetic data's separability inflates that margin.
+- **The baseline's precision/recall are 0.000 by construction, not by failure.**
+  Since 0.6.0 its threshold comparison is strict (`proba > threshold`), so a
+  constant 0.5 score falls below the default 0.5 threshold and it predicts the
+  negative class for everyone. scikit-learn requires
+  `argmax(predict_proba) == predict`, and `argmax` of a tied `[0.5, 0.5]` row is
+  index 0. Either choice is arbitrary for a constant scorer; only the ROC-AUC of
+  0.500 carries information.
 - **`LapsePredictor` and `DonorPropensityModel` report identical numbers** on
   this task. Both wrap a default `RandomForestClassifier` with the same
   `random_state` and features, so the match is expected, not a bug.

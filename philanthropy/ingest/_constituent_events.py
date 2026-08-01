@@ -41,7 +41,7 @@ _EMAIL_CLICK = "EMAIL_CLICK"
 
 # Ordered (column, dtype) contract for the donor feature table.  Kept explicit
 # so an empty batch still yields a correctly-typed, downstream-safe frame.
-_FEATURE_DTYPES: "dict[str, object]" = {
+_FEATURE_DTYPES: "dict[str, str]" = {
     "constituent_email": "object",
     "first_name": "object",
     "last_name": "object",
@@ -113,7 +113,7 @@ def constituent_events_to_features(
     ...      "sourceSystem": "CVENT", "createdAt": "2025-06-01T09:00:00Z"},
     ... ]
     >>> feats = constituent_events_to_features(events)
-    >>> feats.loc["a@x.edu", "total_gift_amount"]
+    >>> float(feats.loc["a@x.edu", "total_gift_amount"])
     250.0
     >>> int(feats.loc["a@x.edu", "event_attendance_count"])
     1
@@ -228,8 +228,16 @@ def read_constituent_events(
     -------
     events : list of dict
         Parsed events, ready to pass to :func:`constituent_events_to_features`.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``path`` does not exist.  Without this an absent directory falls
+        through to the single-file branch and surfaces as an opaque OSError.
     """
     p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"No such file or directory: {p}")
     if p.is_dir():
         # UniSchema's local egress is date-partitioned — it writes each event to
         # {prefix}/{vendor}/{yyyy}/{mm}/{dd}/{eventId}.json (see UniSchema
@@ -240,6 +248,9 @@ def read_constituent_events(
             f
             for f in p.rglob("*")
             if f.is_file()
+            # Skip symlinks: a symlink inside the egress tree pointing outside
+            # it must not be followed and read (path-traversal hardening).
+            and not f.is_symlink()
             and f.suffix.lower() in {".json", ".ndjson", ".jsonl"}
             # Skip S3 batch sidecars — batch metadata, not ConstituentEvents.
             and not f.name.lower().endswith(".manifest.json")
@@ -255,13 +266,31 @@ def read_constituent_events(
 # Internals
 # --------------------------------------------------------------------------- #
 def _read_events_file(path: Path) -> "list[dict]":
+    if path.suffix.lower() in {".ndjson", ".jsonl"}:
+        # Stream line-by-line so a large NDJSON batch is never held in memory
+        # twice, and name the offending file+line if a record is malformed
+        # (instead of aborting the whole ingest with a contextless traceback).
+        events: "list[dict]" = []
+        with path.open(encoding="utf-8") as fh:
+            for lineno, line in enumerate(fh, start=1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    events.append(json.loads(line))
+                except json.JSONDecodeError as exc:
+                    raise ValueError(
+                        f"Malformed JSON in {path} at line {lineno}: {exc}"
+                    ) from exc
+        return events
+    # .json (or unknown): a single object or an array of objects.
     text = path.read_text(encoding="utf-8").strip()
     if not text:
         return []
-    if path.suffix.lower() in {".ndjson", ".jsonl"}:
-        return [json.loads(line) for line in text.splitlines() if line.strip()]
-    # .json (or unknown): a single object or an array of objects.
-    data = json.loads(text)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Malformed JSON in {path}: {exc}") from exc
     return list(data) if isinstance(data, list) else [data]
 
 

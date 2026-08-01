@@ -34,21 +34,7 @@ from philanthropy.preprocessing import (
     WealthScreeningImputer,
 )
 
-# ---------------------------------------------------------------------------
-# Try importing hypothesis; skip property-based tests if not installed
-# ---------------------------------------------------------------------------
-try:
-    from hypothesis import HealthCheck, given, settings
-    from hypothesis import strategies as st
-
-    _HYPOTHESIS_AVAILABLE = True
-except ImportError:
-    _HYPOTHESIS_AVAILABLE = False
-
-hypothesis_mark = pytest.mark.skipif(
-    not _HYPOTHESIS_AVAILABLE,
-    reason="hypothesis is not installed — run `pip install hypothesis` to enable property-based tests.",
-)
+# Property-based tests for these transformers live in tests/test_properties.py.
 
 
 # ===========================================================================
@@ -232,211 +218,6 @@ class TestFiscalYearTransformer:
 
 
 # ===========================================================================
-# 4. FiscalYearTransformer — PROPERTY-BASED TESTS (hypothesis)
-# ===========================================================================
-
-
-@hypothesis_mark
-class TestFiscalYearTransformerHypothesis:
-    """Property-based stress tests for FiscalYearTransformer.
-
-    The hypothesis library generates thousands of randomised test cases
-    covering the full space of valid inputs — leap years, pre-1970 dates,
-    all 12 fiscal start months, and timezone-aware timestamps — providing
-    stronger correctness guarantees than any finite set of handcrafted cases.
-    """
-
-    # ------------------------------------------------------------------
-    # Shared helper
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _date_strategy():
-        """Return a Hypothesis strategy that draws plausible gift datetimes.
-
-        Covers:
-        * Pre-1970 (Unix epoch = 0) dates (e.g., 1800–1969)
-        * Post-epoch modern dates (1970–2030)
-        * Leap-year critical dates (Feb 28–29 on centennial years)
-        * Timezone-aware timestamps with arbitrary UTC offsets
-        """
-        # Naive datetime strategy spanning 1800–2030
-        naive_dates = st.dates(
-            min_value=pd.Timestamp("1800-01-01").date(),
-            max_value=pd.Timestamp("2030-12-31").date(),
-        ).map(lambda d: d.strftime("%Y-%m-%d"))
-
-        return naive_dates
-
-    # ------------------------------------------------------------------
-    # Property 1: fiscal_year is always an integer ≥ the calendar year
-    # ------------------------------------------------------------------
-
-    @given(
-        fiscal_year_start=st.integers(min_value=1, max_value=12),
-        n_rows=st.integers(min_value=1, max_value=50),
-        dates=st.lists(
-            st.dates(
-                min_value=pd.Timestamp("1800-01-01").date(),
-                max_value=pd.Timestamp("2030-12-31").date(),
-            ).map(lambda d: d.strftime("%Y-%m-%d")),
-            min_size=1,
-            max_size=50,
-        ),
-    )
-    @settings(
-        max_examples=500,
-        suppress_health_check=[HealthCheck.too_slow],
-        deadline=None,
-    )
-    def test_fiscal_year_always_integer(self, fiscal_year_start, n_rows, dates):
-        """``fiscal_year`` must always be a finite integer value."""
-        df = pd.DataFrame({"gift_date": dates})
-        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start).set_output(transform="pandas")
-        out = t.fit_transform(df)
-        fiscal_years = out["fiscal_year"]
-        assert fiscal_years.notna().all(), "fiscal_year must not contain NaN."
-        assert (fiscal_years % 1 == 0).all(), "fiscal_year must be an integer-valued number."
-
-    # ------------------------------------------------------------------
-    # Property 2: fiscal_year is always calendar year OR calendar year + 1
-    # ------------------------------------------------------------------
-
-    @given(
-        fiscal_year_start=st.integers(min_value=1, max_value=12),
-        date_str=st.dates(
-            min_value=pd.Timestamp("1800-01-01").date(),
-            max_value=pd.Timestamp("2030-12-31").date(),
-        ).map(lambda d: d.strftime("%Y-%m-%d")),
-    )
-    @settings(max_examples=1000, deadline=None)
-    def test_fiscal_year_is_calendar_year_or_plus_one(
-        self, fiscal_year_start, date_str
-    ):
-        """fiscal_year ∈ {calendar_year, calendar_year + 1} for any input."""
-        df = pd.DataFrame({"gift_date": [date_str]})
-        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start).set_output(transform="pandas")
-        out = t.fit_transform(df)
-        calendar_year = pd.to_datetime(date_str).year
-        fiscal_year = int(out.loc[0, "fiscal_year"])
-        assert fiscal_year in {calendar_year, calendar_year + 1}, (
-            f"For date={date_str}, fiscal_start={fiscal_year_start}: "
-            f"expected fiscal_year ∈ {{{calendar_year}, {calendar_year+1}}}, "
-            f"got {fiscal_year}."
-        )
-
-    # ------------------------------------------------------------------
-    # Property 3: fiscal_quarter ∈ {1, 2, 3, 4}
-    # ------------------------------------------------------------------
-
-    @given(
-        fiscal_year_start=st.integers(min_value=1, max_value=12),
-        date_str=st.dates(
-            min_value=pd.Timestamp("1800-01-01").date(),
-            max_value=pd.Timestamp("2030-12-31").date(),
-        ).map(lambda d: d.strftime("%Y-%m-%d")),
-    )
-    @settings(max_examples=1000, deadline=None)
-    def test_fiscal_quarter_always_1_to_4(self, fiscal_year_start, date_str):
-        """fiscal_quarter must always be in {1, 2, 3, 4}."""
-        df = pd.DataFrame({"gift_date": [date_str]})
-        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start).set_output(transform="pandas")
-        out = t.fit_transform(df)
-        q = int(out.loc[0, "fiscal_quarter"])
-        assert 1 <= q <= 4, (
-            f"fiscal_quarter={q} is out of range [1, 4] "
-            f"for date={date_str}, fiscal_start={fiscal_year_start}."
-        )
-
-    # ------------------------------------------------------------------
-    # Property 4: Idempotency — applying the transformer twice is harmless
-    # ------------------------------------------------------------------
-
-    @given(
-        fiscal_year_start=st.integers(min_value=1, max_value=12),
-        date_strs=st.lists(
-            st.dates(
-                min_value=pd.Timestamp("1900-01-01").date(),
-                max_value=pd.Timestamp("2030-12-31").date(),
-            ).map(lambda d: d.strftime("%Y-%m-%d")),
-            min_size=1,
-            max_size=20,
-        ),
-    )
-    @settings(max_examples=300, deadline=None)
-    def test_transform_idempotent_fiscal_year(self, fiscal_year_start, date_strs):
-        """Calling transform twice on the same data must yield identical fiscal_year."""
-        df = pd.DataFrame({"gift_date": date_strs})
-        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start).set_output(transform="pandas")
-        t.fit(df)
-        out1 = t.transform(df)
-        out2 = t.transform(out1.rename(columns={"fiscal_year": "_fy_drop",
-                                                 "fiscal_quarter": "_fq_drop"}).drop(
-            columns=["_fy_drop", "_fq_drop"], errors="ignore"
-        ).assign(gift_date=df["gift_date"]))
-        pd.testing.assert_series_equal(
-            out1["fiscal_year"].reset_index(drop=True),
-            out2["fiscal_year"].reset_index(drop=True),
-            check_names=False,
-        )
-
-    # ------------------------------------------------------------------
-    # Property 5: Leap-year dates — Feb 29 must not raise, fiscal year correct
-    # ------------------------------------------------------------------
-
-    @given(
-        fiscal_year_start=st.integers(min_value=1, max_value=12),
-        leap_year=st.sampled_from([2000, 2004, 2008, 2012, 2016, 2020, 2024]),
-    )
-    @settings(max_examples=72, deadline=None)
-    def test_leap_day_does_not_raise(self, fiscal_year_start, leap_year):
-        """Feb 29 on actual leap years must be handled without exception."""
-        date_str = f"{leap_year}-02-29"
-        df = pd.DataFrame({"gift_date": [date_str]})
-        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start).set_output(transform="pandas")
-        out = t.fit_transform(df)  # Must not raise
-        # Feb is always before fiscal_start unless start == 1 or 2
-        fy = int(out.loc[0, "fiscal_year"])
-        expected = leap_year + 1 if 2 >= fiscal_year_start else leap_year
-        assert fy == expected, (
-            f"Leap day {date_str}, fiscal_start={fiscal_year_start}: "
-            f"expected fy={expected}, got {fy}."
-        )
-
-    # ------------------------------------------------------------------
-    # Property 6: timezone-aware datetimes do not crash
-    # ------------------------------------------------------------------
-
-    @given(
-        fiscal_year_start=st.integers(min_value=1, max_value=12),
-        utc_offset_hours=st.integers(min_value=-12, max_value=14),
-        date_str=st.dates(
-            min_value=pd.Timestamp("1970-01-01").date(),
-            max_value=pd.Timestamp("2030-12-31").date(),
-        ).map(lambda d: d.strftime("%Y-%m-%d")),
-    )
-    @settings(max_examples=300, deadline=None)
-    def test_timezone_aware_string_does_not_crash(
-        self, fiscal_year_start, utc_offset_hours, date_str
-    ):
-        """Timezone-offset date strings (e.g. '2023-07-01+05:30') must be parsed."""
-        sign = "+" if utc_offset_hours >= 0 else "-"
-        abs_h = abs(utc_offset_hours)
-        tz_str = f"{date_str}T12:00:00{sign}{abs_h:02d}:00"
-        df = pd.DataFrame({"gift_date": [tz_str]})
-        t = FiscalYearTransformer(fiscal_year_start=fiscal_year_start).set_output(transform="pandas")
-        # utcoffset-aware strings parsed by pd.to_datetime; check no exception
-        try:
-            out = t.fit_transform(df)
-            assert "fiscal_year" in out.columns
-        except Exception as exc:
-            pytest.fail(
-                f"FiscalYearTransformer raised unexpectedly for tz-aware date "
-                f"{tz_str!r}, fiscal_start={fiscal_year_start}: {exc}"
-            )
-
-
-# ===========================================================================
 # 5. EncounterTransformer — standard unit tests
 # ===========================================================================
 
@@ -584,3 +365,50 @@ class TestEncounterTransformer:
             warnings.simplefilter("always")
             t.fit(gift_df_with_ids)
             assert any(isinstance(warning.category, type(UserWarning)) for warning in w)
+
+
+# --------------------------------------------------------------------------- #
+# EncounterRecencyTransformer — parameter validation and input shapes
+# (moved here from the deleted tests/test_coverage_boost.py)
+# --------------------------------------------------------------------------- #
+class TestEncounterRecencyTransformerEdgeCases:
+
+    def test_fiscal_year_start_out_of_range_raises(self):
+        from philanthropy.preprocessing import EncounterRecencyTransformer
+
+        with pytest.raises(
+            ValueError,
+            match=r"`fiscal_year_start` must be between 1 and 12, got 13\.",
+        ):
+            EncounterRecencyTransformer(fiscal_year_start=13).fit(
+                pd.DataFrame({"last_encounter_date": ["2023-01-01"]})
+            )
+
+    def test_fiscal_year_start_non_integer_raises(self):
+        from philanthropy.preprocessing import EncounterRecencyTransformer
+
+        with pytest.raises(
+            ValueError, match=r"`fiscal_year_start` must be an integer in \[1, 12\]"
+        ):
+            EncounterRecencyTransformer(fiscal_year_start="july").fit(
+                pd.DataFrame({"last_encounter_date": ["2023-01-01"]})
+            )
+
+    def test_multiple_date_columns_emit_three_features_each(self):
+        from philanthropy.preprocessing import EncounterRecencyTransformer
+
+        X = pd.DataFrame({
+            "date1": ["2023-01-01", "2023-02-01"],
+            "date2": ["2022-01-01", "2022-02-01"],
+        })
+        t = EncounterRecencyTransformer(date_col=["date1", "date2"])
+        out = t.fit_transform(X)
+        assert out.shape == (2, 6)
+        assert t.get_feature_names_out().shape == (6,)
+
+    def test_ndarray_transform_rebuilds_frame_from_feature_names_in(self):
+        from philanthropy.preprocessing import EncounterRecencyTransformer
+
+        X = pd.DataFrame({"date1": ["2023-01-01", "2023-02-01"]})
+        t = EncounterRecencyTransformer(date_col="date1").fit(X)
+        assert t.transform(X.to_numpy()).shape == (2, 3)

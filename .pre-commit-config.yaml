@@ -1,0 +1,17 @@
+# Runs the same lint / type gates as CI, using the active environment so the
+# results match `make ci` exactly. Install with: pre-commit install
+repos:
+  - repo: local
+    hooks:
+      - id: flake8
+        name: flake8 (real defects)
+        entry: python -m flake8 philanthropy tests examples
+        language: system
+        pass_filenames: false
+        types: [python]
+      - id: mypy
+        name: mypy
+        entry: python -m mypy philanthropy
+        language: system
+        pass_filenames: false
+        types: [python]

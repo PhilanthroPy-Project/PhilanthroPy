@@ -28,8 +28,9 @@ This runs the same checks as GitHub Actions, in order:
 1. Lint (flake8 — real defects only)
 2. Type check (mypy)
 3. Collection check — catches missing imports immediately
-4. Full test suite
-5. Coverage gate (≥ 85%)
+4. Docstring examples (`--doctest-modules`)
+5. Full test suite
+6. Coverage gate (branch coverage ≥ 92% overall, ≥ 93% on the risk tier)
 
 If `make ci` passes, your push will pass CI.
 Never use `git push --no-verify`.
@@ -64,8 +65,6 @@ python -m pytest <new_test_file.py> --collect-only -q
 # Must show: X tests collected, 0 errors
 ```
 
-Use `git push --no-verify` only in an emergency to bypass the hook.
-
 ## Versioning & deprecation
 
 PhilanthroPy follows [Semantic Versioning](https://semver.org). While the
@@ -75,3 +74,41 @@ are always called out under a **Breaking** heading in
 at least one minor release and emits a `DeprecationWarning` pointing at its
 replacement before removal. Supported versions are listed in
 [SECURITY.md](SECURITY.md).
+
+Deprecations use one mechanism, `philanthropy/utils/_deprecation.py`:
+`@deprecated_alias(new_name, removed_in=...)` for a renamed method, and an
+inline `warnings.warn(..., DeprecationWarning)` in `fit`/`split` for a parameter
+that no longer does anything. Every shim needs a test in
+`tests/test_deprecations.py` — `test_every_alias_is_registered_here` fails
+otherwise. Per-symbol stability tiers live in
+[docs/reference/index.md](docs/reference/index.md).
+
+## RELEASE CHECKLIST
+
+Run in order. Steps 1–6 are the gate `publish.yml` enforces; 7–9 are manual.
+
+1. `make ci` is green, and so is `pytest tests/test_public_api_contract.py
+   tests/test_deprecations.py -q`.
+2. Bump `version` in `pyproject.toml`. Nothing else carries the version —
+   `philanthropy.__version__` reads it from installed metadata.
+3. Add a `## [X.Y.Z]` section to `CHANGELOG.md`. A release that removes anything
+   needs a **Breaking** heading; a release that adds a shim needs a
+   **Deprecated** heading naming every alias and dead parameter with the version
+   that removes it.
+4. Update the "Deprecations in flight" table in `docs/reference/index.md`.
+5. `python -m build && python -m twine check --strict dist/*`.
+6. Tag `vX.Y.Z` and push it. Publishing is gated on clicking **Publish release**
+   in the GitHub UI; `publish.yml` then re-checks that the tag, `pyproject.toml`
+   and `CHANGELOG.md` agree before it builds.
+7. Confirm the release landed on PyPI and that `pip install philanthropy==X.Y.Z`
+   works in a clean venv.
+8. **Deposit to Zenodo.** The GitHub–Zenodo integration picks up the published
+   release and reads `.zenodo.json`. JOSS requires a deposited archive with a DOI
+   at acceptance.
+9. On the first deposit only: copy the Zenodo **concept** DOI (the one that
+   resolves to the latest version, not the per-version DOI) into the
+   `identifiers:` stanza of `CITATION.cff`, replacing
+   `10.5281/zenodo.PENDING`, and commit.
+
+A shim added in `X.Y.0` may only be removed in `X.(Y+1).0` **after `X.Y.0` is
+published on PyPI** — one full published minor of overlap, not one commit.

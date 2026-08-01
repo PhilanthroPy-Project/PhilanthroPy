@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "philanthropy"
-version = "0.4.0"
+version = "0.6.0"
 description = "scikit-learn-native predictive analytics for nonprofit and academic-medical-center fundraising: donor propensity, lapse, planned giving, wealth screening, and revenue forecasting."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -41,26 +41,33 @@ classifiers = [
 ]
 dependencies = [
     "scikit-learn>=1.6",
-    "pandas",
-    "numpy"
+    "pandas>=2.0",
+    "numpy>=1.23",
+    "joblib>=1.2"
 ]
 
 [project.optional-dependencies]
+# matplotlib 3.5.x crashes inside seaborn's KDE path against pandas 2.0
+# (cbook._check_1d does `x[:, None]` on a pandas Index); seaborn < 0.12.2 reads
+# the removed `mode.use_inf_as_null` option. Both floors are load-bearing.
 viz = [
-    "matplotlib",
-    "seaborn"
+    "matplotlib>=3.6",
+    "seaborn>=0.13"
 ]
+# Floors here are load-bearing: the `floors` CI job installs with
+# `uv pip install --resolution lowest-direct`, so an unpinned tool resolves to
+# its oldest release on PyPI (pytest 2.0.0) and the job never gets to run.
 dev = [
-    "pytest",
-    "pytest-cov",
-    "hypothesis",
-    "flake8",
-    "mypy",
-    "matplotlib",
-    "seaborn"
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "hypothesis>=6.70",
+    "flake8>=6.0",
+    "mypy>=1.0",
+    "matplotlib>=3.6",
+    "seaborn>=0.13"
 ]
 docs = [
-    "mkdocs>=1.4.0",
+    "mkdocs>=1.4.0,<2",
     "mkdocs-material>=9.0.0",
     "mkdocstrings[python]",
     "matplotlib",
@@ -84,16 +91,31 @@ where = ["."]
 include = ["philanthropy*"]
 
 [tool.setuptools.package-data]
+"philanthropy" = ["py.typed"]
 "philanthropy.datasets" = ["data/*.csv"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--import-mode=importlib"
 
-[tool.hypothesis]
-suppress_health_check = ["too_slow"]
-max_examples = 200
-
 [tool.mypy]
 files = ["philanthropy"]
 ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["philanthropy"]
+branch = true
+
+[tool.coverage.report]
+# Measured 95% branch on the first green run; pinned one point under so the
+# gate catches a regression without failing on rounding. 85 had nine points of
+# slack and would not have noticed ~170 statements of tested code being deleted.
+fail_under = 92
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@overload",
+]

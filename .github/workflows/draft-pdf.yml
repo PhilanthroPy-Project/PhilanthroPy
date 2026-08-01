@@ -30,7 +30,7 @@ jobs:
           paper-path: paper/paper.md
 
       - name: Upload paper.pdf
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: paper
           path: paper/paper.pdf

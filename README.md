@@ -35,7 +35,11 @@ One toolkit, two audiences:
 
 ### Maturity
 
-Single-maintainer MIT project at `v1.0.0`. Tier 1 symbols are semver-protected — a breaking change to any of them requires a major release preceded by one full published minor of `DeprecationWarning`. Preprocessing and the core classifiers are Tier 1; grateful-patient featurization and `philanthropy.ingest` are Tier 2 (Beta); `FinancialForecastModel` and `philanthropy.experimental.*` are Tier 3 (Experimental) and carry no API guarantees. Per-symbol stability tiers are in the [API reference](docs/reference/index.md).
+Single-maintainer MIT project. **`pip install philanthropy` gives you `0.6.0`**, the current release.
+
+`main` is ahead of it: `0.7.0` (removes the `0.6.0` deprecations) and `1.0.0` (freezes the API) are merged and green but deliberately unreleased, so the `0.6.0` deprecation warnings get a real migration window rather than a token one. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
+
+Preprocessing and the core classifiers are Tier 1; grateful-patient featurization and `philanthropy.ingest` are Tier 2 (Beta); `FinancialForecastModel` and `philanthropy.experimental.*` are Tier 3 (Experimental) and carry no API guarantees. From `1.0.0`, Tier 1 becomes semver-protected — breaking one requires a major release preceded by a full published minor of `DeprecationWarning`. Per-symbol tiers are in the [API reference](docs/reference/index.md).
 
 > **Maintenance:** maintained by one person on a best-effort basis. For vendor / OSS risk reviews: the bus factor is 1. Issues and PRs are welcome.
 

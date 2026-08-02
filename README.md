@@ -188,6 +188,35 @@ benchmark of PhilanthroPy.** To cite the software itself, see [`CITATION.cff`](C
 
 ---
 
+## Generative AI disclosure
+
+AI assistance (Claude Code) was used during development of this package, across
+implementation, tests, and documentation, in an agentic workflow rather than
+line completion alone.
+
+**What was not generated.** The design constraints are the author's and predate
+any generated code: the leakage-safety contract (every fitted statistic is
+computed on training data inside `fit` and frozen before `transform`/`predict`),
+the dependency rule (scikit-learn, pandas, numpy, matplotlib, seaborn — no deep
+learning frameworks), the estimator conventions, and the stability tiers.
+Generated code that violated them was rejected rather than merged.
+
+**Human review.** Nothing lands without the full gate green. Locally, `make ci`
+runs flake8, mypy, the docstring examples, and the test suite against a 92%
+coverage floor (`pyproject.toml`). CI additionally enforces a 93% coverage floor
+on the risk-tier subtree, runs the suite across an OS and Python-version matrix,
+installs at the declared dependency floors on Python 3.9, builds the
+distributions and checks their metadata with `twine`, and verifies the package
+imports without a plotting stack installed. Every public estimator passes
+`sklearn.utils.estimator_checks.check_estimator`.
+
+No approximate scale is attached to the AI use here. The author has not measured
+the split and will not estimate one; the mechanism and the review gate above are
+stated instead. This follows the
+[pyOpenSci generative AI policy](https://www.pyopensci.org/blog/generative-ai-peer-review-policy.html).
+
+---
+
 ## Contributing
 
 Contributions are welcome, and a first PR does not need to be big — docs fixes,

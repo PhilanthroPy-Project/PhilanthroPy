@@ -35,3 +35,6 @@ site/
 
 # Saved model artifacts
 *.joblib
+
+# Local working notes (not published)
+plan.md

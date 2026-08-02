@@ -41,7 +41,7 @@ Single-maintainer MIT project. **`pip install philanthropy` gives you `0.6.0`**,
 
 Preprocessing and the core classifiers are Tier 1; grateful-patient featurization and `philanthropy.ingest` are Tier 2 (Beta); `FinancialForecastModel` and `philanthropy.experimental.*` are Tier 3 (Experimental) and carry no API guarantees. From `1.0.0`, Tier 1 becomes semver-protected — breaking one requires a major release preceded by a full published minor of `DeprecationWarning`. Per-symbol tiers are in the [API reference](docs/reference/index.md).
 
-> **Maintenance:** maintained by one person on a best-effort basis. For vendor / OSS risk reviews: the bus factor is 1. Issues and PRs are welcome.
+> **Maintenance:** maintained by one person on a best-effort basis. For vendor / OSS risk reviews: the bus factor is 1.
 
 ---
 
@@ -190,9 +190,20 @@ benchmark of PhilanthroPy.** To cite the software itself, see [`CITATION.cff`](C
 
 ## Contributing
 
-See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full local test gate, the
-new-test-file workflow, and pre-push hook setup. In short: run `make ci` before
-every push, and never use `git push --no-verify`.
+Contributions are welcome, and a first PR does not need to be big — docs fixes,
+missing tests, and clearer error messages all count.
+
+**Start with a [good first issue](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).**
+Each one names the files to touch, the steps, and the single command that proves
+it is done. Comment on the issue to claim it; ask there if anything is unclear.
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the fork-and-PR workflow, the full
+local test gate, and pre-push hook setup. In short: fork, branch, run `make ci`
+before every push, and never use `git push --no-verify`. Setup plus a first green
+`make ci` takes about eight minutes.
+
+Questions are welcome in
+[Discussions](https://github.com/PhilanthroPy-Project/PhilanthroPy/discussions).
 
 ---
 

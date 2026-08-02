@@ -93,6 +93,7 @@ nav:
     - explanation/compliance_considerations.md
     - explanation/comparison_to_vendors.md
     - explanation/benchmarks.md
+  - Contributing: contributing.md
   - API Reference:
     - reference/index.md
     - reference/preprocessing.md

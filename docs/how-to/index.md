@@ -4,6 +4,7 @@ How-to guides are task recipes. Each one solves a specific problem and assumes y
 
 * [Use the CLI](use_the_cli.md)
 * [Ingest UniSchema Events](ingest_unischema_events.md)
+* [Ingest CiviCRM Contributions](ingest_civicrm_contributions.md)
 * [Handle Missing Wealth Data](handle_missing_wealth_data.md)
 * [Build Grateful Patient Features](build_grateful_patient_features.md)
 * [Recommend Ask Amounts](recommend_ask_amounts.md)

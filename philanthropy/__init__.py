@@ -34,7 +34,12 @@ from . import (
     experimental,
     visualisation,
 )
-from .ingest import constituent_events_to_features, read_constituent_events
+from .ingest import (
+    civicrm_contributions_to_features,
+    constituent_events_to_features,
+    read_civicrm_contributions,
+    read_constituent_events,
+)
 
 __all__ = [
     "preprocessing",
@@ -47,6 +52,8 @@ __all__ = [
     "model_selection",
     "experimental",
     "visualisation",
+    "civicrm_contributions_to_features",
     "constituent_events_to_features",
+    "read_civicrm_contributions",
     "read_constituent_events",
 ]

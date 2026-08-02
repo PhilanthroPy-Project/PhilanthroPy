@@ -53,6 +53,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `MatchingGiftFeaturizer` | `preprocessing` | The employer-normalisation rules will grow. |
 | `AskAmountRecommender` | `models` | The ask-ladder multipliers are a heuristic. |
 | `constituent_events_to_features`, `read_constituent_events` | `ingest` | Tracks the UniSchema `ConstituentEvent` schema, which is versioned upstream. |
+| `civicrm_contributions_to_features`, `read_civicrm_contributions` | `ingest` | Tracks CiviCRM's contribution export labels and APIv4 field names, which move with the CRM. |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Chart composition is presentation, not contract. |
 
 ### Tier 3 — Experimental

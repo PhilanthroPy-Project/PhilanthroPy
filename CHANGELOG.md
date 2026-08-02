@@ -5,6 +5,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added
+- **CiviCRM contribution bridge** — `philanthropy.ingest.read_civicrm_contributions`
+  and `civicrm_contributions_to_features` (Tier 2). Turns a CiviCRM contribution
+  export, or an APIv4 `Contribution.get` result, into the one-row-per-donor
+  feature table the estimators consume. Headers normalise to the APIv4 spelling,
+  so the human export labels (`Contact ID`, `Total Amount`, `Contribution Date`)
+  and the DB columns (`contact_id`, `total_amount`, `receive_date`) both work.
+
+  It exists because two things a bare `pd.read_csv` gets wrong are expensive:
+  CiviCRM writes payment-processor **test transactions** into the same table, and
+  `contribution_status` separates `Completed` from `Pending`, `Failed`,
+  `Refunded` and `Chargeback`. Test rows are always dropped; only `Completed` is
+  counted unless `statuses` says otherwise, and asking for a status filter that
+  cannot be applied warns instead of silently summing refunds.
+
+  Recency is anchored to `reference_date` or the batch's latest gift, never a
+  moving "now" — the same leakage contract as the UniSchema bridge. See
+  [docs/how-to/ingest_civicrm_contributions.md](docs/how-to/ingest_civicrm_contributions.md).
+
 ## [1.0.0] - TBD
 
 The API freeze. No code changes — 1.0.0 is a promise, not a feature.

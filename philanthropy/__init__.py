@@ -3,6 +3,14 @@ PhilanthroPy
 ============
 A scikit-learn compatible toolkit for predictive donor analytics
 in the nonprofit sector.
+
+Generative AI disclosure
+------------------------
+AI assistance (Claude Code) was used during development of this package.
+The scope is package-wide rather than specific to any one module, so the
+disclosure lives here rather than being stamped on every module. See the
+"Generative AI disclosure" section of README.md for how the tools were
+used and what human review was performed.
 """
 
 from importlib.metadata import PackageNotFoundError, version as _version

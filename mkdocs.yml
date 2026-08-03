@@ -76,6 +76,7 @@ nav:
     - how-to/index.md
     - how-to/use_the_cli.md
     - how-to/ingest_unischema_events.md
+    - how-to/ingest_civicrm_contributions.md
     - how-to/handle_missing_wealth_data.md
     - how-to/build_grateful_patient_features.md
     - how-to/recommend_ask_amounts.md

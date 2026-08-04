@@ -45,4 +45,5 @@ references:
       name: IEEE
     year: 2025
     doi: "10.1109/ICCED68324.2025.11325064"
-    # Start/end page numbers pending — add from the IEEE Xplore citation export.
+    start: 1
+    end: 5

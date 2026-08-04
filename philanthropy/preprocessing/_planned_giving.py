@@ -193,6 +193,24 @@ class PlannedGivingSignalTransformer(TransformerMixin, BaseEstimator):
         )
 
     def get_feature_names_out(self, input_features=None):
+        """Return the generated planned-giving signal names.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, default=None
+            Ignored because the transformer always emits the same four features.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            ``["is_legacy_age", "is_loyal_donor", "inclination_score",
+            "composite_score"]``.
+
+        Raises
+        ------
+        NotFittedError
+            If the transformer has not been fitted.
+        """
         check_is_fitted(self)
         return np.array(
             ["is_legacy_age", "is_loyal_donor", "inclination_score", "composite_score"],

@@ -130,6 +130,24 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         return X_df.to_numpy()
 
     def get_feature_names_out(self, input_features=None):
+        """Return the CRM columns learned during fitting.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, default=None
+            Ignored. The output names are the input column names recorded by
+            :meth:`fit`.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            The original CRM column names, in input order.
+
+        Raises
+        ------
+        NotFittedError
+            If the transformer has not been fitted.
+        """
         check_is_fitted(self)
         names = list(self.feature_names_in_)
         return np.array(names, dtype=object)
@@ -199,6 +217,23 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
         return out_df.to_numpy()
 
     def get_feature_names_out(self, input_features=None):
+        """Return the two generated fiscal-period feature names.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, default=None
+            Ignored because the transformer always emits the same two features.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            ``["fiscal_year", "fiscal_quarter"]``.
+
+        Raises
+        ------
+        NotFittedError
+            If the transformer has not been fitted.
+        """
         check_is_fitted(self)
         return np.array(["fiscal_year", "fiscal_quarter"], dtype=object)
 

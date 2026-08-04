@@ -92,6 +92,23 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
             raise ValueError(f"X must contain columns: {required_cols}")
 
     def get_feature_names_out(self, input_features=None):
+        """Return the donor identifier and generated RFM feature names.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, default=None
+            Ignored because the transformer always emits the same four columns.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            ``["donor_id", "recency", "frequency", "monetary"]``.
+
+        Raises
+        ------
+        NotFittedError
+            If the transformer has not been fitted.
+        """
         check_is_fitted(self)
         return np.array(['donor_id', 'recency', 'frequency', 'monetary'], dtype=object)
 

@@ -73,6 +73,24 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
         return X_final.to_numpy(dtype=np.float64)
 
     def get_feature_names_out(self, input_features=None):
+        """Return input names followed by generated wealth-percentile names.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, default=None
+            Ignored. Names are derived from the columns recorded by :meth:`fit`.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            Fitted input names followed by ``<column><output_suffix>`` for each
+            selected wealth column.
+
+        Raises
+        ------
+        NotFittedError
+            If the transformer has not been fitted.
+        """
         check_is_fitted(self)
         out = list(self.feature_names_in_)
         for col in self.imputed_cols_:

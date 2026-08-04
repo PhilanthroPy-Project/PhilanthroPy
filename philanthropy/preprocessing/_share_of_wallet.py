@@ -276,6 +276,25 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
         return X_out
 
     def get_feature_names_out(self, input_features=None) -> np.ndarray:
+        """Return imputed feature names and optional missingness indicators.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, default=None
+            Input feature names to use. When omitted, fitted names are used, or
+            ``x0``, ``x1``, ... for unnamed input.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            Base feature names, followed by ``<column>__was_missing`` for each
+            imputed column when ``add_indicator=True``.
+
+        Raises
+        ------
+        NotFittedError
+            If the imputer has not been fitted.
+        """
         check_is_fitted(self)
         if input_features is not None:
             base = list(input_features)
@@ -484,6 +503,23 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         return np.column_stack([sow, tiers])
 
     def get_feature_names_out(self, input_features=None) -> np.ndarray:
+        """Return the share-of-wallet score and encoded tier names.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, default=None
+            Ignored because the scorer always emits the same two features.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            ``["sow_score", "capacity_tier"]``.
+
+        Raises
+        ------
+        NotFittedError
+            If the scorer has not been fitted.
+        """
         check_is_fitted(self)
         return np.array(["sow_score", "capacity_tier"], dtype=object)
 

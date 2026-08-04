@@ -409,6 +409,25 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         return X_out.to_numpy(dtype=np.float64)
 
     def get_feature_names_out(self, input_features=None):
+        """Return privacy-filtered donor and generated encounter feature names.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, default=None
+            Ignored. Names are derived from the columns recorded by :meth:`fit`.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            Fitted input columns excluding detected PII and ``gift_date_col``,
+            followed by ``"days_since_last_discharge"`` and
+            ``"encounter_frequency_score"``.
+
+        Raises
+        ------
+        NotFittedError
+            If the transformer has not been fitted.
+        """
         check_is_fitted(self)
         features = list(self.feature_names_in_)
         dropped = set(self._identify_pii_columns(self.feature_names_in_))
@@ -422,4 +441,3 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
         return tags
-

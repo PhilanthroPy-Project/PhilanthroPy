@@ -355,6 +355,24 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         return result.to_numpy(dtype=np.float64)
 
     def get_feature_names_out(self, input_features=None):
+        """Return the generated grateful-patient feature names.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, default=None
+            Ignored because the featurizer always emits the same four features.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            ``["clinical_gravity_score", "distinct_service_lines",
+            "distinct_physicians", "total_drg_weight"]``.
+
+        Raises
+        ------
+        NotFittedError
+            If the featurizer has not been fitted.
+        """
         check_is_fitted(self)
         return np.array(
             [

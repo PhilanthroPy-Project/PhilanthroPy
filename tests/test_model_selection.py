@@ -74,6 +74,28 @@ def test_gap_years_withholds_the_year_before_each_test_fold():
         assert fy[train_idx].max() < test_fy - 1
 
 
+def test_default_splitter_no_leakage_gap_years_zero():
+    """Default gap_years=0: training fold never contains a FY at or after the test FY,
+    and each test fold is exactly one fiscal year."""
+    X = np.zeros((10, 2))
+    splitter = FiscalYearGroupedSplitter(n_splits=3)
+    splits = list(splitter.split(X, groups=_FY_GROUPS))
+    assert len(splits) == 3
+
+    fy = np.asarray(_FY_GROUPS)
+    train_sizes = []
+    for train_idx, test_idx in splits:
+        # No leakage: max training FY is strictly less than min test FY.
+        assert fy[train_idx].max() < fy[test_idx].min()
+        # Each test fold is exactly one fiscal year.
+        assert len(set(fy[test_idx])) == 1
+        train_sizes.append(len(train_idx))
+
+    # Expanding window: training set grows with each split.
+    assert train_sizes == sorted(train_sizes)
+    assert len(set(train_sizes)) == len(train_sizes)  # strictly increasing
+
+
 def test_not_enough_fiscal_years_names_the_shortfall():
     X = np.zeros((10, 2))
     with pytest.raises(

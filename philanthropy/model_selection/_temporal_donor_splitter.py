@@ -29,7 +29,7 @@ Typical usage
 >>> len(splits)
 3
 >>> train_idx, test_idx = splits[0]
->>> bool(fiscal_years[test_idx].max() <= fiscal_years[train_idx].min() + 1 or True)
+>>> bool(fiscal_years[train_idx].max() < fiscal_years[test_idx].min())
 True
 """
 

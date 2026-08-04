@@ -204,6 +204,24 @@ class MatchingGiftFeaturizer(TransformerMixin, BaseEstimator):
         )
 
     def get_feature_names_out(self, input_features=None) -> np.ndarray:
+        """Return the generated matching-gift feature names.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, default=None
+            Ignored because the featurizer always emits the same three features.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            ``["has_employer", "match_ratio",
+            "potential_matched_amount"]``.
+
+        Raises
+        ------
+        NotFittedError
+            If the featurizer has not been fitted.
+        """
         check_is_fitted(self)
         return np.array(
             ["has_employer", "match_ratio", "potential_matched_amount"],

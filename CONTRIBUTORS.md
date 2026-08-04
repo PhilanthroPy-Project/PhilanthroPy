@@ -14,6 +14,8 @@ contribution. Code, docs, tests, and review all count.
   tautological doctest in `FiscalYearGroupedSplitter` with one that can actually
   fail, and added the missing no-leakage test for the default `gap_years=0`
   ([#30](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/30)).
+- [@BortnikMaxim](https://github.com/BortnikMaxim) — documented the output-column
+  contracts of the preprocessing transformers' `get_feature_names_out` methods.
 
 ## Getting listed
 

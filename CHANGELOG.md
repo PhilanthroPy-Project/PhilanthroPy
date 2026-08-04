@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Changed
+- Added complete output-column documentation to all eleven preprocessing
+  `get_feature_names_out` overrides that previously rendered blank in the API
+  reference.
+
 ### Fixed
 - `FiscalYearGroupedSplitter`'s module doctest asserted
   `... <= ... + 1 or True`, which passes for every possible input and so proved

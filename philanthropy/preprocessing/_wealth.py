@@ -308,6 +308,25 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
         return X_out
 
     def get_feature_names_out(self, input_features=None):
+        """Return imputed feature names and optional missingness indicators.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, default=None
+            Input feature names to use. When omitted, fitted names are used, or
+            ``x0``, ``x1``, ... for unnamed input.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            Base feature names, followed by ``<column>__was_missing`` for each
+            imputed column when ``add_indicator=True``.
+
+        Raises
+        ------
+        NotFittedError
+            If the imputer has not been fitted.
+        """
         check_is_fitted(self)
         if input_features is not None:
             out = list(input_features)
@@ -326,4 +345,3 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         return tags
-

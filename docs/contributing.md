@@ -24,6 +24,10 @@ runs on top of it — is in
 
 Setup plus a first green `make ci` takes about eight minutes.
 
+Everyone who has landed a change is credited in
+[CONTRIBUTORS.md](https://github.com/PhilanthroPy-Project/PhilanthroPy/blob/main/CONTRIBUTORS.md)
+— add yourself in the same pull request.
+
 ## Questions
 
 Ask in

@@ -234,6 +234,9 @@ local test gate, and pre-push hook setup. In short: fork, branch, run `make ci`
 before every push, and never use `git push --no-verify`. Setup plus a first green
 `make ci` takes about eight minutes.
 
+Everyone who has landed a change is credited in
+[CONTRIBUTORS.md](CONTRIBUTORS.md) — add yourself in the same PR.
+
 Questions are welcome in
 [Discussions](https://github.com/PhilanthroPy-Project/PhilanthroPy/discussions).
 

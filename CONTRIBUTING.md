@@ -84,7 +84,9 @@ git push origin my-change        # your fork, not upstream
 Then open a pull request against `PhilanthroPy-Project/PhilanthroPy` `main`.
 GitHub offers the button on your fork right after the push. Fill in the
 [PR template](.github/PULL_REQUEST_TEMPLATE.md): what changed and why, and add a
-`CHANGELOG.md` entry under `[Unreleased]`.
+`CHANGELOG.md` entry under `[Unreleased]`. Add yourself to
+[CONTRIBUTORS.md](CONTRIBUTORS.md) in the same PR — one line, name or handle and
+what you did.
 
 CI runs on pull requests from forks. If a job fails, push another commit to the
 same branch — the PR updates itself.

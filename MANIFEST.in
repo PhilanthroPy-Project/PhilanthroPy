@@ -1,4 +1,4 @@
-include LICENSE README.md CHANGELOG.md CITATION.cff
+include LICENSE README.md CHANGELOG.md CONTRIBUTORS.md CITATION.cff
 recursive-include philanthropy/datasets/data *.csv
 
 prune tests

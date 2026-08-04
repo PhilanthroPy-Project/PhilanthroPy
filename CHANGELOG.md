@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- `FiscalYearGroupedSplitter`'s module doctest asserted
+  `... <= ... + 1 or True`, which passes for every possible input and so proved
+  nothing about the split. It now asserts what the class actually promises —
+  `fiscal_years[train_idx].max() < fiscal_years[test_idx].min()` — and a new
+  `test_default_splitter_no_leakage_gap_years_zero` covers the default
+  `gap_years=0` path, which had no leakage test at all. Thanks to
+  [@fuleinist](https://github.com/fuleinist) (Chris Chen) for the first external
+  contribution ([#30](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/30),
+  closes [#26](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/26)).
+
 ### Added
 - **CiviCRM contribution bridge** — `philanthropy.ingest.read_civicrm_contributions`
   and `civicrm_contributions_to_features` (Tier 2). Turns a CiviCRM contribution

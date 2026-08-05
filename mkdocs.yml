@@ -1,5 +1,6 @@
 site_name: PhilanthroPy
 site_description: A scikit-learn compatible toolkit for predictive donor analytics.
+site_url: https://PhilanthroPy-Project.github.io/PhilanthroPy/
 repo_url: https://github.com/PhilanthroPy-Project/PhilanthroPy
 
 theme:
@@ -92,6 +93,7 @@ nav:
     - explanation/capacity_and_loyalty.md
     - explanation/design_principles.md
     - explanation/compliance_considerations.md
+    - explanation/security_review_answers.md
     - explanation/comparison_to_vendors.md
     - explanation/benchmarks.md
   - Contributing: contributing.md

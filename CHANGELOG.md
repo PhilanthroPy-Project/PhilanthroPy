@@ -5,10 +5,49 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added
+- `tests/test_no_network.py` enforces in CI what the docs now promise: the package
+  makes **no network calls**. Every socket entry point is monkeypatched to raise,
+  then a full train/score cycle, an imputation pass and a CiviCRM ingest all run.
+  A telemetry hook, HTTP client or lazily downloaded asset added later fails this
+  test instead of shipping.
+- `docs/explanation/security_review_answers.md` — the ten questions an institutional
+  security or privacy review actually asks, on one forwardable page (BAA status,
+  dependency provenance, the pickle trust boundary, de-identification scope, bus
+  factor, disclosure route).
+- `make riskcov` — the risk-tier coverage floor as a single source of truth. `ci.yml`
+  and `CONTRIBUTING.md` now both call it.
+- `scripts/issue-drafts/_TEMPLATE.md` and `scripts/check_issue_lines.py` — the issue
+  shape that converts, and a drift checker for the `path:line` references in issue
+  bodies. Deliberately outside `.github/ISSUE_TEMPLATE/`, which is the public chooser.
+
 ### Changed
 - Added complete output-column documentation to all eleven preprocessing
   `get_feature_names_out` overrides that previously rendered blank in the API
   reference.
+- `CLAUDE.md` is now `AGENTS.md`, the tool-neutral convention, with `CLAUDE.md`
+  reduced to an `@AGENTS.md` import. Agents other than Claude Code were reading no
+  project instructions at all — not the leakage contract, not the dependency
+  constraint, not `make ci`.
+- `README.md` quickstart prints a result instead of ending in a bare `assert`, and
+  documents the CLI path for readers who do not write Python.
+- `SECURITY.md` supported-versions table named `0.5.x`, which has not been the
+  installable release since `0.6.0`. Now `0.6.x`, and kept current by the
+  `RELEASING.md` checklist. Adds GitHub private vulnerability reporting as the
+  preferred disclosure channel.
+
+### Fixed
+- `mkdocs.yml` had no `site_url`, so the generated `sitemap.xml` was empty and all
+  38 documentation pages were uncrawlable, with no `rel=canonical` anywhere.
+- `CONTRIBUTING.md` documented a risk-tier coverage command measuring `metrics/` and
+  `model_selection/`, while CI measured `ingest/`, `cli.py` and `utils/_persistence.py`.
+  A contributor could run the documented command, pass, and still fail CI on files it
+  never looked at.
+
+### Removed
+- `FiscalYearGroupedSplitter._iter_test_indices` and `_iter_test_masks`. Both were
+  unreachable — the class overrides `split`, so `cross_validate` never called
+  either — and the comment claiming `BaseCrossValidator` requires them was false.
 
 ### Fixed
 - `FiscalYearGroupedSplitter`'s module doctest asserted

@@ -247,23 +247,6 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
         return int(self.n_splits)
 
     # ------------------------------------------------------------------
-    # BaseCrossValidator requires _iter_test_indices
-    # ------------------------------------------------------------------
-
-    def _iter_test_indices(self, X=None, y=None, groups=None):
-        """Yield test index arrays (required by BaseCrossValidator)."""
-        for _, test in self.split(X, y, groups):
-            yield test
-
-    def _iter_test_masks(self, X=None, y=None, groups=None):
-        """Yield boolean test masks (overrides base default for efficiency)."""
-        n_samples = _n_samples(X)
-        for test_indices in self._iter_test_indices(X, y, groups):
-            mask = np.zeros(n_samples, dtype=bool)
-            mask[test_indices] = True
-            yield mask
-
-    # ------------------------------------------------------------------
     # sklearn clone safety — all params must be in __init__
     # ------------------------------------------------------------------
 

@@ -40,6 +40,16 @@ Run in order. Steps 1–6 are the gate `publish.yml` enforces; 7–9 are manual.
 6. Tag `vX.Y.Z` and push it. Publishing is gated on clicking **Publish release**
    in the GitHub UI; `publish.yml` then re-checks that the tag, `pyproject.toml`
    and `CHANGELOG.md` agree before it builds.
+   - **Paste the CHANGELOG section into the release body.** An empty release body
+     wastes the only page most people ever read about a version.
+   - **Add a `### Thanks` line naming every external contributor** in that
+     section. A named credit on a permanent release page is worth more to a
+     drive-by contributor than a line in a markdown file.
+   - Update the supported-versions table in `SECURITY.md` so it names a version
+     that can actually be installed.
+   - Re-run `examples/quickstart.ipynb` if the public API moved: it installs from
+     PyPI (`!pip install philanthropy -q`) while living on `main`, so it is the
+     one artifact that can silently break on a rename.
 7. Confirm the release landed on PyPI and that `pip install philanthropy==X.Y.Z`
    works in a clean venv.
 8. **Deposit to Zenodo.** The GitHub–Zenodo integration picks up the published

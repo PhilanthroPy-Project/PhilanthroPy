@@ -49,9 +49,11 @@ This runs, in order:
 If `make ci` passes, the lint, type, test, and overall-coverage jobs will pass
 CI. CI checks four more things `make ci` does not:
 
-- a **risk-tier coverage floor** of 93% over `preprocessing/`, `models/`,
-  `metrics/`, and `model_selection/` — reproduce it locally with
-  `python -m coverage report --include='philanthropy/preprocessing/*,philanthropy/models/*,philanthropy/metrics/*,philanthropy/model_selection/*' --fail-under=93`
+- a **risk-tier coverage floor** over `preprocessing/`, `models/`, `ingest/`,
+  `cli.py`, and `utils/_persistence.py` — reproduce it locally with `make riskcov`
+  (run it after `make ci`, which produces the coverage data). The include list and
+  the floor are defined once in the `Makefile`; CI runs the same target, so the two
+  cannot disagree.
 - the declared **dependency floors** on Python 3.9 (`uv pip install --resolution lowest-direct`)
 - `python -m build` plus `twine check` on the built distributions
 - a **minimal install** (`pip install .`) that must import without matplotlib

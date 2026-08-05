@@ -70,12 +70,10 @@ jobs:
         run: pytest tests/ --cov=philanthropy --cov-report=term-missing
       # Measured 94% branch on this subtree; pinned one point under. The
       # visualisation package is exempt by omission — a chart's correctness is
-      # not a line-coverage question.
+      # not a line-coverage question. The include list and the floor live in the
+      # Makefile so this job and CONTRIBUTING.md cannot drift apart.
       - name: Risk-tier coverage floor
-        run: >
-          coverage report
-          --include='philanthropy/preprocessing/*,philanthropy/models/*,philanthropy/ingest/*,philanthropy/cli.py,philanthropy/utils/_persistence.py'
-          --fail-under=93
+        run: make riskcov
 
   floors:
     name: Declared dependency floors (lowest-direct)

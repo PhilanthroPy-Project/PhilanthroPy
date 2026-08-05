@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>PhilanthroPy: Code for a cause—predictive analytics for advancement teams.</strong>
+  <strong>Rank your donors by who is most likely to make a major gift — leakage-safe scikit-learn models for nonprofit and hospital fundraising.</strong>
 </p>
 
 <p align="center">
@@ -71,15 +71,22 @@ from philanthropy.models import DonorPropensityModel
 
 df = generate_synthetic_donor_data(n_samples=500, random_state=42)
 X = df[["total_gift_amount", "years_active", "event_attendance_count"]].to_numpy()
-y = df["is_major_donor"].to_numpy()
 
 model = DonorPropensityModel(n_estimators=200, random_state=0)
-model.fit(X, y)
-scores = model.predict_affinity_score(X)   # 0–100 affinity scale
+model.fit(X, df["is_major_donor"].to_numpy())
+df["affinity_score"] = model.predict_affinity_score(X)   # 0–100, not a raw probability
 
-assert scores.shape == (500,)
-assert len(set(scores.round(6))) > 1       # a constant score means a broken pipeline
+print(df.groupby("is_major_donor")["affinity_score"].describe()[["count", "mean", "min", "max"]])
 ```
+
+```
+                count       mean   min    max
+is_major_donor
+0               165.0   9.636364   0.0   39.0
+1               335.0  94.865672  65.0  100.0
+```
+
+Non-major donors top out at 39; no major donor scores below 65. That gap is the whole product: a gift-officer call list, sorted.
 
 > **Try it now — zero install:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/quickstart.ipynb)
 >
@@ -90,6 +97,24 @@ assert len(set(scores.round(6))) > 1       # a constant score means a broken pip
   <br/>
   <em>Output of <code>plot_affinity_distribution()</code>: the 0–100 affinity scores cleanly separate major from non-major donors.</em>
 </p>
+
+### No Python? Use the CLI
+
+`pip install philanthropy` also puts a `philanthropy` command on your PATH. CSV in, scored CSV out, no Python file to write.
+
+```bash
+philanthropy train --data gifts.csv --target is_major_donor \
+  --features total_gift_amount,years_active,event_attendance_count \
+  --out model.joblib
+
+philanthropy score --data prospects.csv --model model.joblib --out scored.csv
+```
+
+`philanthropy validate` reports precision/recall/F1/ROC-AUC on a labelled CSV — point it at a holdout year, not the year you trained on. Full walkthrough: **[Use the CLI](docs/how-to/use_the_cli.md)**.
+
+### Your data never leaves your machine
+
+PhilanthroPy makes **no network calls**. There is no telemetry, no license check, no phone-home, and no third-party data append — the package imports no HTTP client at all, and `tests/test_no_network.py` enforces that in CI by making every socket raise. It models only what is already in your database. See **[Compliance considerations](docs/explanation/compliance_considerations.md)** and the **[security review Q&A](docs/explanation/security_review_answers.md)** for the questions an institutional review will ask.
 
 ---
 

@@ -135,7 +135,9 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         Returns
         -------
         X_out : np.ndarray or pd.DataFrame
-            Cleaned feature matrix. The return type mirrors the input type.
+            Cleaned feature matrix. Returns a DataFrame when the transformer is
+            configured with ``set_output(transform="pandas")``, otherwise an
+            ndarray.
 
         Raises
         ------
@@ -249,7 +251,8 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
         -------
         X_out : np.ndarray or pd.DataFrame
             Feature matrix with ``fiscal_year`` and ``fiscal_quarter`` columns
-            appended. The return type mirrors the input type.
+            appended. Returns a DataFrame when the transformer is configured
+            with ``set_output(transform="pandas")``, otherwise an ndarray.
 
         Raises
         ------

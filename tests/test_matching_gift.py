@@ -135,6 +135,11 @@ def test_non_dataframe_raises(ratios):
         feat.fit([[1, 2], [3, 4]])
 
 
+def test_transform_non_dataframe_raises(fitted):
+    with pytest.raises(TypeError, match="pandas DataFrame"):
+        fitted.transform(np.array([[1.0, 2.0]]))
+
+
 def test_missing_columns_raises():
     feat = MatchingGiftFeaturizer()
     with pytest.raises(ValueError, match="missing required columns"):

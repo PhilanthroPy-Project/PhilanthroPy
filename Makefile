@@ -27,7 +27,7 @@ doctest:
 	@echo "==> Running docstring examples..."
 	python -m pytest philanthropy --doctest-modules -q --no-cov
 
-coverage: test
+coverage: check
 	@echo "==> Checking coverage..."
 	python -m pytest tests/ --cov=philanthropy --cov-report=term-missing
 

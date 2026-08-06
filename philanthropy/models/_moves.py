@@ -27,6 +27,27 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
         self.random_state = random_state
 
     def fit(self, X, y):
+        """Fit the classifier to labelled moves-stage data.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix.
+        y : array-like of shape (n_samples,)
+            Moves-stage target labels.
+
+        Returns
+        -------
+        self : MovesManagementClassifier
+            Fitted estimator. Sets ``feature_names_in_`` when ``X`` is a
+            DataFrame, ``n_features_in_``, ``label_encoder_``, ``classes_``,
+            ``estimator_``, and ``n_iter_``.
+
+        Raises
+        ------
+        ValueError
+            If ``y`` is not a classification target.
+        """
         X, y = validate_data(self, X, y, reset=True)
         # Reject continuous targets: this is a classifier, so a regression
         # target must not be silently label-encoded into pseudo-classes.
@@ -52,12 +73,46 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
         return self
 
     def predict(self, X):
+        """Predict the next moves-management stage for each donor.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix.
+
+        Returns
+        -------
+        y_pred : ndarray of shape (n_samples,)
+            Predicted stage labels.
+
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If :meth:`fit` has not been called yet.
+        """
         check_is_fitted(self)
         X = validate_data(self, X, reset=False)
         y_pred = self.estimator_.predict(X)
         return self.label_encoder_.inverse_transform(y_pred)
 
     def predict_proba(self, X):
+        """Return class probabilities for each moves-management stage.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix.
+
+        Returns
+        -------
+        proba : ndarray of shape (n_samples, n_classes)
+            Predicted probabilities for each stage.
+
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If :meth:`fit` has not been called yet.
+        """
         check_is_fitted(self)
         X = validate_data(self, X, reset=False)
         return self.estimator_.predict_proba(X)

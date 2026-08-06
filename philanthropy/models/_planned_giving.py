@@ -37,6 +37,21 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         self.random_state = random_state
 
     def fit(self, X, y) -> "PlannedGivingIntentScorer":
+        """Fit the calibrated classifier to planned-giving intent labels.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix.
+        y : array-like of shape (n_samples,)
+            Binary target labels.
+
+        Returns
+        -------
+        self : PlannedGivingIntentScorer
+            Fitted estimator. Sets ``classes_``, ``n_features_in_``, and
+            ``estimator_``.
+        """
         X, y = validate_data(self, X, y, reset=True)
         
         self.classes_ = np.unique(y)
@@ -55,11 +70,45 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         return self
 
     def predict(self, X) -> np.ndarray:
+        """Predict bequest/planned-giving intent labels.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix.
+
+        Returns
+        -------
+        y_pred : ndarray of shape (n_samples,)
+            Predicted class labels.
+
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If :meth:`fit` has not been called yet.
+        """
         check_is_fitted(self)
         X = validate_data(self, X, reset=False)
         return self.estimator_.predict(X)
 
     def predict_proba(self, X) -> np.ndarray:
+        """Return calibrated class probabilities.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix.
+
+        Returns
+        -------
+        proba : ndarray of shape (n_samples, n_classes)
+            Predicted probabilities for each class.
+
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If :meth:`fit` has not been called yet.
+        """
         check_is_fitted(self)
         X = validate_data(self, X, reset=False)
         return self.estimator_.predict_proba(X)

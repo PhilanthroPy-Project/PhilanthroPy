@@ -44,8 +44,8 @@ MLPRegressor).
 ## Workflow (from CONTRIBUTING.md — follow exactly)
 1. Implement the class. 2. Export it in the subpackage `__init__.py`.
 3. Verify the import: `python -c "from philanthropy.models import X"`.
-4. Write the tests. 5. Run `make ci` (collection → full suite → coverage ≥ 85%).
-Never `git push --no-verify`; the coverage gate is 85% and must stay green.
+4. Write the tests. 5. Run `make ci` (collection → full suite → coverage ≥ 92%).
+Never `git push --no-verify`; the coverage gate is 92% and must stay green.
 
 ## Local dev gotcha
 Install editable so the working tree is what's tested:

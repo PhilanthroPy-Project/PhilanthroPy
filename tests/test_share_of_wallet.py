@@ -353,6 +353,16 @@ def test_share_of_wallet_scorer_negative_capacity_col_idx_raises():
         ShareOfWalletScorer(capacity_col_idx=-1).fit(np.ones((5, 2)))
 
 
+def test_share_of_wallet_scorer_capacity_col_idx_out_of_range_raises_at_transform():
+    # fit accepts an out-of-range index; the bound is enforced in transform.
+    scorer = ShareOfWalletScorer(capacity_col_idx=5).fit(np.ones((6, 3)))
+    with pytest.raises(
+        ValueError,
+        match=r"`capacity_col_idx` \(5\) exceeds number of columns \(3\)",
+    ):
+        scorer.transform(np.ones((6, 3)))
+
+
 def test_share_of_wallet_scorer_tier_labels_are_exact():
     # The old assertion was an `or` over all three labels, so it could not fail.
     X = np.array([[100.0, 100.0], [10.0, 1_000_000.0], [50.0, 100.0]])

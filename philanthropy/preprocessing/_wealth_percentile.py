@@ -20,6 +20,27 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
         self.output_suffix = output_suffix
 
     def fit(self, X, y=None):
+        """Learn the training wealth distribution.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training-set feature matrix.
+        y : ignored
+            Present for scikit-learn API compatibility.
+
+        Returns
+        -------
+        self : WealthPercentileTransformer
+            Fitted transformer. Freezes ``feature_names_in_``,
+            ``imputed_cols_``, and ``percentile_lookup_``.
+
+        Notes
+        -----
+        ``percentile_lookup_`` stores the sorted training values per wealth
+        column. :meth:`transform` ranks held-out data against this frozen
+        training distribution, not against the batch being transformed.
+        """
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=True)
         
         if hasattr(X, "columns"):
@@ -50,6 +71,28 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X):
+        """Rank features against the fitted training distribution.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix (training or held-out).
+
+        Returns
+        -------
+        X_out : np.ndarray of float64
+            Numeric feature matrix with wealth percentile columns appended.
+
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If :meth:`fit` has not been called yet.
+
+        Notes
+        -----
+        Percentiles are relative to the training cohort captured by
+        ``percentile_lookup_``, which is the leakage-safety guarantee.
+        """
         check_is_fitted(self, "percentile_lookup_")
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         X_out = pd.DataFrame(X, columns=self.feature_names_in_)

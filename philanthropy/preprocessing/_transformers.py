@@ -89,6 +89,25 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         self.fiscal_year_start = fiscal_year_start
 
     def fit(self, X, y=None) -> "CRMCleaner":
+        """Validate configuration and input without learning state.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training-set feature matrix.
+        y : ignored
+            Present for scikit-learn API compatibility.
+
+        Returns
+        -------
+        self : CRMCleaner
+            Fitted transformer. This transformer is stateless.
+
+        Raises
+        ------
+        ValueError
+            If ``fiscal_year_start`` is invalid or ``X`` contains complex data.
+        """
         validate_fiscal_year_start(self.fiscal_year_start)
         
         # Try standard validation, fallback to object for mixed-type DataFrames or promotion errors
@@ -106,6 +125,27 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X) -> np.ndarray | pd.DataFrame:
+        """Clean CRM dates and amounts using the fitted column configuration.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix (training or held-out).
+
+        Returns
+        -------
+        X_out : np.ndarray or pd.DataFrame
+            Cleaned feature matrix. Returns a DataFrame when the transformer is
+            configured with ``set_output(transform="pandas")``, otherwise an
+            ndarray.
+
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If :meth:`fit` has not been called yet.
+        ValueError
+            If ``X`` contains complex data.
+        """
         check_is_fitted(self)
         try:
             X_arr = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=False)
@@ -167,6 +207,25 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
         self.fiscal_year_start = fiscal_year_start
 
     def fit(self, X, y=None) -> "FiscalYearTransformer":
+        """Validate configuration and input without learning state.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training-set feature matrix.
+        y : ignored
+            Present for scikit-learn API compatibility.
+
+        Returns
+        -------
+        self : FiscalYearTransformer
+            Fitted transformer. This transformer is stateless.
+
+        Raises
+        ------
+        ValueError
+            If ``fiscal_year_start`` is invalid or ``X`` contains complex data.
+        """
         validate_fiscal_year_start(self.fiscal_year_start)
         try:
             X_validated = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=True)
@@ -181,6 +240,27 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X) -> np.ndarray | pd.DataFrame:
+        """Append fiscal year and quarter columns.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix (training or held-out).
+
+        Returns
+        -------
+        X_out : np.ndarray or pd.DataFrame
+            Feature matrix with ``fiscal_year`` and ``fiscal_quarter`` columns
+            appended. Returns a DataFrame when the transformer is configured
+            with ``set_output(transform="pandas")``, otherwise an ndarray.
+
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If :meth:`fit` has not been called yet.
+        ValueError
+            If ``X`` contains complex data.
+        """
         check_is_fitted(self)
         try:
             X_arr = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=False)

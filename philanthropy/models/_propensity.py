@@ -371,6 +371,22 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         self.random_state = random_state
 
     def fit(self, X, y):
+        """Fit the classifier to labelled donor data.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix. Missing values are accepted.
+        y : array-like of shape (n_samples,)
+            Binary target vector. ``1`` indicates a major-gift prospect.
+
+        Returns
+        -------
+        self : MajorGiftClassifier
+            Fitted estimator. Sets ``classes_``, ``n_features_in_``,
+            ``estimator_``, and ``n_iter_`` (the mean boosting iterations
+            across the calibration folds).
+        """
         X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
         self.classes_ = unique_labels(y)
         self.n_features_in_ = X.shape[1]
@@ -390,15 +406,68 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         return self
 
     def predict(self, X):
+        """Predict binary major-donor labels.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix with the same columns used in :meth:`fit`.
+
+        Returns
+        -------
+        y_pred : ndarray of shape (n_samples,)
+            Predicted class labels (``0`` or ``1``).
+
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If :meth:`fit` has not been called yet.
+        """
         check_is_fitted(self)
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self.estimator_.predict(X)
 
     def predict_proba(self, X):
+        """Return calibrated class probabilities.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix.
+
+        Returns
+        -------
+        proba : ndarray of shape (n_samples, 2)
+            Columns are ``[P(class=0), P(class=1)]``. The second column is
+            the calibrated major-donor probability.
+
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If :meth:`fit` has not been called yet.
+        """
         check_is_fitted(self)
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self.estimator_.predict_proba(X)
 
     def predict_affinity_score(self, X):
+        """Map the calibrated major-donor probability to a 0-100 score.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix.
+
+        Returns
+        -------
+        scores : ndarray of shape (n_samples,)
+            Positive-class probability multiplied by 100 and rounded to two
+            decimal places. Class ``1`` is treated as the positive class.
+
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If :meth:`fit` has not been called yet.
+        """
         proba_positive = self.predict_proba(X)[:, 1]
         return np.round(proba_positive * 100.0, 2)

@@ -40,6 +40,25 @@ class PropensityScorer(ClassifierMixin, BaseEstimator):
         self.threshold = threshold
 
     def fit(self, X, y):
+        """Validate input and record the target classes.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix.
+        y : array-like of shape (n_samples,)
+            Binary target labels.
+
+        Returns
+        -------
+        self : PropensityScorer
+            Fitted estimator. Sets ``classes_``.
+
+        Raises
+        ------
+        ValueError
+            If ``y`` is not binary.
+        """
         X, y = validate_data(self, X, y, reset=True)
         check_classification_targets(y)
         y_type = type_of_target(y, input_name="y", raise_unknown=True)
@@ -52,6 +71,25 @@ class PropensityScorer(ClassifierMixin, BaseEstimator):
         return self
 
     def predict(self, X):
+        """Predict binary labels using the constant probability baseline.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix.
+
+        Returns
+        -------
+        y_pred : ndarray of shape (n_samples,)
+            Predicted labels. With the default threshold, the constant 0.5
+            probability is not above the threshold and ``classes_[0]`` is
+            returned for every row.
+
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If :meth:`fit` has not been called yet.
+        """
         check_is_fitted(self)
         X = validate_data(self, X, reset=False)
         if len(self.classes_) == 1:
@@ -61,6 +99,24 @@ class PropensityScorer(ClassifierMixin, BaseEstimator):
         return self.classes_[idx]
 
     def predict_proba(self, X):
+        """Return the constant probability baseline.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Feature matrix.
+
+        Returns
+        -------
+        proba : ndarray of shape (n_samples, 2)
+            ``[0.5, 0.5]`` for every row, or shape ``(n_samples, 1)`` when
+            only one class was seen during fitting.
+
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If :meth:`fit` has not been called yet.
+        """
         check_is_fitted(self)
         X = validate_data(self, X, reset=False)
         n = X.shape[0]

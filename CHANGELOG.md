@@ -20,11 +20,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `scripts/issue-drafts/_TEMPLATE.md` and `scripts/check_issue_lines.py` — the issue
   shape that converts, and a drift checker for the `path:line` references in issue
   bodies. Deliberately outside `.github/ISSUE_TEMPLATE/`, which is the public chooser.
+- Two tests for guards that only fire at transform time and were previously
+  uncovered: `MatchingGiftFeaturizer.transform` rejecting a non-DataFrame, and
+  `ShareOfWalletScorer` enforcing the `capacity_col_idx` upper bound that `fit`
+  deliberately does not check.
 
 ### Changed
 - Added complete output-column documentation to all eleven preprocessing
   `get_feature_names_out` overrides that previously rendered blank in the API
   reference.
+- Documented `fit`/`transform` on `CRMCleaner`, `FiscalYearTransformer` and
+  `WealthPercentileTransformer`, including which attributes each `fit` freezes and
+  that `WealthPercentileTransformer` ranks held-out rows against the frozen training
+  distribution rather than the batch being transformed.
+- Documented `fit`, `predict`, `predict_proba` and `predict_affinity_score` on
+  `MovesManagementClassifier`, `PlannedGivingIntentScorer`, `MajorGiftClassifier` and
+  `PropensityScorer` — the fitted attributes each sets, and that `PropensityScorer`'s
+  default threshold returns `classes_[0]` for every row.
+- `make_donor_dataset` now documents that it returns a **gift-level** frame, so
+  `len(df) > n_donors` (each donor contributes 1–5 rows), and that
+  `fiscal_year_start` and `lapse_rate` are accepted but currently unused.
 - `CLAUDE.md` is now `AGENTS.md`, the tool-neutral convention, with `CLAUDE.md`
   reduced to an `@AGENTS.md` import. Agents other than Claude Code were reading no
   project instructions at all — not the leakage contract, not the dependency

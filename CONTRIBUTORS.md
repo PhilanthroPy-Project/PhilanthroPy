@@ -16,6 +16,14 @@ contribution. Code, docs, tests, and review all count.
   ([#30](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/30)).
 - [@BortnikMaxim](https://github.com/BortnikMaxim) — documented the output-column
   contracts of the preprocessing transformers' `get_feature_names_out` methods.
+- **Sebastian Legarraga** ([@slegarraga](https://github.com/slegarraga)) — documented
+  `fit`/`transform` on the preprocessing transformers and `fit`/`predict`/`predict_proba`
+  on the model estimators, wrote the `make_donor_dataset` docstring, and covered two
+  transform-time input guards that had no tests
+  ([#40](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/40),
+  [#42](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/42),
+  [#43](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/43),
+  [#44](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/44)).
 
 ## Getting listed
 

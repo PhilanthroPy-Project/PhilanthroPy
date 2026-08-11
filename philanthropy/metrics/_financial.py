@@ -39,6 +39,11 @@ def donor_lifetime_value(
     -------
     float
         The calculated Net Present Value of the expected donor lifetime value.
+
+    Raises
+    ------
+    ValueError
+        If ``retention_rate``, ``lifespan_years``, or ``discount_rate`` is negative.
     """
     if retention_rate is not None:
         if retention_rate >= 1.0:

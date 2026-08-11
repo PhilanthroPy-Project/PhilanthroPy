@@ -42,6 +42,11 @@ def gift_concentration_gini(amounts: Collection) -> float:
     float
         Gini coefficient in ``[0.0, 1.0]``. Returns ``0.0`` for an empty input
         or an all-zero total (no distribution to measure).
+
+    Raises
+    ------
+    ValueError
+        If any gift amounts are negative.
     """
     a = _clean_nonneg_amounts(amounts)
     total = a.sum()
@@ -70,6 +75,11 @@ def top_donor_share(amounts: Collection, top_fraction: float = 0.1) -> float:
     float
         Share in ``[0.0, 1.0]``. Returns ``0.0`` for an empty input or an
         all-zero total.
+
+    Raises
+    ------
+    ValueError
+        If ``top_fraction`` is not in ``(0.0, 1.0]``, or if any gift amounts are negative.
     """
     if not 0.0 < top_fraction <= 1.0:
         raise ValueError("top_fraction must be in (0.0, 1.0].")

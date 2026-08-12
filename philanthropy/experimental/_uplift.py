@@ -190,5 +190,15 @@ class UpliftTLearner(ClassifierMixin, BaseEstimator):
 
         Convenience wrapper: ``(predict_uplift_score(X) > 0).astype(int)``.
         A ``1`` marks a donor worth soliciting (positive expected uplift).
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Donor feature matrix.
+
+        Returns
+        -------
+        y : ndarray of shape (n_samples,)
+            Binary predictions (1 or 0).
         """
         return (self.predict_uplift_score(X) > 0).astype(int)

@@ -90,6 +90,9 @@ GitHub offers the button on your fork right after the push. Fill in the
 [CONTRIBUTORS.md](CONTRIBUTORS.md) in the same PR — one line, name or handle and
 what you did.
 
+A body of just `Resolves #N` is not enough — say what changed and why even
+when an issue is linked; reviewers read the PR body first, not the issue.
+
 CI runs on pull requests from forks. If a job fails, push another commit to the
 same branch — the PR updates itself.
 

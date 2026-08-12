@@ -40,6 +40,11 @@ def selection_rate_by_group(
     -------
     dict
         Mapping of group value -> selection rate in ``[0.0, 1.0]``.
+
+    Raises
+    ------
+    ValueError
+        If inputs have mismatched lengths, are empty, or contain missing values.
     """
     y_pred = np.asarray(y_pred)
     groups = np.asarray(sensitive_features)
@@ -91,6 +96,11 @@ def disparate_impact_ratio(
     float
         Ratio in ``[0.0, 1.0]``. Returns ``1.0`` when only one group is present
         or when no sample in any group is selected (no disparity to measure).
+
+    Raises
+    ------
+    ValueError
+        If inputs have mismatched lengths, are empty, or contain missing values.
     """
     rates = selection_rate_by_group(y_pred, sensitive_features, pos_label=pos_label)
     values = np.array(list(rates.values()), dtype=float)

@@ -189,6 +189,25 @@ def test_affinity_score_is_float_array(fitted_model, donor_Xy):
     assert np.issubdtype(scores.dtype, np.floating)
 
 
+def test_predict_affinity_score_single_class(donor_Xy):
+    """Test predict_affinity_score when fit on a single class."""
+    X, y = donor_Xy
+    
+    # Test all zeros
+    y_zeros = np.zeros_like(y)
+    model0 = DonorPropensityModel(n_estimators=5, random_state=0)
+    model0.fit(X, y_zeros)
+    scores0 = model0.predict_affinity_score(X)
+    assert np.all(scores0 == 0.0)
+
+    # Test all ones
+    y_ones = np.ones_like(y)
+    model1 = DonorPropensityModel(n_estimators=5, random_state=0)
+    model1.fit(X, y_ones)
+    scores1 = model1.predict_affinity_score(X)
+    assert np.all(scores1 == 100.0)
+
+
 # ---------------------------------------------------------------------------
 # NotFittedError
 # ---------------------------------------------------------------------------

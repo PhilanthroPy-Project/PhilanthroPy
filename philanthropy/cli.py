@@ -217,6 +217,13 @@ def _build_parser():
 
 
 def main(argv=None):
+    """Execute the philanthropy command-line interface.
+
+    Parameters
+    ----------
+    argv : list of str, optional
+        Command-line arguments passed to the parser. If None, defaults to sys.argv[1:].
+    """
     args = _build_parser().parse_args(argv)
     args.func(args)
 

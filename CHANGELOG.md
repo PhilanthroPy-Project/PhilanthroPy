@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `AGENTS.md`: every change, including maintainer- and agent-authored ones, must
+  go on a branch and through a PR — no direct commits to `main`, no self-merges.
 - `tests/test_no_network.py` enforces in CI what the docs now promise: the package
   makes **no network calls**. Every socket entry point is monkeypatched to raise,
   then a full train/score cycle, an imputation pass and a CiviCRM ingest all run.

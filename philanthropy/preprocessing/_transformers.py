@@ -56,7 +56,7 @@ def _coerce_currency_to_float(col: pd.Series) -> pd.Series:
     symbols, thousands separators and parenthesised negatives
     (``"($500.00)"`` -> ``-500.0``) before parsing.
     """
-    if col.dtype != object:
+    if pd.api.types.is_numeric_dtype(col):
         return pd.to_numeric(col, errors="coerce").astype("float64")
 
     had_value = col.notna()

@@ -52,6 +52,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   preferred disclosure channel.
 
 ### Fixed
+- `MatchingGiftFeaturizer` ran zero `check_estimator` checks — `tags._skip_test =
+  True` silently skipped the whole battery instead of excluding it from
+  `_STANDARD_ESTIMATORS` with a documented reason, the way `RFMTransformer`
+  already was. It has no such reason on its own (it genuinely cannot accept
+  the generic numeric ndarrays the battery feeds), so this falsified the
+  README/paper claim that every public estimator passes `check_estimator`.
+  `FinancialForecastModel` had the same gap for no documented reason at all —
+  it in fact passes the battery cleanly and is now in it. A new
+  `test_every_public_estimator_is_covered_by_the_battery_or_documented` test
+  cross-references `philanthropy.models.__all__` and
+  `philanthropy.preprocessing.__all__` against `_STANDARD_ESTIMATORS` plus a
+  reasoned exemption registry, so this can't recur silently. README, paper.md,
+  and the design-principles/security-review docs now state the one real
+  exception (`UpliftTLearner`) instead of claiming "every estimator" flatly.
 - `mkdocs.yml` had no `site_url`, so the generated `sitemap.xml` was empty and all
   38 documentation pages were uncrawlable, with no `rel=canonical` anywhere.
 - `CONTRIBUTING.md` documented a risk-tier coverage command measuring `metrics/` and

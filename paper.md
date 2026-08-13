@@ -28,8 +28,11 @@ offices — CRM cleaning, wealth-screening imputation, RFM segmentation,
 donor-propensity and major-gift scoring, lapse prediction, planned-giving
 intent, share-of-wallet estimation, and hybrid revenue forecasting — as a set
 of `fit`/`transform`/`predict` estimators and transformers that compose
-directly inside `sklearn.pipeline.Pipeline` and pass
-`sklearn.utils.estimator_checks.check_estimator`. A second, AMC-specific
+directly inside `sklearn.pipeline.Pipeline`. Every estimator that fits the
+scikit-learn `fit(X, y)` contract passes
+`sklearn.utils.estimator_checks.check_estimator`; the one documented exception
+is `UpliftTLearner` (`philanthropy.experimental`), whose `fit(X, y,
+treatment)` signature breaks that contract. A second, AMC-specific
 surface (`EncounterTransformer`, `GratefulPatientFeaturizer`,
 `DischargeToSolicitationWindowTransformer`) featurizes clinical-encounter data
 for grateful-patient programs, where PHI-adjacent inputs raise the compliance

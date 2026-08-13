@@ -52,6 +52,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   preferred disclosure channel.
 
 ### Fixed
+- `CRMCleaner` NaN'd every value in a currency-formatted amount column, e.g.
+  `"$1,000.00"` — the default export format for Raiser's Edge NXT and
+  Salesforce NPSP — because `pd.to_numeric` treats the whole string as
+  unparseable. It now strips currency symbols, thousands separators and
+  parenthesised negatives before parsing, and raises rather than returning an
+  all-NaN column when a column truly has nothing parseable in it.
 - `mkdocs.yml` had no `site_url`, so the generated `sitemap.xml` was empty and all
   38 documentation pages were uncrawlable, with no `rel=canonical` anywhere.
 - `CONTRIBUTING.md` documented a risk-tier coverage command measuring `metrics/` and

@@ -61,6 +61,26 @@ def test_lapse_predictor_single_class_no_indexerror():
     assert np.all(m1.predict_lapse_score(X) == 100.0)
 
 
+def test_lapse_predictor_rejects_column_reordered_dataframe():
+    # Pre-fix, LapsePredictor used check_array instead of validate_data, so it
+    # never recorded feature_names_in_ and silently scored reordered columns.
+    train = pd.DataFrame({
+        "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        "b": [2.0, 1.0, 4.0, 3.0, 6.0, 5.0],
+        "c": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+    })
+    y = np.array([0, 1, 0, 1, 0, 1])
+    clf = LapsePredictor(n_estimators=5, random_state=0).fit(train, y)
+    assert hasattr(clf, "feature_names_in_")
+
+    with pytest.raises(ValueError, match="feature names"):
+        clf.predict(train[["c", "b", "a"]])
+    with pytest.raises(ValueError, match="feature names"):
+        clf.predict_proba(train[["c", "b", "a"]])
+    with pytest.raises(ValueError, match="feature names"):
+        clf.predict_lapse_score(train[["c", "b", "a"]])
+
+
 def test_fairness_metrics_reject_nan_group_labels():
     with pytest.raises(ValueError, match="missing"):
         selection_rate_by_group([1, 0, 1], [np.nan, 1.0, 1.0])

@@ -54,6 +54,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   preferred disclosure channel.
 
 ### Fixed
+- `LapsePredictor` validated input with `check_array`/`check_X_y` instead of
+  `validate_data`, the convention every other estimator follows. It never set
+  `feature_names_in_`, so a DataFrame with reordered columns was silently
+  scored instead of raising — the only estimator in the package with that gap.
 - `mkdocs.yml` had no `site_url`, so the generated `sitemap.xml` was empty and all
   38 documentation pages were uncrawlable, with no `rel=canonical` anywhere.
 - `CONTRIBUTING.md` documented a risk-tier coverage command measuring `metrics/` and

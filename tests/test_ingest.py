@@ -103,6 +103,15 @@ def test_distinct_source_systems():
     feats = constituent_events_to_features(events)
     assert feats.loc["a@x.edu", "distinct_source_systems"] == 2
 
+def test_distinct_source_systems_defaults_to_zero_when_column_absent():
+    events = [
+        {"constituentEmail": "a@x.edu",
+         "createdAt": "2025-01-01T00:00:00Z", "amount": 10.0},  # no sourceSystem
+        {"constituentEmail": "a@x.edu",
+         "createdAt": "2025-02-01T00:00:00Z", "amount": 20.0},  # no sourceSystem
+    ]
+    feats = constituent_events_to_features(events)
+    assert feats.loc["a@x.edu", "distinct_source_systems"] == 0
 
 # --------------------------------------------------------------------------- #
 # Identity resolution
@@ -201,6 +210,15 @@ def test_unparseable_timestamp_row_dropped():
     feats = constituent_events_to_features(events)
     assert feats.loc["a@x.edu", "total_gift_amount"] == 100.0
 
+def test_all_unparseable_timestamps_returns_empty_frame():
+    events = [
+        _event("a@x.edu", "DONATION", "not-a-date", amount=999),
+        _event("b@x.edu", "EMAIL_CLICK", "also-not-a-date"),
+    ]
+    feats = constituent_events_to_features(events)
+    assert feats.empty
+    assert list(feats.columns) == list(_FEATURE_DTYPES)
+    assert feats.index.name == "constituent_id"
 
 def test_reference_date_shifts_recency():
     events = [_event("a@x.edu", "DONATION", "2025-01-01T00:00:00Z", amount=100)]

@@ -63,6 +63,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   preferred disclosure channel.
 
 ### Fixed
+- The README quickstart fitted and scored **the same rows**, then reported the
+  resulting gap ("non-major donors top out at 39; no major donor scores below 65")
+  as the headline result. That gap was a random forest reciting its training set:
+  RF leaves go pure and `predict_affinity_score` is
+  `predict_proba(X)[:, 1] * 100`. On held-out rows from the same 500-row sample
+  the two groups overlap almost completely (non-major max 97.5, major min 6.5).
+  The quickstart now splits before fitting and reports held-out ROC-AUC 0.932
+  with overlapping score distributions, which is a weaker claim and a true one.
+- `docs/explanation/benchmarks.md` distrusted its own numbers for the wrong
+  reason. It said the synthetic data was "cleanly separable by construction"; the
+  label is a Bernoulli draw with a real noise term and the irreducible error over
+  the causal features is 23.2%. The actual problem is that the generator draws
+  `total_gift_amount` **from** the label, so including that feature lets a model
+  score ROC-AUC 0.935 against a causal Bayes ceiling of 0.768 accuracy: it beats
+  the Bayes rate of its own data-generating process by about 19 AUC points, which
+  is the signature of a target-derived feature. The page now measures and states
+  this, and records that there is no validation on real donor data anywhere in the
+  repository.
 - `LapsePredictor` and `experimental.UpliftTLearner` validated input with
   `check_array`/`check_X_y` instead of `validate_data`, the convention every
   other estimator follows. Neither set `feature_names_in_`, so a DataFrame with

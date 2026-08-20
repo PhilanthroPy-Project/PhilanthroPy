@@ -14,6 +14,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   and the `+ 1` are load-bearing and tested: the result is never 0 and never
   above 1, and leave-one-out over exchangeable scores lands exactly on the
   uniform lattice.
+- `as_of` on `EncounterTransformer` and `GratefulPatientFeaturizer`: an as-of
+  cutoff that excludes encounters discharged after a given date from
+  `encounter_summary_` at fit time. Without it there was no way to bound the
+  encounter table to what was observable at the decision point, so a gift dated
+  2020 was featurised from encounters recorded in 2024 and
+  `days_since_last_discharge` was measured from the all-time max discharge. The
+  failure was systematic rather than random: the more a donor engaged *after* the
+  gift, the further the feature was pushed past the gift date and the more often
+  it collapsed to `NaN`, destroying it for exactly the donors it should be
+  strongest for. Defaults to `None`, which is the previous behaviour, so nothing
+  changes until you opt in; set it to the last day of your training window for
+  walk-forward evaluation.
 - Test coverage for `constituent_events_to_features`: the all-unparseable-timestamps empty-frame path and the `distinct_source_systems` default-to-zero path when `sourceSystem` is absent from the input. (#51)
 - `AGENTS.md`: every change, including maintainer- and agent-authored ones, must
   go on a branch and through a PR — no direct commits to `main`, no self-merges.

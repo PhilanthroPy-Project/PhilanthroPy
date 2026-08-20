@@ -56,6 +56,36 @@ from sklearn.utils.validation import check_is_fitted, validate_data
 # ---------------------------------------------------------------------------
 
 
+def _apply_as_of_cutoff(enc, discharge_col, as_of, class_name):
+    """Drop encounter rows discharged after ``as_of``.
+
+    Returns ``enc`` unchanged when ``as_of`` is ``None``. Rows whose discharge
+    date did not parse are kept, so each caller keeps its own rule for those and
+    the cutoff cannot silently change it.
+    """
+    if as_of is None:
+        return enc
+    try:
+        cutoff = pd.Timestamp(as_of)
+    except (ValueError, TypeError) as exc:
+        raise ValueError(
+            f"{class_name}(as_of=...) must be a parseable date, got {as_of!r}."
+        ) from exc
+    if pd.isna(cutoff):
+        raise ValueError(
+            f"{class_name}(as_of=...) must be a parseable date, got {as_of!r}."
+        )
+    keep = enc[discharge_col].isna() | (enc[discharge_col] <= cutoff)
+    if not keep.any() and len(enc):
+        warnings.warn(
+            f"{class_name}(as_of={cutoff.date()}) excluded every encounter row, "
+            "so the summary is empty and every donor scores as having no "
+            "encounters. Check that as_of is later than your encounter history.",
+            UserWarning,
+        )
+    return enc[keep]
+
+
 class EncounterTransformer(TransformerMixin, BaseEstimator):
     """Merge clinical encounter history into philanthropic feature matrices.
 
@@ -110,6 +140,16 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         for dropping. If ``None``, the class-level :attr:`PII_PATTERNS` default
         is used. Provide your own tuple to broaden or narrow the heuristic; it
         replaces (does not extend) the default when set.
+    as_of : str, datetime-like or None, default=None
+        As-of cutoff for the encounter table. Encounters discharged **after**
+        this date are excluded from ``encounter_summary_`` at :meth:`fit` time.
+        ``None`` (the default) uses the whole table, which is only correct when
+        every row of ``encounter_df`` was already observable at the point the
+        solicitation decision is being modelled. For walk-forward evaluation,
+        set this to the last day of the training window: without it, a gift dated
+        2020 is scored against encounters recorded in 2024, and
+        ``days_since_last_discharge`` is measured from a discharge that had not
+        happened yet.
 
     Attributes
     ----------
@@ -176,6 +216,7 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         allow_negative_days: bool = False,
         id_cols_to_drop: list[str] | None = None,
         pii_patterns: tuple[str, ...] | None = None,
+        as_of=None,
     ):
         self.encounter_df = encounter_df
         self.encounter_path = encounter_path
@@ -185,6 +226,7 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         self.allow_negative_days = allow_negative_days
         self.id_cols_to_drop = id_cols_to_drop
         self.pii_patterns = pii_patterns
+        self.as_of = as_of
 
     def __getstate__(self):
         """Drop the raw encounter table from pickles and joblib bundles.
@@ -282,11 +324,11 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         full frame, and ``transform`` is idempotent.
 
         .. warning::
-           That is the only leakage guarantee here. The summary aggregates
-           **every** row of ``encounter_df`` with no as-of cutoff, so a gift
-           dated 2020 is scored against encounters recorded in 2024 if the
-           encounter table contains them. Restrict ``encounter_df`` to
-           encounters observable at the decision point yourself, before
+           That is the only leakage guarantee here. With the default
+           ``as_of=None`` the summary aggregates **every** row of
+           ``encounter_df``, so a gift dated 2020 is scored against encounters
+           recorded in 2024 if the table contains them. Set ``as_of`` to the end
+           of your training window, or restrict ``encounter_df`` yourself before
            calling ``fit``.
 
         Parameters
@@ -338,6 +380,9 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
             )
 
         enc = enc.dropna(subset=[self.discharge_col])
+        enc = _apply_as_of_cutoff(
+            enc, self.discharge_col, self.as_of, "EncounterTransformer"
+        )
 
         self.encounter_summary_ = enc.groupby(self.merge_key).agg(
             last_discharge=(self.discharge_col, "max"),

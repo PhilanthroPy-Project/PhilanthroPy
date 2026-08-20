@@ -122,6 +122,17 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
     fiscal years (e.g., ``fiscal_years = df["fiscal_year"].to_numpy()``).
     The splitter sorts distinct values numerically and walks forward.
 
+    **What this does not prevent.** The grouping unit is the fiscal year, not
+    the donor. A donor with gifts in several fiscal years therefore appears in
+    both the training and the test fold of the same split, in different rows.
+    That is correct and intended for a *time-varying* target ("did this donor
+    give in FY22?"), because the training rows precede the test rows. It is
+    **leakage** for a *static per-donor* label such as ``is_major_donor``, where
+    the same answer is attached to every one of that donor's rows and the model
+    can memorise it from the training years. If your label is static per donor,
+    combine this splitter with donor-level holdout, or aggregate to one row per
+    donor before splitting.
+
     See Also
     --------
     sklearn.model_selection.TimeSeriesSplit :
@@ -143,6 +154,32 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
     # ------------------------------------------------------------------
     # Required abstract-method implementations
     # ------------------------------------------------------------------
+
+    def _validate_params(self) -> tuple[int, int]:
+        """Return ``(n_splits, gap_years)`` as validated ints.
+
+        ``__init__`` stores raw parameters only, so both ``split`` and
+        ``get_n_splits`` validate here. Without this, ``n_splits <= 0`` reached
+        the ``unique_fy[-(n_splits):]`` slice, where a non-positive value flips
+        the slice open-ended (``unique_fy[-(0):]`` is ``unique_fy[0:]``) and
+        ``split`` silently yielded folds while ``get_n_splits`` reported zero or
+        a negative count. ``cross_val_score`` sizes its result array from
+        ``get_n_splits``, so the two disagreeing is a real failure, not a
+        cosmetic one.
+        """
+        try:
+            n_splits = int(self.n_splits)
+            gap_years = int(self.gap_years)
+        except (TypeError, ValueError):
+            raise ValueError(
+                "n_splits and gap_years must be integers, got "
+                f"n_splits={self.n_splits!r}, gap_years={self.gap_years!r}."
+            ) from None
+        if n_splits < 1:
+            raise ValueError(f"n_splits must be >= 1, got {n_splits}.")
+        if gap_years < 0:
+            raise ValueError(f"gap_years must be >= 0, got {gap_years}.")
+        return n_splits, gap_years
 
     def split(self, X, y=None, groups=None):
         """Generate (train_indices, test_indices) arrays.
@@ -172,6 +209,8 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
         ValueError
             If fewer than ``n_splits + 1`` distinct fiscal years are present.
         """
+        requested_splits, gap_years = self._validate_params()
+
         if groups is None:
             raise ValueError(
                 "FiscalYearGroupedSplitter requires `groups` to be an array of "
@@ -197,15 +236,15 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
                 f"years in `groups`, found {n_fy}."
             )
 
-        max_splits = n_fy - 1 - int(self.gap_years)
+        max_splits = n_fy - 1 - gap_years
         if max_splits < 1:
             raise ValueError(
-                f"Not enough fiscal years ({n_fy}) for n_splits={self.n_splits} "
-                f"with gap_years={self.gap_years}.  Need at least "
-                f"{self.n_splits + 1 + self.gap_years} distinct fiscal years."
+                f"Not enough fiscal years ({n_fy}) for n_splits={requested_splits} "
+                f"with gap_years={gap_years}.  Need at least "
+                f"{requested_splits + 1 + gap_years} distinct fiscal years."
             )
 
-        n_splits = min(int(self.n_splits), max_splits)
+        n_splits = min(requested_splits, max_splits)
 
         # Walk from the most-recent test year backward to get exactly n_splits folds.
         # Each fold tests a consecutive fiscal year, training on *all* prior years.
@@ -216,7 +255,7 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
             test_mask = groups == test_fy
 
             # Training: all FYs strictly before (test_fy - gap_years)
-            train_cutoff_fy = test_fy - int(self.gap_years)
+            train_cutoff_fy = test_fy - gap_years
             train_mask = groups < train_cutoff_fy
 
             if not np.any(train_mask):
@@ -238,13 +277,14 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
             (which may be less than ``self.n_splits`` if there are fewer
             than ``n_splits + 1`` distinct fiscal years) is returned.
         """
+        n_splits, gap_years = self._validate_params()
         if groups is not None:
             groups = np.asarray(groups)
             unique_fy = np.unique(groups)
             n_fy = len(unique_fy)
-            max_splits = max(0, n_fy - 1 - int(self.gap_years))
-            return min(int(self.n_splits), max_splits)
-        return int(self.n_splits)
+            max_splits = max(0, n_fy - 1 - gap_years)
+            return min(n_splits, max_splits)
+        return n_splits
 
     # ------------------------------------------------------------------
     # sklearn clone safety: all params must be in __init__

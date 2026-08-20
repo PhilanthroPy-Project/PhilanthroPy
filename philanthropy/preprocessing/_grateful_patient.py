@@ -19,6 +19,8 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted, validate_data
 
+from ._encounters import _apply_as_of_cutoff
+
 # Illustrative default service-line capacity weights. These numbers have NO
 # published source: they encode the common practitioner expectation that
 # cardiac, oncology and neuroscience programs generate a disproportionate share
@@ -80,6 +82,14 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         defaults are used; override with your foundation's board-approved values.
     merge_key : str, default="donor_id"
         Column name present in both the encounter table and ``X`` used to merge.
+    as_of : str, datetime-like or None, default=None
+        As-of cutoff for the encounter table. Encounters discharged **after**
+        this date are excluded from ``encounter_summary_`` at :meth:`fit` time.
+        ``None`` (the default) uses the whole table, which is only correct when
+        every encounter was already observable at the point being modelled. For
+        walk-forward evaluation, set this to the last day of the training window;
+        otherwise the clinical-gravity score for a 2020 gift counts encounters
+        from 2024.
     discharge_col : str, default="discharge_date"
         Column in the encounter table holding discharge dates.
 
@@ -145,6 +155,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         capacity_weights: dict[str, float] | None = None,
         merge_key: str = "donor_id",
         discharge_col: str = "discharge_date",
+        as_of=None,
     ) -> None:
         self.encounter_df = encounter_df
         self.encounter_path = encounter_path
@@ -155,6 +166,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         self.capacity_weights = capacity_weights
         self.merge_key = merge_key
         self.discharge_col = discharge_col
+        self.as_of = as_of
 
     def __getstate__(self):
         """Drop the raw encounter table from pickles and joblib bundles.
@@ -214,6 +226,10 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         raw_enc = raw_enc.copy()
         raw_enc[self.discharge_col] = pd.to_datetime(
             raw_enc[self.discharge_col], errors="coerce"
+        )
+
+        raw_enc = _apply_as_of_cutoff(
+            raw_enc, self.discharge_col, self.as_of, "GratefulPatientFeaturizer"
         )
 
         # Step 3: Normalise service_line values

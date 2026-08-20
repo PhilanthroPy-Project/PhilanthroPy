@@ -87,16 +87,50 @@ def test_ltv_annuity_holds_across_discount_rates(rate):
     assert donor_lifetime_value(a, n, discount_rate=rate) == pytest.approx(expected)
 
 
-def test_ltv_retention_rate_implies_the_expected_lifespan():
-    # An 80% annual retention rate implies a 1/(1-0.8) = 5-year expected life.
-    a, r = 400.0, 0.05
-    by_retention = donor_lifetime_value(a, 999, discount_rate=r, retention_rate=0.8)
-    by_lifespan = donor_lifetime_value(a, 5, discount_rate=r)
-    assert by_retention == pytest.approx(by_lifespan)
+def test_ltv_geometric_lifetime_is_not_the_annuity_at_the_mean_lifespan():
+    # This test previously asserted the two were EQUAL, which is the bug. An 80%
+    # retention rate does imply a 1/(1-0.8) = 5-year expected lifespan, but the
+    # annuity is concave in L, so by Jensen NPV(E[L]) > E[NPV(L)] and
+    # substituting the mean lifespan overstates value. Closed form: m/(1+d-r).
+    a, d, r = 400.0, 0.05, 0.8
+    by_retention = donor_lifetime_value(a, 999, discount_rate=d, retention_rate=r)
+    annuity_at_mean = donor_lifetime_value(a, 5, discount_rate=d)
+
+    assert by_retention == pytest.approx(a / (1 + d - r))
+    assert by_retention < annuity_at_mean
+    # The overstatement is ~8.2% at these parameters, not a rounding artefact.
+    assert annuity_at_mean / by_retention == pytest.approx(1.082, abs=1e-3)
 
 
-def test_ltv_is_infinite_when_no_one_ever_lapses():
-    assert donor_lifetime_value(100.0, 10, retention_rate=1.0) == float("inf")
+def test_ltv_geometric_lifetime_matches_the_term_by_term_expectation():
+    # E[NPV] = m * sum_{t>=1} P(alive at t) / (1+d)^t, with P(alive at t) = r^(t-1).
+    a, d, r = 250.0, 0.07, 0.75
+    expected = sum(a * r ** (t - 1) / (1 + d) ** t for t in range(1, 4000))
+    assert donor_lifetime_value(a, 999, discount_rate=d, retention_rate=r) == (
+        pytest.approx(expected)
+    )
+
+
+def test_ltv_geometric_and_fixed_horizon_agree_at_zero_retention():
+    # r = 0 is one gift, one year out. Both modes must give m/(1+d).
+    a, d = 100.0, 0.05
+    assert donor_lifetime_value(a, 999, discount_rate=d, retention_rate=0.0) == (
+        pytest.approx(a / (1 + d))
+    )
+    assert donor_lifetime_value(a, 1, discount_rate=d) == pytest.approx(a / (1 + d))
+
+
+def test_ltv_never_lapsing_donor_is_a_perpetuity():
+    # m / d with a discount rate, unbounded only without one.
+    assert donor_lifetime_value(100.0, 10, retention_rate=1.0) == pytest.approx(2000.0)
+    assert donor_lifetime_value(
+        100.0, 10, discount_rate=0.0, retention_rate=1.0
+    ) == float("inf")
+
+
+def test_ltv_rejects_retention_rate_above_one():
+    with pytest.raises(ValueError, match="cannot exceed 1"):
+        donor_lifetime_value(100.0, 10, retention_rate=1.5)
 
 
 # ---------------------------------------------------------------------------

@@ -78,6 +78,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   string/numeric branch checks `pd.api.types.is_numeric_dtype` rather than
   `dtype == object`, so it also parses correctly under pandas 3.0's non-object
   default string dtype, not just the legacy `object` dtype.
+- `MatchingGiftFeaturizer` ran zero `check_estimator` checks — `tags._skip_test =
+  True` silently skipped the whole battery instead of excluding it from
+  `_STANDARD_ESTIMATORS` with a documented reason, the way `RFMTransformer`
+  already was. It has no such reason on its own (it genuinely cannot accept
+  the generic numeric ndarrays the battery feeds), so this falsified the
+  README/paper claim that every public estimator passes `check_estimator`.
+  `FinancialForecastModel` had the same gap for no documented reason at all —
+  it in fact passes the battery cleanly and is now in it. A new
+  `test_every_public_estimator_is_covered_by_the_battery_or_documented` test
+  cross-references `philanthropy.models.__all__` and
+  `philanthropy.preprocessing.__all__` against `_STANDARD_ESTIMATORS` plus a
+  reasoned exemption registry, so this can't recur silently. README, paper.md,
+  and the design-principles/security-review docs now state the one real
+  exception (`UpliftTLearner`) instead of claiming "every estimator" flatly.
+- Two JOSS paper drafts were tracked at once — `paper.md`/`paper.bib` at the repo
+  root (current, last touched 2026-08-11) and a stale copy in `paper/`
+  (2026-08-01, different affiliation and bibliography style). `draft-pdf.yml`
+  built only the stale one, so the current draft has never produced a PDF.
+  Deleted `paper/`; the workflow now points at the root files.
 - Saving a fitted `EncounterTransformer` or `GratefulPatientFeaturizer` wrote the
   **raw clinical encounter table into the model bundle**. Both take
   `encounter_df` as a constructor parameter, so `joblib.dump` / `save_model`

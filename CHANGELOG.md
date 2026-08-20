@@ -55,6 +55,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   preferred disclosure channel.
 
 ### Fixed
+- Saving a fitted `EncounterTransformer` or `GratefulPatientFeaturizer` wrote the
+  **raw clinical encounter table into the model bundle**. Both take
+  `encounter_df` as a constructor parameter, so `joblib.dump` / `save_model`
+  persisted medical record numbers, attending physicians and service lines
+  verbatim; a bundle attached to a ticket or handed to a vendor was a PHI
+  disclosure. Both now drop the raw table on serialisation and keep only the
+  per-donor `encounter_summary_` that `transform` actually reads, so a
+  round-tripped transformer still scores identically. `clone` is unaffected
+  (it goes through `get_params`, not pickle), and a refit now requires the table
+  to be supplied again rather than reusing stale clinical rows. `SECURITY.md`
+  previously treated pickles only as an inbound code-execution risk and never
+  mentioned that a bundle you produce is itself donor data; it now does.
 - `mkdocs.yml` had no `site_url`, so the generated `sitemap.xml` was empty and all
   38 documentation pages were uncrawlable, with no `rel=canonical` anywhere.
 - `CONTRIBUTING.md` documented a risk-tier coverage command measuring `metrics/` and

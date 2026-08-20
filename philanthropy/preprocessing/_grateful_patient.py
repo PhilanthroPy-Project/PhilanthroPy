@@ -155,6 +155,30 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         self.merge_key = merge_key
         self.discharge_col = discharge_col
 
+    def __getstate__(self):
+        """Drop the raw encounter table from pickles and joblib bundles.
+
+        ``transform`` reads only ``encounter_summary_``, the per-donor aggregate
+        frozen at :meth:`fit` time. ``encounter_df`` is the PHI-bearing *input*,
+        so persisting it would make every saved model a patient-data disclosure:
+        a bundle handed to a vendor, attached to a ticket, or copied to a laptop
+        would carry the raw clinical rows with it. It is therefore replaced with
+        ``None`` on serialisation.
+
+        A round-tripped instance can still ``transform``. It cannot ``fit``
+        again until it is given the table back, which is the intended
+        trade-off. :func:`sklearn.base.clone` is unaffected, because clone goes
+        through ``get_params`` rather than pickle.
+
+        The bundle still contains ``encounter_summary_``: per-donor aggregates
+        keyed by ``merge_key``. That is the minimum ``transform`` needs, and it
+        is derived rather than raw, but it is not nothing. Treat a saved bundle
+        as donor data.
+        """
+        state = dict(super().__getstate__())
+        state["encounter_df"] = None
+        return state
+
     def fit(self, X, y=None) -> "GratefulPatientFeaturizer":
         """Build per-donor encounter summaries from encounter data.
 

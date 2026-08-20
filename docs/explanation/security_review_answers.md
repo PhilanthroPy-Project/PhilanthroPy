@@ -72,8 +72,11 @@ subtree (`preprocessing/`, `models/`, `ingest/`, the CLI, and model persistence)
 declared dependency floors on the oldest supported Python, a packaging check
 (`python -m build` plus `twine check`), and CodeQL static analysis.
 
-Every estimator also passes `sklearn.utils.estimator_checks.check_estimator`, which
-is a third-party conformance suite rather than tests written by the same author.
+Every estimator that fits the scikit-learn `fit(X, y)` contract also passes
+`sklearn.utils.estimator_checks.check_estimator`, a third-party conformance suite
+rather than tests written by the same author. The one documented exception is
+`UpliftTLearner` (Tier 3, `philanthropy.experimental`), whose `fit(X, y,
+treatment)` signature breaks that contract — see `docs/reference/experimental.md`.
 
 ## 6. What is the biggest security caveat we should know about?
 

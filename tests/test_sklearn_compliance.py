@@ -14,15 +14,19 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.base import BaseEstimator
 from sklearn.exceptions import NotFittedError
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.estimator_checks import parametrize_with_checks
 
 from philanthropy.datasets import generate_synthetic_donor_data
+import philanthropy.models as _models
+import philanthropy.preprocessing as _pp
 from philanthropy.models import (
     AskAmountRecommender,
     DonorPropensityModel,
+    FinancialForecastModel,
     LapsePredictor,
     MajorGiftClassifier,
     MovesManagementClassifier,
@@ -36,6 +40,7 @@ from philanthropy.preprocessing import (
     EncounterTransformer,
     FiscalYearTransformer,
     GratefulPatientFeaturizer,
+    MatchingGiftFeaturizer,
     PlannedGivingSignalTransformer,
     RFMTransformer,
     ShareOfWalletScorer,
@@ -67,6 +72,7 @@ _STANDARD_ESTIMATORS = [
     MajorGiftClassifier(max_iter=10, random_state=0),
     MovesManagementClassifier(max_iter=20, random_state=0),
     PropensityScorer(),
+    FinancialForecastModel(max_iter=20, random_state=0),
     # --- transformers, configured ---
     FiscalYearTransformer(date_col="gift_date", fiscal_year_start=7),
     WealthScreeningImputer(
@@ -157,6 +163,70 @@ class TestRFMTransformerCompliance:
         t = RFMTransformer().fit(_RFM_TRAIN)
         out = t.transform(_RFM_TRAIN)
         assert list(t.get_feature_names_out()) == list(out.columns)
+
+
+# ---------------------------------------------------------------------------
+# SECTION 1c — MatchingGiftFeaturizer
+#
+# Requires two named DataFrame columns, one of them (employer) categorical
+# text — it raises TypeError on the bare numeric ndarrays the generic battery
+# feeds, so it cannot run parametrize_with_checks either. It used to sit in
+# _STANDARD_ESTIMATORS with tags._skip_test = True, the same "1 check instead
+# of 46" failure mode RFMTransformer had above. The contracts that do apply
+# are covered in tests/test_matching_gift.py (fit/clone/not-fitted/dtype
+# contracts) and tests/test_transformer_leakage_guards.py (leakage contract).
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# SECTION 1d — every public estimator is covered by one of the above
+#
+# Prevents a repeat of the MatchingGiftFeaturizer gap: a class landing in
+# preprocessing.__all__ or models.__all__ with no check_estimator coverage
+# and no documented reason why not.
+# ---------------------------------------------------------------------------
+
+_MANUALLY_COVERED = {
+    RFMTransformer: (
+        "Row-reducing and returns a string donor_id column; see "
+        "TestRFMTransformerCompliance above."
+    ),
+    MatchingGiftFeaturizer: (
+        "Requires two named DataFrame columns, one categorical; see "
+        "tests/test_matching_gift.py and SECTION 1c above."
+    ),
+    EncounterTransformer: (
+        "Constructor requires encounter_df, so it cannot be instantiated "
+        "bare; see TestEncounterTransformerCompliance above."
+    ),
+    GratefulPatientFeaturizer: (
+        "Constructor requires encounter_df, so it cannot be instantiated "
+        "bare; see TestGratefulPatientFeaturizerCompliance above."
+    ),
+}
+
+
+def test_every_exemption_carries_a_reason():
+    for cls, reason in _MANUALLY_COVERED.items():
+        assert len(reason) > 40, f"{cls.__name__}'s exemption reason is too short"
+
+
+def test_every_public_estimator_is_covered_by_the_battery_or_documented():
+    covered_by_battery = {type(est) for est in _STANDARD_ESTIMATORS}
+    covered = covered_by_battery | set(_MANUALLY_COVERED)
+
+    uncovered = []
+    for module, names in ((_models, _models.__all__), (_pp, _pp.__all__)):
+        for name in names:
+            cls = getattr(module, name)
+            if not issubclass(cls, BaseEstimator):
+                continue
+            if cls not in covered:
+                uncovered.append(f"{module.__name__}.{name}")
+    assert not uncovered, (
+        "Public estimator(s) with no check_estimator coverage and no "
+        f"documented reason in _MANUALLY_COVERED: {uncovered}"
+    )
 
 
 # ---------------------------------------------------------------------------

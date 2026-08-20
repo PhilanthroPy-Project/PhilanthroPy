@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from philanthropy.cli import _neutralise_csv_injection
+from philanthropy.experimental import UpliftTLearner
 from philanthropy.metrics import selection_rate_by_group, disparate_impact_ratio
 from philanthropy.models import (
     DonorPropensityModel,
@@ -223,3 +224,24 @@ def test_csv_injection_neutralised_in_pandas_string_dtype_columns():
     assert list(out["name"]) == ["'=cmd|'/c calc'!A1", "safe"]
     assert list(out["note"]) == ["'@SUM(1+1)", "fine"]
     assert list(out["score"]) == [1.0, 2.0]
+
+
+def test_uplift_t_learner_rejects_column_reordered_dataframe():
+    # Same defect class as LapsePredictor above: UpliftTLearner used check_X_y /
+    # check_array, so it never recorded feature_names_in_ and silently scored
+    # reordered columns. Fixing only the LapsePredictor left this sibling open.
+    train = pd.DataFrame({
+        "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        "b": [2.0, 1.0, 4.0, 3.0, 6.0, 5.0],
+        "c": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+    })
+    y = np.array([0, 1, 0, 1, 0, 1])
+    treatment = np.array([1, 1, 1, 0, 0, 0])
+    model = UpliftTLearner(n_estimators=5, random_state=0).fit(train, y, treatment)
+    assert hasattr(model, "feature_names_in_")
+    assert model.n_features_in_ == 3
+
+    with pytest.raises(ValueError, match="feature names"):
+        model.predict_uplift_score(train[["c", "b", "a"]])
+    with pytest.raises(ValueError, match="feature names"):
+        model.predict(train[["c", "b", "a"]])

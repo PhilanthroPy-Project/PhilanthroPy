@@ -37,6 +37,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   deliberately does not check.
 
 ### Changed
+- Four docstrings described behaviour the code does not have, each now corrected
+  against a test in `tests/test_documented_contracts.py`. `FiscalYearTransformer`
+  said it *appends* `fiscal_year`/`fiscal_quarter`; `transform` in fact returns
+  only those two columns and drops the input, which silently discarded a
+  pipeline's features. `EncounterTransformer.fit` claimed it "prevents temporal
+  data leakage"; it only guarantees that nothing from `X` enters the summary, and
+  the summary itself has no as-of cutoff, so a 2020 gift is scored against 2024
+  encounters. `WealthScreeningImputerKNN.group_col_idx` documented per-group
+  stratified imputation "improving local accuracy"; it is stored and never read.
+  The `GratefulPatientFeaturizer` service-line weights were attributed to
+  "commonly-cited AMC development benchmarks"; they have no published source.
+  No behaviour changed in this entry: the docs moved to meet the code.
 - `FiscalYearGroupedSplitter` now documents the leakage it does **not** prevent:
   its grouping unit is the fiscal year, not the donor, so a donor with gifts in
   several fiscal years appears in both folds of a split. That is correct for a
@@ -103,6 +115,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   (2026-08-01, different affiliation and bibliography style). `draft-pdf.yml`
   built only the stale one, so the current draft has never produced a PDF.
   Deleted `paper/`; the workflow now points at the root files.
+- Saving a fitted `EncounterTransformer` or `GratefulPatientFeaturizer` wrote the
+  **raw clinical encounter table into the model bundle**. Both take
+  `encounter_df` as a constructor parameter, so `joblib.dump` / `save_model`
+  persisted medical record numbers, attending physicians and service lines
+  verbatim; a bundle attached to a ticket or handed to a vendor was a PHI
+  disclosure. Both now drop the raw table on serialisation and keep only the
+  per-donor `encounter_summary_` that `transform` actually reads, so a
+  round-tripped transformer still scores identically. `clone` is unaffected
+  (it goes through `get_params`, not pickle), and a refit now requires the table
+  to be supplied again rather than reusing stale clinical rows. `SECURITY.md`
+  previously treated pickles only as an inbound code-execution risk and never
+  mentioned that a bundle you produce is itself donor data; it now does.
 - `FiscalYearGroupedSplitter` never validated `n_splits`, despite documenting a
   `ValueError` for `n_splits < 1`. A non-positive value reached the
   `unique_fy[-(n_splits):]` slice, where it flips open-ended: `n_splits=0`

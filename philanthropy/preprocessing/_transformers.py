@@ -229,7 +229,15 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
 
 
 class FiscalYearTransformer(TransformerMixin, BaseEstimator):
-    """Append Organisation-specific Fiscal Year and Quarter to dates."""
+    """Derive organisation-specific fiscal year and quarter from a date column.
+
+    ``transform`` **replaces** the input with exactly two columns,
+    ``fiscal_year`` and ``fiscal_quarter``; it does not append them to the
+    input. This is what ``get_feature_names_out`` has always reported. To keep
+    the original columns alongside the fiscal ones, wrap this transformer in a
+    :class:`~sklearn.compose.ColumnTransformer` with ``remainder="passthrough"``
+    or a :class:`~sklearn.pipeline.FeatureUnion`.
+    """
 
     def __init__(self, date_col: str = "gift_date", fiscal_year_start: int = 7):
         self.date_col = date_col
@@ -269,7 +277,7 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X) -> np.ndarray | pd.DataFrame:
-        """Append fiscal year and quarter columns.
+        """Return the fiscal year and quarter derived from ``date_col``.
 
         Parameters
         ----------
@@ -278,10 +286,13 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
 
         Returns
         -------
-        X_out : np.ndarray or pd.DataFrame
-            Feature matrix with ``fiscal_year`` and ``fiscal_quarter`` columns
-            appended. Returns a DataFrame when the transformer is configured
-            with ``set_output(transform="pandas")``, otherwise an ndarray.
+        X_out : np.ndarray or pd.DataFrame of shape (n_samples, 2)
+            Exactly two columns, ``fiscal_year`` and ``fiscal_quarter``. The
+            input columns are **not** carried through; see the class docstring
+            for how to keep them. Both columns are ``NaN`` for rows whose date
+            does not parse, and for every row when ``date_col`` is absent from
+            ``X``. Returns a DataFrame when the transformer is configured with
+            ``set_output(transform="pandas")``, otherwise an ndarray.
 
         Raises
         ------

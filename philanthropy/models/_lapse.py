@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from sklearn.utils.validation import check_is_fitted, validate_data
 from sklearn.utils import Tags
 
 
@@ -62,7 +62,7 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         -------
         self : LapsePredictor
         """
-        X, y = check_X_y(X, y, ensure_all_finite="allow-nan")
+        X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
         self.classes_ = np.unique(y)
         self.n_features_in_ = X.shape[1]
 
@@ -78,19 +78,18 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
     def predict(self, X) -> np.ndarray:
         """Predict binary lapse labels."""
         check_is_fitted(self)
-        X = check_array(X, ensure_all_finite="allow-nan")
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self.estimator_.predict(X)
 
     def predict_proba(self, X) -> np.ndarray:
         """Return class probabilities of shape (n_samples, 2)."""
         check_is_fitted(self)
-        X = check_array(X, ensure_all_finite="allow-nan")
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self.estimator_.predict_proba(X)
 
     def predict_lapse_score(self, X) -> np.ndarray:
         """Return P(lapse) × 100 rounded to 2 decimal places (0–100 scale)."""
         check_is_fitted(self)
-        X = check_array(X, ensure_all_finite="allow-nan")
         proba = self.predict_proba(X)
         if proba.shape[1] < 2:
             # Single-class training fold (e.g. no donor lapsed in the window):

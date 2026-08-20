@@ -64,6 +64,11 @@ separate, higher floor over the risk-tier subtree. CI runs both
 (`.github/workflows/ci.yml`). Do not hardcode either number anywhere else —
 that drift is what issues #21 and #22 exist to fix.
 
+## Branching — no direct commits to main
+Every change — including maintainer- and agent-authored ones — goes on a feature
+branch and through a pull request. Never commit or push straight to `main`, and
+never merge your own PR; open it and leave the merge to review.
+
 ## Every PR must also
 - Add an entry under `## [Unreleased]` in CHANGELOG.md.
 - Add yourself to CONTRIBUTORS.md (same PR).

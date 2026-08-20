@@ -114,3 +114,48 @@ def test_repr_and_get_n_splits_reflect_the_groups():
         "FiscalYearGroupedSplitter(n_splits=2, gap_years=1)"
     )
     assert splitter.get_n_splits(groups=_FY_GROUPS) == 2
+
+
+# ---------------------------------------------------------------------------
+# n_splits validation — split() and get_n_splits() must never disagree
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("bad_n_splits", [0, -1, -3])
+def test_non_positive_n_splits_raises_instead_of_slicing(bad_n_splits):
+    # Pre-fix, a non-positive n_splits reached `unique_fy[-(n_splits):]`, where
+    # it flips the slice open-ended: n_splits=0 yielded 3 folds while
+    # get_n_splits() reported 0. cross_val_score sizes its output from
+    # get_n_splits(), so the disagreement is a real failure.
+    X = np.zeros((100, 3))
+    fy = np.array([2019] * 25 + [2020] * 25 + [2021] * 25 + [2022] * 25)
+    splitter = FiscalYearGroupedSplitter(n_splits=bad_n_splits)
+
+    with pytest.raises(ValueError, match="n_splits must be >= 1"):
+        list(splitter.split(X, groups=fy))
+    with pytest.raises(ValueError, match="n_splits must be >= 1"):
+        splitter.get_n_splits()
+
+
+def test_negative_gap_years_raises():
+    X = np.zeros((100, 3))
+    fy = np.array([2019] * 25 + [2020] * 25 + [2021] * 25 + [2022] * 25)
+    with pytest.raises(ValueError, match="gap_years must be >= 0"):
+        list(FiscalYearGroupedSplitter(gap_years=-1).split(X, groups=fy))
+
+
+def test_non_integer_params_raise():
+    X = np.zeros((100, 3))
+    fy = np.array([2019] * 50 + [2020] * 50)
+    with pytest.raises(ValueError, match="must be integers"):
+        list(FiscalYearGroupedSplitter(n_splits="three").split(X, groups=fy))
+
+
+@pytest.mark.parametrize("n_splits", [1, 2, 3])
+@pytest.mark.parametrize("gap_years", [0, 1])
+def test_get_n_splits_matches_the_folds_actually_yielded(n_splits, gap_years):
+    # The invariant sklearn relies on. Assert it directly rather than trusting
+    # that the two independent code paths stay in step.
+    X = np.zeros((150, 3))
+    fy = np.array([2018] * 30 + [2019] * 30 + [2020] * 30 + [2021] * 30 + [2022] * 30)
+    splitter = FiscalYearGroupedSplitter(n_splits=n_splits, gap_years=gap_years)
+    assert splitter.get_n_splits(groups=fy) == len(list(splitter.split(X, groups=fy)))

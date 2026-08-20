@@ -73,8 +73,28 @@ class TestCRMCleaner:
         )
         cleaner = CRMCleaner().set_output(transform="pandas")
         out = cleaner.fit_transform(df)
-        # Non-parseable → NaN; dtype should be float64
-        assert out["gift_amount"].dtype == np.float64 or out["gift_amount"].isna().all()
+        assert out["gift_amount"].dtype == np.float64
+        assert out["gift_amount"].iloc[0] == 5000.0
+
+    def test_amount_col_strips_currency_formatting(self):
+        # Raiser's Edge NXT / Salesforce NPSP export amounts exactly like this
+        # by default. A bare pd.to_numeric NaNs the whole column.
+        df = pd.DataFrame({
+            "gift_date": ["2024-01-01", "2024-02-01", "2024-03-01"],
+            "gift_amount": ["$1,000.00", "$250.50", "($75.00)"],
+        })
+        cleaner = CRMCleaner().set_output(transform="pandas")
+        out = cleaner.fit_transform(df)
+        assert list(out["gift_amount"]) == [1000.0, 250.5, -75.0]
+
+    def test_amount_col_unparseable_column_raises(self):
+        df = pd.DataFrame({
+            "gift_date": ["2024-01-01", "2024-02-01"],
+            "gift_amount": ["not a number", "also not a number"],
+        })
+        cleaner = CRMCleaner()
+        with pytest.raises(ValueError, match="could not parse"):
+            cleaner.fit_transform(df)
 
     def test_date_col_coerced_to_datetime(self):
         df = pd.DataFrame({"gift_date": ["2023-07-01"], "gift_amount": [100.0]})

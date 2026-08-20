@@ -6,6 +6,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `philanthropy.metrics.conformal_pvalue` — the non-smoothed split-conformal
+  p-value of a donor score against a held-out calibration set,
+  `(1 + |{i : s_i >= s}|) / (n + 1)`. A calibrated probability threshold fixes no
+  error rate; thresholding this p-value at `alpha` bounds the false-positive rate
+  at `alpha` in finite samples with no distributional assumption. Both the `1 +`
+  and the `+ 1` are load-bearing and tested: the result is never 0 and never
+  above 1, and leave-one-out over exchangeable scores lands exactly on the
+  uniform lattice.
 - Test coverage for `constituent_events_to_features`: the all-unparseable-timestamps empty-frame path and the `distinct_source_systems` default-to-zero path when `sourceSystem` is absent from the input. (#51)
 - `AGENTS.md`: every change, including maintainer- and agent-authored ones, must
   go on a branch and through a PR — no direct commits to `main`, no self-merges.
@@ -55,6 +63,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   preferred disclosure channel.
 
 ### Fixed
+- `LapsePredictor` and `experimental.UpliftTLearner` validated input with
+  `check_array`/`check_X_y` instead of `validate_data`, the convention every
+  other estimator follows. Neither set `feature_names_in_`, so a DataFrame with
+  reordered columns was silently scored instead of raising. These were the only
+  two estimators in the package with that gap, and both are now closed with a
+  regression test each.
+- `CRMCleaner` NaN'd every value in a currency-formatted amount column, e.g.
+  `"$1,000.00"` — the default export format for Raiser's Edge NXT and
+  Salesforce NPSP — because `pd.to_numeric` treats the whole string as
+  unparseable. It now strips currency symbols, thousands separators and
+  parenthesised negatives before parsing, and raises rather than returning an
+  all-NaN column when a column truly has nothing parseable in it. The
+  string/numeric branch checks `pd.api.types.is_numeric_dtype` rather than
+  `dtype == object`, so it also parses correctly under pandas 3.0's non-object
+  default string dtype, not just the legacy `object` dtype.
 - **`donor_lifetime_value` overstated LTV whenever `retention_rate` was given.**
   It converted the retention rate to an expected lifespan, `L = 1 / (1 - r)`, and
   fed that mean into the concave annuity formula. By Jensen's inequality

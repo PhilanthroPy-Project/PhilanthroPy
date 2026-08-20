@@ -47,6 +47,32 @@ def _get_pandas_output(estimator: Any) -> bool:
     return False
 
 
+def _coerce_currency_to_float(col: pd.Series) -> pd.Series:
+    """Parse a gift-amount column to float64, tolerating currency formatting.
+
+    Raiser's Edge NXT and Salesforce NPSP both export amounts as
+    ``"$1,000.00"`` by default; a bare ``pd.to_numeric`` treats every such
+    value as unparseable and NaNs the whole column. This strips currency
+    symbols, thousands separators and parenthesised negatives
+    (``"($500.00)"`` -> ``-500.0``) before parsing.
+    """
+    if pd.api.types.is_numeric_dtype(col):
+        return pd.to_numeric(col, errors="coerce").astype("float64")
+
+    had_value = col.notna()
+    cleaned = col.astype(str).str.strip()
+    cleaned = cleaned.str.replace(r"^\((.*)\)$", r"-\1", regex=True)
+    cleaned = cleaned.str.replace(r"[^0-9eE.\-]", "", regex=True)
+    parsed = pd.to_numeric(cleaned, errors="coerce").where(had_value)
+
+    if had_value.any() and parsed.isna().all():
+        raise ValueError(
+            f"CRMCleaner: could not parse any value in amount column "
+            f"{col.name!r} as a number."
+        )
+    return parsed.astype("float64")
+
+
 class CRMCleaner(TransformerMixin, BaseEstimator):
     """Standardise raw CRM exports.
 
@@ -62,7 +88,10 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         during :meth:`transform`.
     amount_col : str, default="gift_amount"
         Column containing raw gift amounts.  Forced to ``float64`` during
-        :meth:`transform`; non-numeric values become ``NaN``.
+        :meth:`transform`; currency symbols, thousands separators and
+        parenthesised negatives (``"$1,000.00"``, ``"($500.00)"``) are
+        stripped before parsing.  Values that still don't parse become
+        ``NaN``; a column where *nothing* parses raises instead.
     fiscal_year_start : int, default=7
         Month (1–12) that begins the organisation's fiscal year.  Validated in
         :meth:`fit` but **not** used by :meth:`transform`, which only coerces
@@ -163,7 +192,7 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         if self.date_col in X_df.columns:
             X_df[self.date_col] = pd.to_datetime(X_df[self.date_col], errors="coerce")
         if self.amount_col in X_df.columns:
-            X_df[self.amount_col] = pd.to_numeric(X_df[self.amount_col], errors="coerce")
+            X_df[self.amount_col] = _coerce_currency_to_float(X_df[self.amount_col])
 
         if _get_pandas_output(self):
             return X_df

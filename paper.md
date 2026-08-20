@@ -28,8 +28,11 @@ offices — CRM cleaning, wealth-screening imputation, RFM segmentation,
 donor-propensity and major-gift scoring, lapse prediction, planned-giving
 intent, share-of-wallet estimation, and hybrid revenue forecasting — as a set
 of `fit`/`transform`/`predict` estimators and transformers that compose
-directly inside `sklearn.pipeline.Pipeline` and pass
-`sklearn.utils.estimator_checks.check_estimator`. A second, AMC-specific
+directly inside `sklearn.pipeline.Pipeline`. Every estimator that fits the
+scikit-learn `fit(X, y)` contract passes
+`sklearn.utils.estimator_checks.check_estimator`; the one documented exception
+is `UpliftTLearner` (`philanthropy.experimental`), whose `fit(X, y,
+treatment)` signature breaks that contract. A second, AMC-specific
 surface (`EncounterTransformer`, `GratefulPatientFeaturizer`,
 `DischargeToSolicitationWindowTransformer`) featurizes clinical-encounter data
 for grateful-patient programs, where PHI-adjacent inputs raise the compliance
@@ -70,6 +73,15 @@ compliance posture is scoped explicitly: PhilanthroPy documents where its PII
 handling is a name-based heuristic rather than a formal HIPAA
 de-identification, so AMC adopters can make an informed risk decision instead
 of assuming a guarantee the library does not make.
+
+A donor score is almost always consumed as a threshold crossing: a
+solicitation is triggered when a score clears a cut point. `philanthropy.metrics`
+therefore also exposes `conformal_pvalue`, the non-smoothed split-conformal
+p-value of a scored donor against a held-out calibration set
+[@vovk2005conformal], in the `(1 + |{i : s_i >= s}|) / (n + 1)` form that
+retains the calibration point in the index set. The result is a
+distribution-free, finite-sample valid cut point, rather than a hand-picked
+probability threshold whose false-positive rate is unknown.
 
 The library's design and target use case are grounded in the author's
 published work on predictive donor analytics and fundraising intelligence at

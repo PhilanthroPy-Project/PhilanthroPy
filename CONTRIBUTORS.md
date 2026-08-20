@@ -24,7 +24,10 @@ contribution. Code, docs, tests, and review all count.
   [#42](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/42),
   [#43](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/43),
   [#44](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/44)).
-
+- [@AsavariCharati](https://github.com/AsavariCharati) — added test coverage for
+  two untested guards in `constituent_events_to_features`: the all-unparseable-
+  timestamps empty-frame path and the `distinct_source_systems` default when
+  `sourceSystem` is absent.
 ## Getting listed
 
 Add yourself here in the same pull request as your change — one line, your name

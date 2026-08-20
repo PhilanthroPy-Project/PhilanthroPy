@@ -6,6 +6,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `philanthropy.metrics.conformal_pvalue` — the non-smoothed split-conformal
+  p-value of a donor score against a held-out calibration set,
+  `(1 + |{i : s_i >= s}|) / (n + 1)`. A calibrated probability threshold fixes no
+  error rate; thresholding this p-value at `alpha` bounds the false-positive rate
+  at `alpha` in finite samples with no distributional assumption. Both the `1 +`
+  and the `+ 1` are load-bearing and tested: the result is never 0 and never
+  above 1, and leave-one-out over exchangeable scores lands exactly on the
+  uniform lattice.
 - Test coverage for `constituent_events_to_features`: the all-unparseable-timestamps empty-frame path and the `distinct_source_systems` default-to-zero path when `sourceSystem` is absent from the input. (#51)
 - `AGENTS.md`: every change, including maintainer- and agent-authored ones, must
   go on a branch and through a PR — no direct commits to `main`, no self-merges.

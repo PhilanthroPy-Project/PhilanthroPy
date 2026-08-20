@@ -159,3 +159,76 @@ def test_get_n_splits_matches_the_folds_actually_yielded(n_splits, gap_years):
     fy = np.array([2018] * 30 + [2019] * 30 + [2020] * 30 + [2021] * 30 + [2022] * 30)
     splitter = FiscalYearGroupedSplitter(n_splits=n_splits, gap_years=gap_years)
     assert splitter.get_n_splits(groups=fy) == len(list(splitter.split(X, groups=fy)))
+
+
+# ---------------------------------------------------------------------------
+# drop_repeat_donors: the static-per-donor-label case
+# ---------------------------------------------------------------------------
+
+def _repeat_donor_panel():
+    """Donors 1-3 recur every year; the rest are new to the file each year."""
+    fy, donor = [], []
+    for year in (2019, 2020, 2021, 2022):
+        for d in (1, 2, 3):
+            fy.append(year)
+            donor.append(d)
+        for k in range(3):
+            fy.append(year)
+            donor.append(year * 10 + k)
+    fy = np.array(fy)
+    donor = np.array(donor)
+    return np.zeros((len(fy), 2)), fy, donor
+
+
+def test_default_leaves_repeat_donors_in_both_folds():
+    # Documented and correct for a time-varying target; this pins the default so
+    # the new flag cannot quietly become the default later.
+    X, fy, donor = _repeat_donor_panel()
+    for train, test in FiscalYearGroupedSplitter(n_splits=2).split(X, groups=fy):
+        assert set(donor[train]) & set(donor[test]) == {1, 2, 3}
+
+
+def test_drop_repeat_donors_removes_the_overlap():
+    X, fy, donor = _repeat_donor_panel()
+    groups = np.column_stack([fy, donor])
+    splitter = FiscalYearGroupedSplitter(n_splits=2, drop_repeat_donors=True)
+
+    with pytest.warns(UserWarning, match="removed 6 test row"):
+        folds = list(splitter.split(X, groups=groups))
+
+    for train, test in folds:
+        assert not set(donor[train]) & set(donor[test])
+        assert len(test) > 0
+        # Training rows are never dropped: history is kept in full.
+        assert np.all(fy[train] < fy[test].min())
+
+
+def test_drop_repeat_donors_keeps_get_n_splits_in_step():
+    X, fy, donor = _repeat_donor_panel()
+    groups = np.column_stack([fy, donor])
+    splitter = FiscalYearGroupedSplitter(n_splits=2, drop_repeat_donors=True)
+    with pytest.warns(UserWarning):
+        n_folds = len(list(splitter.split(X, groups=groups)))
+    assert splitter.get_n_splits(groups=groups) == n_folds
+
+
+def test_drop_repeat_donors_requires_two_column_groups():
+    X, fy, _ = _repeat_donor_panel()
+    splitter = FiscalYearGroupedSplitter(n_splits=2, drop_repeat_donors=True)
+    with pytest.raises(ValueError, match=r"shape \(n_samples, 2\)"):
+        list(splitter.split(X, groups=fy))
+
+
+def test_drop_repeat_donors_raises_rather_than_silently_dropping_a_fold():
+    # Every donor recurs, so the test fold empties. Skipping it would put split
+    # and get_n_splits back out of step, so it raises with an actionable message.
+    groups = np.column_stack([[2019, 2019, 2020, 2020], [1, 2, 1, 2]])
+    splitter = FiscalYearGroupedSplitter(n_splits=1, drop_repeat_donors=True)
+    with pytest.raises(ValueError, match="emptied the test fold"):
+        list(splitter.split(np.zeros((4, 2)), groups=groups))
+
+
+def test_drop_repeat_donors_is_off_by_default():
+    # BaseCrossValidator, not BaseEstimator, so there is no get_params here.
+    assert FiscalYearGroupedSplitter().drop_repeat_donors is False
+    assert "drop_repeat_donors" not in repr(FiscalYearGroupedSplitter())

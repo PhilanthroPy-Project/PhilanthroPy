@@ -6,6 +6,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `FiscalYearGroupedSplitter(drop_repeat_donors=True)` for the static-per-donor
+  label case. The splitter groups by fiscal year, correctly, but not by donor, so
+  a donor with gifts in several fiscal years lands in both folds of a split. That
+  is right for a time-varying target and is leakage for a static label such as
+  `is_major_donor`, which is the label used throughout the README, the benchmarks
+  page and `scripts/benchmark_models.py`. With the flag set, each test fold drops
+  donors already present in its training rows; `groups` then takes shape
+  `(n_samples, 2)` with the donor identifier in column 1. Training rows are never
+  dropped. The cost is made visible rather than silent: `split` warns with the
+  number of test rows removed, and notes that the remaining test donors are
+  systematically newer to the file. A test fold emptied entirely raises with an
+  actionable message rather than being skipped, which would have put `split` and
+  `get_n_splits` back out of step. Defaults to `False`, so nothing changes until
+  you opt in. Closes #87.
 - `philanthropy.metrics.conformal_pvalue` — the non-smoothed split-conformal
   p-value of a donor score against a held-out calibration set,
   `(1 + |{i : s_i >= s}|) / (n + 1)`. A calibrated probability threshold fixes no

@@ -8,10 +8,11 @@ copyright: MIT licensed. Built by the PhilanthroPy contributors.
 
 theme:
   name: material
-  logo: assets/logo.png
-  favicon: assets/logo.png
+  custom_dir: overrides
+  favicon: assets/logo.svg
   font: false
   icon:
+    logo: philanthropy/heart-rise
     repo: fontawesome/brands/github
   palette:
     - media: "(prefers-color-scheme: dark)"

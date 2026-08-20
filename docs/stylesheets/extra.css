@@ -55,6 +55,8 @@
   --ap-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 34px rgba(0, 0, 0, 0.4);
   --ap-shadow-hover: 0 2px 6px rgba(0, 0, 0, 0.5), 0 30px 80px rgba(0, 0, 0, 0.55);
   --ap-display-fade: rgba(243, 239, 230, 0.55);
+  --ap-bg-translucent: rgba(13, 12, 10, 0.82);
+  --ap-chart-band: rgba(243, 239, 230, 0.035);
 
   --md-default-bg-color: var(--ap-bg);
   --md-default-fg-color: var(--ap-ink);
@@ -65,6 +67,7 @@
   --md-accent-fg-color: var(--ap-accent-strong);
   --md-code-bg-color: rgba(243, 239, 230, 0.05);
   --md-code-fg-color: var(--ap-ink);
+  --md-primary-fg-color: var(--ap-bg);
   --md-footer-bg-color: var(--ap-bg-deep);
   --md-footer-bg-color--dark: var(--ap-bg-deep);
   --md-footer-fg-color: var(--ap-ink);
@@ -89,6 +92,8 @@
   --ap-shadow: 0 1px 2px rgba(23, 21, 15, 0.05), 0 12px 30px rgba(23, 21, 15, 0.06);
   --ap-shadow-hover: 0 2px 6px rgba(23, 21, 15, 0.07), 0 24px 60px rgba(23, 21, 15, 0.1);
   --ap-display-fade: rgba(23, 21, 15, 0.55);
+  --ap-bg-translucent: rgba(250, 247, 242, 0.82);
+  --ap-chart-band: rgba(23, 21, 15, 0.035);
 
   --md-default-bg-color: var(--ap-bg);
   --md-default-fg-color: var(--ap-ink);
@@ -99,6 +104,7 @@
   --md-accent-fg-color: var(--ap-accent-strong);
   --md-code-bg-color: #f2ede4;
   --md-code-fg-color: var(--ap-ink);
+  --md-primary-fg-color: var(--ap-bg);
   --md-footer-bg-color: var(--ap-bg-deep);
   --md-footer-bg-color--dark: var(--ap-bg-deep);
   --md-footer-fg-color: var(--ap-ink);
@@ -135,21 +141,26 @@ body {
   background-clip: padding-box;
 }
 
-/* ---- Header and tabs: flat, blurred, hairline-separated ----------------- */
-.md-header {
-  background-color: color-mix(in srgb, var(--ap-bg) 78%, transparent);
+/* ---- Header and tabs: flat, blurred, hairline-separated -----------------
+   Material paints these from [data-md-color-primary=black] at (0,2,0); the
+   attribute prefix here matches that weight so the canvas tone wins. */
+[data-md-color-primary] .md-header {
+  background-color: var(--ap-bg-translucent);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   backdrop-filter: saturate(180%) blur(20px);
   color: var(--ap-ink);
   border-bottom: 1px solid var(--ap-hairline);
   box-shadow: none;
 }
+.md-header__button.md-logo svg { fill: var(--ap-accent); }
 .md-header__title {
   font-weight: 600;
   letter-spacing: var(--ap-track-tight);
 }
-.md-tabs {
-  background-color: transparent;
+[data-md-color-primary] .md-tabs {
+  background-color: var(--ap-bg-translucent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
   color: var(--ap-ink-2);
   border-bottom: 1px solid var(--ap-hairline);
 }
@@ -168,6 +179,18 @@ body {
   border-radius: var(--ap-r-pill);
 }
 .md-search__input::placeholder { color: var(--ap-ink-3); }
+
+/* Mobile drawer header and its repo block, same specificity story. */
+[data-md-color-primary] .md-nav--primary .md-nav__title[for="__drawer"] {
+  background-color: var(--ap-bg);
+  color: var(--ap-ink);
+  box-shadow: none;
+  border-bottom: 1px solid var(--ap-hairline);
+}
+[data-md-color-primary] .md-nav__source {
+  background-color: var(--ap-surface-2);
+  color: var(--ap-ink);
+}
 
 /* ---- Typography --------------------------------------------------------- */
 .md-typeset {
@@ -354,6 +377,45 @@ body {
   .ap-specs { grid-template-columns: 1fr; }
 }
 
+/* ---- Figure: the affinity-separation chart ------------------------------
+   Marks carry the emphasis (accent = the group being ranked, muted ink = the
+   reference group); every label wears a text token. Both fills clear 3:1 on
+   their surface in each scheme: 8.15 / 7.55 dark, 4.97 / 6.28 light. */
+.md-typeset .ap-figure {
+  width: 100%;
+  max-width: 100%;
+  margin: 2rem 0 1rem;
+  text-align: left;
+}
+.ap-figure svg { display: block; width: 100%; height: auto; overflow: visible; }
+.ap-figure text { font-family: var(--ap-font); }
+.md-typeset .ap-figure figcaption {
+  max-width: none;
+  text-align: left;
+  margin: 0.7rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: var(--ap-ink-2);
+}
+.apc-band { fill: var(--ap-chart-band); }
+.apc-whisker { stroke-width: 2; stroke-linecap: round; }
+.apc-focus { fill: var(--ap-accent); stroke: var(--ap-accent); }
+.apc-muted { fill: var(--ap-ink-2); stroke: var(--ap-ink-2); }
+.apc-median { fill: var(--ap-bg); }
+.apc-axis { stroke: var(--ap-hairline-2); stroke-width: 1; fill: none; }
+.apc-tick { fill: var(--ap-ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.apc-name { fill: var(--ap-ink); font-size: 14px; font-weight: 500; }
+.apc-sub { fill: var(--ap-ink-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+.apc-value { fill: var(--ap-ink); font-size: 13px; font-weight: 600; }
+.apc-callout { fill: var(--ap-ink-2); font-size: 12px; }
+.ap-figure g[data-row] { cursor: default; }
+.ap-figure g[data-row] rect.apc-focus,
+.ap-figure g[data-row] rect.apc-muted { transition: opacity var(--ap-dur) var(--ap-ease); }
+.ap-figure:hover g[data-row]:not(:hover) rect { opacity: 0.55; }
+@media (prefers-reduced-motion: reduce) {
+  .ap-figure g[data-row] rect { transition: none; }
+}
+
 /* ---- Grid cards --------------------------------------------------------- */
 .md-typeset .grid.cards > ul > li {
   border-radius: var(--ap-r-md);
@@ -384,6 +446,22 @@ body {
   border-width: 1px;
   box-shadow: none;
   background: var(--ap-surface);
+}
+
+/* Informational admonitions wear the palette; warning, danger and the rest
+   keep their reserved semantic colours. */
+.md-typeset :is(.admonition, details):is(.note, .info, .tip, .abstract, .example, .quote) {
+  border-color: var(--ap-hairline-2);
+}
+.md-typeset :is(.note, .info, .tip, .abstract, .example, .quote) > :is(.admonition-title, summary) {
+  background-color: color-mix(in srgb, var(--ap-accent) 10%, transparent);
+  color: var(--ap-ink);
+}
+.md-typeset :is(.note, .info, .tip, .abstract, .example, .quote) > :is(.admonition-title, summary)::before {
+  background-color: var(--ap-accent);
+}
+.md-typeset :is(.note, .info, .tip, .abstract, .example, .quote) > summary::after {
+  color: var(--ap-accent);
 }
 .md-typeset table:not([class]) {
   border-radius: var(--ap-r-sm);

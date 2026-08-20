@@ -37,15 +37,66 @@ summary = df.groupby("is_major_donor")["affinity_score"].describe()
 print(summary[["count", "mean", "min", "max"]])
 ```
 
-```text
-                count       mean   min    max
-is_major_donor
-0               165.0   9.636364   0.0   39.0
-1               335.0  94.865672  65.0  100.0
-```
+<figure class="ap-figure">
+<svg viewBox="0 0 740 232" role="img" aria-labelledby="apc-title apc-desc">
+  <title id="apc-title">Affinity score by donor class</title>
+  <desc id="apc-desc">Range and interquartile spread of the 0 to 100 affinity score for 500 synthetic donors. Non-major donors span 0 to 39, major donors span 65 to 100, leaving an empty 26-point gap between the two groups.</desc>
 
+  <rect class="apc-band" x="356.4" y="56" width="120.9" height="100" rx="4"/>
+  <text class="apc-callout" x="416.8" y="46" text-anchor="middle">26-point gap, empty</text>
+
+  <g data-row="major">
+    <title>Major donors: n = 335 · min 65 · Q1 93.3 · median 98.5 · Q3 100 · max 100</title>
+    <text class="apc-name" x="160" y="74" text-anchor="end">Major donors</text>
+    <text class="apc-sub" x="160" y="91" text-anchor="end">n = 335</text>
+    <line class="apc-whisker apc-focus" x1="477.3" y1="78" x2="640" y2="78"/>
+    <rect class="apc-focus" x="608.6" y="69" width="31.4" height="18" rx="4"/>
+    <rect class="apc-median" x="632" y="69" width="2" height="18"/>
+    <text class="apc-value" x="652" y="83">65&#8211;100</text>
+  </g>
+
+  <g data-row="non-major">
+    <title>Non-major donors: n = 165 · min 0 · Q1 1.5 · median 4 · Q3 16.5 · max 39</title>
+    <text class="apc-name" x="160" y="130" text-anchor="end">Non-major donors</text>
+    <text class="apc-sub" x="160" y="147" text-anchor="end">n = 165</text>
+    <line class="apc-whisker apc-muted" x1="175" y1="134" x2="356.4" y2="134"/>
+    <rect class="apc-muted" x="182" y="125" width="69.7" height="18" rx="4"/>
+    <rect class="apc-median" x="192.6" y="125" width="2" height="18"/>
+    <text class="apc-value" x="366" y="139">0&#8211;39</text>
+  </g>
+
+  <line class="apc-axis" x1="175" y1="176" x2="640" y2="176"/>
+  <text class="apc-tick" x="175" y="194" text-anchor="middle">0</text>
+  <text class="apc-tick" x="291.3" y="194" text-anchor="middle">25</text>
+  <text class="apc-tick" x="407.5" y="194" text-anchor="middle">50</text>
+  <text class="apc-tick" x="523.8" y="194" text-anchor="middle">75</text>
+  <text class="apc-tick" x="640" y="194" text-anchor="middle">100</text>
+  <text class="apc-sub" x="407.5" y="220" text-anchor="middle">Affinity score</text>
+</svg>
+<figcaption>
+Bar = interquartile range, notch = median, line = full min-to-max range.
 Non-major donors top out at 39; no major donor scores below 65. That gap is the
 whole product: a gift-officer call list, sorted.
+</figcaption>
+</figure>
+
+??? note "Table view: the printed output and the quartiles behind the chart"
+
+    What the snippet prints:
+
+    ```text
+                    count       mean   min    max
+    is_major_donor
+    0               165.0   9.636364   0.0   39.0
+    1               335.0  94.865672  65.0  100.0
+    ```
+
+    The full five-number summary the chart is drawn from:
+
+    | Group | n | Min | Q1 | Median | Q3 | Max |
+    | --- | --- | --- | --- | --- | --- | --- |
+    | Non-major donors | 165 | 0.0 | 1.5 | 4.0 | 16.5 | 39.0 |
+    | Major donors | 335 | 65.0 | 93.25 | 98.5 | 100.0 | 100.0 |
 
 [Run it in Colab, zero install](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/quickstart.ipynb){ .md-button .md-button--secondary }
 

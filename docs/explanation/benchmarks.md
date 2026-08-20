@@ -30,7 +30,7 @@ logistic model gives the Bayes-optimal error over the two **causal** features:
 
 | Evaluation | ROC-AUC | Accuracy |
 |---|---:|---:|
-| Bayes-optimal, causal features only | — | **0.768** |
+| Bayes-optimal, causal features only | n/a | **0.768** |
 | `DonorPropensityModel`, causal features only | 0.748 | 0.720 |
 | `DonorPropensityModel`, **including** `total_gift_amount` | **0.935** | **0.880** |
 

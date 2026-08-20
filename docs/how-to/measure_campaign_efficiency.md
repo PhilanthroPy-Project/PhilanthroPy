@@ -1,6 +1,6 @@
 # Measure campaign efficiency
 
-Four numbers answer "was this campaign worth running?" — cost per dollar raised, net ROI, donor acquisition cost, and how concentrated the revenue was. `philanthropy.metrics` computes all four from plain totals; no estimator required.
+Four numbers answer "was this campaign worth running?": cost per dollar raised, net ROI, donor acquisition cost, and how concentrated the revenue was. `philanthropy.metrics` computes all four from plain totals; no estimator required.
 
 ## Pass arguments by keyword
 
@@ -126,7 +126,7 @@ print(ciob.shape, sorted(ciob["year"].unique()))
 print(ciob["name_of_not_for_profit"].value_counts().head(5))
 ```
 
-It is an **affiliation registry** — one row per `(year, agency, nonprofit)` link — with no gift amounts, donor records, or engagement labels. It supports honest questions about who solicits for whom:
+It is an **affiliation registry**, one row per `(year, agency, nonprofit)` link, with no gift amounts, donor records, or engagement labels. It supports honest questions about who solicits for whom:
 
 ```python
 breadth = ciob.groupby("agency")["name_of_not_for_profit"].nunique().sort_values()
@@ -134,4 +134,4 @@ print(breadth.tail(5))
 assert set(ciob.columns) == {"year", "agency", "name_of_not_for_profit"}
 ```
 
-It does **not** support the efficiency metrics above or the RFM/propensity modelling elsewhere in the library — there are no dollars in it. Use `generate_synthetic_donor_data` for those, or your own CRM export.
+It does **not** support the efficiency metrics above or the RFM/propensity modelling elsewhere in the library; there are no dollars in it. Use `generate_synthetic_donor_data` for those, or your own CRM export.

@@ -6,6 +6,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `scripts/leakage_experiment.py` quantifies the library's central claim, which
+  was previously architectural and untested. On a seeded donor-year panel across
+  five seeds: walk-forward `FiscalYearGroupedSplitter` estimates the true future
+  to within -0.010 ROC-AUC where a random `StratifiedKFold` is off by -0.029, so
+  the splitter is worth roughly 3x the accuracy in your estimate. Computing the
+  same aggregate features over the whole export instead of as of each panel year
+  inflates the score by **+0.120 ROC-AUC**, under an identical model, splitter and
+  label. Correct feature timing is worth an order of magnitude more than a
+  correct splitter, which is the case for freezing fit-time statistics and for the
+  new `as_of` cutoff. Reported in `docs/explanation/benchmarks.md`, including the
+  negative result: the common claim that a random split *inflates* a backtest did
+  not reproduce here in three separate configurations. Closes #84.
 - `philanthropy.metrics.conformal_pvalue` — the non-smoothed split-conformal
   p-value of a donor score against a held-out calibration set,
   `(1 + |{i : s_i >= s}|) / (n + 1)`. A calibrated probability threshold fixes no

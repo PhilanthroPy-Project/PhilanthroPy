@@ -13,7 +13,7 @@ from __future__ import annotations
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from sklearn.utils.validation import check_is_fitted, validate_data
 
 
 class UpliftTLearner(ClassifierMixin, BaseEstimator):
@@ -109,7 +109,7 @@ class UpliftTLearner(ClassifierMixin, BaseEstimator):
             If ``treatment`` is not binary ``{0, 1}``, if its length does not
             match ``n_samples``, or if either arm (treated / control) is empty.
         """
-        X, y = check_X_y(X, y, ensure_all_finite="allow-nan")
+        X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
         treatment = np.asarray(treatment)
 
         if treatment.shape[0] != X.shape[0]:
@@ -129,7 +129,6 @@ class UpliftTLearner(ClassifierMixin, BaseEstimator):
             )
 
         self.classes_ = np.unique(y)
-        self.n_features_in_ = X.shape[1]
 
         self.model_treated_ = self._fit_arm(X[is_treated], y[is_treated])
         self.model_control_ = self._fit_arm(X[is_control], y[is_control])
@@ -180,7 +179,7 @@ class UpliftTLearner(ClassifierMixin, BaseEstimator):
             If :meth:`fit` has not been called yet.
         """
         check_is_fitted(self)
-        X = check_array(X, ensure_all_finite="allow-nan")
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         p_treated = self._prob_give(self.model_treated_, X)
         p_control = self._prob_give(self.model_control_, X)
         return p_treated - p_control

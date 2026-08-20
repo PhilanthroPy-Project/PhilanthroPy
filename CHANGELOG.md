@@ -69,6 +69,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   preferred disclosure channel.
 
 ### Fixed
+- `LapsePredictor` and `experimental.UpliftTLearner` validated input with
+  `check_array`/`check_X_y` instead of `validate_data`, the convention every
+  other estimator follows. Neither set `feature_names_in_`, so a DataFrame with
+  reordered columns was silently scored instead of raising. These were the only
+  two estimators in the package with that gap, and both are now closed with a
+  regression test each.
+- `CRMCleaner` NaN'd every value in a currency-formatted amount column, e.g.
+  `"$1,000.00"` — the default export format for Raiser's Edge NXT and
+  Salesforce NPSP — because `pd.to_numeric` treats the whole string as
+  unparseable. It now strips currency symbols, thousands separators and
+  parenthesised negatives before parsing, and raises rather than returning an
+  all-NaN column when a column truly has nothing parseable in it. The
+  string/numeric branch checks `pd.api.types.is_numeric_dtype` rather than
+  `dtype == object`, so it also parses correctly under pandas 3.0's non-object
+  default string dtype, not just the legacy `object` dtype.
 - `mkdocs.yml` had no `site_url`, so the generated `sitemap.xml` was empty and all
   38 documentation pages were uncrawlable, with no `rel=canonical` anywhere.
 - `CONTRIBUTING.md` documented a risk-tier coverage command measuring `metrics/` and

@@ -186,6 +186,30 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         self.id_cols_to_drop = id_cols_to_drop
         self.pii_patterns = pii_patterns
 
+    def __getstate__(self):
+        """Drop the raw encounter table from pickles and joblib bundles.
+
+        ``transform`` reads only ``encounter_summary_``, the per-donor aggregate
+        frozen at :meth:`fit` time. ``encounter_df`` is the PHI-bearing *input*,
+        so persisting it would make every saved model a patient-data disclosure:
+        a bundle handed to a vendor, attached to a ticket, or copied to a laptop
+        would carry the raw clinical rows with it. It is therefore replaced with
+        ``None`` on serialisation.
+
+        A round-tripped instance can still ``transform``. It cannot ``fit``
+        again until it is given the table back, which is the intended
+        trade-off. :func:`sklearn.base.clone` is unaffected, because clone goes
+        through ``get_params`` rather than pickle.
+
+        The bundle still contains ``encounter_summary_``: per-donor aggregates
+        keyed by ``merge_key``. That is the minimum ``transform`` needs, and it
+        is derived rather than raw, but it is not nothing. Treat a saved bundle
+        as donor data.
+        """
+        state = dict(super().__getstate__())
+        state["encounter_df"] = None
+        return state
+
     # ------------------------------------------------------------------
     # Validation helpers
     # ------------------------------------------------------------------
@@ -253,9 +277,17 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
 
         The fitted artefact ``encounter_summary_`` is a lightweight per-donor
         lookup containing the most-recent discharge date and total encounter
-        count.  No information from ``X`` flows into this summary, which
-        prevents temporal data leakage when the transformer is placed **before**
-        a time-based train/test split inside a pipeline.
+        count.  No information from ``X`` flows into this summary, so the
+        summary is identical whether it is fitted on a training split or the
+        full frame, and ``transform`` is idempotent.
+
+        .. warning::
+           That is the only leakage guarantee here. The summary aggregates
+           **every** row of ``encounter_df`` with no as-of cutoff, so a gift
+           dated 2020 is scored against encounters recorded in 2024 if the
+           encounter table contains them. Restrict ``encounter_df`` to
+           encounters observable at the decision point yourself, before
+           calling ``fit``.
 
         Parameters
         ----------

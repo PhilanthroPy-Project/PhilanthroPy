@@ -37,6 +37,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   deliberately does not check.
 
 ### Changed
+- Four docstrings described behaviour the code does not have, each now corrected
+  against a test in `tests/test_documented_contracts.py`. `FiscalYearTransformer`
+  said it *appends* `fiscal_year`/`fiscal_quarter`; `transform` in fact returns
+  only those two columns and drops the input, which silently discarded a
+  pipeline's features. `EncounterTransformer.fit` claimed it "prevents temporal
+  data leakage"; it only guarantees that nothing from `X` enters the summary, and
+  the summary itself has no as-of cutoff, so a 2020 gift is scored against 2024
+  encounters. `WealthScreeningImputerKNN.group_col_idx` documented per-group
+  stratified imputation "improving local accuracy"; it is stored and never read.
+  The `GratefulPatientFeaturizer` service-line weights were attributed to
+  "commonly-cited AMC development benchmarks"; they have no published source.
+  No behaviour changed in this entry: the docs moved to meet the code.
 - JOSS paper prep: deleted the stale duplicate `paper/paper.md` and `paper/paper.bib`
   (a divergent July draft with a different title and affiliation) and repointed
   `draft-pdf.yml` at the surviving root `paper.md`, which had never produced a PDF.
@@ -84,6 +96,37 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   string/numeric branch checks `pd.api.types.is_numeric_dtype` rather than
   `dtype == object`, so it also parses correctly under pandas 3.0's non-object
   default string dtype, not just the legacy `object` dtype.
+- `MatchingGiftFeaturizer` ran zero `check_estimator` checks — `tags._skip_test =
+  True` silently skipped the whole battery instead of excluding it from
+  `_STANDARD_ESTIMATORS` with a documented reason, the way `RFMTransformer`
+  already was. It has no such reason on its own (it genuinely cannot accept
+  the generic numeric ndarrays the battery feeds), so this falsified the
+  README/paper claim that every public estimator passes `check_estimator`.
+  `FinancialForecastModel` had the same gap for no documented reason at all —
+  it in fact passes the battery cleanly and is now in it. A new
+  `test_every_public_estimator_is_covered_by_the_battery_or_documented` test
+  cross-references `philanthropy.models.__all__` and
+  `philanthropy.preprocessing.__all__` against `_STANDARD_ESTIMATORS` plus a
+  reasoned exemption registry, so this can't recur silently. README, paper.md,
+  and the design-principles/security-review docs now state the one real
+  exception (`UpliftTLearner`) instead of claiming "every estimator" flatly.
+- Two JOSS paper drafts were tracked at once — `paper.md`/`paper.bib` at the repo
+  root (current, last touched 2026-08-11) and a stale copy in `paper/`
+  (2026-08-01, different affiliation and bibliography style). `draft-pdf.yml`
+  built only the stale one, so the current draft has never produced a PDF.
+  Deleted `paper/`; the workflow now points at the root files.
+- Saving a fitted `EncounterTransformer` or `GratefulPatientFeaturizer` wrote the
+  **raw clinical encounter table into the model bundle**. Both take
+  `encounter_df` as a constructor parameter, so `joblib.dump` / `save_model`
+  persisted medical record numbers, attending physicians and service lines
+  verbatim; a bundle attached to a ticket or handed to a vendor was a PHI
+  disclosure. Both now drop the raw table on serialisation and keep only the
+  per-donor `encounter_summary_` that `transform` actually reads, so a
+  round-tripped transformer still scores identically. `clone` is unaffected
+  (it goes through `get_params`, not pickle), and a refit now requires the table
+  to be supplied again rather than reusing stale clinical rows. `SECURITY.md`
+  previously treated pickles only as an inbound code-execution risk and never
+  mentioned that a bundle you produce is itself donor data; it now does.
 - `mkdocs.yml` had no `site_url`, so the generated `sitemap.xml` was empty and all
   38 documentation pages were uncrawlable, with no `rel=canonical` anywhere.
 - `CONTRIBUTING.md` documented a risk-tier coverage command measuring `metrics/` and

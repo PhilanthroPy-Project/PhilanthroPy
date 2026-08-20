@@ -5,15 +5,15 @@ every change must pass before it reaches CI. By participating you agree to abide
 by our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 New here? Start with a
-[good first issue](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
-— each one names the files to touch and the single command that proves it is
+[good first issue](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22);
+each one names the files to touch and the single command that proves it is
 done. A first PR does not need to be big; docs fixes and missing tests are
 genuinely wanted. Comment on the issue to claim it, and ask there if anything in
-this guide does not work — a question is a valid contribution too.
+this guide does not work; a question is a valid contribution too.
 
 ## Setup
 
-Fork the repository on GitHub first — you will not have push access to
+Fork the repository on GitHub first; you will not have push access to
 `PhilanthroPy-Project/PhilanthroPy`.
 
 ```bash
@@ -25,7 +25,7 @@ pip install -e ".[dev]"          # editable install so the working tree is what'
 sh scripts/install_hooks.sh      # pre-push hook: runs the suite before every push
 ```
 
-Install editable — a non-editable copy in site-packages will shadow your edits
+Install editable: a non-editable copy in site-packages will shadow your edits
 under pytest and silently run stale code.
 
 Expect the install plus a first green `make ci` to take about eight minutes.
@@ -39,9 +39,9 @@ make ci
 ```
 
 This runs, in order:
-1. Lint (flake8 — real defects only)
+1. Lint (flake8, real defects only)
 2. Type check (mypy)
-3. Collection check — catches missing imports immediately
+3. Collection check, catches missing imports immediately
 4. Docstring examples (`--doctest-modules`)
 5. Full test suite
 6. Coverage gate (branch coverage ≥ 92% overall)
@@ -50,7 +50,7 @@ If `make ci` passes, the lint, type, test, and overall-coverage jobs will pass
 CI. CI checks four more things `make ci` does not:
 
 - a **risk-tier coverage floor** over `preprocessing/`, `models/`, `ingest/`,
-  `cli.py`, and `utils/_persistence.py` — reproduce it locally with `make riskcov`
+  `cli.py`, and `utils/_persistence.py`; reproduce it locally with `make riskcov`
   (run it after `make ci`, which produces the coverage data). The include list and
   the floor are defined once in the `Makefile`; CI runs the same target, so the two
   cannot disagree.
@@ -87,14 +87,14 @@ Then open a pull request against `PhilanthroPy-Project/PhilanthroPy` `main`.
 GitHub offers the button on your fork right after the push. Fill in the
 [PR template](.github/PULL_REQUEST_TEMPLATE.md): what changed and why, and add a
 `CHANGELOG.md` entry under `[Unreleased]`. Add yourself to
-[CONTRIBUTORS.md](CONTRIBUTORS.md) in the same PR — one line, name or handle and
+[CONTRIBUTORS.md](CONTRIBUTORS.md) in the same PR: one line, name or handle and
 what you did.
 
-A body of just `Resolves #N` is not enough — say what changed and why even
+A body of just `Resolves #N` is not enough; say what changed and why even
 when an issue is linked; reviewers read the PR body first, not the issue.
 
 CI runs on pull requests from forks. If a job fails, push another commit to the
-same branch — the PR updates itself.
+same branch; the PR updates itself.
 
 ## Additional checks
 
@@ -118,4 +118,4 @@ release before removal. Per-symbol stability tiers are in
 [docs/reference/index.md](docs/reference/index.md).
 
 Cutting a release is a maintainer task and needs PyPI, Zenodo, and GitHub
-release permissions — the runbook lives in [RELEASING.md](RELEASING.md).
+release permissions; the runbook lives in [RELEASING.md](RELEASING.md).

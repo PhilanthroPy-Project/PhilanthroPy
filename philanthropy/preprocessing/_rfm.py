@@ -60,7 +60,7 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         X_df = X.copy() if hasattr(X, "columns") else pd.DataFrame(X, columns=self.feature_names_in_)
         X_df['gift_date'] = pd.to_datetime(X_df['gift_date'])
 
-        # Use the reference date frozen in fit — never the transform batch's
+        # Use the reference date frozen in fit, never the transform batch's
         # max, which would make recency depend on which rows share the batch.
         ref_date = self.reference_date_
 

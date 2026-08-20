@@ -200,7 +200,13 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
 
 
 class FiscalYearTransformer(TransformerMixin, BaseEstimator):
-    """Append Organisation-specific Fiscal Year and Quarter to dates."""
+    """Derive organisation-specific fiscal year and quarter from a date column.
+
+    ``transform`` returns only the two derived columns, ``fiscal_year`` and
+    ``fiscal_quarter``. The input columns are not carried through; put this
+    transformer in a :class:`~sklearn.compose.ColumnTransformer` branch if you
+    need the rest of ``X`` alongside them.
+    """
 
     def __init__(self, date_col: str = "gift_date", fiscal_year_start: int = 7):
         self.date_col = date_col
@@ -240,7 +246,7 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X) -> np.ndarray | pd.DataFrame:
-        """Append fiscal year and quarter columns.
+        """Compute the fiscal year and quarter for each row.
 
         Parameters
         ----------
@@ -250,9 +256,11 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
         Returns
         -------
         X_out : np.ndarray or pd.DataFrame
-            Feature matrix with ``fiscal_year`` and ``fiscal_quarter`` columns
-            appended. Returns a DataFrame when the transformer is configured
-            with ``set_output(transform="pandas")``, otherwise an ndarray.
+            Two columns, ``fiscal_year`` and ``fiscal_quarter``, and nothing
+            else. Returns a DataFrame when the transformer is configured with
+            ``set_output(transform="pandas")``, otherwise an ndarray. Rows whose
+            ``date_col`` value is missing or unparseable get ``NaN`` in both
+            columns; so does every row when ``date_col`` is absent from ``X``.
 
         Raises
         ------

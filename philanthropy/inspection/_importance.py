@@ -24,9 +24,9 @@ def donor_feature_importance(
     """Permutation feature importance for a fitted donor-scoring estimator.
 
     Answers "which donor signals move this model's score?" for **any** fitted
-    PhilanthroPy / scikit-learn estimator — including calibrated or
+    PhilanthroPy / scikit-learn estimator, including calibrated or
     gradient-boosted models (e.g. :class:`~philanthropy.models.MajorGiftClassifier`)
-    that do not expose ``feature_importances_`` — by measuring how far a scoring
+    that do not expose ``feature_importances_``, by measuring how far a scoring
     metric drops when each feature's values are randomly shuffled. It is a
     dependency-free alternative to SHAP for explaining and auditing donor scores.
 

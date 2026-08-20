@@ -5,8 +5,8 @@ Corporate matching-gift featurization for donor feature matrices.
 
 Many employers match their employees' charitable gifts at a fixed ratio
 (1:1, 2:1, ...). This transformer turns a donor's employer name and gift
-amount into matching-gift signals — whether an employer is present, the known
-corporate match ratio, and the potential matched dollars — so a propensity or
+amount into matching-gift signals (whether an employer is present, the known
+corporate match ratio, and the potential matched dollars), so a propensity or
 prioritisation model can weight prospects with employer-match upside.
 """
 

@@ -16,8 +16,8 @@ def load_ciob_fundraising() -> pd.DataFrame:
 
     A real open-government dataset: every not-for-profit that a New York City
     agency reported soliciting donations for, disclosed under the Conflicts of
-    Interest Board's (CIOB) mandate. It is an **affiliation registry** — one row
-    per ``(year, agency, nonprofit)`` link — **not** donor-level giving data.
+    Interest Board's (CIOB) mandate. It is an **affiliation registry**, one row
+    per ``(year, agency, nonprofit)`` link, **not** donor-level giving data.
 
     It carries no gift amounts, donor records, or engagement labels, so it does
     **not** support the RFM / propensity modelling in the rest of this library;

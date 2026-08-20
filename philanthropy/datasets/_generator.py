@@ -78,7 +78,7 @@ def generate_synthetic_donor_data(
     The underlying propensity model is a logistic function of a linear
     score ``z`` constructed from ``years_active``, ``event_attendance_count``,
     and a small amount of Gaussian noise.  This ensures the label is
-    statistically learnable—neither trivially predictable nor random.
+    statistically learnable, neither trivially predictable nor random.
 
     The function never raises an error for valid inputs.  Passing
     ``n_samples=0`` returns an empty DataFrame with the correct column

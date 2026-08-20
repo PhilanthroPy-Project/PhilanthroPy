@@ -5,8 +5,8 @@ Clinical-encounter feature engineering for medical philanthropy.
 
 This module bridges the clinical data warehouse and the advancement CRM by
 safely merging hospital encounter records (admission/discharge dates) with
-philanthropic gift histories.  The resulting temporal features—
-``days_since_last_discharge`` and ``encounter_frequency_score``—are strong
+philanthropic gift histories.  The resulting temporal features
+(``days_since_last_discharge`` and ``encounter_frequency_score``) are strong
 signals in major-gift propensity models trained for academic medical centres
 (AMCs) and hospital foundations.
 
@@ -64,13 +64,13 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
     temporal features:
 
     ``days_since_last_discharge``
-        Integer number of days between the donor's **most recent** discharge
+        Float number of days between the donor's **most recent** discharge
         date (observed at :meth:`fit` time) and the ``gift_date`` in ``X``.
         Negative values indicate gifts made *before* discharge (pre-admission
         solicitations are uncommon and are flagged as ``NaN`` by default unless
         ``allow_negative_days=True``).
     ``encounter_frequency_score``
-        Log-scaled count of distinct encounter records for the donor.  Because
+        ``log1p`` of the donor's encounter row count.  Because
         the distribution of encounter counts is highly right-skewed in real AMC
         data, the log transform normalises the feature for downstream linear
         models.  Donors with zero encounters receive a score of ``0.0``.
@@ -108,7 +108,7 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
     pii_patterns : tuple of str or None, default=None
         Case-insensitive substrings used to flag identifier-like column names
         for dropping. If ``None``, the class-level :attr:`PII_PATTERNS` default
-        is used. Provide your own tuple to broaden or narrow the heuristic — it
+        is used. Provide your own tuple to broaden or narrow the heuristic; it
         replaces (does not extend) the default when set.
 
     Attributes
@@ -253,9 +253,16 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
 
         The fitted artefact ``encounter_summary_`` is a lightweight per-donor
         lookup containing the most-recent discharge date and total encounter
-        count.  No information from ``X`` flows into this summary, which
-        prevents temporal data leakage when the transformer is placed **before**
-        a time-based train/test split inside a pipeline.
+        count.  It is derived from ``encounter_df`` alone: nothing from ``X``
+        or ``y`` enters it, so refitting inside a cross-validation fold cannot
+        leak gift-level information across folds.
+
+        This is not, on its own, a temporal guarantee. The summary takes the
+        maximum discharge date over every row of ``encounter_df``, whatever its
+        date. If ``encounter_df`` contains encounters recorded after your
+        evaluation cut-off, those dates reach both the training and the test
+        rows at transform time. Filter ``encounter_df`` to the training window
+        yourself before fitting; the transformer does not do it for you.
 
         Parameters
         ----------
@@ -338,11 +345,11 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         X_out : np.ndarray
             Enriched array with two new columns:
 
-            * ``days_since_last_discharge`` — Days elapsed between the donor's
+            * ``days_since_last_discharge``: Days elapsed between the donor's
               latest discharge and the gift date.  ``NaN`` for donors absent
               from the encounter table or (when ``allow_negative_days=False``)
               for gifts dated before discharge.
-            * ``encounter_frequency_score`` — ``log1p(encounter_count)``.
+            * ``encounter_frequency_score``: ``log1p(encounter_count)``.
               ``0.0`` for donors with no recorded encounters.
 
             All identifier-like columns (including ``merge_key``) are removed.

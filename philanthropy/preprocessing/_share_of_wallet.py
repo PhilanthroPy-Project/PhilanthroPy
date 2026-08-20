@@ -80,14 +80,8 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
         other strategies.
     add_indicator : bool, default=True
         Append a binary ``<col>__was_missing`` column for each imputed
-        wealth column.  Strongly recommended — absence of vendor records
+        wealth column.  Strongly recommended: absence of vendor records
         itself carries predictive signal.
-    group_col_idx : int or None, default=None
-        Column index of a group variable (e.g., zip-code encoded as int)
-        to stratify KNN imputation.  When provided (and
-        ``strategy="knn"``), imputation is performed independently per
-        group, improving local accuracy.
-
     Attributes
     ----------
     imputed_cols_ : list of str
@@ -126,13 +120,11 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
         strategy: Literal["median", "mean", "zero", "knn"] = "knn",
         n_neighbors: int = 5,
         add_indicator: bool = True,
-        group_col_idx: Optional[int] = None,
     ) -> None:
         self.wealth_cols = wealth_cols
         self.strategy = strategy
         self.n_neighbors = n_neighbors
         self.add_indicator = add_indicator
-        self.group_col_idx = group_col_idx
 
     def _resolve_cols(self, input_cols: list[str]) -> list[str]:
         if self.wealth_cols is not None:
@@ -486,7 +478,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
             self.capacity_floor,
         )
 
-        # Wealth sum — clip at 95th-percentile scale from fit to prevent score collapse
+        # Wealth sum: clip at 95th-percentile scale from fit to prevent score collapse
         wealth_raw = np.nansum(X_arr[:, w_indices], axis=1)
         wealth_clipped = np.clip(wealth_raw, 0.0, self.wealth_scale_)
 

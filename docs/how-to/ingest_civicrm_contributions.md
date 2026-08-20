@@ -1,6 +1,6 @@
 # Ingest CiviCRM contributions
 
-[CiviCRM](https://civicrm.org) is the CRM most small and mid-sized nonprofits actually run, and its `civicrm_contribution` table is where their giving history lives. `philanthropy.ingest` turns a contribution export into the donor-level feature table the estimators expect — no glue code, and without the two mistakes a bare `pd.read_csv` makes.
+[CiviCRM](https://civicrm.org) is the CRM most small and mid-sized nonprofits actually run, and its `civicrm_contribution` table is where their giving history lives. `philanthropy.ingest` turns a contribution export into the donor-level feature table the estimators expect, no glue code, and without the two mistakes a bare `pd.read_csv` makes.
 
 ```mermaid
 flowchart LR
@@ -12,7 +12,7 @@ flowchart LR
 
 ## Both spellings of the same table
 
-CiviCRM names its fields twice. A CSV export writes human labels — `Contact ID`, `Total Amount`, `Contribution Date`. APIv4 returns the underlying database columns — `contact_id`, `total_amount`, `receive_date`. The bridge normalises headers to the APIv4 name, so a hand-run export and a scripted API pull take the same path and produce the same frame.
+CiviCRM names its fields twice. A CSV export writes human labels: `Contact ID`, `Total Amount`, `Contribution Date`. APIv4 returns the underlying database columns: `contact_id`, `total_amount`, `receive_date`. The bridge normalises headers to the APIv4 name, so a hand-run export and a scripted API pull take the same path and produce the same frame.
 
 ```python
 from pathlib import Path
@@ -40,7 +40,7 @@ contributions = read_civicrm_contributions(export)
 print(sorted(contributions.columns))
 ```
 
-`read_civicrm_contributions` also accepts a **directory**, walked recursively — the shape you get from keeping a folder of monthly exports. Files are concatenated in sorted relative-path order, symlinks are not followed, and an Excel byte-order mark on the first header is stripped.
+`read_civicrm_contributions` also accepts a **directory**, walked recursively: the shape you get from keeping a folder of monthly exports. Files are concatenated in sorted relative-path order, symlinks are not followed, and an Excel byte-order mark on the first header is stripped.
 
 Reading is deliberately lossless: every row arrives as text, and nothing is filtered. Policy lives in the aggregation step, so the raw export stays inspectable.
 
@@ -57,7 +57,7 @@ assert float(features.loc["101", "total_gift_amount"]) == 1250.0   # not 1349
 assert float(features.loc["202", "total_gift_amount"]) == 750.0    # not 5750
 ```
 
-**Test-mode rows are real rows.** CiviCRM writes payment-processor test transactions into the same table, flagged `is_test` / `Test Mode`. They are always dropped — that is money nobody gave.
+**Test-mode rows are real rows.** CiviCRM writes payment-processor test transactions into the same table, flagged `is_test` / `Test Mode`. They are always dropped; that is money nobody gave.
 
 **A contribution is not a payment.** `contribution_status` separates `Completed` from `Pending`, `Failed`, `Refunded`, `Cancelled` and `Chargeback`. Only `Completed` is counted by default. Widen it when you mean to:
 
@@ -71,7 +71,7 @@ everything = civicrm_contributions_to_features(
 assert float(everything.loc["101", "total_gift_amount"]) == 1349.0
 ```
 
-If you ask for a status filter and the export has no `Contribution Status` column, the bridge raises a `UserWarning` rather than silently counting refunds. Add the field to your export mapping — or pass `statuses=None` to say you meant it.
+If you ask for a status filter and the export has no `Contribution Status` column, the bridge raises a `UserWarning` rather than silently counting refunds. Add the field to your export mapping, or pass `statuses=None` to say you meant it.
 
 ## The output is already an RFM table
 
@@ -85,9 +85,9 @@ One row per donor, indexed by `contact_id`:
 | `years_active`, `recency_days` | first / last gift vs. the reference date |
 | `distinct_financial_types` | breadth across Donation, Member Dues, Event Fee, … |
 
-`recency_days`, `gift_count` and `total_gift_amount` are the R, F and M of an RFM model, so you do not need `RFMTransformer` on top of this — it is already aggregated.
+`recency_days`, `gift_count` and `total_gift_amount` are the R, F and M of an RFM model, so you do not need `RFMTransformer` on top of this; it is already aggregated.
 
-**Leakage-safe.** Recency is anchored to the `reference_date` you pass, or to the latest gift in the batch — never to a moving "now". Pass it explicitly whenever you are rebuilding a historical training set, or a rerun next month silently produces different features.
+**Leakage-safe.** Recency is anchored to the `reference_date` you pass, or to the latest gift in the batch, never to a moving "now". Pass it explicitly whenever you are rebuilding a historical training set, or a rerun next month silently produces different features.
 
 **Replay-safe.** Two rows sharing a CiviCRM `Contribution ID` are the same contribution, and overlapping monthly exports are how that happens. They are collapsed, so a re-read does not double-count a gift.
 
@@ -123,7 +123,7 @@ print(features["affinity_score"].round(1))
 assert np.isfinite(features["affinity_score"]).all()
 ```
 
-Pair the export with an event or engagement feed if you want a real `event_attendance_count` — [Ingest UniSchema events](ingest_unischema_events.md) covers that side.
+Pair the export with an event or engagement feed if you want a real `event_attendance_count`; [Ingest UniSchema events](ingest_unischema_events.md) covers that side.
 
 ## Amounts, dates and currencies
 

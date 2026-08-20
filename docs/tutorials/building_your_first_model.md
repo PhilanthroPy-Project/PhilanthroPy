@@ -44,7 +44,7 @@ print(scores[:5])
 
 ## 5. Using Pipelines
 
-PhilanthroPy components drop into scikit-learn pipelines as-is — but **route them with a `ColumnTransformer`, not in series.**
+PhilanthroPy components drop into scikit-learn pipelines as-is, but **route them with a `ColumnTransformer`, not in series.**
 
 Each of these transformers consumes named columns and *replaces* every other column in its output. Chain them serially and `FiscalYearTransformer` hands its two-column `[fiscal_year, fiscal_quarter]` block to `WealthScreeningImputer`, which finds no wealth column and no-ops with a warning, and then to `DischargeToSolicitationWindowTransformer`, which now raises because `days_since_last_discharge` is gone. Before that guard existed the same mistake was silent: every feature came out `0.0` and the pipeline exited cleanly on a constant matrix.
 

@@ -2,7 +2,7 @@
 
 The executable specification for PhilanthroPy's public API.
 
-Introspection only — no fixtures, no data files. It asserts four things:
+Introspection only: no fixtures, no data files. It asserts four things:
 
 1. Every subpackage in ``philanthropy.__all__`` declares a non-empty ``__all__``,
    every name in it resolves, and it has a ``docs/reference/<name>.md`` page.
@@ -50,7 +50,7 @@ _EXEMPT = {
         "a Pipeline transformer, so the width contract does not apply."
     ),
     "UpliftTLearner": (
-        "fit(X, y, treatment) — the third positional argument breaks the "
+        "fit(X, y, treatment): the third positional argument breaks the "
         "fit(X, y) signature the callable-with-X-alone check assumes. This is "
         "why it lives in philanthropy.experimental."
     ),
@@ -309,7 +309,7 @@ def test_every_exemption_carries_a_reason():
 # it is checked here rather than read by hand at release time.
 # ---------------------------------------------------------------------------
 
-_TIER_HEADINGS = ("### Tier 1 — Stable", "### Tier 2 — Beta", "### Tier 3 — Experimental")
+_TIER_HEADINGS = ("### Tier 1: Stable", "### Tier 2: Beta", "### Tier 3: Experimental")
 
 
 def _tier_table_text():
@@ -341,7 +341,7 @@ def test_stability_tier_table_covers_every_public_symbol(subpackage):
     assert not missing, (
         f"docs/reference/index.md assigns no stability tier to "
         f"philanthropy.{subpackage}: {missing}. At 1.0 the tier table is the "
-        f"semver contract — a public symbol without one has no stated promise."
+        f"semver contract; a public symbol without one has no stated promise."
     )
 
 

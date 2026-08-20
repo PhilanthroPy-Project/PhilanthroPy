@@ -1,7 +1,7 @@
 # Model Validation & Benchmarks
 
 Every model here ships with a reproducible benchmark number. This page shows you
-those numbers — and why you should **not** trust them for your own program until
+those numbers, and why you should **not** trust them for your own program until
 you re-validate on your own data.
 
 !!! warning "These numbers are on synthetic data"
@@ -48,7 +48,7 @@ parentheses.**
 *(Measured with scikit-learn 1.7.2 on the synthetic dataset; your numbers will
 differ.)*
 
-The ranges are narrow — roughly ±0.01 on F1 and ±0.015 on ROC-AUC — so the
+The ranges are narrow (roughly ±0.01 on F1 and ±0.015 on ROC-AUC), so the
 models are genuinely close to each other on this task. Any comparison between
 them that turns on the third decimal is reading noise.
 
@@ -56,7 +56,7 @@ them that turns on the third decimal is reading noise.
 
 - **`PropensityScorer` is the floor.** It is a constant-probability baseline
   (P=0.5), so its ROC-AUC of 0.500 means exactly "no better than chance." Every
-  real model has to beat it. Here they all do, by a wide margin — but the
+  real model has to beat it. Here they all do, by a wide margin, but the
   synthetic data's separability inflates that margin.
 - **The baseline's precision/recall are 0.000 by construction, not by failure.**
   Since 0.6.0 its threshold comparison is strict (`proba > threshold`), so a
@@ -72,15 +72,15 @@ them that turns on the third decimal is reading noise.
   appears here only because its estimator is applicable.
 - **ROC-AUC is the most transferable metric** across base rates. Precision and
   recall depend on the 0.5 decision threshold and this pool's 0.677 positive
-  rate — far higher than a real major-donor base rate, which is typically a few
+  rate, far higher than a real major-donor base rate, which is typically a few
   percent. Expect precision to fall sharply on realistically imbalanced data.
 
 ## Validating on your own data
 
 1. Assemble a labelled historical dataset (features + a binary outcome you can
    observe, e.g. "made a major gift in the following year").
-2. Split **temporally**, not randomly — train on earlier years, test on later
-   ones — using `FiscalYearGroupedSplitter` to avoid leakage across fiscal
+2. Split **temporally**, not randomly: train on earlier years, test on later
+   ones, using `FiscalYearGroupedSplitter` to avoid leakage across fiscal
    boundaries.
 3. Report ROC-AUC plus precision/recall **at the threshold you will actually
    act on**, and calibrate that threshold to your team's capacity.

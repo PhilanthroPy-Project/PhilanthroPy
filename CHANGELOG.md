@@ -6,21 +6,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `philanthropy.metrics.conformal_pvalue`: the non-smoothed split-conformal
+  p-value of a donor score against a held-out calibration set,
+  `(1 + |{i : s_i >= s}|) / (n + 1)`. A calibrated probability threshold fixes no
+  error rate; thresholding this p-value at `alpha` bounds the false-positive rate
+  at `alpha` in finite samples with no distributional assumption. Both the `1 +`
+  and the `+ 1` are load-bearing and tested: the result is never 0 and never
+  above 1, and leave-one-out over exchangeable scores lands exactly on the
+  uniform lattice.
 - Test coverage for `constituent_events_to_features`: the all-unparseable-timestamps empty-frame path and the `distinct_source_systems` default-to-zero path when `sourceSystem` is absent from the input. (#51)
 - `AGENTS.md`: every change, including maintainer- and agent-authored ones, must
-  go on a branch and through a PR — no direct commits to `main`, no self-merges.
+  go on a branch and through a PR: no direct commits to `main`, no self-merges.
 - `tests/test_no_network.py` enforces in CI what the docs now promise: the package
   makes **no network calls**. Every socket entry point is monkeypatched to raise,
   then a full train/score cycle, an imputation pass and a CiviCRM ingest all run.
   A telemetry hook, HTTP client or lazily downloaded asset added later fails this
   test instead of shipping.
-- `docs/explanation/security_review_answers.md` — the ten questions an institutional
+- `docs/explanation/security_review_answers.md`: the ten questions an institutional
   security or privacy review actually asks, on one forwardable page (BAA status,
   dependency provenance, the pickle trust boundary, de-identification scope, bus
   factor, disclosure route).
-- `make riskcov` — the risk-tier coverage floor as a single source of truth. `ci.yml`
+- `make riskcov`: the risk-tier coverage floor as a single source of truth. `ci.yml`
   and `CONTRIBUTING.md` now both call it.
-- `scripts/issue-drafts/_TEMPLATE.md` and `scripts/check_issue_lines.py` — the issue
+- `scripts/issue-drafts/_TEMPLATE.md` and `scripts/check_issue_lines.py`: the issue
   shape that converts, and a drift checker for the `path:line` references in issue
   bodies. Deliberately outside `.github/ISSUE_TEMPLATE/`, which is the public chooser.
 - Two tests for guards that only fire at transform time and were previously
@@ -29,6 +37,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   deliberately does not check.
 
 ### Changed
+- JOSS paper prep: deleted the stale duplicate `paper/paper.md` and `paper/paper.bib`
+  (a divergent July draft with a different title and affiliation), restored the
+  leakage and grateful-patient-ethics citations the root `paper.md` had dropped,
+  and settled the affiliation to "Independent Researcher" across `paper.md` and
+  `.zenodo.json`, which previously disagreed three ways.
 - Added complete output-column documentation to all eleven preprocessing
   `get_feature_names_out` overrides that previously rendered blank in the API
   reference.
@@ -38,14 +51,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   distribution rather than the batch being transformed.
 - Documented `fit`, `predict`, `predict_proba` and `predict_affinity_score` on
   `MovesManagementClassifier`, `PlannedGivingIntentScorer`, `MajorGiftClassifier` and
-  `PropensityScorer` — the fitted attributes each sets, and that `PropensityScorer`'s
+  `PropensityScorer`: the fitted attributes each sets, and that `PropensityScorer`'s
   default threshold returns `classes_[0]` for every row.
 - `make_donor_dataset` now documents that it returns a **gift-level** frame, so
   `len(df) > n_donors` (each donor contributes 1–5 rows), and that
   `fiscal_year_start` and `lapse_rate` are accepted but currently unused.
 - `CLAUDE.md` is now `AGENTS.md`, the tool-neutral convention, with `CLAUDE.md`
   reduced to an `@AGENTS.md` import. Agents other than Claude Code were reading no
-  project instructions at all — not the leakage contract, not the dependency
+  project instructions at all: not the leakage contract, not the dependency
   constraint, not `make ci`.
 - `README.md` quickstart prints a result instead of ending in a bare `assert`, and
   documents the CLI path for readers who do not write Python.
@@ -53,6 +66,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   installable release since `0.6.0`. Now `0.6.x`, and kept current by the
   `RELEASING.md` checklist. Adds GitHub private vulnerability reporting as the
   preferred disclosure channel.
+- Replaced every em dash in the repository (paper, README, docs, docstrings, comments,
+  changelog, CI config) with ordinary punctuation. 431 of them across 91 files. The only
+  one left is inside a nonprofit name in the CIOB source CSV, which is data, not prose.
+- Corrected three docstrings that described behaviour the code does not have.
+  `FiscalYearTransformer` said it appends `fiscal_year` and `fiscal_quarter` to `X`;
+  `transform` returns only those two columns and drops the rest, so the docstring now
+  says that and points at `ColumnTransformer` for the append case.
+  `EncounterTransformer.fit` claimed that building `encounter_summary_` from
+  `encounter_df` alone "prevents temporal data leakage"; it only prevents leakage from
+  `X` across CV folds. The summary takes `max(discharge_date)` over every row of
+  `encounter_df` regardless of date, so encounters recorded after an evaluation cut-off
+  still reach both train and test rows. The caller has to filter `encounter_df`, and the
+  docstring now says so. `EncounterTransformer` also described
+  `days_since_last_discharge` as an integer (it is float64, to carry `NaN`) and
+  `encounter_frequency_score` as a count of *distinct* encounter records (it is
+  `log1p` of the row count).
+- Rewrote the provenance of `_SERVICE_LINE_CAPACITY_WEIGHTS`. The comment credited the
+  relative ordering to "commonly-cited AMC development benchmarks" without citing one.
+  There is no source: the numbers are hand-picked placeholders so that
+  `use_capacity_weights=True` runs out of the box. The comment and the
+  `capacity_weights` / `use_capacity_weights` parameter docs now say exactly that.
 
 ### Fixed
 - `mkdocs.yml` had no `site_url`, so the generated `sitemap.xml` was empty and all
@@ -64,14 +98,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Removed
 - `FiscalYearGroupedSplitter._iter_test_indices` and `_iter_test_masks`. Both were
-  unreachable — the class overrides `split`, so `cross_validate` never called
-  either — and the comment claiming `BaseCrossValidator` requires them was false.
+  unreachable: the class overrides `split`, so `cross_validate` never called
+  either, and the comment claiming `BaseCrossValidator` requires them was false.
+- `WealthScreeningImputerKNN(group_col_idx=...)`. The parameter was stored in `__init__`
+  and never read anywhere, while its docstring promised per-group KNN imputation
+  "improving local accuracy". Nothing in the library, tests, docs or README passed it, so
+  removing it changes no behaviour; passing it now raises `TypeError` instead of being
+  silently ignored.
 
 ### Fixed
 - `FiscalYearGroupedSplitter`'s module doctest asserted
   `... <= ... + 1 or True`, which passes for every possible input and so proved
-  nothing about the split. It now asserts what the class actually promises —
-  `fiscal_years[train_idx].max() < fiscal_years[test_idx].min()` — and a new
+  nothing about the split. It now asserts what the class actually promises,
+  `fiscal_years[train_idx].max() < fiscal_years[test_idx].min()`, and a new
   `test_default_splitter_no_leakage_gap_years_zero` covers the default
   `gap_years=0` path, which had no leakage test at all. Thanks to
   [@fuleinist](https://github.com/fuleinist) (Chris Chen) for the first external
@@ -79,7 +118,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   closes [#26](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/26)).
 
 ### Added
-- **CiviCRM contribution bridge** — `philanthropy.ingest.read_civicrm_contributions`
+- **CiviCRM contribution bridge**: `philanthropy.ingest.read_civicrm_contributions`
   and `civicrm_contributions_to_features` (Tier 2). Turns a CiviCRM contribution
   export, or an APIv4 `Contribution.get` result, into the one-row-per-donor
   feature table the estimators consume. Headers normalise to the APIv4 spelling,
@@ -94,12 +133,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   cannot be applied warns instead of silently summing refunds.
 
   Recency is anchored to `reference_date` or the batch's latest gift, never a
-  moving "now" — the same leakage contract as the UniSchema bridge. See
+  moving "now", the same leakage contract as the UniSchema bridge. See
   [docs/how-to/ingest_civicrm_contributions.md](docs/how-to/ingest_civicrm_contributions.md).
 
 ## [1.0.0] - TBD
 
-The API freeze. No code changes — 1.0.0 is a promise, not a feature.
+The API freeze. No code changes: 1.0.0 is a promise, not a feature.
 
 ### Changed
 - `Development Status :: 5 - Production/Stable`.
@@ -110,7 +149,7 @@ The API freeze. No code changes — 1.0.0 is a promise, not a feature.
   [docs/reference/index.md](docs/reference/index.md).
 
 ### Added
-- `test_stability_tier_table_covers_every_public_symbol` — the tier table is now
+- `test_stability_tier_table_covers_every_public_symbol`: the tier table is now
   machine-checked against `__all__`, so a new public symbol cannot ship without
   a stated tier. At 1.0 that table is the contract; an out-of-date one is a
   broken promise, not a docs nit.
@@ -143,9 +182,9 @@ The removal release. Every shim below shipped in 0.6.0 emitting a
   baseline is a constant 0.5), `FiscalYearGroupedSplitter(fiscal_year_start=...)`
   (`groups` already carries fiscal-year labels).
 - **`donor_acquisition_cost`, `cost_per_dollar_raised` and `fundraising_roi` are
-  keyword-only.** They do not share an argument order —
+  keyword-only.** They do not share an argument order:
   `cost_per_dollar_raised` takes expense first, `fundraising_roi` takes raised
-  first — so a positional call was silently accepted and returned a plausible
+  first, so a positional call was silently accepted and returned a plausible
   wrong number. It is now a `TypeError`.
 - **Four accidental second import paths moved behind underscores** so 1.0 does
   not freeze them: `metrics.scoring` → `metrics._scoring`,
@@ -154,7 +193,7 @@ The removal release. Every shim below shipped in 0.6.0 emitting a
   `utils._testing`. Every public symbol is unchanged and still exported from its
   subpackage; only a direct `from philanthropy.metrics.scoring import ...`
   breaks. Import from the subpackage instead.
-- `philanthropy/utils/_deprecation.py` is gone — nothing is deprecated at 0.7.0.
+- `philanthropy/utils/_deprecation.py` is gone: nothing is deprecated at 0.7.0.
 
 ### Removed
 - `tests/test_deprecations.py`, which existed solely to police the shims.
@@ -186,13 +225,13 @@ The removal release. Every shim below shipped in 0.6.0 emitting a
 - `philanthropy.model_selection`, `.experimental` and `.visualisation` are now
   importable from `import philanthropy` and listed in `__all__`; they raised
   `AttributeError` before while the docs rendered reference pages for them.
-- `philanthropy/py.typed` — the package now ships its type information.
+- `philanthropy/py.typed`: the package now ships its type information.
 - `joblib>=1.2` is declared; it was a direct import carried transitively.
-- `tests/test_public_api_contract.py` — an executable spec for the public API:
+- `tests/test_public_api_contract.py`: an executable spec for the public API:
   subpackage `__all__` completeness, reference-page coverage, the
   `predict_<thing>_(score|forecast)` naming and shape contract, and
   `get_feature_names_out` width. Two named exemptions, each with a reason.
-- `tests/test_metrics_oracles.py` — closed-form oracles for the money metrics:
+- `tests/test_metrics_oracles.py`: closed-form oracles for the money metrics:
   the textbook Gini definition, a term-by-term discounted annuity, and the
   EEOC four-fifths worked example.
 - Seven how-to guides: use the CLI, ingest UniSchema events, recommend ask
@@ -248,7 +287,7 @@ value: `LapsePredictor(lapse_window_years=...)`,
   `PropensityScorer`, `WealthPercentileTransformer`,
   `WealthScreeningImputerKNN`, `ShareOfWalletScorer`, `CRMCleaner`,
   `EncounterRecencyTransformer` and bare-default variants were added.
-  `RFMTransformer` moved to an explicit contract class — its `_skip_test=True`
+  `RFMTransformer` moved to an explicit contract class: its `_skip_test=True`
   tag was running 1 check instead of 46.
 - Branch coverage is enabled and gated; the risk-tier subtree has its own floor.
 - `docs/explanation/benchmarks.md` reports mean and min–max across five seeds
@@ -261,17 +300,17 @@ value: `LapsePredictor(lapse_window_years=...)`,
 
 ## [0.5.0] - 2026-07-24
 ### Added
-- Donor-base concentration metrics — `gift_concentration_gini` and
+- Donor-base concentration metrics: `gift_concentration_gini` and
   `top_donor_share` (`philanthropy.metrics`).
-- Campaign-efficiency metrics — `cost_per_dollar_raised` and `fundraising_roi`.
-- `philanthropy.utils.save_model` / `load_model` — self-describing model
+- Campaign-efficiency metrics: `cost_per_dollar_raised` and `fundraising_roi`.
+- `philanthropy.utils.save_model` / `load_model`: self-describing model
   bundles that warn on a scikit-learn / PhilanthroPy version mismatch at load
   time; the CLI now persists and loads through them.
-- `AskAmountRecommender` — capacity regressor exposing a discrete gift-array
+- `AskAmountRecommender`: capacity regressor exposing a discrete gift-array
   ask ladder (`predict_ask_array`).
-- `MatchingGiftFeaturizer` — corporate matching-gift features (`has_employer`,
+- `MatchingGiftFeaturizer`: corporate matching-gift features (`has_employer`,
   `match_ratio`, `potential_matched_amount`), leakage-safe.
-- `philanthropy.experimental.UpliftTLearner` — two-model uplift (treatment-
+- `philanthropy.experimental.UpliftTLearner`: two-model uplift (treatment-
   effect) scorer for appeals (`predict_uplift_score`).
 - `MovesManagementClassifier` is now covered by the `check_estimator` battery.
 - Dependabot (`github-actions` + `pip`), a CodeQL scanning workflow, and a
@@ -282,12 +321,12 @@ value: `LapsePredictor(lapse_window_years=...)`,
   when absent).
 - Community health files: `.github` issue/PR templates,
   `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), and `SECURITY.md`.
-- flake8 lint gate — `.flake8` (enforces pyflakes `F` + syntax `E9` defects),
+- flake8 lint gate: `.flake8` (enforces pyflakes `F` + syntax `E9` defects),
   a `make lint` target folded into `make ci`, and a CI step.
-- `philanthropy.inspection.donor_feature_importance` — model-agnostic permutation
+- `philanthropy.inspection.donor_feature_importance`: model-agnostic permutation
   feature importance (dependency-free interpretability; works on calibrated models
   that lack `feature_importances_`).
-- `philanthropy.metrics.disparate_impact_ratio` and `selection_rate_by_group` —
+- `philanthropy.metrics.disparate_impact_ratio` and `selection_rate_by_group`:
   four-fifths-rule fairness diagnostics for scored cohorts.
 - `philanthropy` command-line interface (`train` / `score` / `validate`) over CSV.
 - `EncounterTransformer(pii_patterns=...)` to override the PII column heuristic
@@ -309,7 +348,7 @@ value: `LapsePredictor(lapse_window_years=...)`,
 
 ### Fixed
 - `RFMTransformer` freezes the recency reference date in `fit`
-  (`reference_date_`) instead of recomputing it from the transform batch — a
+  (`reference_date_`) instead of recomputing it from the transform batch, a
   leakage-contract violation that made a donor's recency depend on batchmates.
 - `LapsePredictor.predict_lapse_score` no longer raises `IndexError` when fit
   on a single-class training fold.
@@ -330,7 +369,7 @@ value: `LapsePredictor(lapse_window_years=...)`,
 
 ## [0.4.0] - 2026-07-18
 ### Added
-- `philanthropy.ingest` — the UniSchema on-ramp. `constituent_events_to_features()`
+- `philanthropy.ingest`: the UniSchema on-ramp. `constituent_events_to_features()`
   aggregates a UniSchema `ConstituentEvent` stream into a one-row-per-donor
   feature table whose columns (`total_gift_amount`, `years_active`,
   `event_attendance_count`, `last_gift_date`, ...) feed the estimators directly;
@@ -339,7 +378,7 @@ value: `LapsePredictor(lapse_window_years=...)`,
   latest event), at-least-once-safe (deduplicates by `eventId`).
 - `constituent_events_to_features` and `read_constituent_events` re-exported at
   the top level (`from philanthropy import constituent_events_to_features`).
-- `examples/quickstart.py` and `examples/unischema_to_scores.py` — runnable,
+- `examples/quickstart.py` and `examples/unischema_to_scores.py`: runnable,
   end-to-end scripts (train + score; UniSchema `ConstituentEvent` stream →
   features → score). Smoke-tested in `tests/test_examples.py`.
 - tests/test_ingest.py (aggregation, identity resolution, dedup, file/dir
@@ -377,7 +416,7 @@ value: `LapsePredictor(lapse_window_years=...)`,
 ### Added
 - FinancialForecastModel: hybrid LSTM-ARIMA revenue/giving forecaster
   (linear ARIMA-surrogate + neural residual component) with
-  `predict_revenue_forecast(X, horizon)`; leakage-safe — fill values and
+  `predict_revenue_forecast(X, horizon)`; leakage-safe: fill values and
   autoregressive coefficients frozen at `fit()`; passes sklearn
   `check_estimator`
 - tests/test_forecast_model.py (fit/predict, forecast horizon, leakage,
@@ -385,7 +424,7 @@ value: `LapsePredictor(lapse_window_years=...)`,
 - PyPI packaging: complete project metadata, classifiers, keywords, and
   project URLs (docs / repo / changelog / issues); version bumped to 0.3.0
 - MANIFEST.in so the sdist ships source only (no tests/dev artifacts)
-- PyPI Trusted Publishing workflow (.github/workflows/publish.yml) — OIDC,
+- PyPI Trusted Publishing workflow (.github/workflows/publish.yml): OIDC,
   no stored token, fires on published GitHub Releases (v*.*.*)
 - CONTRIBUTING.md split out of the README
 - CITATION.cff for Zenodo/DOI archival

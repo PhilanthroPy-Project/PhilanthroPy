@@ -47,7 +47,7 @@ from philanthropy.preprocessing import (
 
 
 # ---------------------------------------------------------------------------
-# SECTION 1 — Standard estimators (no required args)
+# SECTION 1: Standard estimators (no required args)
 #
 # This is the ONE place that answers "is X check_estimator compliant?".  Every
 # estimator that can run the battery belongs here, configured and/or at bare
@@ -100,7 +100,7 @@ def test_sklearn_compliance(estimator, check):
 
 
 # ---------------------------------------------------------------------------
-# SECTION 1b — RFMTransformer
+# SECTION 1b: RFMTransformer
 #
 # RFMTransformer is row-reducing (one row per donor, not per input row) and
 # returns a DataFrame whose first column is a string donor_id, so it is not a
@@ -160,7 +160,7 @@ class TestRFMTransformerCompliance:
 
 
 # ---------------------------------------------------------------------------
-# SECTION 2 — EncounterTransformer manual compliance
+# SECTION 2: EncounterTransformer manual compliance
 # ---------------------------------------------------------------------------
 
 _MINIMAL_ENCOUNTER_DF = pd.DataFrame({
@@ -222,7 +222,7 @@ class TestEncounterTransformerCompliance:
 
 
 # ---------------------------------------------------------------------------
-# SECTION 3 — GratefulPatientFeaturizer manual compliance
+# SECTION 3: GratefulPatientFeaturizer manual compliance
 # ---------------------------------------------------------------------------
 
 _MINIMAL_ENC_DF = pd.DataFrame({
@@ -284,7 +284,7 @@ class TestGratefulPatientFeaturizerCompliance:
 
 
 # ---------------------------------------------------------------------------
-# SECTION 4 — Pipeline integration smoke tests
+# SECTION 4: Pipeline integration smoke tests
 # ---------------------------------------------------------------------------
 
 def test_donor_propensity_model_in_pipeline_with_5fold_cv():
@@ -332,7 +332,7 @@ def test_wealth_imputer_in_pipeline_does_not_contaminate_folds():
 
     # Not all fold fill values should be identical
     assert len(set(fill_values)) > 1, (
-        "All fold fill values are identical — possible full-dataset leakage"
+        "All fold fill values are identical: possible full-dataset leakage"
     )
 
 

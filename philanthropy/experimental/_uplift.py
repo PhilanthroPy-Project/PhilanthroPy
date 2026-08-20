@@ -4,7 +4,7 @@ philanthropy.experimental._uplift
 Two-model (T-learner) uplift estimator for fundraising appeals.
 
 Experimental: not yet check_estimator compliant. ``fit`` takes an extra
-``treatment`` argument, which breaks the standard ``fit(X, y)`` signature —
+``treatment`` argument, which breaks the standard ``fit(X, y)`` signature;
 this is why the estimator lives in the experimental package.
 """
 

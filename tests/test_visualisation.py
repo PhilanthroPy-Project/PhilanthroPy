@@ -2,7 +2,7 @@
 tests/test_visualisation.py
 Headless test suite for philanthropy.visualisation.
 
-These assert on the artists the functions actually draw — bar heights, patch
+These assert on the artists the functions actually draw: bar heights, patch
 counts, axis limits, legend text. `isinstance(ax, plt.Axes)` passes for any
 function that returns an Axes, including one that plotted nothing.
 """
@@ -43,7 +43,7 @@ def test_affinity_histogram_draws_the_requested_bins(scores):
     assert ax.get_title() == "Affinity Score Distribution"
     assert ax.get_xlabel() == "Affinity Score (0-100)"
     assert ax.get_ylabel() == "Frequency"
-    # bins=20 in _plots.py — one patch per bin, and they must hold every score.
+    # bins=20 in _plots.py: one patch per bin, and they must hold every score.
     assert len(ax.patches) == 20
     assert sum(p.get_height() for p in ax.patches) == pytest.approx(len(scores))
 

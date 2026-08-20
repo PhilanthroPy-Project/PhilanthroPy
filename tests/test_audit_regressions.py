@@ -191,7 +191,7 @@ def test_encounter_transformer_no_overflow_on_extreme_span():
 def test_csv_injection_neutralised_in_pandas_string_dtype_columns():
     # The neutraliser used to iterate select_dtypes(include=["object"]).
     # pandas 4 stops returning `str`-dtype columns for that query, which would
-    # silently leave donor-supplied text unescaped — the exact CWE-1236 hole
+    # silently leave donor-supplied text unescaped, the exact CWE-1236 hole
     # the function exists to close. Column dtype must not decide this.
     df = pd.DataFrame({
         "name": pd.array(["=cmd|'/c calc'!A1", "safe"], dtype="string"),

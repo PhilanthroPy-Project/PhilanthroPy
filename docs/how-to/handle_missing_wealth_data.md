@@ -12,7 +12,7 @@ Third-party wealth vendors rarely match every record in a database. This guide s
 * `zero`: Treat missing data as zero wealth. Aggressive.
 
 ### Missingness indicators
-Set `add_indicator=True` and the imputer appends a `<col>__was_missing` column for each imputed field. Keep this on when the absence itself carries information. For many vendors, **missing data is a signal** — the donor might be a patient who hasn't been screened yet, or someone new to the database.
+Set `add_indicator=True` and the imputer appends a `<col>__was_missing` column for each imputed field. Keep this on when the absence itself carries information. For many vendors, **missing data is a signal**: the donor might be a patient who hasn't been screened yet, or someone new to the database.
 
 ```python
 from philanthropy.preprocessing import WealthScreeningImputer

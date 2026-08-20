@@ -10,9 +10,9 @@ series forecasting using a hybrid ARIMA and neural network model", *Neuro-
 computing*; and the more recent LSTM-ARIMA revenue-forecasting work) shows that
 a giving series carries **two** distinct kinds of structure:
 
-* a *linear* / autoregressive component — trend, fiscal-year momentum, and the
+* a *linear* / autoregressive component: trend, fiscal-year momentum, and the
   short-memory autocorrelation that classical **ARIMA** captures well; and
-* a *nonlinear* residual component — appeal-driven spikes, transformational
+* a *nonlinear* residual component: appeal-driven spikes, transformational
   mega-gifts, and macro-economic shocks that a linear model cannot express and
   that a neural network (an **LSTM** in the source papers) learns from the
   ARIMA residuals.
@@ -21,15 +21,15 @@ a giving series carries **two** distinct kinds of structure:
 ``y = linear(X) + nonlinear_residual(X)`` **without any heavy dependency** (no
 TensorFlow, Keras, or statsmodels): the linear component is a
 :class:`~sklearn.linear_model.LinearRegression` and the nonlinear residual
-component is a :class:`~sklearn.neural_network.MLPRegressor` — scikit-learn's
+component is a :class:`~sklearn.neural_network.MLPRegressor`, scikit-learn's
 feed-forward neural network, which stands in for the LSTM while keeping the
 package pure-``scikit-learn``.  Multi-step forecasting is produced by rolling a
 frozen autoregressive model of the target forward over the requested horizon.
 
 Leakage safety
 --------------
-Every fitted statistic — the missing-value fill values, both sub-models, and
-the autoregressive roll-forward coefficients — is computed **exclusively** from
+Every fitted statistic (the missing-value fill values, both sub-models, and
+the autoregressive roll-forward coefficients) is computed **exclusively** from
 the training data during :meth:`fit` and frozen before any forecast is
 produced, mirroring the contract of
 :class:`~philanthropy.preprocessing.WealthScreeningImputer`.
@@ -54,10 +54,10 @@ class FinancialForecastModel(RegressorMixin, BaseEstimator):
     closes the loop with the LSTM-ARIMA hybrid forecasting literature.  It fits
     two complementary sub-models on the training data:
 
-    * a **linear (ARIMA-surrogate) component** — a
+    * a **linear (ARIMA-surrogate) component**: a
       :class:`~sklearn.linear_model.LinearRegression` mapping the feature
       matrix to giving revenue, capturing the linear / trend structure; and
-    * a **nonlinear (LSTM-surrogate) component** — a
+    * a **nonlinear (LSTM-surrogate) component**: a
       :class:`~sklearn.neural_network.MLPRegressor` fitted on the *residuals*
       of the linear component, capturing the nonlinear structure a linear model
       leaves behind.

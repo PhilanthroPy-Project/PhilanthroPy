@@ -19,14 +19,14 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted, validate_data
 
-# Illustrative default service-line capacity weights. The relative ordering
-# reflects commonly-cited AMC development benchmarks (cardiac, oncology, and
-# neuroscience programs generate a disproportionate share of grateful-patient
-# major gifts relative to their encounter volume), but the exact multipliers are
-# defaults, not gospel: different foundations weight service lines differently.
-# Override per-institution via the ``capacity_weights`` constructor parameter and
-# have the values reviewed by your governance/advancement committee. See
-# docs/explanation/design_principles.md.
+# Placeholder service-line capacity weights, so that use_capacity_weights=True
+# has something to run with out of the box. These numbers are hand-picked, not
+# estimated: they are not derived from any dataset, study, or published
+# benchmark, and no claim is made that they generalise. Treat them as a shape
+# (some service lines get weighted above general medicine) rather than as
+# values. Any real deployment should pass ``capacity_weights`` fitted to, or at
+# least reviewed against, its own giving history. See
+# docs/how-to/build_grateful_patient_features.md.
 _SERVICE_LINE_CAPACITY_WEIGHTS: dict[str, float] = {
     "cardiac": 3.2,
     "oncology": 2.9,
@@ -70,13 +70,15 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         If present, total DRG weight per donor is computed.
     use_capacity_weights : bool, default=True
         If True, apply service-line capacity weights to scale the clinical
-        gravity score. Weights come from ``capacity_weights`` (or the illustrative
-        defaults in :data:`_SERVICE_LINE_CAPACITY_WEIGHTS` when unset).
+        gravity score. Weights come from ``capacity_weights``, or from the
+        hand-picked placeholder defaults in
+        :data:`_SERVICE_LINE_CAPACITY_WEIGHTS` when unset.
     capacity_weights : dict of {str: float} or None, default=None
         Per-service-line multipliers applied when ``use_capacity_weights=True``.
         Keys are normalised service-line names (lowercased, non-alpha collapsed to
-        ``_``); unknown lines fall back to ``1.0``. If ``None``, illustrative AMC
-        defaults are used — override with your foundation's board-approved values.
+        ``_``); unknown lines fall back to ``1.0``. If ``None``, the hand-picked
+        placeholder defaults in :data:`_SERVICE_LINE_CAPACITY_WEIGHTS` are used.
+        They are not benchmarked against any dataset; supply your own.
     merge_key : str, default="donor_id"
         Column name present in both the encounter table and ``X`` used to merge.
     discharge_col : str, default="discharge_date"
@@ -174,7 +176,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         ValueError
             If neither ``encounter_df`` nor ``encounter_path`` is set.
         """
-        # Step 1: Load encounter data — snapshot, never store raw_enc
+        # Step 1: Load encounter data (snapshot it; never store raw_enc)
         if self.encounter_path is not None:
             raw_enc = pd.read_parquet(self.encounter_path)
         elif self.encounter_df is not None:
@@ -310,7 +312,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
             if self.merge_key in self.feature_names_in_:
                 X_df = X[[self.merge_key]].copy()
             else:
-                # No merge key available — return zeros
+                # No merge key available: return zeros
                 warnings.warn(
                     f"merge_key {self.merge_key!r} is not in X (columns: "
                     f"{list(X.columns)}); every clinical feature is 0.0. Route "
@@ -330,7 +332,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
                 {self.merge_key: arr[:, col_idx]}
             )
         else:
-            # No merge key — cannot join, return zeros
+            # No merge key: cannot join, return zeros
             warnings.warn(
                 f"merge_key {self.merge_key!r} could not be located in X; every "
                 f"clinical feature is 0.0. Pass a DataFrame carrying "
@@ -349,7 +351,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
             how="left",
         )
 
-        # Step 5: fillna(0.0) — unknown donors get zeros
+        # Step 5: fillna(0.0) so unknown donors get zeros
         result = merged[_FEATURE_COLS].fillna(0.0)
 
         return result.to_numpy(dtype=np.float64)

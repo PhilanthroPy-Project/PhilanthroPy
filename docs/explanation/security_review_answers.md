@@ -13,7 +13,7 @@ answers, see [Compliance considerations](compliance_considerations.md).
 
 ## 1. Does the software send data anywhere?
 
-**No.** PhilanthroPy makes no network calls of any kind — no telemetry, no usage
+**No.** PhilanthroPy makes no network calls of any kind: no telemetry, no usage
 analytics, no license check, no phone-home, no automatic model or dataset download,
 and no third-party data append.
 
@@ -57,7 +57,7 @@ Python ecosystem:
 | `joblib` | `>=1.2` | model persistence |
 
 `matplotlib` and `seaborn` are needed only for the plotting helpers and are
-optional — CI includes a job asserting the package imports without `matplotlib`
+optional; CI includes a job asserting the package imports without `matplotlib`
 installed. Supported Python is 3.9 and newer.
 
 There are no deep-learning dependencies. That is a deliberate constraint, not an
@@ -89,7 +89,7 @@ applies equally to any scikit-learn model you load. See
 ## 7. Does it de-identify our data for us?
 
 **No, and you should not rely on it as though it did.** `CRMCleaner`'s
-`PII_PATTERNS` column-dropping is a name-based heuristic — defence in depth against
+`PII_PATTERNS` column-dropping is a name-based heuristic, defence in depth against
 obvious identifier columns being fed into a model, not de-identification under HIPAA
 Safe Harbor (45 CFR 164.514(b)) or Expert Determination (164.514(a)).
 
@@ -100,7 +100,7 @@ is in [Compliance considerations](compliance_considerations.md).
 ## 8. Does it make decisions about patients or donors?
 
 It produces **scores, not decisions.** The scoring methods return a ranking signal
-for a human to act on — a prioritised call list for a gift officer. Nothing in the
+for a human to act on: a prioritised call list for a gift officer. Nothing in the
 package takes an action, sends a solicitation, or writes back to your CRM.
 
 The package also ships a fairness diagnostic (`disparate_impact_ratio`, a
@@ -119,7 +119,7 @@ configuration are in the repository, so a successor can verify the software stil
 works before changing it. There is no data or credential held by the maintainer
 that you would need to recover.
 
-If continuity matters to your review, say so in an issue — a second maintainer with
+If continuity matters to your review, say so in an issue; a second maintainer with
 merge rights is a known gap being worked on.
 
 ## 10. How do we report a vulnerability?

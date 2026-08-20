@@ -1,4 +1,4 @@
-"""Method reference — the donor-analytics pipeline from Lalakiya (2025).
+"""Method reference: the donor-analytics pipeline from Lalakiya (2025).
 
 Reproduces the *method* described in:
 
@@ -13,14 +13,14 @@ Tables III/IV/VI/IX and Fig. 6, using PhilanthroPy's own ``RFMTransformer`` and
 
 Scope (read this): a reference implementation of the *method* on reproducible
 SYNTHETIC donor data. It is **not** a reproduction of the paper's reported
-metrics, and it is **not** run on the paper's cited dataset. (That dataset — NYC
+metrics, and it is **not** run on the paper's cited dataset. (That dataset, NYC
 CIOB "Official Fundraising by City Agencies", exposed here as
-``load_ciob_fundraising`` — is an agency<->nonprofit affiliation registry with
+``load_ciob_fundraising``, is an agency<->nonprofit affiliation registry with
 no donor-level giving, so it cannot produce RFM features or an engagement
 target.) Every number below depends only on the synthetic generator seeded here.
 
 Boosting stand-in: scikit-learn's ``HistGradientBoosting`` replaces the paper's
-XGBoost — PhilanthroPy depends only on the scikit-learn stack.
+XGBoost; PhilanthroPy depends only on the scikit-learn stack.
 
 Run it:
 
@@ -96,7 +96,7 @@ def _engagement_label(rfm: pd.DataFrame, seed: int = RANDOM_STATE) -> np.ndarray
 
 
 def main() -> None:
-    # 1) RFM feature engineering — the paper's core preprocessing step.
+    # 1) RFM feature engineering, the paper's core preprocessing step.
     gifts = _synthetic_gift_log()
     rfm = RFMTransformer().fit_transform(gifts)
     X = rfm[["recency", "frequency", "monetary"]]
@@ -140,7 +140,7 @@ def main() -> None:
     # 3) Permutation importance via the library helper (paper Fig. 6 / SHAP analog).
     best = RandomForestClassifier(n_estimators=150, random_state=RANDOM_STATE).fit(X, y)
     importance = donor_feature_importance(best, X, y, random_state=RANDOM_STATE)
-    print("\nFeature importance (permutation — SHAP analog):")
+    print("\nFeature importance (permutation, SHAP analog):")
     print(importance.to_string(index=False, float_format=fmt))
 
     # 4) RFM<->engagement correlation (paper Table IX analog).

@@ -1,13 +1,13 @@
 /* ==========================================================================
-   PhilanthroPy docs — Apple-style visual system
+   PhilanthroPy docs: Apple-style visual system
    San Francisco system type · airy light canvas · one restrained blue accent.
    The signature: a "verified guarantees" spec row (leakage-safe, estimator-check
-   clean) styled like Apple's tech-spec strips — true to a library whose whole
+   clean) styled like Apple's tech-spec strips, true to a library whose whole
    pitch is rigor.
    ========================================================================== */
 
 :root {
-  /* System font stack — renders as San Francisco on Apple platforms, graceful
+  /* System font stack: renders as San Francisco on Apple platforms, graceful
      fallbacks elsewhere (the same approach apple.com uses). */
   --md-text-font: -apple-system, BlinkMacSystemFont, "SF Pro Text",
     "Helvetica Neue", "Segoe UI", Helvetica, Arial, sans-serif;

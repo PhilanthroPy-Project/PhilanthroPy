@@ -6,7 +6,7 @@ RISK_TIER := philanthropy/preprocessing/*,philanthropy/models/*,philanthropy/ing
 RISK_FLOOR := 93
 
 lint:
-	@echo "==> Linting (flake8 — real defects)..."
+	@echo "==> Linting (flake8, real defects)..."
 	python -m flake8 philanthropy tests examples
 
 typecheck:

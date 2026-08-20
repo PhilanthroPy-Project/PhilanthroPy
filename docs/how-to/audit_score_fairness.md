@@ -1,6 +1,6 @@
 # Audit score fairness
 
-Wealth and capacity features — estimated net worth, real-estate value, geography — can stand in for protected characteristics. A model that never sees a protected attribute can still produce disparate outcomes through those proxies. `philanthropy.metrics` gives you the two diagnostics for checking.
+Wealth and capacity features (estimated net worth, real-estate value, geography) can stand in for protected characteristics. A model that never sees a protected attribute can still produce disparate outcomes through those proxies. `philanthropy.metrics` gives you the two diagnostics for checking.
 
 !!! warning "A diagnostic, not a clearance"
     A passing ratio does not certify a model as non-discriminatory. The choice of protected groups and of decision threshold materially changes the result. Involve your equity and compliance stakeholders before acting on scores.
@@ -27,7 +27,7 @@ model = DonorPropensityModel(n_estimators=50, random_state=0).fit(
 scores = model.predict_affinity_score(df[cols].to_numpy())
 
 # A protected attribute the model never saw. In production this is a real CRM
-# field, joined in only for the audit — not a feature.
+# field, joined in only for the audit, not a feature.
 region = rng.choice(["north", "south", "east", "west"], size=len(df))
 
 flagged = (scores >= 70).astype(int)
@@ -35,7 +35,7 @@ rates = selection_rate_by_group(flagged, region)
 print({g: round(r, 3) for g, r in sorted(rates.items())})
 ```
 
-`selection_rate_by_group` returns the fraction selected within each group. Read it before the ratio — a ratio of 0.5 means something very different at rates of 0.80/0.40 than at 0.002/0.001.
+`selection_rate_by_group` returns the fraction selected within each group. Read it before the ratio: a ratio of 0.5 means something very different at rates of 0.80/0.40 than at 0.002/0.001.
 
 ## The four-fifths rule
 
@@ -46,7 +46,7 @@ ratio = disparate_impact_ratio(flagged, region)
 print(f"disparate impact ratio: {ratio:.3f}")
 
 if ratio < 0.8:
-    print("below the four-fifths threshold — investigate before acting")
+    print("below the four-fifths threshold; investigate before acting")
 
 assert 0.0 <= ratio <= 1.0
 # The ratio is exactly min/max over the per-group selection rates.
@@ -94,7 +94,7 @@ with pytest.raises(ValueError, match="missing"):
     selection_rate_by_group([1, 0, 1], [np.nan, 1.0, 1.0])
 ```
 
-Decide what an unknown group means for your audit and encode it explicitly — as its own `"unknown"` category, or by scoping the audit to the recorded population and saying so.
+Decide what an unknown group means for your audit and encode it explicitly, as its own `"unknown"` category, or by scoping the audit to the recorded population and saying so.
 
 ## What to do with a failing ratio
 

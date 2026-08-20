@@ -111,7 +111,7 @@ class TestGratefulPatientFeaturizer:
         )
         gpf.fit(X_donors)
         result = gpf.transform(X_donors)
-        # total_drg_weight is col 3 — should be 0.0 (from fillna after NaN)
+        # total_drg_weight is col 3, should be 0.0 (from fillna after NaN)
         assert (result[:, 3] == 0.0).all(), (
             "Without drg_weight_col, total_drg_weight must be 0.0 after fillna"
         )

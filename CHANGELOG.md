@@ -37,6 +37,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   deliberately does not check.
 
 ### Changed
+- `AGENTS.md` said "never merge your own PR; open it and leave the merge to
+  review" while `.github/CODEOWNERS` is `* @shivamlalakiya` and no second account
+  holds merge rights. Taken literally the rule means nothing ever merges, and it
+  was visibly not being followed. It now describes what is actually required: a
+  PR for every change, green CI before merge, a second reviewer when one is
+  available, the maintainer merging their own PR when one is not, and agents never
+  merging at all. The section says explicitly that this is a description rather
+  than an endorsement, and points at the real fix.
 - Four docstrings described behaviour the code does not have, each now corrected
   against a test in `tests/test_documented_contracts.py`. `FiscalYearTransformer`
   said it *appends* `fiscal_year`/`fiscal_quarter`; `transform` in fact returns

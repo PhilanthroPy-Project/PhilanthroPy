@@ -75,6 +75,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   preferred disclosure channel.
 
 ### Fixed
+- Two `EncounterTransformer` output columns were documented with the wrong type
+  and the wrong semantics. `days_since_last_discharge` was described as an
+  "Integer number of days"; it is `float64`, and it has to be, because a donor
+  absent from the encounter table gets `NaN` and an integer dtype cannot carry
+  that. A caller who trusted the docstring and cast the column would silently
+  destroy the missingness, which is signal in this library.
+  `encounter_frequency_score` was described as a "Log-scaled count of distinct
+  encounter records"; it is `log1p` of the **row** count, so a donor with three
+  rows on two dates scores `log1p(3)`, not `log1p(2)`. Both are now stated
+  correctly and locked by tests in `tests/test_documented_contracts.py`. Found
+  during review of the em-dash branch; docstrings only, no behaviour change.
 - `LapsePredictor` and `experimental.UpliftTLearner` validated input with
   `check_array`/`check_X_y` instead of `validate_data`, the convention every
   other estimator follows. Neither set `feature_names_in_`, so a DataFrame with

@@ -260,8 +260,11 @@ coverage floor (`pyproject.toml`). CI additionally enforces a 93% coverage floor
 on the risk-tier subtree, runs the suite across an OS and Python-version matrix,
 installs at the declared dependency floors on Python 3.9, builds the
 distributions and checks their metadata with `twine`, and verifies the package
-imports without a plotting stack installed. Every public estimator passes
-`sklearn.utils.estimator_checks.check_estimator`.
+imports without a plotting stack installed. Every public estimator that fits
+the scikit-learn `fit(X, y)` contract passes
+`sklearn.utils.estimator_checks.check_estimator`; the one documented exception
+is `UpliftTLearner` (Tier 3, `philanthropy.experimental`), whose
+`fit(X, y, treatment)` signature breaks that contract.
 
 No approximate scale is attached to the AI use here. The author has not measured
 the split and will not estimate one; the mechanism and the review gate above are

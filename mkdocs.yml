@@ -2,36 +2,58 @@ site_name: PhilanthroPy
 site_description: A scikit-learn compatible toolkit for predictive donor analytics.
 site_url: https://PhilanthroPy-Project.github.io/PhilanthroPy/
 repo_url: https://github.com/PhilanthroPy-Project/PhilanthroPy
+repo_name: PhilanthroPy-Project/PhilanthroPy
+edit_uri: edit/main/docs/
+copyright: MIT licensed. Built by the PhilanthroPy contributors.
 
 theme:
   name: material
   logo: assets/logo.png
   favicon: assets/logo.png
   font: false
+  icon:
+    repo: fontawesome/brands/github
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: white
-      accent: indigo
-      toggle:
-        icon: material/weather-night
-        name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: black
-      accent: indigo
+      accent: orange
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: orange
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
   features:
+    - navigation.instant
+    - navigation.instant.progress
     - navigation.tabs
     - navigation.sections
+    - navigation.indexes
     - navigation.top
     - navigation.tracking
+    - navigation.footer
+    - toc.follow
     - search.suggest
     - search.highlight
+    - search.share
     - content.code.copy
+    - content.code.annotate
+    - content.tooltips
     - content.action.edit
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/PhilanthroPy-Project/PhilanthroPy
+      name: PhilanthroPy on GitHub
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/philanthropy/
+      name: PhilanthroPy on PyPI
 
 extra_css:
   - stylesheets/extra.css

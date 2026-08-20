@@ -37,6 +37,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   deliberately does not check.
 
 ### Changed
+- Documentation site: a new visual system (Fraunces display serif over Geist,
+  a single amber accent, warm near-black canvas with a paper light mode),
+  dark scheme first, and a homepage that shows the ten-line quickstart and its
+  output above the fold. `mkdocs.yml` also gains section index pages, instant
+  navigation, prev/next footer links, footer social links, and a correct
+  `edit_uri` (the "edit this page" links previously pointed at a `master`
+  branch that does not exist).
 - Four docstrings described behaviour the code does not have, each now corrected
   against a test in `tests/test_documented_contracts.py`. `FiscalYearTransformer`
   said it *appends* `fiscal_year`/`fiscal_quarter`; `transform` in fact returns

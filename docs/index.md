@@ -19,6 +19,36 @@
   <div class="ap-specs__item"><span class="ap-specs__k ap-specs__k--ok">MIT</span><span class="ap-specs__v">open source, no vendor lock-in</span></div>
 </div>
 
+## Ten lines to a ranked call list
+
+```python
+from philanthropy.datasets import generate_synthetic_donor_data
+from philanthropy.models import DonorPropensityModel
+
+df = generate_synthetic_donor_data(n_samples=500, random_state=42)
+features = ["total_gift_amount", "years_active", "event_attendance_count"]
+X = df[features].to_numpy()
+
+model = DonorPropensityModel(n_estimators=200, random_state=0)
+model.fit(X, df["is_major_donor"].to_numpy())
+df["affinity_score"] = model.predict_affinity_score(X)   # 0-100, not a raw probability
+
+summary = df.groupby("is_major_donor")["affinity_score"].describe()
+print(summary[["count", "mean", "min", "max"]])
+```
+
+```text
+                count       mean   min    max
+is_major_donor
+0               165.0   9.636364   0.0   39.0
+1               335.0  94.865672  65.0  100.0
+```
+
+Non-major donors top out at 39; no major donor scores below 65. That gap is the
+whole product: a gift-officer call list, sorted.
+
+[Run it in Colab, zero install](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/quickstart.ipynb){ .md-button .md-button--secondary }
+
 ## What is PhilanthroPy?
 
 PhilanthroPy is a production-ready Python library that slots directly into `sklearn.pipeline.Pipeline`. It covers the full predictive workflow for nonprofit and academic medical center (AMC) fundraising — from raw CRM cleaning and wealth imputation to major-gift propensity scoring, lapse prediction, and planned-giving intent.

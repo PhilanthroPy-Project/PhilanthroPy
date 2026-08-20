@@ -29,6 +29,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   deliberately does not check.
 
 ### Changed
+- Four docstrings described behaviour the code does not have, each now corrected
+  against a test in `tests/test_documented_contracts.py`. `FiscalYearTransformer`
+  said it *appends* `fiscal_year`/`fiscal_quarter`; `transform` in fact returns
+  only those two columns and drops the input, which silently discarded a
+  pipeline's features. `EncounterTransformer.fit` claimed it "prevents temporal
+  data leakage"; it only guarantees that nothing from `X` enters the summary, and
+  the summary itself has no as-of cutoff, so a 2020 gift is scored against 2024
+  encounters. `WealthScreeningImputerKNN.group_col_idx` documented per-group
+  stratified imputation "improving local accuracy"; it is stored and never read.
+  The `GratefulPatientFeaturizer` service-line weights were attributed to
+  "commonly-cited AMC development benchmarks"; they have no published source.
+  No behaviour changed in this entry: the docs moved to meet the code.
 - Added complete output-column documentation to all eleven preprocessing
   `get_feature_names_out` overrides that previously rendered blank in the API
   reference.

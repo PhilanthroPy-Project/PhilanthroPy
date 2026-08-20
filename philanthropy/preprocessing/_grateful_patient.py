@@ -19,11 +19,12 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted, validate_data
 
-# Illustrative default service-line capacity weights. The relative ordering
-# reflects commonly-cited AMC development benchmarks (cardiac, oncology, and
-# neuroscience programs generate a disproportionate share of grateful-patient
-# major gifts relative to their encounter volume), but the exact multipliers are
-# defaults, not gospel: different foundations weight service lines differently.
+# Illustrative default service-line capacity weights. These numbers have NO
+# published source: they encode the common practitioner expectation that
+# cardiac, oncology and neuroscience programs generate a disproportionate share
+# of grateful-patient major gifts relative to their encounter volume, and the
+# magnitudes are placeholders chosen to express that ordering. Do not cite them
+# and do not treat them as calibrated.
 # Override per-institution via the ``capacity_weights`` constructor parameter and
 # have the values reviewed by your governance/advancement committee. See
 # docs/explanation/design_principles.md.

@@ -3,7 +3,7 @@
 
 # Predictive donor analytics, done right. { .ap-hero__title }
 
-<p class="ap-hero__sub">A leakage-safe, pipeline-ready toolkit for nonprofit and academic-medical-center fundraising. Every estimator passes scikit-learn's <code>check_estimator</code>.</p>
+<p class="ap-hero__sub">A leakage-safe, pipeline-ready toolkit for nonprofit and academic-medical-center fundraising. Every Tier 1/2 estimator passes scikit-learn's <code>check_estimator</code>.</p>
 
 <div class="ap-cta" markdown>
 [Get started](tutorials/index.md){ .md-button }
@@ -14,7 +14,7 @@
 
 <div class="ap-specs">
   <div class="ap-specs__item"><span class="ap-specs__k ap-specs__k--ok">Leakage-safe</span><span class="ap-specs__v">train-only statistics, frozen before transform</span></div>
-  <div class="ap-specs__item"><span class="ap-specs__k ap-specs__k--ok">check_estimator</span><span class="ap-specs__v">passes scikit-learn's compliance suite</span></div>
+  <div class="ap-specs__item"><span class="ap-specs__k ap-specs__k--ok">check_estimator</span><span class="ap-specs__v">every Tier 1/2 estimator passes scikit-learn's compliance suite</span></div>
   <div class="ap-specs__item"><span class="ap-specs__k ap-specs__k--ok">Pipeline-ready</span><span class="ap-specs__v">drops into sklearn.pipeline.Pipeline</span></div>
   <div class="ap-specs__item"><span class="ap-specs__k ap-specs__k--ok">MIT</span><span class="ap-specs__v">open source, no vendor lock-in</span></div>
 </div>

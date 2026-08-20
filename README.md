@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>Rank your donors by who is most likely to make a major gift — leakage-safe scikit-learn models for nonprofit and hospital fundraising.</strong>
+  <strong>Rank your donors by who is most likely to make a major gift: leakage-safe scikit-learn models for nonprofit and hospital fundraising.</strong>
 </p>
 
 <p align="center">
@@ -24,14 +24,14 @@
 
 ## What is PhilanthroPy?
 
-PhilanthroPy is a Python library that slots directly into `sklearn.pipeline.Pipeline`. It covers the full predictive workflow for nonprofit and academic medical center (AMC) fundraising — from raw CRM cleaning and wealth imputation to major-gift propensity scoring, lapse prediction, and planned-giving intent.
+PhilanthroPy is a Python library that slots directly into `sklearn.pipeline.Pipeline`. It covers the full predictive workflow for nonprofit and academic medical center (AMC) fundraising, from raw CRM cleaning and wealth imputation to major-gift propensity scoring, lapse prediction, and planned-giving intent.
 
 ### Who it's for
 
 One toolkit, two audiences:
 
-- **General nonprofit & university advancement teams** (no PHI in scope) — CRM cleaning, RFM segmentation, wealth-screening imputation, and donor-propensity / lapse / planned-giving scoring. Start with `CRMCleaner`, `RFMTransformer`, `WealthScreeningImputer`, and `DonorPropensityModel`.
-- **Academic medical center (AMC) foundations running grateful-patient programs** (PHI in scope, higher scrutiny) — clinical-encounter featurization via `EncounterTransformer`, `GratefulPatientFeaturizer`, and `DischargeToSolicitationWindowTransformer`. **Before production use, read [Compliance Considerations](docs/explanation/compliance_considerations.md):** the PII handling here is a name-based heuristic, *not* formal HIPAA de-identification.
+- **General nonprofit & university advancement teams** (no PHI in scope): CRM cleaning, RFM segmentation, wealth-screening imputation, and donor-propensity / lapse / planned-giving scoring. Start with `CRMCleaner`, `RFMTransformer`, `WealthScreeningImputer`, and `DonorPropensityModel`.
+- **Academic medical center (AMC) foundations running grateful-patient programs** (PHI in scope, higher scrutiny): clinical-encounter featurization via `EncounterTransformer`, `GratefulPatientFeaturizer`, and `DischargeToSolicitationWindowTransformer`. **Before production use, read [Compliance Considerations](docs/explanation/compliance_considerations.md):** the PII handling here is a name-based heuristic, *not* formal HIPAA de-identification.
 
 ### Maturity
 
@@ -39,7 +39,7 @@ Single-maintainer MIT project. **`pip install philanthropy` gives you `0.6.0`**,
 
 `main` is ahead of it: `0.7.0` (removes the `0.6.0` deprecations) and `1.0.0` (freezes the API) are merged and green but deliberately unreleased, so the `0.6.0` deprecation warnings get a real migration window rather than a token one. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
 
-Preprocessing and the core classifiers are Tier 1; grateful-patient featurization and `philanthropy.ingest` are Tier 2 (Beta); `FinancialForecastModel` and `philanthropy.experimental.*` are Tier 3 (Experimental) and carry no API guarantees. From `1.0.0`, Tier 1 becomes semver-protected — breaking one requires a major release preceded by a full published minor of `DeprecationWarning`. Per-symbol tiers are in the [API reference](docs/reference/index.md).
+Preprocessing and the core classifiers are Tier 1; grateful-patient featurization and `philanthropy.ingest` are Tier 2 (Beta); `FinancialForecastModel` and `philanthropy.experimental.*` are Tier 3 (Experimental) and carry no API guarantees. From `1.0.0`, Tier 1 becomes semver-protected: breaking one requires a major release preceded by a full published minor of `DeprecationWarning`. Per-symbol tiers are in the [API reference](docs/reference/index.md).
 
 > **Maintenance:** maintained by one person on a best-effort basis. For vendor / OSS risk reviews: the bus factor is 1.
 
@@ -88,7 +88,7 @@ is_major_donor
 
 Non-major donors top out at 39; no major donor scores below 65. That gap is the whole product: a gift-officer call list, sorted.
 
-> **Try it now — zero install:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/quickstart.ipynb)
+> **Try it now, zero install:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/quickstart.ipynb)
 >
 > **Runnable scripts:** [`examples/quickstart.py`](examples/quickstart.py) and [`examples/unischema_to_scores.py`](examples/unischema_to_scores.py) run end to end and are smoke-tested in CI.
 
@@ -110,11 +110,11 @@ philanthropy train --data gifts.csv --target is_major_donor \
 philanthropy score --data prospects.csv --model model.joblib --out scored.csv
 ```
 
-`philanthropy validate` reports precision/recall/F1/ROC-AUC on a labelled CSV — point it at a holdout year, not the year you trained on. Full walkthrough: **[Use the CLI](docs/how-to/use_the_cli.md)**.
+`philanthropy validate` reports precision/recall/F1/ROC-AUC on a labelled CSV; point it at a holdout year, not the year you trained on. Full walkthrough: **[Use the CLI](docs/how-to/use_the_cli.md)**.
 
 ### Your data never leaves your machine
 
-PhilanthroPy makes **no network calls**. There is no telemetry, no license check, no phone-home, and no third-party data append — the package imports no HTTP client at all, and `tests/test_no_network.py` enforces that in CI by making every socket raise. It models only what is already in your database. See **[Compliance considerations](docs/explanation/compliance_considerations.md)** and the **[security review Q&A](docs/explanation/security_review_answers.md)** for the questions an institutional review will ask.
+PhilanthroPy makes **no network calls**. There is no telemetry, no license check, no phone-home, and no third-party data append; the package imports no HTTP client at all, and `tests/test_no_network.py` enforces that in CI by making every socket raise. It models only what is already in your database. See **[Compliance considerations](docs/explanation/compliance_considerations.md)** and the **[security review Q&A](docs/explanation/security_review_answers.md)** for the questions an institutional review will ask.
 
 ---
 
@@ -136,7 +136,7 @@ Full parameter documentation for every symbol below is rendered in the [API refe
 
 | Transformer | Description |
 |---|---|
-| `CRMCleaner` | Standardise raw CRM exports — coerce `gift_date` to `datetime64` and `gift_amount` to `float64` |
+| `CRMCleaner` | Standardise raw CRM exports: coerce `gift_date` to `datetime64` and `gift_amount` to `float64` |
 | `WealthScreeningImputer` | Leakage-safe wealth imputation (median / mean / zero), fill stats frozen at `fit()` |
 | `WealthScreeningImputerKNN` | Leakage-safe KNN imputation for wealth-screening vendor columns |
 | `WealthPercentileTransformer` | Per-column wealth percentile rank (0–100); NaN-in → NaN-out |
@@ -156,14 +156,14 @@ Full parameter documentation for every symbol below is rendered in the [API refe
 | Model | Description |
 |---|---|
 | `DonorPropensityModel` | Random Forest with `predict_affinity_score()` on a 0–100 scale |
-| `MajorGiftClassifier` | Calibrated `HistGradientBoostingClassifier` — NaN-native |
+| `MajorGiftClassifier` | Calibrated `HistGradientBoostingClassifier`, NaN-native |
 | `LapsePredictor` | Random Forest for donor lapse, with `predict_lapse_score()` |
 | `PlannedGivingIntentScorer` | Calibrated bequest-intent scorer, `predict_intent_score()` |
 | `ShareOfWalletRegressor` | Total giving capacity and untapped-potential ratio |
 | `AskAmountRecommender` | Conservative / target / stretch ask ladder via `ask_ladder()` |
 | `MovesManagementClassifier` | Multi-class portfolio stage predictor |
 | `FinancialForecastModel` | Hybrid LSTM-ARIMA revenue forecaster, dependency-free |
-| `PropensityScorer` | Constant-probability baseline — a floor to beat, not a scorer |
+| `PropensityScorer` | Constant-probability baseline, a floor to beat, not a scorer |
 
 ### 📊 Metrics, splitters, and the rest
 
@@ -181,17 +181,17 @@ Full parameter documentation for every symbol below is rendered in the [API refe
 | `generate_synthetic_donor_data`, `load_ciob_fundraising` | `datasets` | Synthetic pool and a real CIOB series |
 | `make_donor_dataset`, `save_model`, `load_model` | `utils` | Labelled fixtures and pipeline persistence |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Matplotlib is imported lazily, per function |
-| `UpliftTLearner` | `experimental` | T-learner appeal uplift — no API guarantees |
+| `UpliftTLearner` | `experimental` | T-learner appeal uplift, no API guarantees |
 
 ---
 
 ## Guides
 
-**Tutorials** — [Building your first model](docs/tutorials/building_your_first_model.md) · [Avoiding temporal data leakage](docs/tutorials/avoiding_temporal_data_leakage.md) · [Building a grateful-patient pipeline](docs/tutorials/building_a_grateful_patient_pipeline.md)
+**Tutorials**: [Building your first model](docs/tutorials/building_your_first_model.md) · [Avoiding temporal data leakage](docs/tutorials/avoiding_temporal_data_leakage.md) · [Building a grateful-patient pipeline](docs/tutorials/building_a_grateful_patient_pipeline.md)
 
-**How-to** — [Use the CLI](docs/how-to/use_the_cli.md) · [Ingest UniSchema events](docs/how-to/ingest_unischema_events.md) · [Ingest CiviCRM contributions](docs/how-to/ingest_civicrm_contributions.md) · [Handle missing wealth data](docs/how-to/handle_missing_wealth_data.md) · [Build grateful-patient features](docs/how-to/build_grateful_patient_features.md) · [Recommend ask amounts](docs/how-to/recommend_ask_amounts.md) · [Score matching-gift eligibility](docs/how-to/score_matching_gift_eligibility.md) · [Measure campaign efficiency](docs/how-to/measure_campaign_efficiency.md) · [Audit score fairness](docs/how-to/audit_score_fairness.md) · [Estimate appeal uplift](docs/how-to/estimate_appeal_uplift.md) · [Save and load models](docs/how-to/save_and_load_models.md) · [Develop and test](docs/how-to/develop_and_test.md)
+**How-to**: [Use the CLI](docs/how-to/use_the_cli.md) · [Ingest UniSchema events](docs/how-to/ingest_unischema_events.md) · [Ingest CiviCRM contributions](docs/how-to/ingest_civicrm_contributions.md) · [Handle missing wealth data](docs/how-to/handle_missing_wealth_data.md) · [Build grateful-patient features](docs/how-to/build_grateful_patient_features.md) · [Recommend ask amounts](docs/how-to/recommend_ask_amounts.md) · [Score matching-gift eligibility](docs/how-to/score_matching_gift_eligibility.md) · [Measure campaign efficiency](docs/how-to/measure_campaign_efficiency.md) · [Audit score fairness](docs/how-to/audit_score_fairness.md) · [Estimate appeal uplift](docs/how-to/estimate_appeal_uplift.md) · [Save and load models](docs/how-to/save_and_load_models.md) · [Develop and test](docs/how-to/develop_and_test.md)
 
-**Explanation** — [Design principles](docs/explanation/design_principles.md) · [Capacity and loyalty](docs/explanation/capacity_and_loyalty.md) · [Fundraising metrics](docs/explanation/fundraising_metrics.md) · [Compliance considerations](docs/explanation/compliance_considerations.md) · [Benchmarks](docs/explanation/benchmarks.md)
+**Explanation**: [Design principles](docs/explanation/design_principles.md) · [Capacity and loyalty](docs/explanation/capacity_and_loyalty.md) · [Fundraising metrics](docs/explanation/fundraising_metrics.md) · [Compliance considerations](docs/explanation/compliance_considerations.md) · [Benchmarks](docs/explanation/benchmarks.md)
 
 ---
 
@@ -225,7 +225,7 @@ line completion alone.
 **What was not generated.** The design constraints are the author's and predate
 any generated code: the leakage-safety contract (every fitted statistic is
 computed on training data inside `fit` and frozen before `transform`/`predict`),
-the dependency rule (scikit-learn, pandas, numpy, matplotlib, seaborn — no deep
+the dependency rule (scikit-learn, pandas, numpy, matplotlib, seaborn; no deep
 learning frameworks), the estimator conventions, and the stability tiers.
 Generated code that violated them was rejected rather than merged.
 
@@ -250,7 +250,7 @@ stated instead. This follows the
 
 ## Contributing
 
-Contributions are welcome, and a first PR does not need to be big — docs fixes,
+Contributions are welcome, and a first PR does not need to be big: docs fixes,
 missing tests, and clearer error messages all count.
 
 **Start with a [good first issue](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).**
@@ -263,7 +263,7 @@ before every push, and never use `git push --no-verify`. Setup plus a first gree
 `make ci` takes about eight minutes.
 
 Everyone who has landed a change is credited in
-[CONTRIBUTORS.md](CONTRIBUTORS.md) — add yourself in the same PR.
+[CONTRIBUTORS.md](CONTRIBUTORS.md); add yourself in the same PR.
 
 Questions are welcome in
 [Discussions](https://github.com/PhilanthroPy-Project/PhilanthroPy/discussions).
@@ -272,4 +272,4 @@ Questions are welcome in
 
 ## License
 
-MIT License — see `LICENSE` for details.
+MIT License. See `LICENSE` for details.

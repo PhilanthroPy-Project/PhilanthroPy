@@ -160,7 +160,7 @@ def test_identity_fields_absent_yields_null_column_not_crash():
 
 
 # --------------------------------------------------------------------------- #
-# Status / test-mode filtering — the reason this bridge exists
+# Status / test-mode filtering: the reason this bridge exists
 # --------------------------------------------------------------------------- #
 def test_statuses_none_counts_every_row(contributions):
     feats = civicrm_contributions_to_features(contributions, statuses=None)

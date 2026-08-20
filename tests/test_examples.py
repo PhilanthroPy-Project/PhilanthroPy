@@ -1,4 +1,4 @@
-"""Smoke tests — every script in ``examples/`` must run end to end.
+"""Smoke tests: every script in ``examples/`` must run end to end.
 
 Keeps the examples honest: if the public API drifts, ``main()`` breaks here
 before it breaks for a user copy-pasting from the docs.

@@ -1,6 +1,6 @@
 name: Publish to PyPI
 
-# Trusted Publishing (OIDC) — no API token is stored anywhere.
+# Trusted Publishing (OIDC): no API token is stored anywhere.
 # Fires ONLY when a GitHub Release is *published* (from a v*.*.* tag), so
 # pushing a tag alone never publishes: you keep a manual gate by clicking
 # "Publish release" in the GitHub UI.

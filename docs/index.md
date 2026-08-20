@@ -21,7 +21,7 @@
 
 ## What is PhilanthroPy?
 
-PhilanthroPy is a production-ready Python library that slots directly into `sklearn.pipeline.Pipeline`. It covers the full predictive workflow for nonprofit and academic medical center (AMC) fundraising — from raw CRM cleaning and wealth imputation to major-gift propensity scoring, lapse prediction, and planned-giving intent.
+PhilanthroPy is a production-ready Python library that slots directly into `sklearn.pipeline.Pipeline`. It covers the full predictive workflow for nonprofit and academic medical center (AMC) fundraising, from raw CRM cleaning and wealth imputation to major-gift propensity scoring, lapse prediction, and planned-giving intent.
 
 ## Quick start
 
@@ -29,7 +29,7 @@ Get up and running in seconds:
 
 !!! info "Current release: 0.6.0"
     `pip install philanthropy` gives you **0.6.0**. These docs are built from
-    `main`, which also carries the merged-but-unreleased 0.7.0 and 1.0.0 work —
+    `main`, which also carries the merged-but-unreleased 0.7.0 and 1.0.0 work.
     see [Deprecations](reference/index.md#deprecations) for the handful of
     differences that affect you today.
 
@@ -49,9 +49,9 @@ Get up and running in seconds:
 
 ## Motivation
 
-Predictive fundraising in nonprofits and healthcare foundations is often dominated by proprietary, black-box vendor tools — or brittle, ad-hoc Python scripts that suffer from subtle temporal data leakage across fiscal-year boundaries. Machine-learning code built for the nuances of philanthropic giving was mostly non-existent.
+Predictive fundraising in nonprofits and healthcare foundations is often dominated by proprietary, black-box vendor tools, or brittle, ad-hoc Python scripts that suffer from subtle temporal data leakage across fiscal-year boundaries. Machine-learning code built for the nuances of philanthropic giving was mostly non-existent.
 
-PhilanthroPy exists to change that: a rigorous, open-source, **scikit-learn-compatible** foundation for donor analytics. It puts advanced fundraising data science within reach of any team, so nonprofits can use their own data to safely and effectively identify their best prospects — without relying entirely on expensive outside vendors.
+PhilanthroPy exists to change that: a rigorous, open-source, **scikit-learn-compatible** foundation for donor analytics. It puts advanced fundraising data science within reach of any team, so nonprofits can use their own data to safely and effectively identify their best prospects, without relying entirely on expensive outside vendors.
 
 ---
 
@@ -64,7 +64,7 @@ A comprehensive suite of tools, easy to understand and use:
 - :material-database-refresh: **Messy data cleaning**
 
     ---
-    Standardises raw CRM exports (Salesforce NPSP, Raiser's Edge) — fixing dates and currency amounts without crashing. *Uses `CRMCleaner`.*
+    Standardises raw CRM exports (Salesforce NPSP, Raiser's Edge), fixing dates and currency amounts without crashing. *Uses `CRMCleaner`.*
 
 - :material-calendar-range: **Fiscal-calendar awareness**
 
@@ -79,7 +79,7 @@ A comprehensive suite of tools, easy to understand and use:
 - :material-hospital-building: **Grateful-patient featurization**
 
     ---
-    For academic medical centers, translates clinical-encounter histories into major-gift signals while decoupling them from explicit patient identifiers (PHI). This reduces compliance risk but is **not** formal HIPAA de-identification — see [Compliance Considerations](explanation/compliance_considerations.md). *Uses `GratefulPatientFeaturizer`.*
+    For academic medical centers, translates clinical-encounter histories into major-gift signals while decoupling them from explicit patient identifiers (PHI). This reduces compliance risk but is **not** formal HIPAA de-identification. See [Compliance Considerations](explanation/compliance_considerations.md). *Uses `GratefulPatientFeaturizer`.*
 
 - :material-chart-bell-curve-cumulative: **Propensity & share of wallet**
 

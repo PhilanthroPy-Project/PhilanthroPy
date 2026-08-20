@@ -8,8 +8,8 @@ if TYPE_CHECKING:  # only for the return-type hints; never imported at runtime
     import matplotlib.axes
 
 # matplotlib and seaborn are an optional extra (`pip install philanthropy[viz]`),
-# imported lazily inside each plotting function so importing the package — or
-# building a Pipeline — never requires the plotting stack. `from __future__ import
+# imported lazily inside each plotting function so importing the package, or
+# building a Pipeline, never requires the plotting stack. `from __future__ import
 # annotations` keeps the return hints from evaluating at import time.
 
 

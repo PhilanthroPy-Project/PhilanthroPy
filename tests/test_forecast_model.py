@@ -127,7 +127,7 @@ def test_forecast_before_fit_raises(revenue_Xy):
 
 
 # ---------------------------------------------------------------------------
-# Leakage safety — fitted statistics are frozen at fit() time
+# Leakage safety: fitted statistics are frozen at fit() time
 # ---------------------------------------------------------------------------
 
 def test_fitted_stats_frozen_after_predict(revenue_Xy):
@@ -165,7 +165,7 @@ def test_fill_values_are_train_median_only():
 
 
 def test_fill_values_fold_specific_in_cv():
-    """Across CV folds the frozen fill values must differ — identical values
+    """Across CV folds the frozen fill values must differ; identical values
     would indicate the full dataset leaked into every fold."""
     from sklearn.model_selection import KFold
 

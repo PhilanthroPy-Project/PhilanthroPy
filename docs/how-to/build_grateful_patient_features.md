@@ -1,10 +1,10 @@
 # Build grateful patient features
 
-Academic medical centers (AMCs) track hospital visits across different service lines. Those visits don't count equally for philanthropy — an oncology encounter correlates more strongly with giving than an urgent care visit. This guide turns encounter histories into model-ready features.
+Academic medical centers (AMCs) track hospital visits across different service lines. Those visits don't count equally for philanthropy: an oncology encounter correlates more strongly with giving than an urgent care visit. This guide turns encounter histories into model-ready features.
 
 ## Using `GratefulPatientFeaturizer`
 
-`GratefulPatientFeaturizer` turns clinical encounter histories into predictive signals, drawn from encounter metadata alone — service line, attending physician, and dates. It reads only those columns and returns four numeric aggregates, so no identifier from the encounter table reaches the model. That is a narrow read surface, **not** formal HIPAA de-identification; if you need identifier-like columns dropped from a wider encounter frame, use `EncounterTransformer` and its `pii_patterns`. Review [Compliance Considerations](../explanation/compliance_considerations.md) before production use.
+`GratefulPatientFeaturizer` turns clinical encounter histories into predictive signals, drawn from encounter metadata alone: service line, attending physician, and dates. It reads only those columns and returns four numeric aggregates, so no identifier from the encounter table reaches the model. That is a narrow read surface, **not** formal HIPAA de-identification; if you need identifier-like columns dropped from a wider encounter frame, use `EncounterTransformer` and its `pii_patterns`. Review [Compliance Considerations](../explanation/compliance_considerations.md) before production use.
 
 ```python
 import pandas as pd
@@ -26,7 +26,7 @@ out = gpf.fit_transform(X)
 print(pd.DataFrame(out, columns=gpf.get_feature_names_out()))
 ```
 
-`transform` returns a plain `(n_samples, 4)` float array — never a DataFrame — with these columns in this order:
+`transform` returns a plain `(n_samples, 4)` float array, never a DataFrame, with these columns in this order:
 
 | Column | Meaning |
 |---|---|

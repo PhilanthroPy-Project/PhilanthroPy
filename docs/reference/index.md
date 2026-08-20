@@ -20,13 +20,13 @@ PhilanthroPy follows [Semantic Versioning](https://semver.org). Which promise ap
 
 | Tier | Promise | Breaking change requires |
 |---|---|---|
-| **Tier 1 — Stable** | The signature and the meaning of the return value are fixed. | A major release, preceded by one full published minor emitting `DeprecationWarning`. |
-| **Tier 2 — Beta** | Works and is tested, but the shape may still move. | A minor release, called out under **Breaking** in [CHANGELOG.md](https://github.com/PhilanthroPy-Project/PhilanthroPy/blob/main/CHANGELOG.md). |
-| **Tier 3 — Experimental** | No guarantees at all. May change or disappear without a deprecation cycle. | Nothing. |
+| **Tier 1: Stable** | The signature and the meaning of the return value are fixed. | A major release, preceded by one full published minor emitting `DeprecationWarning`. |
+| **Tier 2: Beta** | Works and is tested, but the shape may still move. | A minor release, called out under **Breaking** in [CHANGELOG.md](https://github.com/PhilanthroPy-Project/PhilanthroPy/blob/main/CHANGELOG.md). |
+| **Tier 3: Experimental** | No guarantees at all. May change or disappear without a deprecation cycle. | Nothing. |
 
 Everything reachable from `philanthropy.__all__` is listed below. A symbol not listed here is not public, whatever its name looks like.
 
-### Tier 1 — Stable
+### Tier 1: Stable
 
 | Symbol | Module |
 |---|---|
@@ -42,7 +42,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `save_model`, `load_model`, `make_donor_dataset` | `utils` |
 | `donor_feature_importance` | `inspection` |
 
-### Tier 2 — Beta
+### Tier 2: Beta
 
 | Symbol | Module | Why not Tier 1 |
 |---|---|---|
@@ -56,7 +56,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `civicrm_contributions_to_features`, `read_civicrm_contributions` | `ingest` | Tracks CiviCRM's contribution export labels and APIv4 field names, which move with the CRM. |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Chart composition is presentation, not contract. |
 
-### Tier 3 — Experimental
+### Tier 3: Experimental
 
 | Symbol | Module | Why |
 |---|---|---|
@@ -73,14 +73,14 @@ Every domain method returns a number on its own scale. None of them are calibrat
 | `MajorGiftClassifier.predict_affinity_score` | `(n,)` float | 0–100, from calibrated probabilities |
 | `LapsePredictor.predict_lapse_score` | `(n,)` float | 0–100, higher = more likely to lapse |
 | `PlannedGivingIntentScorer.predict_intent_score` | `(n,)` float | 0–100 |
-| `UpliftTLearner.predict_uplift_score` | `(n,)` float | **−1 to 1** — negative means the appeal suppresses giving |
+| `UpliftTLearner.predict_uplift_score` | `(n,)` float | **−1 to 1**, negative means the appeal suppresses giving |
 | `ShareOfWalletScorer.transform` | `(n, 2)` float | `sow_score` 0–1; `capacity_tier` in {0, 1, 2} |
 | `ShareOfWalletRegressor.capacity_ratio` | `(n,)` float | Unbounded ratio ≥ 0 (capacity ÷ historical giving) |
 | `DischargeToSolicitationWindowTransformer.transform` | `(n, 2)` float | `in_solicitation_window` in {0, 1}; `window_position_score` 0–1 |
 | `GratefulPatientFeaturizer.transform` | `(n, 4)` float | Unbounded counts and weighted sums, all ≥ 0 |
 | `AskAmountRecommender.ask_ladder` | `(n, 3)` float | **Dollars**, not a score: conservative / target / stretch |
 | `MovesManagementClassifier.action_priority` | `dict` | Not an array: `stage`, `confidence` (0–1), `portfolio_summary` |
-| `FinancialForecastModel.predict_revenue_forecast` | `(horizon,)` float | **Dollars per future period** — length is `horizon`, not `len(X)` |
+| `FinancialForecastModel.predict_revenue_forecast` | `(horizon,)` float | **Dollars per future period**, length is `horizon`, not `len(X)` |
 
 ## Deprecations
 
@@ -89,7 +89,7 @@ Every domain method returns a number on its own scale. None of them are calibrat
     above describe the API as it stands on `main`; the deprecations below are
     live in the version you actually have installed.
 
-### Live in 0.6.0 — removed in 0.7.0
+### Live in 0.6.0, removed in 0.7.0
 
 These still work and emit `DeprecationWarning`. Migrate before upgrading.
 
@@ -105,7 +105,7 @@ value per row. The first three returned a `(n, 3)` dollar matrix, required a
 second argument, and returned a dict respectively.
 
 Three constructor parameters have no effect and warn when set to a non-default
-value — `LapsePredictor(lapse_window_years=...)`,
+value: `LapsePredictor(lapse_window_years=...)`,
 `PropensityScorer(estimator=...)`,
 `FiscalYearGroupedSplitter(fiscal_year_start=...)`. All three are removed in
 0.7.0.
@@ -113,7 +113,7 @@ value — `LapsePredictor(lapse_window_years=...)`,
 ### Already merged for 0.7.0
 
 Beyond removing everything above, 0.7.0 makes `donor_acquisition_cost`,
-`cost_per_dollar_raised` and `fundraising_roi` **keyword-only** — they do not
+`cost_per_dollar_raised` and `fundraising_roi` **keyword-only**: they do not
 share an argument order, so a positional call was silently accepted and returned
 a plausible wrong number. Write them with keywords today and the upgrade is a
 no-op.
@@ -122,6 +122,6 @@ It also moves four accidental second import paths behind underscores, so 1.0
 does not freeze them: `metrics.scoring` → `metrics._scoring`,
 `preprocessing.transformers` → `preprocessing._transformers`,
 `models.propensity` → `models._propensity_baseline`, `utils.testing` →
-`utils._testing`. Every public symbol they export is unchanged — import from the
+`utils._testing`. Every public symbol they export is unchanged; import from the
 subpackage (`from philanthropy.metrics import ...`), as the documented examples
 always have, and nothing breaks.

@@ -1,6 +1,6 @@
 # Ingest UniSchema events
 
-[UniSchema](https://github.com/PhilanthroPy-Project/UniSchema) normalises fragmented advancement webhooks — GiveCampus, Slate, NPSP, Cvent — into a single `ConstituentEvent` stream. `philanthropy.ingest` turns that stream into the donor-level feature table the estimators expect, with no glue code between the two projects.
+[UniSchema](https://github.com/PhilanthroPy-Project/UniSchema) normalises fragmented advancement webhooks (GiveCampus, Slate, NPSP, Cvent) into a single `ConstituentEvent` stream. `philanthropy.ingest` turns that stream into the donor-level feature table the estimators expect, with no glue code between the two projects.
 
 ```mermaid
 flowchart LR
@@ -17,7 +17,7 @@ flowchart LR
 
 * a single `.json` file holding one event (object) or many (array);
 * a `.ndjson` / `.jsonl` batch, one event per line;
-* a **directory**, walked recursively — UniSchema's local egress is date-partitioned as `{prefix}/{vendor}/{yyyy}/{mm}/{dd}/{eventId}.json`, so a non-recursive scan of the top directory finds nothing. `*.manifest.json` batch sidecars are skipped, and symlinks are not followed.
+* a **directory**, walked recursively: UniSchema's local egress is date-partitioned as `{prefix}/{vendor}/{yyyy}/{mm}/{dd}/{eventId}.json`, so a non-recursive scan of the top directory finds nothing. `*.manifest.json` batch sidecars are skipped, and symlinks are not followed.
 
 A missing path raises `FileNotFoundError`; a malformed record raises `ValueError` naming the file and line.
 
@@ -56,7 +56,7 @@ print(features[["total_gift_amount", "gift_count", "event_attendance_count"]])
 print(features.index.name)
 ```
 
-The index is `constituent_id` — the external CRM id when the event carries a non-empty `externalConstituentId`, else the email. Columns:
+The index is `constituent_id`: the external CRM id when the event carries a non-empty `externalConstituentId`, else the email. Columns:
 
 | Column | Built from |
 |---|---|
@@ -69,7 +69,7 @@ The index is `constituent_id` — the external CRM id when the event carries a n
 
 ## Two guarantees worth relying on
 
-**Leakage-safe.** Recency is anchored to the `reference_date` you pass, or to the batch's latest event — never to a moving "now". Pass it explicitly whenever you are rebuilding a historical training set, or a rerun next month silently produces different features.
+**Leakage-safe.** Recency is anchored to the `reference_date` you pass, or to the batch's latest event, never to a moving "now". Pass it explicitly whenever you are rebuilding a historical training set, or a rerun next month silently produces different features.
 
 **At-least-once-safe.** Webhooks redeliver. Events are deduplicated by `eventId`, so a replayed batch does not double-count a gift.
 
@@ -83,7 +83,7 @@ assert twice["gift_count"].equals(once["gift_count"])
 print("dedup by eventId holds")
 ```
 
-Events without an `eventId` are kept as distinct records — dropping them would lose real gifts from feeds that do not emit one.
+Events without an `eventId` are kept as distinct records; dropping them would lose real gifts from feeds that do not emit one.
 
 ## Score the result
 

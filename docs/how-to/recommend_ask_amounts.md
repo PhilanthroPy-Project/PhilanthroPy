@@ -4,7 +4,7 @@ A gift officer walks into a meeting with three numbers, not one: a conservative 
 
 ## Fit the recommender
 
-`AskAmountRecommender` is a regressor: `y` is the dollar amount you consider the right ask for each historical prospect — most teams use the largest gift the donor actually made, or the ask that closed.
+`AskAmountRecommender` is a regressor: `y` is the dollar amount you consider the right ask for each historical prospect; most teams use the largest gift the donor actually made, or the ask that closed.
 
 ```python
 import numpy as np
@@ -42,7 +42,7 @@ assert ladder.shape == (5, 3)
 assert (np.diff(ladder, axis=1) > 0).all()
 ```
 
-The default `multipliers=(1.0, 1.5, 2.5)` is a heuristic, not a benchmark. Override it with your own campaign's escalation policy — values must be positive, and passing them ascending is what makes the columns read as a ladder.
+The default `multipliers=(1.0, 1.5, 2.5)` is a heuristic, not a benchmark. Override it with your own campaign's escalation policy; values must be positive, and passing them ascending is what makes the columns read as a ladder.
 
 ```python
 aggressive = model.ask_ladder(X.head(5), multipliers=(1.0, 2.0, 4.0, 8.0))
@@ -73,7 +73,7 @@ print(plan)
 print(priority["portfolio_summary"])
 ```
 
-`action_priority` returns a dict, not an array — `stage` and `confidence` are per-donor, `portfolio_summary` counts donors per stage across the whole batch. Solicit the `SOLICIT` rows at the target rung; the `CULTIVATE` rows are not ready for a number yet.
+`action_priority` returns a dict, not an array: `stage` and `confidence` are per-donor, `portfolio_summary` counts donors per stage across the whole batch. Solicit the `SOLICIT` rows at the target rung; the `CULTIVATE` rows are not ready for a number yet.
 
 !!! note "`action_priority`, not `predict_action_priority`"
     Same rename, same reason: it returns a dict, so it never satisfied the `predict_*` contract. The old name was removed in 0.7.0.

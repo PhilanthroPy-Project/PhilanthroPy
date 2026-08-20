@@ -4,7 +4,7 @@ Corporate matching gifts are the cheapest revenue in fundraising: the donor has 
 
 ## Build the features
 
-The featurizer takes a **pandas DataFrame** — it raises `TypeError` on an ndarray, because it needs the two columns by name. Employer names are matched case-insensitively after stripping.
+The featurizer takes a **pandas DataFrame**; it raises `TypeError` on an ndarray, because it needs the two columns by name. Employer names are matched case-insensitively after stripping.
 
 ```python
 import numpy as np
@@ -38,7 +38,7 @@ Three columns, always in this order:
 names = list(featurizer.get_feature_names_out())
 frame = pd.DataFrame(out, columns=names)
 
-# "  microsoft " matches "Microsoft" — case and whitespace are normalised.
+# "  microsoft " matches "Microsoft"; case and whitespace are normalised.
 assert frame.loc[1, "match_ratio"] == 2.0
 assert frame.loc[1, "potential_matched_amount"] == 2000.0
 
@@ -59,7 +59,7 @@ assert frame.loc[5, "potential_matched_amount"] == 0.0
 
 ## The registry is frozen at fit time
 
-`match_ratios_` is a normalised snapshot taken in `fit`. Mutating the dict you passed in afterwards does not change transform output — the same leakage-safety contract every other transformer in the library follows.
+`match_ratios_` is a normalised snapshot taken in `fit`. Mutating the dict you passed in afterwards does not change transform output, the same leakage-safety contract every other transformer in the library follows.
 
 ```python
 match_ratios["Acme Diner"] = 3.0            # caller edits their own dict
@@ -109,7 +109,7 @@ assert len(set(scores.round(6))) > 1
 
 ## Sizing the opportunity
 
-`potential_matched_amount` is a per-donor dollar figure, so summing it gives the unrealised match revenue sitting in your file — usually the number that justifies the campaign.
+`potential_matched_amount` is a per-donor dollar figure, so summing it gives the unrealised match revenue sitting in your file, usually the number that justifies the campaign.
 
 ```python
 matched = MatchingGiftFeaturizer(

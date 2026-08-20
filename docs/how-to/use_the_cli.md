@@ -1,6 +1,6 @@
 # Use the CLI
 
-Installing the package puts a `philanthropy` executable on your PATH. It is a CSV-in / CSV-out interface for analysts who are not primarily Python engineers: train a model from a labelled export, score a prospect list, and report holdout metrics — no Python file to write.
+Installing the package puts a `philanthropy` executable on your PATH. It is a CSV-in / CSV-out interface for analysts who are not primarily Python engineers: train a model from a labelled export, score a prospect list, and report holdout metrics, no Python file to write.
 
 ```bash
 philanthropy --version
@@ -11,7 +11,7 @@ Three subcommands: `train`, `score`, `validate`.
 
 ## Train a model from a labelled CSV
 
-`train` needs the label column, the feature columns, and an output path. It writes a **bundle** — the fitted model plus the feature list, the target name, and the library versions — via `philanthropy.utils.save_model`.
+`train` needs the label column, the feature columns, and an output path. It writes a **bundle** (the fitted model plus the feature list, the target name, and the library versions) via `philanthropy.utils.save_model`.
 
 ```bash
 philanthropy train \

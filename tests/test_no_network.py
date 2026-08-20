@@ -1,7 +1,7 @@
 """The package must never open a socket.
 
 README.md and docs/explanation/security_review_answers.md both promise that
-PhilanthroPy makes no network calls — no telemetry, no license check, no
+PhilanthroPy makes no network calls: no telemetry, no license check, no
 third-party data append. That promise is the first question an institutional
 security review asks, so it is enforced here rather than merely documented.
 

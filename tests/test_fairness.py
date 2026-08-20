@@ -1,5 +1,5 @@
 """
-tests/test_fairness.py — disparate-impact diagnostics.
+tests/test_fairness.py: disparate-impact diagnostics.
 """
 
 import math

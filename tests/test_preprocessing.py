@@ -5,9 +5,9 @@ Unit tests and property-based hypothesis tests for PhilanthroPy
 preprocessing transformers.
 
 Property-based tests use the `hypothesis` library to bombard
-``FiscalYearTransformer`` with extreme datetime edge cases — leap years,
+``FiscalYearTransformer`` with extreme datetime edge cases: leap years,
 pre-1970 dates, all possible fiscal start months, and timezone-aware datetimes
-— mathematically guaranteeing the transformer's stability and correctness
+to check the transformer's stability and correctness
 across the space of valid inputs.
 
 Run with:
@@ -38,7 +38,7 @@ from philanthropy.preprocessing import (
 
 
 # ===========================================================================
-# 1. CRMCleaner — standard unit tests
+# 1. CRMCleaner: standard unit tests
 # ===========================================================================
 
 
@@ -105,7 +105,7 @@ class TestCRMCleaner:
 
 
 # ===========================================================================
-# 2. WealthScreeningImputer — standard unit tests
+# 2. WealthScreeningImputer: standard unit tests
 # ===========================================================================
 
 
@@ -186,7 +186,7 @@ class TestWealthScreeningImputer:
 
 
 # ===========================================================================
-# 3. FiscalYearTransformer — standard unit tests
+# 3. FiscalYearTransformer: standard unit tests
 # ===========================================================================
 
 
@@ -238,7 +238,7 @@ class TestFiscalYearTransformer:
 
 
 # ===========================================================================
-# 5. EncounterTransformer — standard unit tests
+# 5. EncounterTransformer: standard unit tests
 # ===========================================================================
 
 
@@ -329,7 +329,7 @@ class TestEncounterTransformer:
         )
 
     def test_fit_does_not_touch_X_values(self):
-        """fit() must not use y or external gift data — only encounter_df."""
+        """fit() must not use y or external gift data, only encounter_df."""
         enc = pd.DataFrame({"donor_id": [1], "discharge_date": ["2022-06-01"]})
         gifts = pd.DataFrame(
             {
@@ -388,7 +388,7 @@ class TestEncounterTransformer:
 
 
 # --------------------------------------------------------------------------- #
-# EncounterRecencyTransformer — parameter validation and input shapes
+# EncounterRecencyTransformer: parameter validation and input shapes
 # (moved here from the deleted tests/test_coverage_boost.py)
 # --------------------------------------------------------------------------- #
 class TestEncounterRecencyTransformerEdgeCases:

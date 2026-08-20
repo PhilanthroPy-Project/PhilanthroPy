@@ -1,4 +1,4 @@
-"""Quick start — train a donor-propensity model and score a prospect pool.
+"""Quick start: train a donor-propensity model and score a prospect pool.
 
 Trains :class:`~philanthropy.models.DonorPropensityModel` on a reproducible
 synthetic donor dataset, then ranks a held-out pool by affinity score.

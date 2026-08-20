@@ -5,15 +5,15 @@ Fiscal-year–aware cross-validation splitter for donor analytics.
 
 Standard k-fold or stratified-fold CV shuffles training data randomly,
 which routinely introduces **temporal leakage** in donor analytics:
-future gift history — which would not be available at scoring time —
+future gift history (which would not be available at scoring time)
 leaks into training folds.
 
 ``FiscalYearGroupedSplitter`` implements a walk-forward (expanding-window)
 cross-validation strategy anchored to the organisation's **fiscal year**
 calendar.  Each ``(train, test)`` split is a contiguous time boundary:
 
-* **Train** — all fiscal years strictly *before* the test year.
-* **Test**  — all rows assigned to the current test fiscal year.
+* **Train**: all fiscal years strictly *before* the test year.
+* **Test**: all rows assigned to the current test fiscal year.
 
 This guarantees zero data leakage across fiscal years and is compatible
 with :func:`sklearn.model_selection.cross_val_score`.
@@ -49,9 +49,9 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
 
     In each split ``i`` (0-indexed):
 
-    * **Train** — all rows whose fiscal year is among the ``i`` earliest
+    * **Train**: all rows whose fiscal year is among the ``i`` earliest
       distinct fiscal years present in ``groups``.
-    * **Test**  — all rows whose fiscal year is the ``(i+1)``-th earliest
+    * **Test**: all rows whose fiscal year is the ``(i+1)``-th earliest
       fiscal year in ``groups``.
 
     This expands the training window by one fiscal year for each split,
@@ -220,7 +220,7 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
             train_mask = groups < train_cutoff_fy
 
             if not np.any(train_mask):
-                # No training data before this test year — skip
+                # No training data before this test year, skip
                 continue
 
             yield (
@@ -247,7 +247,7 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
         return int(self.n_splits)
 
     # ------------------------------------------------------------------
-    # sklearn clone safety — all params must be in __init__
+    # sklearn clone safety: all params must be in __init__
     # ------------------------------------------------------------------
 
     def __repr__(self) -> str:

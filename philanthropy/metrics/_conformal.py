@@ -83,7 +83,7 @@ def conformal_pvalue(calibration_scores: Collection, scores: Collection) -> np.n
     s = np.asarray(scores, dtype=float)
     n = cal.size
     cal_sorted = np.sort(cal)
-    # |{i : cal_i >= s}| — 'left' so calibration points equal to s are counted.
+    # |{i : cal_i >= s}|; 'left' so calibration points equal to s are counted.
     n_ge = n - np.searchsorted(cal_sorted, s, side="left")
     p = (1.0 + n_ge) / (n + 1.0)
     return np.where(np.isnan(s), np.nan, p)

@@ -136,6 +136,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   entry points now validate through one helper, `gap_years < 0` and non-integer
   values are rejected, and a test asserts `get_n_splits() == len(list(split()))`
   across the parameter grid.
+- **`donor_lifetime_value` overstated LTV whenever `retention_rate` was given.**
+  It converted the retention rate to an expected lifespan, `L = 1 / (1 - r)`, and
+  fed that mean into the concave annuity formula. By Jensen's inequality
+  `NPV(E[L]) >= E[NPV(L)]`, so the result was biased high in one direction every
+  time: +8.2% at `r = 0.8, d = 0.05` and +22.9% at `r = 0.9, d = 0.10`. A
+  one-signed error does not average out across a portfolio, and this is a number
+  that goes into board decks and acquisition-cost justifications. The retention
+  branch now uses the correct closed form for a geometric lifetime,
+  `E[NPV] = m / (1 + d - r)`, verified against a term-by-term expectation and a
+  two-million-draw Monte Carlo. `retention_rate=1.0` with a positive discount
+  rate now returns the perpetuity `m / d` rather than `inf`; it is still `inf`
+  when `discount_rate` is 0. `retention_rate > 1` now raises instead of returning
+  a negative number. The fixed-horizon path (`retention_rate=None`) is unchanged
+  and was always correct, as is the `discount_rate=0` path in both modes, since an
+  undiscounted sum is linear in the lifespan. **This changes returned values**:
+  see `docs/explanation/fundraising_metrics.md` for both formulas and why they
+  differ.
 - `mkdocs.yml` had no `site_url`, so the generated `sitemap.xml` was empty and all
   38 documentation pages were uncrawlable, with no `rel=canonical` anywhere.
 - `CONTRIBUTING.md` documented a risk-tier coverage command measuring `metrics/` and

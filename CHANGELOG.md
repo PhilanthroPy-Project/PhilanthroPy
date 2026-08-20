@@ -29,6 +29,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   deliberately does not check.
 
 ### Changed
+- `FiscalYearGroupedSplitter` now documents the leakage it does **not** prevent:
+  its grouping unit is the fiscal year, not the donor, so a donor with gifts in
+  several fiscal years appears in both folds of a split. That is correct for a
+  time-varying target and is leakage for a static per-donor label such as
+  `is_major_donor`. The class docstring previously implied it prevented leakage
+  generally.
 - Added complete output-column documentation to all eleven preprocessing
   `get_feature_names_out` overrides that previously rendered blank in the API
   reference.
@@ -55,6 +61,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   preferred disclosure channel.
 
 ### Fixed
+- `FiscalYearGroupedSplitter` never validated `n_splits`, despite documenting a
+  `ValueError` for `n_splits < 1`. A non-positive value reached the
+  `unique_fy[-(n_splits):]` slice, where it flips open-ended: `n_splits=0`
+  yielded 3 folds on a 4-fiscal-year panel while `get_n_splits()` reported 0, and
+  `n_splits=-1` yielded 3 while reporting -1. `cross_val_score` sizes its result
+  array from `get_n_splits()`, so the two disagreeing is a real failure. Both
+  entry points now validate through one helper, `gap_years < 0` and non-integer
+  values are rejected, and a test asserts `get_n_splits() == len(list(split()))`
+  across the parameter grid.
 - `mkdocs.yml` had no `site_url`, so the generated `sitemap.xml` was empty and all
   38 documentation pages were uncrawlable, with no `rel=canonical` anywhere.
 - `CONTRIBUTING.md` documented a risk-tier coverage command measuring `metrics/` and

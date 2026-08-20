@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Test coverage for `constituent_events_to_features`: the all-unparseable-timestamps empty-frame path and the `distinct_source_systems` default-to-zero path when `sourceSystem` is absent from the input. (#51)
 - `AGENTS.md`: every change, including maintainer- and agent-authored ones, must
   go on a branch and through a PR — no direct commits to `main`, no self-merges.
 - `tests/test_no_network.py` enforces in CI what the docs now promise: the package

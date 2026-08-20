@@ -37,6 +37,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   deliberately does not check.
 
 ### Changed
+- JOSS paper prep: deleted the stale duplicate `paper/paper.md` and `paper/paper.bib`
+  (a divergent July draft with a different title and affiliation) and repointed
+  `draft-pdf.yml` at the surviving root `paper.md`, which had never produced a PDF.
+  Restored the leakage and grateful-patient-ethics citations the root draft had
+  dropped, and settled the affiliation to "Independent Researcher" across
+  `paper.md` and `.zenodo.json`, which previously disagreed three ways.
 - Added complete output-column documentation to all eleven preprocessing
   `get_feature_names_out` overrides that previously rendered blank in the API
   reference.

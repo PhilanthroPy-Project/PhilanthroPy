@@ -3,11 +3,13 @@ name: Draft PDF
 on:
   push:
     paths:
-      - paper/**
+      - paper.md
+      - paper.bib
       - .github/workflows/draft-pdf.yml
   pull_request:
     paths:
-      - paper/**
+      - paper.md
+      - paper.bib
       - .github/workflows/draft-pdf.yml
 
 permissions:
@@ -27,10 +29,10 @@ jobs:
         uses: openjournals/openjournals-draft-action@85a18372e48f551d8af9ddb7a747de685fbbb01c  # master @ 2026-08-01
         with:
           journal: joss
-          paper-path: paper/paper.md
+          paper-path: paper.md
 
       - name: Upload paper.pdf
         uses: actions/upload-artifact@v7
         with:
           name: paper
-          path: paper/paper.pdf
+          path: paper.pdf

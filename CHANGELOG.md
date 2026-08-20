@@ -92,6 +92,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   reasoned exemption registry, so this can't recur silently. README, paper.md,
   and the design-principles/security-review docs now state the one real
   exception (`UpliftTLearner`) instead of claiming "every estimator" flatly.
+- Two JOSS paper drafts were tracked at once — `paper.md`/`paper.bib` at the repo
+  root (current, last touched 2026-08-11) and a stale copy in `paper/`
+  (2026-08-01, different affiliation and bibliography style). `draft-pdf.yml`
+  built only the stale one, so the current draft has never produced a PDF.
+  Deleted `paper/`; the workflow now points at the root files.
 - `mkdocs.yml` had no `site_url`, so the generated `sitemap.xml` was empty and all
   38 documentation pages were uncrawlable, with no `rel=canonical` anywhere.
 - `CONTRIBUTING.md` documented a risk-tier coverage command measuring `metrics/` and

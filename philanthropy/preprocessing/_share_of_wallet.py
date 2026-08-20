@@ -14,9 +14,10 @@ export (Raiser's Edge NXT, Salesforce NPSP, Ellucian Advance).
 ``WealthScreeningImputerKNN`` extends the base
 :class:`~philanthropy.preprocessing.WealthScreeningImputer` with a
 ``"knn"`` strategy that imputes via k-Nearest Neighbours on non-missing
-wealth columns, which materially outperforms median imputation when
-geographic or demographic structure is available (e.g., zip-code
-clusters in hospital databases).
+wealth columns. KNN can do better than a per-column median when the
+wealth columns carry geographic or demographic structure (e.g. zip-code
+clusters in hospital databases), but this is a modelling assumption, not
+a measured result: no benchmark in this repository compares the two.
 
 Typical usage
 -------------
@@ -83,10 +84,10 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
         wealth column.  Strongly recommended — absence of vendor records
         itself carries predictive signal.
     group_col_idx : int or None, default=None
-        Column index of a group variable (e.g., zip-code encoded as int)
-        to stratify KNN imputation.  When provided (and
-        ``strategy="knn"``), imputation is performed independently per
-        group, improving local accuracy.
+        Accepted and stored so ``get_params``/``set_params`` round-trip, but
+        **ignored**: per-group stratified imputation is not implemented, and
+        passing a value does not change the output. Kept in the signature so
+        existing calls keep working rather than raising.
 
     Attributes
     ----------

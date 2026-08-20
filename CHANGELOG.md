@@ -6,6 +6,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `WealthScreeningImputerKNN.group_col_idx` now does what it always claimed.
+  It was documented as stratifying KNN imputation per group "improving local
+  accuracy", and was stored and never read. When set with `strategy="knn"`, a
+  separate `KNNImputer` is now fitted per group, so a donor's missing wealth is
+  filled from neighbours inside their own group instead of from the whole
+  database. On a two-group pool an order of magnitude apart, a missing value in
+  the low group now fills to ~48k and one in the high group to ~5.1M, rather
+  than both being dragged toward the pooled neighbourhood. Both fallbacks are
+  frozen at fit time so nothing is learned at transform time: a group with fewer
+  than `n_neighbors + 1` training rows gets no imputer of its own, and a group
+  value unseen at fit, or a row whose group label is missing, uses the global
+  imputer. The global imputer is always fitted, so output is never `NaN`
+  regardless of grouping. Ignored for the columnwise strategies, which have no
+  notion of a neighbourhood. An out-of-range index now raises instead of being
+  silently accepted. Closes #85.
 - `philanthropy.metrics.conformal_pvalue` — the non-smoothed split-conformal
   p-value of a donor score against a held-out calibration set,
   `(1 + |{i : s_i >= s}|) / (n + 1)`. A calibrated probability threshold fixes no

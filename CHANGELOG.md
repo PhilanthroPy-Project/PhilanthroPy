@@ -6,6 +6,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `.gitattributes` sets `CHANGELOG.md merge=union`. `AGENTS.md` requires every PR
+  to add an entry under `## [Unreleased]`, so every concurrent PR conflicts with
+  every other one, always in the same place and always additively. 10 of the last
+  20 commits on `main` touch this file. `union` keeps both sides instead of
+  stopping, which is the standard treatment for an append-only file. It is
+  line-based rather than section-aware, so the `## [Unreleased]` block is worth a
+  skim at release time; `RELEASING.md` now says so. GitHub does not read
+  `.gitattributes`, so its own merge behaviour is unchanged: the benefit is to the
+  local `git merge origin/main` that currently absorbs the cost.
 - `philanthropy.metrics.conformal_pvalue` — the non-smoothed split-conformal
   p-value of a donor score against a held-out calibration set,
   `(1 + |{i : s_i >= s}|) / (n + 1)`. A calibrated probability threshold fixes no

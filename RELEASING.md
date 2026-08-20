@@ -27,6 +27,10 @@ tiers live in [docs/reference/index.md](docs/reference/index.md).
 Run in order. Steps 1–6 are the gate `publish.yml` enforces; 7–9 are manual.
 
 1. `make ci` is green, and so is `pytest tests/test_public_api_contract.py -q`.
+   Also skim the `## [Unreleased]` block in `CHANGELOG.md`. `.gitattributes`
+   sets `merge=union` on that file so concurrent PRs stop conflicting on it,
+   which is line-based rather than section-aware: a bullet can land under an
+   adjacent heading. Cheap to eyeball once per release, annoying to find later.
 2. Bump `version` in `pyproject.toml`. Nothing else carries the version —
    `philanthropy.__version__` reads it from installed metadata.
 3. Add a `## [X.Y.Z] - YYYY-MM-DD` section to `CHANGELOG.md`. The date is

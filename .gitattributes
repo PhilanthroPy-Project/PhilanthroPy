@@ -1,0 +1,9 @@
+# CHANGELOG.md is append-only under `## [Unreleased]`, and AGENTS.md requires every
+# PR to add an entry there. Two PRs adding bullets is therefore not a real
+# conflict, but git stops on it anyway. `union` keeps both sides.
+#
+# Line-based, not section-aware: at release time, skim the `## [Unreleased]`
+# block in case a bullet landed under an adjacent heading. See RELEASING.md.
+# GitHub does not read this file, so its own merge and squash-conflict
+# detection are unaffected; this helps the local `git merge origin/main`.
+CHANGELOG.md merge=union

@@ -253,9 +253,17 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
 
         The fitted artefact ``encounter_summary_`` is a lightweight per-donor
         lookup containing the most-recent discharge date and total encounter
-        count.  No information from ``X`` flows into this summary, which
-        prevents temporal data leakage when the transformer is placed **before**
-        a time-based train/test split inside a pipeline.
+        count.  No information from ``X`` flows into this summary, so the
+        summary is identical whether it is fitted on a training split or the
+        full frame, and ``transform`` is idempotent.
+
+        .. warning::
+           That is the only leakage guarantee here. The summary aggregates
+           **every** row of ``encounter_df`` with no as-of cutoff, so a gift
+           dated 2020 is scored against encounters recorded in 2024 if the
+           encounter table contains them. Restrict ``encounter_df`` to
+           encounters observable at the decision point yourself, before
+           calling ``fit``.
 
         Parameters
         ----------

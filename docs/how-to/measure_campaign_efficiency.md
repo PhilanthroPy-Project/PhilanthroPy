@@ -94,7 +94,7 @@ assert top_donor_share([500.0] + [500.0 / 9.0] * 9, top_fraction=0.1) == 0.5
 
 ## Long-run value of an acquired donor
 
-Acquisition cost only means something against what the donor is worth. `donor_lifetime_value` is the net present value of a discounted annuity — either over a fixed horizon, or over the expected lifespan implied by a retention rate.
+Acquisition cost only means something against what the donor is worth. `donor_lifetime_value` has two modes: the net present value of a discounted annuity over a **fixed horizon**, or the *expected* net present value over a **geometric lifetime** implied by a retention rate. They are different calculations, not the same one with a substituted lifespan.
 
 ```python
 from philanthropy.metrics import donor_lifetime_value
@@ -105,8 +105,12 @@ from_retention = donor_lifetime_value(250.0, 999, discount_rate=0.05, retention_
 print(f"LTV over 10 years:        ${fixed:,.0f}")
 print(f"LTV at 80% retention:     ${from_retention:,.0f}")
 
-# 80% annual retention implies a 1 / (1 - 0.8) = 5-year expected lifespan.
-assert from_retention == donor_lifetime_value(250.0, 5, discount_rate=0.05)
+# 80% annual retention does imply a 1 / (1 - 0.8) = 5-year expected lifespan,
+# but the expected NPV is NOT the 5-year annuity. The annuity is concave in the
+# lifespan, so by Jensen's inequality plugging in the mean overstates value:
+# E[NPV(L)] < NPV(E[L]). The retention mode uses the closed form G / (1 + d - r).
+assert from_retention == 250.0 / (1 + 0.05 - 0.8)
+assert from_retention < donor_lifetime_value(250.0, 5, discount_rate=0.05)
 assert fixed > cac  # the acquisition pays for itself
 ```
 

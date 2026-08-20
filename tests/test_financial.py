@@ -23,7 +23,15 @@ def test_donor_lifetime_value_with_retention():
     assert math.isclose(ltv, 500.0, rel_tol=1e-4)
 
 def test_donor_lifetime_value_100_percent_retention():
+    # A donor who never lapses is a perpetuity, not an infinity: with a positive
+    # discount rate the gifts still converge to m / d. This used to return inf
+    # for every discount rate, which is only right when d == 0.
     ltv = donor_lifetime_value(average_donation=100.0, lifespan_years=5, discount_rate=0.05, retention_rate=1.0)
+    assert math.isclose(ltv, 2000.0)
+
+
+def test_donor_lifetime_value_100_percent_retention_undiscounted_is_infinite():
+    ltv = donor_lifetime_value(average_donation=100.0, lifespan_years=5, discount_rate=0.0, retention_rate=1.0)
     assert math.isinf(ltv)
 
 def test_donor_lifetime_value_negative_validation():

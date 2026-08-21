@@ -35,9 +35,9 @@ One toolkit, two audiences:
 
 ### Maturity
 
-Single-maintainer MIT project. **`pip install philanthropy` gives you `0.6.0`**, the current release.
+Single-maintainer MIT project. **`pip install philanthropy` gives you `0.7.0`**, the current release.
 
-`main` is ahead of it: `0.7.0` (removes the `0.6.0` deprecations) and `1.0.0` (freezes the API) are merged and green but deliberately unreleased, so the `0.6.0` deprecation warnings get a real migration window rather than a token one. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
+`main` is ahead of it: `1.0.0` (freezes the API) is merged and green but deliberately unreleased, so 0.7.0 gets a real usage window before that promise takes effect. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
 
 Preprocessing and the core classifiers are Tier 1; grateful-patient featurization and `philanthropy.ingest` are Tier 2 (Beta); `FinancialForecastModel` and `philanthropy.experimental.*` are Tier 3 (Experimental) and carry no API guarantees. From `1.0.0`, Tier 1 becomes semver-protected: breaking one requires a major release preceded by a full published minor of `DeprecationWarning`. Per-symbol tiers are in the [API reference](docs/reference/index.md).
 

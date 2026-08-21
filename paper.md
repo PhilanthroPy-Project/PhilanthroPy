@@ -77,10 +77,25 @@ final year, by 0.030 and 0.014 respectively. PhilanthroPy's response is an
 `as_of` parameter on the transformers that consume auxiliary tables, which
 drops rows observed after a stated cutoff before any aggregation runs.
 
-All figures reported here and in the documentation are synthetic. The one real
-dataset the package ships, `load_ciob_fundraising`, is an institutional
-affiliation registry with no donor rows, gift amounts, or labels, and no
-estimator is fitted on it anywhere in the project.
+The same two experiments were then replicated on a real donor file,
+KDD Cup 1998 [@kddcup1998], 95,412 donors reshaped into a 22-period
+mail/response panel (`scripts/real_data_leakage_experiment.py`). The effect
+is not smaller on real data; it is larger. Whole-history feature construction
+inflates walk-forward ROC-AUC by **+0.376 AUC** (0.482 to 0.858), roughly three
+times the synthetic figure, because a donor's lifetime total is a stickier,
+more identity-revealing signal in real heavy-tailed giving data than in the
+synthetic generator. Splitter choice also matters more than the synthetic run
+suggested: a random `StratifiedKFold` overstates a genuinely held-out final
+period by +0.107 AUC, an order of magnitude larger than the synthetic 0.014-
+0.030. Both numbers were predicted, in the script's own docstring, to be
+*smaller* than the synthetic figures before the script was ever run; that
+prediction was wrong, and the disagreement is reported rather than revised
+after the fact.
+
+The model-benchmark figures elsewhere in the documentation remain synthetic.
+The one other real dataset the package ships, `load_ciob_fundraising`, is an
+institutional affiliation registry with no donor rows, gift amounts, or
+labels, and no estimator is fitted on it anywhere in the project.
 
 # State of the field
 
@@ -152,13 +167,14 @@ calibration set to contain only nulls, which is the construction in
 
 PhilanthroPy is not yet in documented use at a third-party institution, and
 this paper does not claim otherwise. What exists today is the software, a
-reproducible leakage experiment whose result is reported above, a benchmark page
-that states its own synthetic-data limitations and the Bayes-optimal ceiling of
-its generator, an archived release on Zenodo, and eleven merged pull requests
-from four contributors external to the project. The author's prior
-conference paper on predictive donor analytics [@lalakiya2025] is related work
-by the same author on different data, not an independent evaluation of this
-software.
+reproducible leakage experiment whose result is reported above and now
+replicated on real donor data (KDD Cup 1998 [@kddcup1998]) rather than only on
+a synthetic generator, a benchmark page that states its own synthetic-data
+limitations and the Bayes-optimal ceiling of its generator, an archived
+release on Zenodo, and eleven merged pull requests from four contributors
+external to the project. The author's prior conference paper on predictive
+donor analytics [@lalakiya2025] is related work by the same author on
+different data, not an independent evaluation of this software.
 
 The intended research audience is twofold: advancement-analytics practitioners
 and consultants who currently rebuild these steps per engagement, and

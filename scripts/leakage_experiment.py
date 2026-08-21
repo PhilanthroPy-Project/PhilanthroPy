@@ -76,6 +76,15 @@ def _clf():
 
 
 def _cv(df, splitter, use_groups):
+    """Cross-validate on the panel EXCLUDING its final year.
+
+    Excluding it matters. The target below is "train on everything before the
+    final year, score the final year", which is precisely what the last fold of
+    a walk-forward splitter does. Leaving the final year in the CV data would put
+    the estimand inside one estimator and not the other, and walk-forward would
+    win by construction rather than on merit.
+    """
+    df = df[df["fy"] < df["fy"].max()]
     X, y, fy = df[FEATURES].to_numpy(), df["y"].to_numpy(), df["fy"].to_numpy()
     kwargs = {"groups": fy} if use_groups else {}
     return cross_val_score(_clf(), X, y, cv=splitter, scoring="roc_auc", **kwargs).mean()
@@ -99,8 +108,8 @@ def main():
         as_of, whole = _panel(seed)
         truth.append(_true_future(as_of))
         random_cv.append(_cv(as_of, StratifiedKFold(5, shuffle=True, random_state=0), False))
-        walk_cv.append(_cv(as_of, FiscalYearGroupedSplitter(n_splits=4), True))
-        whole_cv.append(_cv(whole, FiscalYearGroupedSplitter(n_splits=4), True))
+        walk_cv.append(_cv(as_of, FiscalYearGroupedSplitter(n_splits=3), True))
+        whole_cv.append(_cv(whole, FiscalYearGroupedSplitter(n_splits=3), True))
 
     print(f"Donor-year panel: {N_DONORS} donors x {len(YEARS) - 1} panel years, "
           f"label = gave in the following year.")

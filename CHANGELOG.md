@@ -57,7 +57,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   semicolon for two independent clauses, parentheses for a paired aside. The only
   em dash left is inside a nonprofit's name in
   `philanthropy/datasets/data/ciob_official_fundraising.csv`, which is source
-  data rather than prose. No behaviour changes and no code paths touched.
+  data rather than prose. No behaviour changes, though a handful of the edited
+  sites are user-visible strings rather than prose: the pickle-trust warning in
+  `philanthropy/cli.py` and several test comments.
 - Four docstrings described behaviour the code does not have, each now corrected
   against a test in `tests/test_documented_contracts.py`. `FiscalYearTransformer`
   said it *appends* `fiscal_year`/`fiscal_quarter`; `transform` in fact returns

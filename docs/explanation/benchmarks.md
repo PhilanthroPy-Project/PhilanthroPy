@@ -1,7 +1,7 @@
 # Model Validation & Benchmarks
 
 Every model here ships with a reproducible benchmark number. This page shows you
-those numbers — and why you should **not** trust them for your own program until
+those numbers, and why you should **not** trust them for your own program until
 you re-validate on your own data.
 
 !!! warning "These numbers are synthetic"
@@ -117,8 +117,8 @@ turns on the third decimal is reading noise.
 
 1. Assemble a labelled historical dataset (features + a binary outcome you can
    observe, e.g. "made a major gift in the following year").
-2. Split **temporally**, not randomly — train on earlier years, test on later
-   ones — using `FiscalYearGroupedSplitter` to avoid leakage across fiscal
+2. Split **temporally**, not randomly (train on earlier years, test on later
+   ones) using `FiscalYearGroupedSplitter` to avoid leakage across fiscal
    boundaries.
 3. Report ROC-AUC plus precision/recall **at the threshold you will actually
    act on**, and calibrate that threshold to your team's capacity.

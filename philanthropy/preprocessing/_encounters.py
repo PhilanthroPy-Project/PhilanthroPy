@@ -5,8 +5,8 @@ Clinical-encounter feature engineering for medical philanthropy.
 
 This module bridges the clinical data warehouse and the advancement CRM by
 safely merging hospital encounter records (admission/discharge dates) with
-philanthropic gift histories.  The resulting temporal features—
-``days_since_last_discharge`` and ``encounter_frequency_score``—are strong
+philanthropic gift histories.  The resulting temporal features,
+``days_since_last_discharge`` and ``encounter_frequency_score``, are strong
 signals in major-gift propensity models trained for academic medical centres
 (AMCs) and hospital foundations.
 
@@ -144,7 +144,7 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
     pii_patterns : tuple of str or None, default=None
         Case-insensitive substrings used to flag identifier-like column names
         for dropping. If ``None``, the class-level :attr:`PII_PATTERNS` default
-        is used. Provide your own tuple to broaden or narrow the heuristic — it
+        is used. Provide your own tuple to broaden or narrow the heuristic: it
         replaces (does not extend) the default when set.
     as_of : str, datetime-like or None, default=None
         As-of cutoff for the encounter table. Encounters discharged **after**
@@ -421,11 +421,11 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         X_out : np.ndarray
             Enriched array with two new columns:
 
-            * ``days_since_last_discharge`` — ``float64`` days elapsed between
+            * ``days_since_last_discharge``: ``float64`` days elapsed between
               the donor's latest discharge and the gift date.  ``NaN`` for
               donors absent from the encounter table or (when
               ``allow_negative_days=False``) for gifts dated before discharge.
-            * ``encounter_frequency_score`` — ``log1p`` of the donor's encounter
+            * ``encounter_frequency_score``: ``log1p`` of the donor's encounter
               **row** count, not a count and not a distinct count.  ``0.0`` for
               donors with no recorded encounters.
 

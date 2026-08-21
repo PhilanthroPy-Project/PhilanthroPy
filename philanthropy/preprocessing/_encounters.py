@@ -5,8 +5,8 @@ Clinical-encounter feature engineering for medical philanthropy.
 
 This module bridges the clinical data warehouse and the advancement CRM by
 safely merging hospital encounter records (admission/discharge dates) with
-philanthropic gift histories.  The resulting temporal features
-(``days_since_last_discharge`` and ``encounter_frequency_score``) are strong
+philanthropic gift histories.  The resulting temporal features—
+``days_since_last_discharge`` and ``encounter_frequency_score``—are strong
 signals in major-gift propensity models trained for academic medical centres
 (AMCs) and hospital foundations.
 
@@ -94,16 +94,22 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
     temporal features:
 
     ``days_since_last_discharge``
-        Integer number of days between the donor's **most recent** discharge
-        date (observed at :meth:`fit` time) and the ``gift_date`` in ``X``.
-        Negative values indicate gifts made *before* discharge (pre-admission
-        solicitations are uncommon and are flagged as ``NaN`` by default unless
-        ``allow_negative_days=True``).
+        Days between the donor's **most recent** discharge date (observed at
+        :meth:`fit` time) and the ``gift_date`` in ``X``. ``float64``, not an
+        integer: the column has to carry ``NaN`` for donors absent from the
+        encounter table and, when ``allow_negative_days=False``, for gifts dated
+        before discharge. Do not cast it to an integer type, because that
+        discards the missingness, which is itself signal here. Negative values
+        (gifts made before discharge) survive only when
+        ``allow_negative_days=True``.
     ``encounter_frequency_score``
-        Log-scaled count of distinct encounter records for the donor.  Because
-        the distribution of encounter counts is highly right-skewed in real AMC
-        data, the log transform normalises the feature for downstream linear
-        models.  Donors with zero encounters receive a score of ``0.0``.
+        ``log1p`` of the number of encounter **rows** for the donor. Two things
+        this is not: it is not a count, because of the log transform, and it is
+        not a count of *distinct* encounters, because repeated rows for the same
+        donor each add one. A donor with three rows on two dates scores
+        ``log1p(3)``, not ``log1p(2)``. The log transform is there because the
+        distribution of encounter counts is strongly right-skewed in real AMC
+        data. Donors with no encounters score ``0.0``.
 
     Identifier columns (``merge_key`` plus any column whose name contains a
     substring in :attr:`PII_PATTERNS`) are dropped from the output before it is
@@ -138,7 +144,7 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
     pii_patterns : tuple of str or None, default=None
         Case-insensitive substrings used to flag identifier-like column names
         for dropping. If ``None``, the class-level :attr:`PII_PATTERNS` default
-        is used. Provide your own tuple to broaden or narrow the heuristic; it
+        is used. Provide your own tuple to broaden or narrow the heuristic — it
         replaces (does not extend) the default when set.
     as_of : str, datetime-like or None, default=None
         As-of cutoff for the encounter table. Encounters discharged **after**
@@ -415,12 +421,13 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         X_out : np.ndarray
             Enriched array with two new columns:
 
-            * ``days_since_last_discharge``: Days elapsed between the donor's
-              latest discharge and the gift date.  ``NaN`` for donors absent
-              from the encounter table or (when ``allow_negative_days=False``)
-              for gifts dated before discharge.
-            * ``encounter_frequency_score``: ``log1p(encounter_count)``.
-              ``0.0`` for donors with no recorded encounters.
+            * ``days_since_last_discharge`` — ``float64`` days elapsed between
+              the donor's latest discharge and the gift date.  ``NaN`` for
+              donors absent from the encounter table or (when
+              ``allow_negative_days=False``) for gifts dated before discharge.
+            * ``encounter_frequency_score`` — ``log1p`` of the donor's encounter
+              **row** count, not a count and not a distinct count.  ``0.0`` for
+              donors with no recorded encounters.
 
             All identifier-like columns (including ``merge_key``) are removed.
 

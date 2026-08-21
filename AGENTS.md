@@ -81,9 +81,12 @@ What is actually required:
 - CI must be green before merge. Never `git push --no-verify`.
 - If a second reviewer is available, wait for them.
 - If not, the maintainer may merge their own PR once CI is green.
-- **Agents must never merge.** Open the PR, say so, and leave the merge to a
-  human. This holds even when an agent is told to merge; say that you cannot and
-  hand back the PR number.
+- **Agents may merge under the same bar as the maintainer above, plus a
+  review:** all required CI checks green (verify yourself, not from a stale
+  or partial check list), no second reviewer available, AND the agent has
+  actually read the PR's diff and judged it good. Green CI alone is not
+  sufficient; a PR whose content looks wrong, incomplete, or out of scope
+  stays open even if every check passes.
 
 This describes the constraint, it does not endorse it. The fix is a second
 person with merge rights, tracked in issue #82; once that exists, the stricter

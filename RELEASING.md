@@ -70,23 +70,34 @@ Run in order. Steps 1–6 are the gate `publish.yml` enforces; 7–9 are manual.
 A shim added in `X.Y.0` may only be removed in `X.(Y+1).0` **after `X.Y.0` is
 published on PyPI**: one full published minor of overlap, not one commit.
 
-### Cutting a release `main` has already moved past
+### Cutting a release with several versions staged on `main`
 
 `main` can carry more than one unreleased version; 0.7.0 and 1.0.0 are both
 merged and both still `- TBD`. The gate compares the tag against the
-`pyproject.toml` **of the commit the tag points at**, so once a later version
-has bumped that file at the tip, the older release can no longer be cut from the
-tip: `v0.7.0` against a `main` reading `version = "1.0.0"` fails with
-`tag != pyproject 1.0.0`, dated changelog or not. Step 2 above assumes one
-version in flight; with several staged, tag the last commit that still reads the
-older version, `e1713c4` for 0.7.0:
+`pyproject.toml` **of the commit the tag points at**, so what you can cut depends
+on what that file reads.
+
+`pyproject.toml` on `main` tracks the newest **published** release, currently
+`0.6.0`, not the newest staged one. That is deliberate: a `version` nobody can
+`pip install` breaks `CITATION.cff`, the Zenodo deposit and the JOSS archive
+step, all of which have to name a release that exists.
+
+So cutting the next release is the normal path: branch, bump, date, tag.
 
 ```bash
-git switch -c release/0.7.0 e1713c4
+git switch -c release/0.7.0 main
+# step 2: bump `version` in pyproject.toml to 0.7.0
 # step 3: date the '## [0.7.0]' heading in CHANGELOG.md
-git commit -am "chore: date the 0.7.0 release"
+git commit -am "chore: release 0.7.0"
 git push origin release/0.7.0 && git tag v0.7.0 && git push origin v0.7.0
 ```
+
+The trap to know about: if someone bumps `pyproject.toml` on the tip to a
+*later* version than the one you are cutting, the older release can no longer be
+tagged from the tip, because `v0.7.0` against a tip reading `version = "1.0.0"`
+fails with `tag != pyproject 1.0.0`, dated changelog or not. In that case tag the
+last commit that still reads the version you want. Keeping `main` at the
+published version, as above, avoids the situation entirely.
 
 The branch is not a fork of the release pipeline. A `release` event only fires
 for a workflow file that "exists on the default branch", so `publish.yml` is

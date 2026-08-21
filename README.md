@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="PhilanthroPy logo" width="180"/>
+  <img src="docs/assets/logo.png" alt="PhilanthroPy" width="420"/>
 </p>
 
 <p align="center">

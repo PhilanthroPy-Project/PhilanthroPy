@@ -432,3 +432,92 @@ class TestEncounterRecencyTransformerEdgeCases:
         X = pd.DataFrame({"date1": ["2023-01-01", "2023-02-01"]})
         t = EncounterRecencyTransformer(date_col="date1").fit(X)
         assert t.transform(X.to_numpy()).shape == (2, 3)
+
+    def test_fit_on_ndarray_warns_and_defaults_reference_date_to_today(self):
+        from philanthropy.preprocessing import EncounterRecencyTransformer
+
+        X = np.array([["2023-01-01"], ["2023-02-01"]], dtype=object)
+        with pytest.warns(UserWarning, match="X is not a DataFrame"):
+            t = EncounterRecencyTransformer().fit(X)
+        assert t.reference_date_ == pd.Timestamp.today().normalize()
+
+    def test_transform_ndarray_after_ndarray_fit_returns_all_nan(self):
+        from philanthropy.preprocessing import EncounterRecencyTransformer
+
+        # Fitted on an ndarray: no column names exist, so transform cannot
+        # resolve the date columns and must return an all-NaN block instead
+        # of guessing.
+        X = np.array([["2023-01-01"], ["2023-02-01"]], dtype=object)
+        with pytest.warns(UserWarning, match="X is not a DataFrame"):
+            t = EncounterRecencyTransformer().fit(X)
+
+        out = t.transform(X)
+        assert out.shape == (2, 3)
+        assert np.isnan(out).all()
+
+    def test_fit_ignores_a_configured_column_missing_from_training_frame(self):
+        from philanthropy.preprocessing import EncounterRecencyTransformer
+
+        # "missing_col" is declared but absent from the frame; fit must skip
+        # it (no crash, no warning) and infer the reference date from the one
+        # column that is present.
+        X = pd.DataFrame({"date1": ["2023-01-01", "2023-06-30"]})
+        t = EncounterRecencyTransformer(
+            date_col=["date1", "missing_col"], fiscal_year_start=7
+        ).fit(X)
+        assert t.reference_date_ == pd.Timestamp("2023-06-30")
+
+    def test_transform_fills_nan_for_a_column_missing_at_inference_time(self):
+        from philanthropy.preprocessing import EncounterRecencyTransformer
+
+        X = pd.DataFrame({"date1": ["2023-01-01", "2023-06-01"]})
+        t = EncounterRecencyTransformer(date_col=["date1", "date2"]).fit(X)
+
+        inference_frame = pd.DataFrame({"date1": ["2023-07-01"]})
+        with pytest.warns(UserWarning, match="'date2' not found"):
+            out = t.transform(inference_frame)
+
+        assert out.shape == (1, 6)
+        # date1 features are computed normally; 2023-07-01 is *after* the
+        # reference date frozen at fit time (2023-06-01), so the day count is
+        # the documented negative "future date" value.
+        assert out[0][0] == -30.0
+        # date2 features follow the missing-date contract exactly:
+        # NaN days, 0.0 flag ("missing dates -> 0.0"), NaN fiscal year.
+        np.testing.assert_allclose(out[0][3:], [np.nan, 0.0, np.nan])
+
+    @pytest.mark.filterwarnings("ignore::UserWarning")
+    def test_days_since_day_resolution_stays_finite_across_centuries(self):
+        from philanthropy.preprocessing._encounter_recency import (
+            EncounterRecencyTransformer,
+        )
+
+        # A >400-year span overflows int64 nanosecond deltas; the static
+        # day-resolution fallback must return finite day counts, with NaT
+        # mapping to NaN like the primary path.
+        ref_ts = pd.Timestamp("2026-06-01")
+        dates = pd.Series(pd.to_datetime(["1600-01-01", None]))
+
+        days = EncounterRecencyTransformer._days_since_day_resolution(ref_ts, dates)
+
+        assert days[0] == 155745.0
+        assert np.isnan(days[1])
+
+        # The same holds when either side is timezone-aware: the helper strips
+        # both to naive UTC before differencing.
+        aware_dates = pd.Series(
+            pd.to_datetime(["1600-01-01"], utc=True).tz_convert("America/Chicago")
+        )
+        days_aware = EncounterRecencyTransformer._days_since_day_resolution(
+            pd.Timestamp("2026-06-01", tz="UTC"), aware_dates
+        )
+        assert days_aware[0] == 155745.0
+
+    # NOTE on the `except (OverflowError, OutOfBoundsTimedelta)` guard in
+    # _compute_recency_features: we could not construct any public input that
+    # reaches it, on pandas 2.x or 3.x. On pandas>=3 timestamps are second-
+    # resolution so nanosecond overflow cannot occur; on pandas 2.x,
+    # out-of-ns-range dates cannot be parsed by to_datetime (coerced to NaT),
+    # and numpy-built datetime64[ns] series subtract with silent int64
+    # *wraparound* instead of raising. If a future pandas raises again, a
+    # regression test should assert exact day-resolution values here.

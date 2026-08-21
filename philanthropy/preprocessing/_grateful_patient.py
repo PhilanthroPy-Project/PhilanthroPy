@@ -19,11 +19,14 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted, validate_data
 
-# Illustrative default service-line capacity weights. The relative ordering
-# reflects commonly-cited AMC development benchmarks (cardiac, oncology, and
-# neuroscience programs generate a disproportionate share of grateful-patient
-# major gifts relative to their encounter volume), but the exact multipliers are
-# defaults, not gospel: different foundations weight service lines differently.
+from ._encounters import _apply_as_of_cutoff
+
+# Illustrative default service-line capacity weights. These numbers have NO
+# published source: they encode the common practitioner expectation that
+# cardiac, oncology and neuroscience programs generate a disproportionate share
+# of grateful-patient major gifts relative to their encounter volume, and the
+# magnitudes are placeholders chosen to express that ordering. Do not cite them
+# and do not treat them as calibrated.
 # Override per-institution via the ``capacity_weights`` constructor parameter and
 # have the values reviewed by your governance/advancement committee. See
 # docs/explanation/design_principles.md.
@@ -79,6 +82,14 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         defaults are used — override with your foundation's board-approved values.
     merge_key : str, default="donor_id"
         Column name present in both the encounter table and ``X`` used to merge.
+    as_of : str, datetime-like or None, default=None
+        As-of cutoff for the encounter table. Encounters discharged **after**
+        this date are excluded from ``encounter_summary_`` at :meth:`fit` time.
+        ``None`` (the default) uses the whole table, which is only correct when
+        every encounter was already observable at the point being modelled. For
+        walk-forward evaluation, set this to the last day of the training window;
+        otherwise the clinical-gravity score for a 2020 gift counts encounters
+        from 2024.
     discharge_col : str, default="discharge_date"
         Column in the encounter table holding discharge dates.
 
@@ -144,6 +155,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         capacity_weights: dict[str, float] | None = None,
         merge_key: str = "donor_id",
         discharge_col: str = "discharge_date",
+        as_of=None,
     ) -> None:
         self.encounter_df = encounter_df
         self.encounter_path = encounter_path
@@ -154,6 +166,31 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         self.capacity_weights = capacity_weights
         self.merge_key = merge_key
         self.discharge_col = discharge_col
+        self.as_of = as_of
+
+    def __getstate__(self):
+        """Drop the raw encounter table from pickles and joblib bundles.
+
+        ``transform`` reads only ``encounter_summary_``, the per-donor aggregate
+        frozen at :meth:`fit` time. ``encounter_df`` is the PHI-bearing *input*,
+        so persisting it would make every saved model a patient-data disclosure:
+        a bundle handed to a vendor, attached to a ticket, or copied to a laptop
+        would carry the raw clinical rows with it. It is therefore replaced with
+        ``None`` on serialisation.
+
+        A round-tripped instance can still ``transform``. It cannot ``fit``
+        again until it is given the table back, which is the intended
+        trade-off. :func:`sklearn.base.clone` is unaffected, because clone goes
+        through ``get_params`` rather than pickle.
+
+        The bundle still contains ``encounter_summary_``: per-donor aggregates
+        keyed by ``merge_key``. That is the minimum ``transform`` needs, and it
+        is derived rather than raw, but it is not nothing. Treat a saved bundle
+        as donor data.
+        """
+        state = dict(super().__getstate__())
+        state["encounter_df"] = None
+        return state
 
     def fit(self, X, y=None) -> "GratefulPatientFeaturizer":
         """Build per-donor encounter summaries from encounter data.
@@ -189,6 +226,10 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         raw_enc = raw_enc.copy()
         raw_enc[self.discharge_col] = pd.to_datetime(
             raw_enc[self.discharge_col], errors="coerce"
+        )
+
+        raw_enc = _apply_as_of_cutoff(
+            raw_enc, self.discharge_col, self.as_of, "GratefulPatientFeaturizer"
         )
 
         # Step 3: Normalise service_line values

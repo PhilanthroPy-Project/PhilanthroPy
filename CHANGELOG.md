@@ -30,6 +30,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   columnwise strategies, which have no notion of a neighbourhood. An out-of-range
   index raises, for `strategy="knn"` where the parameter has any effect.
   Closes #85.
+- `FiscalYearGroupedSplitter(drop_repeat_donors=True)` for the static-per-donor
+  label case. The splitter groups by fiscal year, correctly, but not by donor, so
+  a donor with gifts in several fiscal years lands in both folds of a split. That
+  is right for a time-varying target and is leakage for a static label such as
+  `is_major_donor`, which is the label used throughout the README, the benchmarks
+  page and `scripts/benchmark_models.py`. With the flag set, each test fold drops
+  donors already present in its training rows; `groups` then takes shape
+  `(n_samples, 2)` with the donor identifier in column 1. Training rows are never
+  dropped. The cost is made visible rather than silent: `split` warns with the
+  number of test rows removed, and notes that the remaining test donors are
+  systematically newer to the file. A test fold emptied entirely raises with an
+  actionable message rather than being skipped, which would have put `split` and
+  `get_n_splits` back out of step. A row with a **missing** donor id is treated as
+  already-seen and dropped: `np.isin` never matches `NaN` to `NaN`, so it would
+  otherwise have been kept, and an unidentifiable donor cannot be shown to be
+  absent from training. A string-typed `groups` (which is what
+  `np.column_stack` produces from integer years and string donor ids) has its
+  fiscal-year column coerced back to numeric, and a genuinely non-numeric year
+  column now raises with an actionable message instead of a bare numpy
+  `TypeError`. `__repr__` includes the flag, so two splitters that split
+  differently no longer print identically. Defaults to `False`, so nothing
+  changes until you opt in. Part of #87; the docs and benchmark follow-up that
+  issue also scopes is not done here.
 - `scripts/leakage_experiment.py` quantifies the library's central claim, which
   was previously architectural and untested. On a seeded donor-year panel across
   five seeds: walk-forward `FiscalYearGroupedSplitter` estimates the true future

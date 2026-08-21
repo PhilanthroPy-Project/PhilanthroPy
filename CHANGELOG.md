@@ -54,7 +54,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   walk-forward evaluation.
 - Test coverage for `constituent_events_to_features`: the all-unparseable-timestamps empty-frame path and the `distinct_source_systems` default-to-zero path when `sourceSystem` is absent from the input. (#51)
 - `AGENTS.md`: every change, including maintainer- and agent-authored ones, must
-  go on a branch and through a PR — no direct commits to `main`, no self-merges.
+  go on a branch and through a PR, and never straight to `main`. (The blanket
+  "no self-merges" this originally also promised is superseded below: with one
+  account holding merge rights it could not hold.)
 - `tests/test_no_network.py` enforces in CI what the docs now promise: the package
   makes **no network calls**. Every socket entry point is monkeypatched to raise,
   then a full train/score cycle, an imputation pass and a CiviCRM ingest all run.
@@ -98,6 +100,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   navigation, prev/next footer links, footer social links, and a correct
   `edit_uri` (the "edit this page" links previously pointed at a `master`
   branch that does not exist).
+- `AGENTS.md` said "never merge your own PR; open it and leave the merge to
+  review" while `.github/CODEOWNERS` is `* @shivamlalakiya` and no second account
+  holds merge rights. Taken literally the rule means nothing ever merges, and it
+  was visibly not being followed. It now describes what is actually required: a
+  PR for every change, green CI before merge, a second reviewer when one is
+  available, the maintainer merging their own PR when one is not, and agents never
+  merging at all. The section says explicitly that this is a description rather
+  than an endorsement, and points at the real fix.
 - Four docstrings described behaviour the code does not have, each now corrected
   against a test in `tests/test_documented_contracts.py`. `FiscalYearTransformer`
   said it *appends* `fiscal_year`/`fiscal_quarter`; `transform` in fact returns

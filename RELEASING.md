@@ -14,13 +14,15 @@ at least one minor release and emits a `DeprecationWarning` pointing at its
 replacement before removal. Supported versions are listed in
 [SECURITY.md](SECURITY.md).
 
-Nothing is deprecated at 0.7.0. When you next need to deprecate something,
-reintroduce the one mechanism 0.6.0 used: a `deprecated_alias(new_name,
-removed_in=...)` decorator in `philanthropy/utils/_deprecation.py` for a renamed
-method, and an inline `warnings.warn(..., DeprecationWarning)` in `fit`/`split`
-for a parameter that no longer does anything, plus a `tests/test_deprecations.py`
-whose registry meta-test fails when a shim ships untested. Per-symbol stability
-tiers live in [docs/reference/index.md](docs/reference/index.md).
+0.7.0 ships one deprecation, `WealthScreeningImputerKNN(group_col_idx=...)`,
+removed in 0.8.0, via an inline `warnings.warn(..., DeprecationWarning)` in
+`fit` for a parameter that no longer does anything. `tests/test_deprecations.py`
+is back for it, with a registry meta-test that fails when a shim ships
+untested. `philanthropy/utils/_deprecation.py`, 0.6.0's
+`deprecated_alias(new_name, removed_in=...)` decorator for a renamed method,
+was removed at 0.7.0 alongside the shims it policed; reintroduce it the next
+time a renamed method needs one. Per-symbol stability tiers live in
+[docs/reference/index.md](docs/reference/index.md).
 
 ## RELEASE CHECKLIST
 

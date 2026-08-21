@@ -101,6 +101,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   time-varying target and is leakage for a static per-donor label such as
   `is_major_donor`. The class docstring previously implied it prevented leakage
   generally.
+- JOSS paper prep: restored the leakage (`kaufman2012leakage`, `kapoor2023leakage`)
+  and grateful-patient-ethics (`collins2018grateful`) citations that the root
+  `paper.md` had dropped, so the temporal-leakage claim in the Statement of need
+  and the AMC domain claim both have sources again. Settled the author
+  affiliation to "Independent Researcher" in `.zenodo.json`, which still said
+  "Washington University in St. Louis" and so disagreed with `paper.md`; that
+  value is minted into a permanent citable Zenodo record. Deleting the duplicate
+  `paper/` draft and repointing `draft-pdf.yml` landed separately in #72.
 - Added complete output-column documentation to all eleven preprocessing
   `get_feature_names_out` overrides that previously rendered blank in the API
   reference.

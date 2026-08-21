@@ -11,8 +11,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   every other one, always in the same place and always additively. 10 of the last
   20 commits on `main` touch this file. `union` keeps both sides instead of
   stopping, which is the standard treatment for an append-only file. It is
-  line-based rather than section-aware, so the `## [Unreleased]` block is worth a
-  skim at release time; `RELEASING.md` now says so. GitHub does not read
+  line-based rather than section-aware, and it never reports a conflict for this
+  file at all: if two branches edit the same entry it keeps both, silently. So the
+  `## [Unreleased]` block is worth a skim at release time, for a bullet under the
+  wrong heading and for a duplicated one; `RELEASING.md` now says so. GitHub does not read
   `.gitattributes`, so its own merge behaviour is unchanged: the benefit is to the
   local `git merge origin/main` that currently absorbs the cost.
 - `philanthropy.metrics.conformal_pvalue` — the non-smoothed split-conformal

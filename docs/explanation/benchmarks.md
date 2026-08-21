@@ -113,6 +113,68 @@ turns on the third decimal is reading noise.
   rate, which is still far higher than a real major-donor base rate of a few
   percent. Expect precision to fall sharply on realistically imbalanced data.
 
+## Where the leakage actually is
+
+The library's central claim is that it is leakage-safe by construction. That
+claim was never quantified, which was the largest hole in the argument. It is now
+measured by a committed script:
+
+```bash
+python scripts/leakage_experiment.py
+```
+
+A seeded donor-year panel, 3,000 donors over 6 panel years, with a stable
+per-donor propensity (real donors have habits, and that persistence is what any
+leakage must exploit) and a sector-wide drift that makes later years genuinely
+harder. Label: did the donor give in the following year. Five seeds, mean with
+min-max.
+
+**Does the choice of CV split matter?** Less than the folklore says.
+
+| Evaluation | ROC-AUC | Error vs the true future |
+|---|---:|---:|
+| True future, final year genuinely held out | 0.639 (0.621-0.653) | |
+| Walk-forward `FiscalYearGroupedSplitter` | 0.625 (0.620-0.636) | **-0.014** |
+| Random `StratifiedKFold` | 0.608 (0.601-0.616) | -0.030 |
+
+Both CV runs exclude the final panel year, which is the year the target column
+scores. That exclusion matters: "train on everything before the final year, score
+the final year" is exactly what a walk-forward splitter's last fold does, so
+leaving the year in would put the estimand inside one estimator and not the
+other, and walk-forward would win by construction. An earlier version of this
+script did that and reported walk-forward as three times more accurate.
+
+Walk-forward CV estimates the future about twice as accurately, which is a real
+result and an argument for the splitter. But note the direction: the
+random split **understated** the future here, it did not flatter it. The common
+claim that a random split inflates your backtest did not reproduce, in this or in
+two other configurations tried before this one, including a static per-donor
+label. Do not repeat that claim on the strength of this repository.
+
+**Does the choice of feature construction matter?** Enormously.
+
+| Walk-forward CV, features built... | ROC-AUC |
+|---|---:|
+| as of each panel year | 0.625 (0.620-0.636) |
+| over the whole export, including future years | 0.750 (0.745-0.757) |
+| | **+0.126 AUC of pure inflation** |
+
+Same model, same splitter, same label. The only difference is whether the
+aggregate features were computed as of the decision point or once over the full
+history. Building features first and splitting afterwards inflates the score by
+0.126 AUC and no choice of splitter recovers it.
+
+That is the failure mode this library is built around, and it is why the fitted
+statistics are frozen in `fit` (see
+[Design principles](design_principles.md)) and why `EncounterTransformer` and
+`GratefulPatientFeaturizer` take an `as_of` cutoff. A correct splitter is
+worth about 0.016 AUC of accuracy in your estimate; correct feature timing is
+worth 0.126, roughly eight times more.
+
+These are synthetic numbers on a generator whose persistence and drift I chose.
+They establish the mechanism and its rough magnitude, not a value to quote for
+your program.
+
 ## Validating on your own data
 
 1. Assemble a labelled historical dataset (features + a binary outcome you can

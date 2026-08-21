@@ -17,7 +17,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   wrong heading and for a duplicated one; `RELEASING.md` now says so. GitHub does not read
   `.gitattributes`, so its own merge behaviour is unchanged: the benefit is to the
   local `git merge origin/main` that currently absorbs the cost.
-- `philanthropy.metrics.conformal_pvalue` — the non-smoothed split-conformal
+- `philanthropy.metrics.conformal_pvalue`: the non-smoothed split-conformal
 - `philanthropy.metrics.conformal_pvalue`: the non-smoothed split-conformal
   p-value of a donor score against a held-out calibration set,
   `(1 + |{i : s_i >= s}|) / (n + 1)`. A calibrated probability threshold fixes no

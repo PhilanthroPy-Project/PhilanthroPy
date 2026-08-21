@@ -29,6 +29,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   differently no longer print identically. Defaults to `False`, so nothing
   changes until you opt in. Part of #87; the docs and benchmark follow-up that
   issue also scopes is not done here.
+- `.gitattributes` sets `CHANGELOG.md merge=union`. `AGENTS.md` requires every PR
+  to add an entry under `## [Unreleased]`, so every concurrent PR conflicts with
+  every other one, always in the same place and always additively. 10 of the last
+  20 commits on `main` touch this file. `union` keeps both sides instead of
+  stopping, which is the standard treatment for an append-only file. It is
+  line-based rather than section-aware, and it never reports a conflict for this
+  file at all: if two branches edit the same entry it keeps both, silently. So the
+  `## [Unreleased]` block is worth a skim at release time, for a bullet under the
+  wrong heading and for a duplicated one; `RELEASING.md` now says so. GitHub does not read
+  `.gitattributes`, so its own merge behaviour is unchanged: the benefit is to the
+  local `git merge origin/main` that currently absorbs the cost.
 - `philanthropy.metrics.conformal_pvalue` — the non-smoothed split-conformal
   p-value of a donor score against a held-out calibration set,
   `(1 + |{i : s_i >= s}|) / (n + 1)`. A calibrated probability threshold fixes no
@@ -113,6 +124,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   time-varying target and is leakage for a static per-donor label such as
   `is_major_donor`. The class docstring previously implied it prevented leakage
   generally.
+- JOSS paper prep: restored the leakage (`kaufman2012leakage`, `kapoor2023leakage`)
+  and grateful-patient-ethics (`collins2018grateful`) citations that the root
+  `paper.md` had dropped, so the temporal-leakage claim in the Statement of need
+  and the AMC domain claim both have sources again. Settled the author
+  affiliation to "Independent Researcher" in `.zenodo.json`, which still said
+  "Washington University in St. Louis" and so disagreed with `paper.md`; that
+  value is minted into a permanent citable Zenodo record. Deleting the duplicate
+  `paper/` draft and repointing `draft-pdf.yml` landed separately in #72.
 - Added complete output-column documentation to all eleven preprocessing
   `get_feature_names_out` overrides that previously rendered blank in the API
   reference.

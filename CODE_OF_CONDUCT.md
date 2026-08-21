@@ -129,3 +129,4 @@ For answers to common questions about this code of conduct, see the FAQ at
 [https://www.contributor-covenant.org/faq][faq].
 
 [faq]: https://www.contributor-covenant.org/faq
+# bounty-fix-ref: https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/117

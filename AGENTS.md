@@ -64,10 +64,30 @@ separate, higher floor over the risk-tier subtree. CI runs both
 (`.github/workflows/ci.yml`). Do not hardcode either number anywhere else —
 that drift is what issues #21 and #22 exist to fix.
 
-## Branching — no direct commits to main
-Every change — including maintainer- and agent-authored ones — goes on a feature
-branch and through a pull request. Never commit or push straight to `main`, and
-never merge your own PR; open it and leave the merge to review.
+## Branching: no direct commits to main
+Every change, including maintainer- and agent-authored ones, goes on a feature
+branch and through a pull request. Never commit or push straight to `main`.
+
+### Merging
+This section used to end "never merge your own PR; open it and leave the merge
+to review." With `.github/CODEOWNERS` set to `* @shivamlalakiya` and no second
+account holding merge rights, that rule cannot hold: taken literally, nothing
+ever merges. It was also visibly not being followed, and a rule the repository
+breaks is worth less than a narrower one it keeps.
+
+What is actually required:
+
+- Open a PR for every change. No exceptions.
+- CI must be green before merge. Never `git push --no-verify`.
+- If a second reviewer is available, wait for them.
+- If not, the maintainer may merge their own PR once CI is green.
+- **Agents must never merge.** Open the PR, say so, and leave the merge to a
+  human. This holds even when an agent is told to merge; say that you cannot and
+  hand back the PR number.
+
+This describes the constraint, it does not endorse it. The fix is a second
+person with merge rights, tracked in issue #82; once that exists, the stricter
+"leave the merge to review" rule should come back.
 
 ## Every PR must also
 - Add an entry under `## [Unreleased]` in CHANGELOG.md.

@@ -24,9 +24,9 @@ bibliography: paper.bib
 PhilanthroPy is a scikit-learn-native Python library for predictive fundraising
 analytics at nonprofits and academic medical center (AMC) foundations. It
 covers the full predictive workflow used by advancement and development
-offices — CRM cleaning, wealth-screening imputation, RFM segmentation,
+offices (CRM cleaning, wealth-screening imputation, RFM segmentation,
 donor-propensity and major-gift scoring, lapse prediction, planned-giving
-intent, share-of-wallet estimation, and hybrid revenue forecasting — as a set
+intent, share-of-wallet estimation, and hybrid revenue forecasting) as a set
 of `fit`/`transform`/`predict` estimators and transformers that compose
 directly inside `sklearn.pipeline.Pipeline`. Every estimator that fits the
 scikit-learn `fit(X, y)` contract passes
@@ -38,8 +38,8 @@ surface (`EncounterTransformer`, `GratefulPatientFeaturizer`,
 for grateful-patient programs, where PHI-adjacent inputs raise the compliance
 bar relative to general nonprofit use.
 
-Every fitted statistic in the library — imputation fill values, wealth
-percentile lookups, fiscal-year boundaries — is computed from training data
+Every fitted statistic in the library (imputation fill values, wealth
+percentile lookups, fiscal-year boundaries) is computed from training data
 inside `fit` and frozen before `transform` or `predict` is ever called, so a
 pipeline built on PhilanthroPy cannot leak test-period or future information
 into a score without the user deliberately refitting on it. This contract is

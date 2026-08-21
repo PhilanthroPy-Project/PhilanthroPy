@@ -14,11 +14,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   database. **The measured benefit is small and setup-dependent**, which is worth
   saying plainly given the old docstring promised "improving local accuracy":
   across several synthetic two-group pools the grouped and global fits often
-  agree exactly, because a donor's nearest neighbours by feature distance usually
-  share their group already, and `KNNImputer`'s distance is dominated by
-  large-magnitude columns so a 0/1 group flag contributes little either way. The
+  agree **exactly**, because a donor's nearest neighbours by feature distance
+  usually share their group already, and `KNNImputer`'s distance is dominated by
+  large-magnitude columns so a 0/1 group flag contributes little either way. CI
+  demonstrated this on other numpy/sklearn versions, where the two fills came out
+  bit-identical, so no test here asserts that grouping changes a value. The
   honest case for the parameter is explicit control, not a demonstrated accuracy
-  gain. Three fallbacks are frozen at fit time so nothing is learned at transform
+  gain, and issue #85's option B (deprecate it) remains defensible on that basis. Three fallbacks are frozen at fit time so nothing is learned at transform
   time: a group with fewer than `n_neighbors + 1` training rows gets no imputer of
   its own; a group value unseen at fit, or a row whose group label is missing,
   uses the global imputer; and a column entirely missing *within* a group also

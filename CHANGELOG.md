@@ -63,7 +63,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   walk-forward evaluation.
 - Test coverage for `constituent_events_to_features`: the all-unparseable-timestamps empty-frame path and the `distinct_source_systems` default-to-zero path when `sourceSystem` is absent from the input. (#51)
 - `AGENTS.md`: every change, including maintainer- and agent-authored ones, must
-  go on a branch and through a PR — no direct commits to `main`, no self-merges.
+  go on a branch and through a PR, and never straight to `main`. (The blanket
+  "no self-merges" this originally also promised is superseded below: with one
+  account holding merge rights it could not hold.)
 - `tests/test_no_network.py` enforces in CI what the docs now promise: the package
   makes **no network calls**. Every socket entry point is monkeypatched to raise,
   then a full train/score cycle, an imputation pass and a CiviCRM ingest all run.
@@ -107,6 +109,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   navigation, prev/next footer links, footer social links, and a correct
   `edit_uri` (the "edit this page" links previously pointed at a `master`
   branch that does not exist).
+- `AGENTS.md` said "never merge your own PR; open it and leave the merge to
+  review" while `.github/CODEOWNERS` is `* @shivamlalakiya` and no second account
+  holds merge rights. Taken literally the rule means nothing ever merges, and it
+  was visibly not being followed. It now describes what is actually required: a
+  PR for every change, green CI before merge, a second reviewer when one is
+  available, the maintainer merging their own PR when one is not, and agents never
+  merging at all. The section says explicitly that this is a description rather
+  than an endorsement, and points at the real fix.
 - Four docstrings described behaviour the code does not have, each now corrected
   against a test in `tests/test_documented_contracts.py`. `FiscalYearTransformer`
   said it *appends* `fiscal_year`/`fiscal_quarter`; `transform` in fact returns
@@ -159,6 +169,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   preferred disclosure channel.
 
 ### Fixed
+- **`generate_synthetic_donor_data` ran the domain's causal arrow backwards.**
+  It drew `is_major_donor` from a logistic model of `years_active` and
+  `event_attendance_count`, then drew `total_gift_amount` *conditional on that
+  label*, so the strongest feature was generated from the answer. Measurably: a
+  model given `total_gift_amount` scored ROC-AUC 0.935 against a causal Bayes
+  accuracy ceiling of 0.768, beating the Bayes rate of the generator's own
+  process by about 19 AUC points, which no model can legitimately do. Using
+  cumulative lifetime giving to predict "is a major donor" is also the classic
+  fundraising leakage this library exists to prevent, so the reference dataset
+  was teaching the anti-pattern. `last_gift_date` was a second target-derived
+  feature, drawn Beta for majors and uniform for everyone else.
+  A latent giving capacity now drives everything: a confounder causing both the
+  giving history and the label. `total_gift_amount` is a noisy realisation of
+  capacity, `is_major_donor` a soft $25,000 threshold on it, and
+  `last_gift_date` follows engagement. The model now sits **below** the ceiling
+  (accuracy 0.759 against 0.806) rather than above it, which is the correct
+  relationship. Held-out ROC-AUC moves from 0.935 to 0.814 and the base rate from
+  0.687 to 0.378: worse numbers, trustworthy ones. Benchmark table, README
+  quickstart and the benchmarks page are regenerated from the committed script.
+  `generate_synthetic_donor_data` is Tier 1, so **this changes returned data for
+  a documented-stable function**; release sequencing is the open version
+  question. Closes #86.
 - The README quickstart fitted and scored **the same rows**, then reported the
   resulting gap ("non-major donors top out at 39; no major donor scores below 65")
   as the headline result. That gap was a random forest reciting its training set:
@@ -177,6 +209,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   is the signature of a target-derived feature. The page now measures and states
   this, and records that there is no validation on real donor data anywhere in the
   repository.
+- Two `EncounterTransformer` output columns were documented with the wrong type
+  and the wrong semantics. `days_since_last_discharge` was described as an
+  "Integer number of days"; it is `float64`, and it has to be, because a donor
+  absent from the encounter table gets `NaN` and an integer dtype cannot carry
+  that. A caller who trusted the docstring and cast the column would silently
+  destroy the missingness, which is signal in this library.
+  `encounter_frequency_score` was described as a "Log-scaled count of distinct
+  encounter records"; it is `log1p` of the **row** count, so a donor with three
+  rows on two dates scores `log1p(3)`, not `log1p(2)`. Both are now stated
+  correctly and locked by tests in `tests/test_documented_contracts.py`. Found
+  during review of the em-dash branch; docstrings only, no behaviour change.
 - `LapsePredictor` and `experimental.UpliftTLearner` validated input with
   `check_array`/`check_X_y` instead of `validate_data`, the convention every
   other estimator follows. Neither set `feature_names_in_`, so a DataFrame with

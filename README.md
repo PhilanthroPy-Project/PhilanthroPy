@@ -93,24 +93,24 @@ print(pd.Series(scores).groupby(y_test).describe()[["count", "mean", "min", "max
 ```
 
 ```
-held-out ROC-AUC: 0.932
-   count       mean   min    max
-0  153.0  25.019608   0.0  100.0
-1  347.0  88.665706  18.0  100.0
+held-out ROC-AUC: 0.841
+   count       mean  min    max
+0  317.0  22.069401  0.0   96.0
+1  183.0  58.704918  1.0  100.0
 ```
 
-Held-out ROC-AUC 0.932, and the score distributions **overlap**: some non-major
-donors score 100 and some major donors score 18. Ranking works, separation is
-not clean, and a call list cut at any single threshold will contain mistakes.
-Pick the threshold from your team's capacity, not from this table.
+Held-out ROC-AUC 0.841, and the score distributions **overlap**: some non-major
+donors score 96 and some major donors score 1. Ranking works, separation is not
+clean, and a call list cut at any single threshold will contain mistakes. Pick
+the threshold from your team's capacity, not from this table.
 
 > An earlier version of this section fitted and scored the *same* rows and
 > reported a clean gap ("non-major donors top out at 39, no major donor below
 > 65"). That gap was a random forest reciting its training set, since RF leaves
-> go pure and `predict_affinity_score` is `predict_proba(X)[:, 1] * 100`. On
-> held-out rows from that same 500-row sample the two groups overlap almost
-> completely (non-major max 97.5, major min 6.5). These numbers are also
-> synthetic and optimistic for a further reason: see
+> go pure and `predict_affinity_score` is `predict_proba(X)[:, 1] * 100`. It also
+> ran on a generator that drew the gift amount *from* the label, which inflated
+> every number; that is fixed, and these figures come from the corrected
+> data-generating process. They are still synthetic: see
 > [Benchmarks](docs/explanation/benchmarks.md).
 
 > **Try it now — zero install:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/quickstart.ipynb)
@@ -260,11 +260,8 @@ coverage floor (`pyproject.toml`). CI additionally enforces a 93% coverage floor
 on the risk-tier subtree, runs the suite across an OS and Python-version matrix,
 installs at the declared dependency floors on Python 3.9, builds the
 distributions and checks their metadata with `twine`, and verifies the package
-imports without a plotting stack installed. Every public estimator that fits
-the scikit-learn `fit(X, y)` contract passes
-`sklearn.utils.estimator_checks.check_estimator`; the one documented exception
-is `UpliftTLearner` (Tier 3, `philanthropy.experimental`), whose
-`fit(X, y, treatment)` signature breaks that contract.
+imports without a plotting stack installed. Every public estimator passes
+`sklearn.utils.estimator_checks.check_estimator`.
 
 No approximate scale is attached to the AI use here. The author has not measured
 the split and will not estimate one; the mechanism and the review gate above are

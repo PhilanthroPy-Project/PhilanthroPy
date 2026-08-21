@@ -432,3 +432,162 @@ class TestEncounterRecencyTransformerEdgeCases:
         X = pd.DataFrame({"date1": ["2023-01-01", "2023-02-01"]})
         t = EncounterRecencyTransformer(date_col="date1").fit(X)
         assert t.transform(X.to_numpy()).shape == (2, 3)
+
+
+class TestGetPandasOutputFallbacks:
+    """The defensive fallbacks in `_get_pandas_output` (issue #62, group 1).
+
+    The modern `sklearn.utils._set_output._get_output_config` lookup is
+    imported inside the function, so monkeypatching the sklearn attribute
+    reaches it; the legacy attribute check is exercised by setting
+    `_sklearn_output_config` directly.
+    """
+
+    @staticmethod
+    def _estimator_with(config):
+        from philanthropy.preprocessing._transformers import CRMCleaner
+
+        est = CRMCleaner()
+        est._sklearn_output_config = config
+        return est
+
+    def test_string_shaped_legacy_config_returns_true(self, monkeypatch):
+        import sklearn.utils._set_output as so
+        from philanthropy.preprocessing._transformers import _get_pandas_output
+
+        def raise_attr_error(*args, **kwargs):
+            raise AttributeError("removed in this sklearn")
+
+        monkeypatch.setattr(so, "_get_output_config", raise_attr_error)
+
+        assert (
+            _get_pandas_output(self._estimator_with({"transform": "pandas"}))
+            is True
+        )
+
+    def test_dict_shaped_legacy_config_returns_true(self, monkeypatch):
+        import sklearn.utils._set_output as so
+        from philanthropy.preprocessing._transformers import _get_pandas_output
+
+        monkeypatch.setattr(so, "_get_output_config", lambda *a, **k: {})
+
+        est = self._estimator_with({"transform": {"dense": "pandas"}})
+        assert _get_pandas_output(est) is True
+
+    def test_non_dict_legacy_config_returns_false(self, monkeypatch):
+        import sklearn.utils._set_output as so
+        from philanthropy.preprocessing._transformers import _get_pandas_output
+
+        monkeypatch.setattr(so, "_get_output_config", lambda *a, **k: {})
+
+        est = self._estimator_with("not-a-dict")
+        assert _get_pandas_output(est) is False
+
+
+@pytest.mark.usefixtures()
+class TestValidationRetryBranches:
+    """The object-cast retry in fit/transform (issue #62, group 2).
+
+    A DataFrame carrying a datetime64 column makes the first `validate_data`
+    pass raise DTypePromotionError; casting to object dtype recovers, so both
+    transformers must fit and transform such input instead of raising.
+    """
+
+    def test_crm_cleaner_fit_retries_datetime_columns(self):
+        X = pd.DataFrame(
+            {"gift_date": pd.to_datetime(["2023-01-01"]), "gift_amount": [5.0]}
+        )
+        out = CRMCleaner().fit(X).transform(X)
+        assert np.asarray(out).shape == (1, 2)
+
+    def test_fiscal_year_transformer_fit_and_transform_retry_datetime_columns(self):
+        X = pd.DataFrame({"gift_date": pd.to_datetime(["2023-01-15"])})
+        t = FiscalYearTransformer()
+
+        t.fit(X)  # must not raise
+        out = np.asarray(t.transform(X))
+        assert out.shape == (1, 2)
+        # Default fiscal_year_start=7: January precedes July, so FY == 2023.
+        assert out[0][0] == 2023.0
+
+    def test_fiscal_year_transformer_missing_date_col_yields_nan_features(self):
+        # Fitting on an unnamed ndarray leaves no feature_names_in_, so at
+        # transform time the frame's columns are positional integers and the
+        # configured date_col cannot be located: fiscal features degrade to
+        # NaN instead of raising.
+        X = pd.DataFrame({"gift_date": ["2023-01-15"]})
+        t = FiscalYearTransformer(fiscal_year_start=7).fit(X.to_numpy())
+
+        out = np.asarray(t.transform(X.to_numpy()))
+
+        assert out.shape == (1, 2)
+        assert np.isnan(out).all()
+
+    def test_fiscal_year_transformer_retries_mixed_dtype_frames(self):
+        # A lone datetime64 column validates cleanly; mixing it with a float
+        # column is what triggers the DTypePromotionError that the object-cast
+        # retry exists for.
+        X = pd.DataFrame(
+            {"gift_date": pd.to_datetime(["2023-01-15"]), "extra": [1.5]}
+        )
+        out = np.asarray(FiscalYearTransformer().fit(X).transform(X))
+        assert out[0].tolist() == [2023.0, 3.0]
+
+    def test_complex_column_is_re_raised_not_retried(self):
+        # The retry must not swallow the explicit complex-data rejection:
+        # a complex column fails validation with exactly that message and is
+        # re-raised instead of being cast to object and retried.
+        X = pd.DataFrame({"gift_date": [np.complex128(1 + 2j)]})
+
+        with pytest.raises(ValueError, match="Complex data not supported"):
+            FiscalYearTransformer().fit(X)
+
+        with pytest.raises(ValueError, match="Complex data not supported"):
+            CRMCleaner().fit(X)
+
+
+class TestCoerceCurrencyNumericShortCircuit:
+    def test_numeric_amount_column_passes_through_coercion(self):
+        # Already-numeric amounts take the early return in
+        # _coerce_currency_to_float rather than the string-cleaning path.
+        X = pd.DataFrame({"gift_date": ["2023-01-01"], "gift_amount": [1250.50]})
+        out = CRMCleaner().set_output(transform="pandas").fit_transform(X)
+        assert out.loc[0, "gift_amount"] == 1250.50
+
+
+class TestValidationReRaiseGuards:
+    def test_numeric_series_short_circuits_string_cleaning(self):
+        from philanthropy.preprocessing._transformers import (
+            _coerce_currency_to_float,
+        )
+
+        col = pd.Series([1250.50, 0.0])
+        out = _coerce_currency_to_float(col)
+        assert out.dtype == "float64"
+        assert out.tolist() == [1250.50, 0.0]
+
+    def test_crm_transform_re_raises_complex_column(self):
+        # A complex ndarray at transform time fails validation with the
+        # explicit complex-data message, which the retry guard re-raises
+        # instead of casting to object and retrying.
+        X_fit = pd.DataFrame({"gift_date": ["2023-01-01"], "gift_amount": [5.0]})
+        t = CRMCleaner().fit(X_fit)
+
+        X_bad = np.array([[1 + 2j]], dtype=np.complex128)
+        with pytest.raises(ValueError, match="Complex data not supported"):
+            t.transform(X_bad)
+
+    def test_fiscal_year_transform_re_raises_complex_column(self):
+        t = FiscalYearTransformer().fit(pd.DataFrame({"gift_date": ["2023-01-15"]}))
+
+        X_bad = pd.DataFrame({"gift_date": [np.complex128(1 + 2j)]})
+        with pytest.raises(ValueError, match="Complex data not supported"):
+            t.transform(X_bad)
+
+    def test_crm_cleaner_on_unnamed_ndarrays_skips_named_columns(self):
+        # Fit and transform on plain ndarrays: no feature names exist, so the
+        # configured date/amount column lookups both miss and the cleaner
+        # still returns the right shape.
+        X = np.array([["2023-01-01", "1250.50"]], dtype=object)
+        out = np.asarray(CRMCleaner().fit(X).transform(X))
+        assert out.shape == (1, 2)

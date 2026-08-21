@@ -139,7 +139,9 @@ philanthropy score --data prospects.csv --model model.joblib --out scored.csv
 
 ### Your data never leaves your machine
 
-PhilanthroPy makes **no network calls**. There is no telemetry, no license check, no phone-home, and no third-party data append; the package imports no HTTP client at all, and `tests/test_no_network.py` enforces that in CI by making every socket raise. It models only what is already in your database. See **[Compliance considerations](docs/explanation/compliance_considerations.md)** and the **[security review Q&A](docs/explanation/security_review_answers.md)** for the questions an institutional review will ask.
+**PhilanthroPy never sends your data anywhere.** No telemetry, no usage analytics, no license check, no phone-home, no third-party data append. It models only what is already in your database.
+
+Nothing in the package downloads anything either. No module imports a network client, nothing is fetched at import time or during `fit`/`transform`, and `tests/test_no_network.py` enforces both halves in CI: it makes every socket raise across a full train/score cycle, and it parses every module in the package and fails the build if one imports a network-capable library without being on an explicit allowlist. That allowlist is currently empty. Should a public-dataset fetcher ever be added, it will be an opt-in function you call on purpose, named on this page and in the security review Q&A, and it will still never transmit your data. See **[Compliance considerations](docs/explanation/compliance_considerations.md)** and the **[security review Q&A](docs/explanation/security_review_answers.md)** for the questions an institutional review will ask.
 
 ---
 

@@ -1,0 +1,17 @@
+# CHANGELOG.md is append-only under `## [Unreleased]`, and AGENTS.md requires
+# every PR to add an entry there. Two PRs adding different bullets is therefore
+# not a real conflict, but git stops on it anyway. `union` keeps both sides.
+#
+# Two failure modes to know about, because union NEVER reports a conflict for
+# this file and so never asks you to look:
+#
+#   1. It is line-based, not section-aware, so a bullet can land under an
+#      adjacent heading.
+#   2. If two branches edit the SAME entry, union keeps BOTH versions rather
+#      than conflicting. You get a duplicated, contradictory bullet. Verified:
+#      two branches editing one line merge silently into two lines.
+#
+# So the `## [Unreleased]` block needs one skim per release. See RELEASING.md.
+# GitHub does not read this file, so its own merge and squash-conflict detection
+# are unaffected; this helps the local `git merge origin/main`.
+CHANGELOG.md merge=union

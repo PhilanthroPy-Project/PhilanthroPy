@@ -13,6 +13,7 @@ added later fails this test instead of shipping.
 import socket
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from philanthropy.datasets import generate_synthetic_donor_data
@@ -88,3 +89,39 @@ def test_the_guard_itself_actually_bites(no_network):
     """Guard against a silently ineffective fixture."""
     with pytest.raises(NetworkAccessAttempted):
         socket.socket()
+
+
+def test_encounter_path_rejects_remote_scheme(no_network):
+    """User-supplied paths are validated before any pandas read: remote
+    schemes must raise locally instead of reaching for the network."""
+    from philanthropy.preprocessing import (
+        EncounterTransformer,
+        GratefulPatientFeaturizer,
+    )
+
+    donor_frame = pd.DataFrame({"a": [1.0]})
+    for path in ("https://example.com/encounters.parquet", "s3://bucket/e.parquet"):
+        with pytest.raises(ValueError, match="must be a local file path"):
+            GratefulPatientFeaturizer(encounter_path=path).fit(donor_frame)
+
+        with pytest.raises(ValueError, match="must be a local file path"):
+            EncounterTransformer(encounter_path=path).fit(donor_frame)
+
+
+def test_cli_data_path_rejects_remote_scheme(no_network):
+    from philanthropy.cli import _read_csv
+
+    with pytest.raises(ValueError, match="must be a local file path"):
+        _read_csv("https://example.com/gifts.csv")
+
+    with pytest.raises(ValueError, match="must be a local file path"):
+        _read_csv("gs://bucket/prospects.csv")
+
+
+def test_local_paths_still_load_under_the_guard(no_network, tmp_path):
+    from philanthropy.cli import _read_csv
+
+    csv = tmp_path / "gifts.csv"
+    csv.write_text("a,b\n1,2\n")
+    df = _read_csv(str(csv))
+    assert list(df.columns) == ["a", "b"]

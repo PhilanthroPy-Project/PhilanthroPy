@@ -40,6 +40,9 @@ def _resolve_model(name):
 
 
 def _read_csv(path):
+    from .utils._validation import ensure_local_path
+
+    ensure_local_path(path, "data")
     try:
         return pd.read_csv(path)
     except FileNotFoundError:

@@ -492,26 +492,36 @@ class TestEncounterRecencyTransformerEdgeCases:
             EncounterRecencyTransformer,
         )
 
-        # A >400-year span overflows int64 nanosecond deltas; the static
-        # day-resolution fallback must return finite day counts, with NaT
-        # mapping to NaN like the primary path.
-        ref_ts = pd.Timestamp("2026-06-01")
-        dates = pd.Series(pd.to_datetime(["1600-01-01", None]))
+        # A span wider than int64 nanoseconds (~292 years) overflows the
+        # primary differencing path; the static day-resolution fallback must
+        # return finite day counts, with NaT mapping to NaN like the primary
+        # path. Both endpoints sit safely inside the ns-representable window
+        # (~1677-09-21 .. ~2262-04-11) so construction succeeds on every
+        # pandas, while their ~584-year distance still forces day resolution.
+        ref_ts = pd.Timestamp("2262-01-01")
+        first = pd.Timestamp("1678-01-01")
+        dates = pd.Series(pd.to_datetime([first, None]))
 
         days = EncounterRecencyTransformer._days_since_day_resolution(ref_ts, dates)
 
-        assert days[0] == 155745.0
+        # Expected value via plain-Python dates: a pandas Timestamp
+        # subtraction would overflow int64 nanoseconds on pandas 2.x, which
+        # is exactly the regime this fallback serves.
+        expected_days = (
+            ref_ts.to_pydatetime().date() - first.to_pydatetime().date()
+        ).days
+        assert days[0] == float(expected_days)
         assert np.isnan(days[1])
 
         # The same holds when either side is timezone-aware: the helper strips
         # both to naive UTC before differencing.
         aware_dates = pd.Series(
-            pd.to_datetime(["1600-01-01"], utc=True).tz_convert("America/Chicago")
+            pd.to_datetime([first], utc=True).tz_convert("America/Chicago")
         )
         days_aware = EncounterRecencyTransformer._days_since_day_resolution(
-            pd.Timestamp("2026-06-01", tz="UTC"), aware_dates
+            pd.Timestamp(ref_ts, tz="UTC"), aware_dates
         )
-        assert days_aware[0] == 155745.0
+        assert days_aware[0] == float(expected_days)
 
     # NOTE on the `except (OverflowError, OutOfBoundsTimedelta)` guard in
     # _compute_recency_features: we could not construct any public input that

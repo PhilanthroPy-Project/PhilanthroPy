@@ -111,7 +111,8 @@ def test_not_enough_fiscal_years_names_the_shortfall():
 def test_repr_and_get_n_splits_reflect_the_groups():
     splitter = FiscalYearGroupedSplitter(n_splits=2, gap_years=1)
     assert repr(splitter) == (
-        "FiscalYearGroupedSplitter(n_splits=2, gap_years=1)"
+        "FiscalYearGroupedSplitter(n_splits=2, gap_years=1, "
+        "drop_repeat_donors=False)"
     )
     assert splitter.get_n_splits(groups=_FY_GROUPS) == 2
 
@@ -193,7 +194,7 @@ def test_drop_repeat_donors_removes_the_overlap():
     groups = np.column_stack([fy, donor])
     splitter = FiscalYearGroupedSplitter(n_splits=2, drop_repeat_donors=True)
 
-    with pytest.warns(UserWarning, match="removed 6 test row"):
+    with pytest.warns(UserWarning, match="removed 3 test row"):
         folds = list(splitter.split(X, groups=groups))
 
     for train, test in folds:
@@ -231,4 +232,65 @@ def test_drop_repeat_donors_raises_rather_than_silently_dropping_a_fold():
 def test_drop_repeat_donors_is_off_by_default():
     # BaseCrossValidator, not BaseEstimator, so there is no get_params here.
     assert FiscalYearGroupedSplitter().drop_repeat_donors is False
-    assert "drop_repeat_donors" not in repr(FiscalYearGroupedSplitter())
+
+
+def test_repr_distinguishes_splitters_that_behave_differently():
+    # This test used to assert the opposite, that drop_repeat_donors was absent
+    # from __repr__. That pinned a defect: two splitters that split differently
+    # printed identically, which is exactly what a repr exists to prevent.
+    assert "drop_repeat_donors=False" in repr(FiscalYearGroupedSplitter())
+    assert "drop_repeat_donors=True" in repr(
+        FiscalYearGroupedSplitter(drop_repeat_donors=True)
+    )
+    assert repr(FiscalYearGroupedSplitter()) != repr(
+        FiscalYearGroupedSplitter(drop_repeat_donors=True)
+    )
+
+
+def test_missing_donor_id_is_treated_as_already_seen():
+    # np.isin never matches NaN to NaN, so a row with no donor id would have
+    # been kept in the test fold. For a leakage guard that is the wrong default:
+    # an unidentifiable donor cannot be shown to be absent from training.
+    groups = np.column_stack([
+        [2019.0, 2019.0, 2020.0, 2020.0, 2020.0],
+        [1.0, 2.0, 3.0, np.nan, 4.0],
+    ])
+    X = np.zeros((5, 2))
+    splitter = FiscalYearGroupedSplitter(n_splits=1, drop_repeat_donors=True)
+    with pytest.warns(UserWarning, match="removed 1 test row"):
+        folds = list(splitter.split(X, groups=groups))
+    (train, test), = folds
+    # donors 3 and 4 are new, the NaN row is dropped despite being "unseen".
+    assert sorted(test) == [2, 4]
+
+
+def test_string_donor_ids_still_split_correctly():
+    # np.column_stack of int years and string ids upcasts everything to '<U21',
+    # so the fiscal years arrive as strings. That used to fail later with a bare
+    # numpy TypeError on `fiscal_years < cutoff`; the years are now coerced back
+    # to float, so this is a working case rather than an error case.
+    groups = np.column_stack([[2019, 2019, 2020], ["a", "b", "c"]])
+    assert groups.dtype.kind == "U"
+    splitter = FiscalYearGroupedSplitter(n_splits=1, drop_repeat_donors=True)
+    (train, test), = list(splitter.split(np.zeros((3, 2)), groups=groups))
+    assert sorted(train) == [0, 1]     # 2019
+    assert sorted(test) == [2]         # 2020, donor "c" is new
+
+
+def test_non_numeric_fiscal_years_raise_a_useful_error():
+    groups = np.array([["FY19", "a"], ["FY19", "b"], ["FY20", "c"]])
+    splitter = FiscalYearGroupedSplitter(n_splits=1, drop_repeat_donors=True)
+    with pytest.raises(ValueError, match="must be numeric fiscal years"):
+        list(splitter.split(np.zeros((3, 2)), groups=groups))
+
+
+def test_row_loss_warning_fires_on_the_first_fold_not_at_exhaustion():
+    # The warning used to sit after the loop in a generator, so a caller taking
+    # only the first fold never saw it and lost rows silently.
+    X, fy, donor = _repeat_donor_panel()
+    groups = np.column_stack([fy, donor])
+    gen = FiscalYearGroupedSplitter(n_splits=2, drop_repeat_donors=True).split(
+        X, groups=groups
+    )
+    with pytest.warns(UserWarning, match="removed 3 test row"):
+        next(gen)

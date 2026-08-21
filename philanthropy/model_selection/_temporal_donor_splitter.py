@@ -225,9 +225,11 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
             samples) is used; actual feature values are ignored.
         y : array-like of shape (n_samples,), optional
             Target labels.  Ignored; present for sklearn API compatibility.
-        groups : array-like of shape (n_samples,), **required**
-            Integer fiscal year labels for each sample.  This is the primary
-            grouping variable for the temporal split.
+        groups : array-like, **required**
+            Integer fiscal year labels for each sample, shape
+            ``(n_samples,)``. When ``drop_repeat_donors=True`` this must instead
+            be ``(n_samples, 2)``: fiscal year in column 0, donor identifier in
+            column 1.
 
         Yields
         ------
@@ -242,6 +244,11 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
             If ``groups`` is ``None``.
         ValueError
             If fewer than ``n_splits + 1`` distinct fiscal years are present.
+        ValueError
+            If ``drop_repeat_donors=True`` and ``groups`` is not
+            ``(n_samples, 2)``, or its fiscal-year column is not numeric.
+        ValueError
+            If ``drop_repeat_donors=True`` empties a test fold entirely.
         """
         requested_splits, gap_years = self._validate_params()
 
@@ -263,6 +270,20 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
                 )
             donor_ids = groups_arr[:, 1]
             groups_arr = groups_arr[:, 0]
+            # np.column_stack of integer years and string donor ids upcasts
+            # everything to '<U21', which silently turns the fiscal years into
+            # strings and fails much later with a bare numpy TypeError. Catch it
+            # here, where the message can say what to do.
+            try:
+                groups_arr = groups_arr.astype(float)
+            except (TypeError, ValueError):
+                raise ValueError(
+                    "drop_repeat_donors=True: column 0 of `groups` must be "
+                    "numeric fiscal years, got dtype "
+                    f"{np.asarray(groups)[:, 0].dtype!r}. If your donor ids are "
+                    "strings, np.column_stack upcasts the whole array; pass a "
+                    "pandas DataFrame, or factorise the ids to integers first."
+                ) from None
         groups = column_or_1d(groups_arr)
         fiscal_years = groups
 
@@ -314,10 +335,26 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
                 # both folds. Drop those donors from the TEST side only: pulling
                 # them out of training would discard history for no benefit.
                 seen = np.isin(donor_ids, np.unique(donor_ids[train_mask]))
+                # np.isin never matches NaN to NaN, so a row with a missing donor
+                # id would be classified as unseen and kept. That is the wrong
+                # default for a leakage guard: an unidentifiable donor cannot be
+                # shown to be absent from training, so treat it as seen.
+                unidentified = _missing_mask(donor_ids)
+                seen = seen | unidentified
                 n_dropped = int(np.count_nonzero(test_mask & seen))
                 if n_dropped:
                     test_mask = test_mask & ~seen
                     dropped_total += n_dropped
+                if n_dropped:
+                    warnings.warn(
+                        f"drop_repeat_donors=True removed {n_dropped} test "
+                        f"row(s) from fiscal year {test_fy} whose donor already "
+                        "appeared in training (or had no donor id). The test "
+                        "donors that remain are systematically newer to the "
+                        "file, so scores are not directly comparable to a run "
+                        "without this flag.",
+                        UserWarning,
+                    )
                 if not np.any(test_mask):
                     raise ValueError(
                         f"drop_repeat_donors=True emptied the test fold for "
@@ -333,14 +370,7 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
                 indices[test_mask],
             )
 
-        if dropped_total:
-            warnings.warn(
-                f"drop_repeat_donors=True removed {dropped_total} test row(s) "
-                "whose donor already appeared in training. The test donors that "
-                "remain are systematically newer to the file, so scores are not "
-                "directly comparable to a run without this flag.",
-                UserWarning,
-            )
+
 
     def get_n_splits(self, X=None, y=None, groups=None) -> int:
         """Return the number of splits this splitter will produce.
@@ -371,13 +401,28 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
         return (
             f"{self.__class__.__name__}("
             f"n_splits={self.n_splits}, "
-            f"gap_years={self.gap_years})"
+            f"gap_years={self.gap_years}, "
+            f"drop_repeat_donors={self.drop_repeat_donors})"
         )
 
 
 # ---------------------------------------------------------------------------
 # Utility: resolve n_samples from various input types
 # ---------------------------------------------------------------------------
+
+def _missing_mask(values) -> np.ndarray:
+    """True where a donor identifier is missing.
+
+    ``np.isnan`` only works on float arrays, and donor ids are commonly object
+    or string, so fall back to a pandas-free elementwise check.
+    """
+    arr = np.asarray(values)
+    if arr.dtype.kind == "f":
+        return np.isnan(arr)
+    if arr.dtype.kind in "iub":
+        return np.zeros(arr.shape, dtype=bool)
+    return np.array([v is None or v != v for v in arr.ravel()]).reshape(arr.shape)
+
 
 def _n_samples(X) -> int:
     """Return the number of samples from X, supporting ndarray and DataFrames."""

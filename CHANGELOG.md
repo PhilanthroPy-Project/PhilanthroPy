@@ -18,8 +18,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   number of test rows removed, and notes that the remaining test donors are
   systematically newer to the file. A test fold emptied entirely raises with an
   actionable message rather than being skipped, which would have put `split` and
-  `get_n_splits` back out of step. Defaults to `False`, so nothing changes until
-  you opt in. Closes #87.
+  `get_n_splits` back out of step. A row with a **missing** donor id is treated as
+  already-seen and dropped: `np.isin` never matches `NaN` to `NaN`, so it would
+  otherwise have been kept, and an unidentifiable donor cannot be shown to be
+  absent from training. A string-typed `groups` (which is what
+  `np.column_stack` produces from integer years and string donor ids) has its
+  fiscal-year column coerced back to numeric, and a genuinely non-numeric year
+  column now raises with an actionable message instead of a bare numpy
+  `TypeError`. `__repr__` includes the flag, so two splitters that split
+  differently no longer print identically. Defaults to `False`, so nothing
+  changes until you opt in. Part of #87; the docs and benchmark follow-up that
+  issue also scopes is not done here.
 - `philanthropy.metrics.conformal_pvalue` — the non-smoothed split-conformal
   p-value of a donor score against a held-out calibration set,
   `(1 + |{i : s_i >= s}|) / (n + 1)`. A calibrated probability threshold fixes no

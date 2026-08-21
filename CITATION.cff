@@ -11,14 +11,17 @@ authors:
   - family-names: Lalakiya
     given-names: Shivam
     email: shivamlalakiya151299@gmail.com
-version: 1.0.0
+version: 0.6.0
 date-released: "2026-08-01"
 license: MIT
 repository-code: "https://github.com/PhilanthroPy-Project/PhilanthroPy"
 url: "https://PhilanthroPy-Project.github.io/PhilanthroPy/"
 # Zenodo concept DOI: always resolves to the latest deposited release. This is
-# deliberately NOT the per-version DOI (v0.6.0 is 10.5281/zenodo.21751097); the
-# concept DOI is the one to cite so the reference does not go stale.
+# deliberately NOT the per-version DOI, which for this release (0.6.0) is
+# 10.5281/zenodo.21751097. Cite the concept DOI so the reference does not go
+# stale. `version` above tracks the newest PUBLISHED release, not `main`:
+# main carries unreleased 0.7.0 and 1.0.0 work, and citing a version nobody
+# can install is worse than citing one release behind.
 identifiers:
   - type: doi
     value: "10.5281/zenodo.21751096"

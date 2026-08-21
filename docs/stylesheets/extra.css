@@ -411,6 +411,22 @@ body {
   line-height: 1.55;
   color: var(--ap-ink-2);
 }
+.md-typeset .ap-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin: 0 0 1.1rem;
+}
+.ap-stat__v {
+  font-family: var(--ap-font);
+  font-size: 2.4rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: var(--ap-track-tight);
+  color: var(--ap-ink);
+}
+.ap-stat__l { font-size: 0.78rem; color: var(--ap-ink-2); }
 .apc-band { fill: var(--ap-chart-band); }
 .apc-whisker { stroke-width: 2; stroke-linecap: round; }
 .apc-focus { fill: var(--ap-accent); stroke: var(--ap-accent); }

@@ -54,12 +54,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   is the favicon, `overrides/.icons/philanthropy/heart-rise.svg` is inlined as the
   header logo, and `docs/assets/logo.png` is the regenerated wordmark lockup the
   README uses.
-- Homepage figure: the affinity-score separation is now a chart, not an ASCII dump
-  of `describe()`. Interquartile bar, median notch, full min-to-max range, and the
-  empty 26-point gap between the two groups. The accent marks the group being
-  ranked, muted ink the reference group; both fills clear 3:1 on their surface in
-  each scheme. Hover gives the five-number summary and a collapsible table view
-  carries every number, so nothing is gated behind the tooltip.
+- Homepage figure: the affinity-score distribution is now a chart, not an ASCII dump
+  of `describe()`, and it plots the held-out scores the quickstart reports after
+  #89, not the in-sample ones. Interquartile bar, median notch, full min-to-max
+  range, the overlapping tails left visible, and the 47-point separation between the
+  two middle halves called out beside the held-out ROC-AUC of 0.932. The accent marks
+  the group being ranked, muted ink the reference group; both fills clear 3:1 on
+  their surface in each scheme. Hover gives the five-number summary and a
+  collapsible table view carries every number, so nothing is gated behind the
+  tooltip.
 - Informational admonitions (note, info, tip, abstract, example, quote) now wear the
   palette instead of Material's blue; warning and danger keep their semantic colours.
 - Documentation site: a new visual system (Fraunces display serif over Geist,

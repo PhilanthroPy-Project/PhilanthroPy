@@ -1,13 +1,14 @@
 {
-  "title": "PhilanthroPy: A scikit-learn compatible toolkit for predictive donor analytics",
+  "title": "PhilanthroPy: A scikit-learn-native toolkit for leakage-safe donor analytics in nonprofit and academic medical center fundraising",
   "description": "PhilanthroPy is a scikit-learn native library for nonprofit and academic medical center (AMC) fundraising analytics - donor propensity, lapse prediction, planned-giving intent, wealth screening, and hybrid revenue forecasting - with leakage-safe, pipeline-compatible estimators.",
   "upload_type": "software",
   "license": "MIT",
   "access_right": "open",
   "creators": [
     {
-      "name": "Lalakiya, Shivam",
-      "affiliation": "Independent Researcher"
+      "name": "Lalakiya, Shivam Ashokbhai",
+      "affiliation": "Independent Researcher",
+      "orcid": "0009-0000-5110-6540"
     }
   ],
   "keywords": [

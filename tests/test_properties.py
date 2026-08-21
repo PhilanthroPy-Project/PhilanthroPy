@@ -327,7 +327,12 @@ def test_solicitation_window_output_shape_and_ranges(days):
     assert isinstance(out, np.ndarray)
     assert out.shape == (len(days), 2)
     assert set(np.unique(out[:, 0])).issubset({0.0, 1.0})
-    assert ((out[:, 1] >= 0.0) & (out[:, 1] <= 1.0)).all()
+    # The score is NaN exactly where the input day is missing, and in [0, 1]
+    # everywhere else, so "no discharge on record" never reads as a real 0.0.
+    missing = np.isnan(np.asarray(parsed, dtype=float))
+    np.testing.assert_array_equal(np.isnan(out[:, 1]), missing)
+    scored = out[~missing, 1]
+    assert ((scored >= 0.0) & (scored <= 1.0)).all()
     # in_window == 1 exactly when the value sits inside the closed window.
     inside = np.array(
         [(not np.isnan(d)) and 100.0 <= d <= 200.0 for d in parsed], dtype=float

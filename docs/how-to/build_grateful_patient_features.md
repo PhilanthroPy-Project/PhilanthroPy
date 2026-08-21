@@ -38,7 +38,7 @@ print(pd.DataFrame(out, columns=gpf.get_feature_names_out()))
 Donors with no encounters (donor 3 above) get `0.0` across all four.
 
 ### Clinical gravity scores
-`GratefulPatientFeaturizer` weights each encounter by service line. It applies illustrative default multipliers when `use_capacity_weights=True` (the default); to prioritize specific clinical areas, pass your own `capacity_weights` dictionary of `{service_line: multiplier}`.
+`GratefulPatientFeaturizer` can weight each encounter by service line, but does not by default: `use_capacity_weights=False`. The built-in multipliers are illustrative and have no published source, so they are opt-in rather than silently applied to the headline score. To use service-line weighting, set `use_capacity_weights=True` and pass a `capacity_weights` dictionary of `{service_line: multiplier}` your institution has reviewed.
 
 ## The solicitation window
 

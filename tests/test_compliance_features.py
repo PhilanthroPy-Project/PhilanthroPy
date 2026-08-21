@@ -102,12 +102,27 @@ def _clinical_encounters():
 
 def test_capacity_weights_override_changes_gravity_score():
     X = pd.DataFrame({"donor_id": [1]})
-    default = GratefulPatientFeaturizer(encounter_df=_clinical_encounters())
+    # Weighting is opt-in: the built-in multipliers have no published source, so
+    # use_capacity_weights defaults to False and the raw encounter count stands.
+    unweighted = GratefulPatientFeaturizer(encounter_df=_clinical_encounters())
+    illustrative = GratefulPatientFeaturizer(
+        encounter_df=_clinical_encounters(), use_capacity_weights=True
+    )
     override = GratefulPatientFeaturizer(
-        encounter_df=_clinical_encounters(), capacity_weights={"cardiac": 10.0}
+        encounter_df=_clinical_encounters(),
+        use_capacity_weights=True,
+        capacity_weights={"cardiac": 10.0},
     )
     # clinical_gravity_score is the first output column.
-    default_score = default.fit(X).transform(X)[0, 0]
-    override_score = override.fit(X).transform(X)[0, 0]
-    assert np.isclose(default_score, 2 * 3.2)  # 2 cardiac encounters * default 3.2
-    assert np.isclose(override_score, 2 * 10.0)
+    assert np.isclose(unweighted.fit(X).transform(X)[0, 0], 2.0)
+    assert np.isclose(illustrative.fit(X).transform(X)[0, 0], 2 * 3.2)
+    assert np.isclose(override.fit(X).transform(X)[0, 0], 2 * 10.0)
+
+
+def test_capacity_weights_without_the_flag_warns_instead_of_silently_ignoring():
+    X = pd.DataFrame({"donor_id": [1]})
+    gpf = GratefulPatientFeaturizer(
+        encounter_df=_clinical_encounters(), capacity_weights={"cardiac": 10.0}
+    )
+    with pytest.warns(UserWarning, match="use_capacity_weights=False"):
+        gpf.fit(X)

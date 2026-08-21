@@ -179,7 +179,7 @@ A comprehensive suite of tools, easy to understand and use:
 - :material-chart-bell-curve-cumulative: **Propensity & share of wallet**
 
     ---
-    Turn-key estimators for a donor's share of wallet (how much of their capacity goes to your cause) and the next best engagement step for a gift officer. *Uses `ShareOfWalletScorer`.*
+    Estimators for capacity utilisation (what share of a donor's modelled wealth is estimated philanthropic capacity, **not** what share of their giving you receive) and the next best engagement step for a gift officer. *Uses `ShareOfWalletScorer`.*
 
 </div>
 

@@ -6,10 +6,17 @@ Distribution-free p-values for donor scores.
 A donor score is consumed as a threshold crossing: a solicitation fires when
 the score clears a cut point. Picking that cut point from a calibrated
 probability ("contact everyone above 0.8") fixes no error rate at all. The
-split-conformal p-value does: rank a scored donor against a held-out
-calibration set and the result is uniform on the lattice under exchangeability,
-so thresholding it at ``alpha`` bounds the false-positive rate at ``alpha`` in
-finite samples, with no distributional assumption.
+split-conformal p-value fixes one: rank a scored donor against a held-out
+calibration set and the result is super-uniform under exchangeability, so
+thresholding it at ``alpha`` bounds the expected **selection rate** at ``alpha``
+in finite samples, with no distributional assumption.
+
+Selection rate, not false-positive rate. The bound is on the fraction of
+*exchangeable* donors the threshold picks. Reading it as a false-positive rate
+requires the calibration set to contain only nulls (donors who will not give),
+which is the outlier-detection construction of Bates et al. (2023); a
+calibration set drawn from a mixed held-out population does not give you that
+reading, and this function cannot tell which one you passed.
 
 Only the non-smoothed form is implemented, eq. (3) of Bates et al. (2023):
 
@@ -33,10 +40,13 @@ def conformal_pvalue(calibration_scores: Collection, scores: Collection) -> np.n
 
     Small p-values mean the score is high relative to the calibration donors,
     so ``conformal_pvalue(...) <= alpha`` selects the donors whose scores are
-    extreme at level ``alpha``. The calibration scores must come from donors
-    held out of training, exchangeable with the ones being scored; reusing
-    training rows breaks the guarantee exactly the way refitting a transformer
-    on test data does.
+    extreme at level ``alpha``, and the expected selection rate among
+    exchangeable donors is at most ``alpha``. The calibration scores must come
+    from donors held out of training, exchangeable with the ones being scored;
+    reusing training rows breaks the guarantee exactly the way refitting a
+    transformer on test data does. To read ``alpha`` as a false-positive rate
+    the calibration set must contain only donors who did not give; see the
+    module docstring.
 
     Parameters
     ----------

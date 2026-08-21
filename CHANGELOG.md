@@ -30,6 +30,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   columnwise strategies, which have no notion of a neighbourhood. An out-of-range
   index raises, for `strategy="knn"` where the parameter has any effect.
   Closes #85.
+- `scripts/leakage_experiment.py` quantifies the library's central claim, which
+  was previously architectural and untested. On a seeded donor-year panel across
+  five seeds: walk-forward `FiscalYearGroupedSplitter` estimates the true future
+  to within -0.014 ROC-AUC where a random `StratifiedKFold` is off by -0.030, so
+  the splitter is worth roughly twice the accuracy in your estimate. Both CV runs
+  exclude the year the target scores, because "train on everything earlier, score
+  the final year" is what a walk-forward splitter's last fold does and leaving it
+  in would hand walk-forward the win by construction. Computing the same aggregate
+  features over the whole export instead of as of each panel year inflates the
+  score by **+0.126 ROC-AUC**, under an identical model, splitter and label:
+  roughly eight times what the splitter choice is worth. Correct feature timing is worth an order of magnitude more than a
+  correct splitter, which is the case for freezing fit-time statistics and for the
+  new `as_of` cutoff. Reported in `docs/explanation/benchmarks.md`, including the
+  negative result: the common claim that a random split *inflates* a backtest did
+  not reproduce here in three separate configurations. Closes #84.
 - `.gitattributes` sets `CHANGELOG.md merge=union`. `AGENTS.md` requires every PR
   to add an entry under `## [Unreleased]`, so every concurrent PR conflicts with
   every other one, always in the same place and always additively. 10 of the last

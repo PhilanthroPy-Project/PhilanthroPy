@@ -1,7 +1,7 @@
 # Releasing PhilanthroPy
 
 Maintainer runbook. Cutting a release needs PyPI, Zenodo, and GitHub release
-permissions; contributors do not need anything on this page. For contributing,
+permissions — contributors do not need anything on this page. For contributing,
 see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Versioning & deprecation
@@ -18,7 +18,7 @@ Nothing is deprecated at 0.7.0. When you next need to deprecate something,
 reintroduce the one mechanism 0.6.0 used: a `deprecated_alias(new_name,
 removed_in=...)` decorator in `philanthropy/utils/_deprecation.py` for a renamed
 method, and an inline `warnings.warn(..., DeprecationWarning)` in `fit`/`split`
-for a parameter that no longer does anything, plus a `tests/test_deprecations.py`
+for a parameter that no longer does anything — plus a `tests/test_deprecations.py`
 whose registry meta-test fails when a shim ships untested. Per-symbol stability
 tiers live in [docs/reference/index.md](docs/reference/index.md).
 
@@ -27,10 +27,17 @@ tiers live in [docs/reference/index.md](docs/reference/index.md).
 Run in order. Steps 1–6 are the gate `publish.yml` enforces; 7–9 are manual.
 
 1. `make ci` is green, and so is `pytest tests/test_public_api_contract.py -q`.
+   Also skim the `## [Unreleased]` block in `CHANGELOG.md`. `.gitattributes`
+   sets `merge=union` on that file so concurrent PRs stop conflicting on it, and
+   the cost is that git will never again flag a problem in this file. Two things
+   to look for: a bullet under the wrong heading (union is line-based, not
+   section-aware), and a duplicated or contradictory bullet (if two branches
+   edited the same entry, union silently keeps both). Cheap to eyeball once per
+   release, annoying to find later.
 2. Bump `version` in `pyproject.toml`. Nothing else carries the version:
    `philanthropy.__version__` reads it from installed metadata.
 3. Add a `## [X.Y.Z] - YYYY-MM-DD` section to `CHANGELOG.md`. The date is
-   required: `publish.yml` rejects a heading still carrying `- TBD`, which is
+   required — `publish.yml` rejects a heading still carrying `- TBD`, which is
    what a release staged ahead of its window looks like. A release that removes anything
    needs a **Breaking** heading; a release that adds a shim needs a
    **Deprecated** heading naming every alias and dead parameter with the version
@@ -61,18 +68,18 @@ Run in order. Steps 1–6 are the gate `publish.yml` enforces; 7–9 are manual.
    `10.5281/zenodo.PENDING`, and commit.
 
 A shim added in `X.Y.0` may only be removed in `X.(Y+1).0` **after `X.Y.0` is
-published on PyPI**: one full published minor of overlap, not one commit.
+published on PyPI** — one full published minor of overlap, not one commit.
 
 ### Cutting a release `main` has already moved past
 
-`main` can carry more than one unreleased version: 0.7.0 and 1.0.0 are both
+`main` can carry more than one unreleased version — 0.7.0 and 1.0.0 are both
 merged and both still `- TBD`. The gate compares the tag against the
 `pyproject.toml` **of the commit the tag points at**, so once a later version
 has bumped that file at the tip, the older release can no longer be cut from the
 tip: `v0.7.0` against a `main` reading `version = "1.0.0"` fails with
 `tag != pyproject 1.0.0`, dated changelog or not. Step 2 above assumes one
 version in flight; with several staged, tag the last commit that still reads the
-older version: `e1713c4` for 0.7.0:
+older version — `e1713c4` for 0.7.0:
 
 ```bash
 git switch -c release/0.7.0 e1713c4

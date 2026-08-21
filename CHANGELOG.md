@@ -8,9 +8,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Changed
 - `GratefulPatientFeaturizer`, `EncounterTransformer` and the `philanthropy`
   CLI now reject network-scheme paths (`https://`, `s3://`, `gs://`) with a
-  `ValueError` before any file read, keeping the documented "no network calls
-  of any kind" guarantee literally true for user-supplied paths. Local paths
-  are unaffected. Closes #114.
+  `ValueError` before any file read. Previously the no-network guarantee held
+  for the library's own logic but not for its documented public parameters,
+  because `pandas` will follow a remote URI if handed one. Local paths,
+  including `file://`, are unaffected. Closes #114.
+- The no-network promise in `README.md`, `SECURITY.md` and the security review
+  Q&A is now stated as two precise guarantees, "never transmits your data" and
+  "downloads nothing", instead of the blanket "no network calls of any kind",
+  and the second one is machine-checked. `tests/test_no_network.py` now parses
+  every module in the package and fails the build if one imports a
+  network-capable library without appearing on an explicit allowlist. The
+  allowlist is empty, so the effective promise is unchanged and is now enforced
+  across modules no test happens to import, rather than only on the paths the
+  socket fixture walks.
+
+### Added
+- Question 1a in the security review Q&A documents the remote-path rejection,
+  which is the behaviour a privacy officer asks about after reading question 1.
 
 ### Deprecated
 - `WealthScreeningImputerKNN(group_col_idx=...)` is **deprecated** and will be

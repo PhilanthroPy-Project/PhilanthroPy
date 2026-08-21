@@ -61,10 +61,18 @@ expect an acknowledgement within a few days and a coordinated fix and disclosure
 
 ## What this package does not do
 
-PhilanthroPy makes **no network calls**: no telemetry, no license check, no
-phone-home, and no third-party data append. It imports no HTTP client, and
-`tests/test_no_network.py` enforces this in CI by making every socket raise.
-Donor data you pass to it stays on the machine that ran it.
+**PhilanthroPy never transmits your data.** No telemetry, no usage analytics,
+no license check, no phone-home, and no third-party data append. Donor data you
+pass to it stays on the machine that ran it.
+
+It also downloads nothing. No module imports a network client, and nothing is
+fetched at import time or during `fit`/`transform`.
+`tests/test_no_network.py` enforces both properties in CI: it makes every socket
+raise across a full train/score cycle, and it parses every module in the package
+and fails the build if one imports a network-capable library without appearing on
+an explicit allowlist, which is currently empty. If an opt-in public-dataset
+fetcher is ever added it will be listed there and documented here, and it will
+still never transmit your data.
 
 For the full set of questions an institutional security or privacy review asks,
 see [security review Q&A](docs/explanation/security_review_answers.md).

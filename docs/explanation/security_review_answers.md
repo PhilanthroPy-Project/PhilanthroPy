@@ -13,19 +13,57 @@ answers, see [Compliance considerations](compliance_considerations.md).
 
 ## 1. Does the software send data anywhere?
 
-**No.** PhilanthroPy makes no network calls of any kind: no telemetry, no usage
-analytics, no license check, no phone-home, no automatic model or dataset download,
-and no third-party data append.
+**No.** PhilanthroPy never sends your data anywhere: no telemetry, no usage
+analytics, no license check, no phone-home, and no third-party data append. It
+also downloads nothing: there is no automatic model or dataset download, and
+nothing is fetched at import time or inside `fit` / `transform`.
 
-The package imports no HTTP client at all: there is no `requests`, `urllib`,
-`httpx`, `aiohttp`, or raw `socket` use anywhere in `philanthropy/`. The only URLs
+The package imports no network client at all: there is no `requests`,
+`urllib.request`, `httpx`, `aiohttp`, or raw `socket` use anywhere in
+`philanthropy/`. (`urllib.parse` does appear, in
+`philanthropy.utils._validation.ensure_local_path`; it is pure string
+manipulation and is what *rejects* remote paths, see question 1a.) The only URLs
 in the source are citations in docstrings. The one bundled dataset
 (`load_ciob_fundraising`) is a CSV vendored inside the wheel and read via
 `importlib.resources`.
 
+Both properties are enforced in CI rather than merely asserted here.
+`tests/test_no_network.py` poisons every socket entry point and runs a full
+train/score cycle plus a CRM ingest, and separately parses every module in the
+package and fails the build if one imports a network-capable library without
+appearing on an explicit allowlist (`_NETWORK_ALLOWED`). **That allowlist is
+currently empty**, and adding an entry to it requires updating this answer,
+`README.md` and `SECURITY.md` in the same pull request.
+
+Why the allowlist exists at all: a read-only fetcher for a public research
+dataset (for example the KDD Cup 1998 donor file, used to validate the library
+against real data) is a plausible future addition. It would be an opt-in function
+you call deliberately, never automatic, and it would still transmit none of your
+data. Rather than let such a function quietly falsify this page, the allowlist
+makes it a reviewed, documented change. If this paragraph still says the
+allowlist is empty, nothing in the package can reach the network at all.
+
 This is enforced, not just documented: `tests/test_no_network.py` monkeypatches
 every socket entry point to raise, then runs a full train/score cycle, an imputation
 pass, and a CRM ingest. CI fails if any of them tries to open a socket.
+
+## 1a. What if someone passes it a remote path?
+
+They get a `ValueError` before any read happens.
+
+`pandas` readers will happily follow `https://`, `s3://` and `gs://` URIs, so
+every user-supplied path is checked first. `EncounterTransformer(encounter_path=...)`,
+`GratefulPatientFeaturizer(encounter_path=...)` and the CLI's `--data` argument
+all reject any non-local scheme with a `ValueError` naming the parameter. Local
+paths, including `file://`, are unaffected.
+
+This closes a real gap rather than a theoretical one: before it was added, the
+guarantee above was true of the library's own logic and false of its documented
+public parameters, because an operator could hand a documented argument a remote
+URI and pandas would fetch it. The check lives in
+`philanthropy.utils._validation.ensure_local_path`, and
+`tests/test_no_network.py` asserts both halves: that remote schemes raise, and
+that ordinary local paths still load.
 
 ## 2. Do we need a Business Associate Agreement (BAA)?
 

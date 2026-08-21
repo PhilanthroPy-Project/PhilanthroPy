@@ -37,9 +37,15 @@ def ensure_local_path(path, param_name: str = "path") -> str:
     """
     Reject network-scheme URIs before a local file read.
 
-    PhilanthroPy makes no network calls of any kind; pandas readers would
-    happily follow ``https://``, ``s3://`` or ``gs://`` URIs if handed one,
-    so every user-supplied path passes through this check first.
+    PhilanthroPy never transmits your data and fetches nothing on its own.
+    ``pandas`` readers, however, will happily follow ``https://``, ``s3://`` or
+    ``gs://`` URIs if handed one, so every user-supplied *data* path passes
+    through this check first: the guarantee has to hold for the package's
+    documented parameters, not just for its own logic.
+
+    This is deliberately scoped to paths the caller supplies for their own donor
+    or encounter data. It is not the package-wide network policy, which lives in
+    ``tests/test_no_network.py`` and is enforced there by an import allowlist.
 
     Parameters
     ----------

@@ -145,6 +145,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   preferred disclosure channel.
 
 ### Fixed
+- **`generate_synthetic_donor_data` ran the domain's causal arrow backwards.**
+  It drew `is_major_donor` from a logistic model of `years_active` and
+  `event_attendance_count`, then drew `total_gift_amount` *conditional on that
+  label*, so the strongest feature was generated from the answer. Measurably: a
+  model given `total_gift_amount` scored ROC-AUC 0.935 against a causal Bayes
+  accuracy ceiling of 0.768, beating the Bayes rate of the generator's own
+  process by about 19 AUC points, which no model can legitimately do. Using
+  cumulative lifetime giving to predict "is a major donor" is also the classic
+  fundraising leakage this library exists to prevent, so the reference dataset
+  was teaching the anti-pattern. `last_gift_date` was a second target-derived
+  feature, drawn Beta for majors and uniform for everyone else.
+  A latent giving capacity now drives everything: a confounder causing both the
+  giving history and the label. `total_gift_amount` is a noisy realisation of
+  capacity, `is_major_donor` a soft $25,000 threshold on it, and
+  `last_gift_date` follows engagement. The model now sits **below** the ceiling
+  (accuracy 0.759 against 0.806) rather than above it, which is the correct
+  relationship. Held-out ROC-AUC moves from 0.935 to 0.814 and the base rate from
+  0.687 to 0.378: worse numbers, trustworthy ones. Benchmark table, README
+  quickstart and the benchmarks page are regenerated from the committed script.
+  `generate_synthetic_donor_data` is Tier 1, so **this changes returned data for
+  a documented-stable function**; release sequencing is the open version
+  question. Closes #86.
 - The README quickstart fitted and scored **the same rows**, then reported the
   resulting gap ("non-major donors top out at 39; no major donor scores below 65")
   as the headline result. That gap was a random forest reciting its training set:

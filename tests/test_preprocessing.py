@@ -96,6 +96,39 @@ class TestCRMCleaner:
         with pytest.raises(ValueError, match="could not parse"):
             cleaner.fit_transform(df)
 
+    def test_complex_amount_becomes_nan_with_warning_not_corruption(self):
+        # #129: a single np.complex128 cell (Excel/openpyxl formula column
+        # round-trip) used to slip through the object-cast retry and corrupt
+        # into a plausible finite float — str(3+4j) == "(3+4j)" matched the
+        # parenthesised-negative rule, yielding -34.0. Contract now: in a
+        # column with other parseable values, the complex cell becomes NaN
+        # with a warning, consistent with "values that still don't parse
+        # become NaN".
+        X_fit = pd.DataFrame({
+            "gift_date": ["2023-01-01", "2023-02-01"],
+            "gift_amount": [5.0, 10.0],
+        })
+        cleaner = CRMCleaner().set_output(transform="pandas").fit(X_fit)
+        X_bad = pd.DataFrame({
+            "gift_date": ["2023-03-01", "2023-04-01"],
+            "gift_amount": pd.Series([np.complex128(3 + 4j), 25.0], dtype=object),
+        })
+        with pytest.warns(UserWarning, match="complex value"):
+            out = cleaner.transform(X_bad)
+        assert np.isnan(out["gift_amount"].iloc[0])
+        assert out["gift_amount"].iloc[1] == 25.0
+
+    def test_complex_whole_column_still_raises(self):
+        # A column where nothing parses still raises, complex cells included:
+        # masking must not swallow the all-unparseable contract.
+        df = pd.DataFrame({
+            "gift_date": ["2023-03-01"],
+            "gift_amount": pd.Series([np.complex128(3 + 4j)], dtype=object),
+        })
+        cleaner = CRMCleaner()
+        with pytest.raises(ValueError, match="could not parse"):
+            cleaner.fit_transform(df)
+
     def test_date_col_coerced_to_datetime(self):
         df = pd.DataFrame({"gift_date": ["2023-07-01"], "gift_amount": [100.0]})
         cleaner = CRMCleaner().set_output(transform="pandas")

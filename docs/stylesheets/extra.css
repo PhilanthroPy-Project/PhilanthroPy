@@ -1,253 +1,500 @@
 /* ==========================================================================
-   PhilanthroPy docs: Apple-style visual system
-   San Francisco system type · airy light canvas · one restrained blue accent.
-   The signature: a "verified guarantees" spec row (leakage-safe, estimator-check
-   clean) styled like Apple's tech-spec strips, true to a library whose whole
-   pitch is rigor.
+   PhilanthroPy docs: warm-editorial visual system
+   Fraunces display serif over Geist text, one amber accent on a near-black
+   canvas (and its paper inverse in light mode). Ported from the same design
+   language as shivamlalakiya.github.io.
+   The signature: a "verified guarantees" spec strip (leakage-safe,
+   estimator-check clean) rendered like a tech-spec table, true to a library
+   whose whole pitch is rigor.
    ========================================================================== */
 
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..600&family=Geist:wght@100..900&family=Geist+Mono:wght@400..600&display=swap");
+
 :root {
-  /* System font stack: renders as San Francisco on Apple platforms, graceful
-     fallbacks elsewhere (the same approach apple.com uses). */
-  --md-text-font: -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "Helvetica Neue", "Segoe UI", Helvetica, Arial, sans-serif;
-  --md-code-font: "SF Mono", ui-monospace, "JetBrains Mono", "Fira Code",
-    Menlo, Consolas, monospace;
+  --ap-font: "Geist", -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Segoe UI", system-ui, sans-serif;
+  --ap-font-serif: "Fraunces", "Iowan Old Style", "Times New Roman", serif;
+  --ap-font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Apple palette */
-  --ap-blue: #0071e3;
-  --ap-blue-strong: #0077ed;
-  --ap-green: #1a7f37;
-  --ap-radius: 18px;
-  --ap-radius-sm: 12px;
-  --ap-shadow: 0 2px 10px rgba(0, 0, 0, 0.06), 0 8px 30px rgba(0, 0, 0, 0.05);
-  --ap-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.08), 0 14px 44px rgba(0, 0, 0, 0.08);
+  --md-text-font: var(--ap-font);
+  --md-code-font: var(--ap-font-mono);
+
+  /* Tracking */
+  --ap-track-tighter: -0.033em;
+  --ap-track-tight: -0.021em;
+  --ap-track-normal: -0.01em;
+  --ap-track-eyebrow: 0.14em;
+
+  /* Geometry */
+  --ap-r-sm: 10px;
+  --ap-r-md: 16px;
+  --ap-r-lg: 22px;
+  --ap-r-pill: 980px;
+
+  /* Motion */
+  --ap-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --ap-dur: 0.4s;
 }
 
-/* ---- Light scheme (default) --------------------------------------------- */
-[data-md-color-scheme="default"] {
-  --ap-bg: #fbfbfd;
-  --ap-surface: #ffffff;
-  --ap-ink: #1d1d1f;
-  --ap-ink-2: #6e6e73;
-  --ap-hairline: #d2d2d7;
-
-  --md-default-bg-color: var(--ap-bg);
-  --md-default-fg-color: var(--ap-ink);
-  --md-typeset-color: var(--ap-ink);
-  --md-typeset-a-color: var(--ap-blue);
-  --md-accent-fg-color: var(--ap-blue-strong);
-  --md-code-bg-color: #f5f5f7;
-  --md-code-fg-color: #1d1d1f;
-}
-
-/* ---- Dark scheme (refined, still Apple-quiet) --------------------------- */
+/* ---- Dark scheme: the reference palette -------------------------------- */
 [data-md-color-scheme="slate"] {
-  --md-hue: 220;
-  --ap-bg: #000000;
-  --ap-surface: #1c1c1e;
-  --ap-ink: #f5f5f7;
-  --ap-ink-2: #a1a1a6;
-  --ap-hairline: #38383a;
+  --md-hue: 34;
+
+  --ap-accent: #e8935a;
+  --ap-accent-strong: #f2ab74;
+  --ap-accent-deep: #c8752f;
+  --ap-bg: #0d0c0a;
+  --ap-bg-deep: #080706;
+  --ap-ink: #f3efe6;
+  --ap-ink-2: #a6a099;
+  --ap-ink-3: #85807a;
+  --ap-surface: rgba(243, 239, 230, 0.04);
+  --ap-surface-2: rgba(243, 239, 230, 0.07);
+  --ap-hairline: rgba(243, 239, 230, 0.12);
+  --ap-hairline-2: rgba(243, 239, 230, 0.22);
+  --ap-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 34px rgba(0, 0, 0, 0.4);
+  --ap-shadow-hover: 0 2px 6px rgba(0, 0, 0, 0.5), 0 30px 80px rgba(0, 0, 0, 0.55);
+  --ap-display-fade: rgba(243, 239, 230, 0.55);
+  --ap-bg-translucent: rgba(13, 12, 10, 0.82);
+  --ap-chart-band: rgba(243, 239, 230, 0.035);
 
   --md-default-bg-color: var(--ap-bg);
   --md-default-fg-color: var(--ap-ink);
+  --md-default-fg-color--light: var(--ap-ink-2);
+  --md-default-fg-color--lighter: var(--ap-ink-3);
   --md-typeset-color: var(--ap-ink);
-  --md-typeset-a-color: #2997ff;
-  --md-accent-fg-color: #2997ff;
-  --md-code-bg-color: #1c1c1e;
-  --md-code-fg-color: #f5f5f7;
-  --ap-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 8px 30px rgba(0, 0, 0, 0.4);
-  --ap-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.6), 0 14px 44px rgba(0, 0, 0, 0.5);
+  --md-typeset-a-color: var(--ap-accent);
+  --md-accent-fg-color: var(--ap-accent-strong);
+  --md-code-bg-color: rgba(243, 239, 230, 0.05);
+  --md-code-fg-color: var(--ap-ink);
+  --md-primary-fg-color: var(--ap-bg);
+  --md-footer-bg-color: var(--ap-bg-deep);
+  --md-footer-bg-color--dark: var(--ap-bg-deep);
+  --md-footer-fg-color: var(--ap-ink);
+  --md-footer-fg-color--light: var(--ap-ink-2);
+  --md-footer-fg-color--lighter: var(--ap-ink-3);
 }
 
-/* ---- Header: flat, hairline-separated, no shadow ------------------------ */
-.md-header {
-  background-color: color-mix(in srgb, var(--ap-bg) 82%, transparent);
+/* ---- Light scheme: the same system on warm paper ------------------------ */
+[data-md-color-scheme="default"] {
+  --ap-accent: #a4571b;
+  --ap-accent-strong: #8c4915;
+  --ap-accent-deep: #6f3a11;
+  --ap-bg: #faf7f2;
+  --ap-bg-deep: #f2ede4;
+  --ap-ink: #17150f;
+  --ap-ink-2: #625b50;
+  --ap-ink-3: #7d766b;
+  --ap-surface: #ffffff;
+  --ap-surface-2: #fffdfa;
+  --ap-hairline: rgba(23, 21, 15, 0.12);
+  --ap-hairline-2: rgba(23, 21, 15, 0.22);
+  --ap-shadow: 0 1px 2px rgba(23, 21, 15, 0.05), 0 12px 30px rgba(23, 21, 15, 0.06);
+  --ap-shadow-hover: 0 2px 6px rgba(23, 21, 15, 0.07), 0 24px 60px rgba(23, 21, 15, 0.1);
+  --ap-display-fade: rgba(23, 21, 15, 0.55);
+  --ap-bg-translucent: rgba(250, 247, 242, 0.82);
+  --ap-chart-band: rgba(23, 21, 15, 0.035);
+
+  --md-default-bg-color: var(--ap-bg);
+  --md-default-fg-color: var(--ap-ink);
+  --md-default-fg-color--light: var(--ap-ink-2);
+  --md-default-fg-color--lighter: var(--ap-ink-3);
+  --md-typeset-color: var(--ap-ink);
+  --md-typeset-a-color: var(--ap-accent);
+  --md-accent-fg-color: var(--ap-accent-strong);
+  --md-code-bg-color: #f2ede4;
+  --md-code-fg-color: var(--ap-ink);
+  --md-primary-fg-color: var(--ap-bg);
+  --md-footer-bg-color: var(--ap-bg-deep);
+  --md-footer-bg-color--dark: var(--ap-bg-deep);
+  --md-footer-fg-color: var(--ap-ink);
+  --md-footer-fg-color--light: var(--ap-ink-2);
+  --md-footer-fg-color--lighter: var(--ap-ink-3);
+}
+
+/* Material's palette sets a blue link colour at [scheme][primary] specificity;
+   restate ours at the same weight so the accent wins in both schemes. */
+[data-md-color-scheme][data-md-color-primary] {
+  --md-typeset-a-color: var(--ap-accent);
+  --md-accent-fg-color: var(--ap-accent-strong);
+}
+
+/* ---- Global ------------------------------------------------------------- */
+body {
+  background-color: var(--ap-bg);
+  font-synthesis: none;
+}
+::selection {
+  background-color: color-mix(in srgb, var(--ap-accent) 30%, transparent);
+}
+:focus-visible {
+  outline: 2px solid var(--ap-accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--ap-hairline-2);
+  border-radius: var(--ap-r-pill);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* ---- Header and tabs: flat, blurred, hairline-separated -----------------
+   Material paints these from [data-md-color-primary=black] at (0,2,0); the
+   attribute prefix here matches that weight so the canvas tone wins. */
+[data-md-color-primary] .md-header {
+  background-color: var(--ap-bg-translucent);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   backdrop-filter: saturate(180%) blur(20px);
   color: var(--ap-ink);
   border-bottom: 1px solid var(--ap-hairline);
   box-shadow: none;
 }
-.md-header__title { font-weight: 600; letter-spacing: -0.01em; }
-.md-tabs {
-  background-color: transparent;
+[data-md-color-primary] .md-header__button.md-logo {
+  padding: 0.2rem;
+  margin-right: 0.2rem;
+}
+.md-nav__button.md-logo svg {
+  color: var(--ap-accent);
+  fill: none;
+}
+.md-header__button.md-logo svg {
+  width: 2rem;
+  height: 2rem;
+  color: var(--ap-accent);
+  /* Material sets fill: currentcolor on the logo svg; this mark is an outline. */
+  fill: none;
+}
+.md-header__title {
+  font-weight: 600;
+  letter-spacing: var(--ap-track-tight);
+}
+[data-md-color-primary] .md-tabs {
+  background-color: var(--ap-bg-translucent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
   color: var(--ap-ink-2);
   border-bottom: 1px solid var(--ap-hairline);
 }
-.md-tabs__link { opacity: 1; color: var(--ap-ink-2); font-weight: 450; }
-.md-tabs__link--active, .md-tabs__link:hover { color: var(--ap-ink); }
+.md-tabs__link {
+  opacity: 1;
+  color: var(--ap-ink-2);
+  font-weight: 450;
+  letter-spacing: var(--ap-track-normal);
+  transition: color var(--ap-dur) var(--ap-ease);
+}
+.md-tabs__link--active,
+.md-tabs__link:hover { color: var(--ap-ink); }
+.md-search__form {
+  background-color: var(--ap-surface-2);
+  border: 1px solid var(--ap-hairline);
+  border-radius: var(--ap-r-pill);
+}
+.md-search__input::placeholder { color: var(--ap-ink-3); }
 
-/* ---- Typography: tight, confident, solid (no gradient text) ------------- */
+/* Mobile drawer header and its repo block, same specificity story. */
+[data-md-color-primary] .md-nav--primary .md-nav__title[for="__drawer"] {
+  background-color: var(--ap-bg);
+  color: var(--ap-ink);
+  box-shadow: none;
+  border-bottom: 1px solid var(--ap-hairline);
+}
+[data-md-color-primary] .md-nav__source {
+  background-color: var(--ap-surface-2);
+  color: var(--ap-ink);
+}
+
+/* ---- Typography --------------------------------------------------------- */
 .md-typeset {
   font-feature-settings: "kern" 1, "liga" 1;
+  font-size: 0.86rem;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-.md-typeset h1 {
+.md-typeset h1,
+.md-typeset h2 {
+  font-family: var(--ap-font-serif);
+  font-optical-sizing: auto;
   color: var(--ap-ink);
-  font-weight: 600;
-  font-size: 2.75rem;
-  line-height: 1.07;
-  letter-spacing: -0.015em;
-  margin-bottom: 0.6em;
+  font-weight: 500;
+}
+.md-typeset h1 {
+  font-size: 2.6rem;
+  line-height: 1.08;
+  letter-spacing: var(--ap-track-tight);
+  margin-bottom: 0.5em;
 }
 .md-typeset h2 {
-  color: var(--ap-ink);
-  font-weight: 600;
-  font-size: 1.9rem;
-  line-height: 1.12;
-  letter-spacing: -0.012em;
+  font-size: 1.85rem;
+  line-height: 1.14;
+  letter-spacing: var(--ap-track-tight);
   margin-top: 2.2em;
 }
 .md-typeset h3 {
   color: var(--ap-ink);
   font-weight: 600;
-  letter-spacing: -0.008em;
+  letter-spacing: var(--ap-track-normal);
 }
-.md-typeset { font-size: 0.86rem; }
-.md-typeset p, .md-typeset li { line-height: 1.6; color: var(--ap-ink); }
+.md-typeset p,
+.md-typeset li { line-height: 1.65; color: var(--ap-ink); }
 
-/* ---- Links: Apple blue, underline on hover only ------------------------- */
-.md-typeset a { text-decoration: none; }
-.md-typeset a:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* ---- Links: accent, underline on hover only ----------------------------- */
+.md-typeset a {
+  text-decoration: none;
+  transition: color var(--ap-dur) var(--ap-ease);
+}
+.md-typeset a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 
-/* ---- Code: rounded, quiet surface --------------------------------------- */
+/* ---- Sidebars ----------------------------------------------------------- */
+.md-nav__title { color: var(--ap-ink-2); }
+.md-nav__link { transition: color var(--ap-dur) var(--ap-ease); }
+.md-nav__link--active,
+.md-nav__link:focus,
+.md-nav__link:hover { color: var(--ap-accent); }
+.md-sidebar--secondary .md-nav__link--active { font-weight: 600; }
+
+/* ---- Code --------------------------------------------------------------- */
 .md-typeset pre > code,
-.md-typeset .highlight { border-radius: var(--ap-radius-sm); }
+.md-typeset .highlight { border-radius: var(--ap-r-sm); }
+.md-typeset .highlight {
+  border: 1px solid var(--ap-hairline);
+  overflow: hidden;
+}
 .md-typeset code {
   border-radius: 6px;
   padding: 0.15em 0.4em;
-  font-size: 0.85em;
+  font-size: 0.84em;
 }
 
 /* ---- Hero (homepage) ---------------------------------------------------- */
 .ap-hero {
   text-align: center;
-  padding: 3.2rem 1rem 1.4rem;
+  padding: 3.4rem 1rem 1.4rem;
   margin: 0 auto;
-  max-width: 46rem;
+  max-width: 47rem;
 }
 .ap-hero__eyebrow {
   display: inline-block;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--ap-blue);
-  margin-bottom: 0.6rem;
+  font-family: var(--ap-font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--ap-track-eyebrow);
+  color: var(--ap-accent);
+  margin-bottom: 1rem;
 }
 .md-typeset .ap-hero__title {
-  font-size: 3.2rem;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  font-weight: 600;
-  margin: 0 0 0.4rem;
+  font-family: var(--ap-font-serif);
+  font-size: 3.4rem;
+  line-height: 1.04;
+  letter-spacing: var(--ap-track-tighter);
+  font-weight: 500;
+  margin: 0 0 0.45rem;
+  background: linear-gradient(180deg, var(--ap-ink) 32%, var(--ap-display-fade));
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 .ap-hero__sub {
-  font-size: 1.25rem;
-  line-height: 1.4;
+  font-size: 1.2rem;
+  line-height: 1.45;
   color: var(--ap-ink-2);
   font-weight: 400;
-  margin: 0 auto 1.6rem;
-  max-width: 34rem;
+  letter-spacing: var(--ap-track-normal);
+  margin: 0 auto 1.8rem;
+  max-width: 35rem;
 }
-.ap-cta { display: flex; gap: 0.8rem; justify-content: center; flex-wrap: wrap; }
+.ap-cta { display: flex; gap: 0.7rem; justify-content: center; flex-wrap: wrap; }
 
-/* ---- Buttons: Apple pills ----------------------------------------------- */
+/* Gradient-clipped text has no colour in forced-colors mode: opt out. */
+@media (forced-colors: active) {
+  .md-typeset .ap-hero__title {
+    background: none;
+    color: CanvasText;
+    -webkit-text-fill-color: CanvasText;
+  }
+}
+
+/* ---- Buttons: pills ----------------------------------------------------- */
 .md-typeset .md-button {
-  border-radius: 980px;
+  border-radius: var(--ap-r-pill);
   border: none;
-  background: var(--ap-blue);
-  color: #fff;
+  background: var(--ap-accent);
+  color: var(--ap-bg);
   font-weight: 500;
-  letter-spacing: -0.01em;
-  padding: 0.6em 1.4em;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  letter-spacing: var(--ap-track-normal);
+  padding: 0.62em 1.5em;
+  transition: background-color var(--ap-dur) var(--ap-ease),
+    color var(--ap-dur) var(--ap-ease);
 }
 .md-typeset .md-button:hover {
-  background: var(--ap-blue-strong);
-  color: #fff;
-  transform: none;
+  background: var(--ap-accent-strong);
+  color: var(--ap-bg);
   text-decoration: none;
 }
 .md-typeset .md-button--secondary {
   background: transparent;
-  color: var(--ap-blue);
-  box-shadow: inset 0 0 0 1px var(--ap-hairline);
+  color: var(--ap-ink);
+  box-shadow: inset 0 0 0 1px var(--ap-hairline-2);
 }
 .md-typeset .md-button--secondary:hover {
-  background: color-mix(in srgb, var(--ap-blue) 8%, transparent);
-  color: var(--ap-blue);
+  background: var(--ap-surface-2);
+  color: var(--ap-ink);
 }
 
-/* ---- Signature: verified-guarantees spec row ---------------------------- */
+/* ---- Signature: verified-guarantees spec strip -------------------------- */
 .ap-specs {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1px;
   background: var(--ap-hairline);
   border: 1px solid var(--ap-hairline);
-  border-radius: var(--ap-radius);
+  border-radius: var(--ap-r-lg);
   overflow: hidden;
-  margin: 2.4rem 0;
+  margin: 2.4rem 0 3rem;
 }
 .ap-specs__item {
-  background: var(--ap-surface);
-  padding: 1.4rem 1.2rem;
+  background: var(--ap-bg);
+  min-width: 0;
+  padding: 1.5rem 1.1rem;
   text-align: center;
 }
 .ap-specs__k {
   display: block;
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: var(--ap-font-serif);
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  font-weight: 500;
+  letter-spacing: var(--ap-track-tight);
   color: var(--ap-ink);
+  white-space: nowrap;
 }
 .ap-specs__v {
   display: block;
-  margin-top: 0.25rem;
-  font-size: 0.8rem;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
   color: var(--ap-ink-2);
 }
 .ap-specs__k--ok::before {
   content: "✓ ";
-  color: var(--ap-green);
+  color: var(--ap-accent);
   font-weight: 700;
 }
 
-/* ---- Grid cards: white surface, hairline, subtle Apple lift ------------- */
+@media screen and (max-width: 29.9375em) {
+  .ap-specs { grid-template-columns: 1fr; }
+}
+
+/* ---- Figure: the affinity-separation chart ------------------------------
+   Marks carry the emphasis (accent = the group being ranked, muted ink = the
+   reference group); every label wears a text token. Both fills clear 3:1 on
+   their surface in each scheme: 8.15 / 7.55 dark, 4.97 / 6.28 light. */
+.md-typeset .ap-figure {
+  width: 100%;
+  max-width: 100%;
+  margin: 2rem 0 1rem;
+  text-align: left;
+}
+.ap-figure svg { display: block; width: 100%; height: auto; overflow: visible; }
+.ap-figure text { font-family: var(--ap-font); }
+.md-typeset .ap-figure figcaption {
+  max-width: none;
+  text-align: left;
+  margin: 0.7rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: var(--ap-ink-2);
+}
+.md-typeset .ap-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin: 0 0 1.1rem;
+}
+.ap-stat__v {
+  font-family: var(--ap-font);
+  font-size: 2.4rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: var(--ap-track-tight);
+  color: var(--ap-ink);
+}
+.ap-stat__l { font-size: 0.78rem; color: var(--ap-ink-2); }
+.apc-band { fill: var(--ap-chart-band); }
+.apc-whisker { stroke-width: 2; stroke-linecap: round; }
+.apc-focus { fill: var(--ap-accent); stroke: var(--ap-accent); }
+.apc-muted { fill: var(--ap-ink-2); stroke: var(--ap-ink-2); }
+.apc-median { fill: var(--ap-bg); }
+.apc-axis { stroke: var(--ap-hairline-2); stroke-width: 1; fill: none; }
+.apc-tick { fill: var(--ap-ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.apc-name { fill: var(--ap-ink); font-size: 14px; font-weight: 500; }
+.apc-sub { fill: var(--ap-ink-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+.apc-value { fill: var(--ap-ink); font-size: 13px; font-weight: 600; }
+.apc-callout { fill: var(--ap-ink-2); font-size: 12px; }
+.ap-figure g[data-row] { cursor: default; }
+.ap-figure g[data-row] rect.apc-focus,
+.ap-figure g[data-row] rect.apc-muted { transition: opacity var(--ap-dur) var(--ap-ease); }
+.ap-figure:hover g[data-row]:not(:hover) rect { opacity: 0.55; }
+@media (prefers-reduced-motion: reduce) {
+  .ap-figure g[data-row] rect { transition: none; }
+}
+
+/* ---- Grid cards --------------------------------------------------------- */
 .md-typeset .grid.cards > ul > li {
-  border-radius: var(--ap-radius);
+  border-radius: var(--ap-r-md);
   background: var(--ap-surface);
   border: 1px solid var(--ap-hairline);
   box-shadow: var(--ap-shadow);
   padding: 1.4rem;
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  transition: transform var(--ap-dur) var(--ap-ease),
+    box-shadow var(--ap-dur) var(--ap-ease),
+    border-color var(--ap-dur) var(--ap-ease);
 }
 .md-typeset .grid.cards > ul > li:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: var(--ap-shadow-hover);
-  border-color: color-mix(in srgb, var(--ap-blue) 45%, var(--ap-hairline));
+  border-color: var(--ap-hairline-2);
 }
 .md-typeset .grid.cards > ul > li > hr {
   margin: 0.9em 0;
   border: 0;
   border-top: 1px solid var(--ap-hairline);
 }
-.md-typeset .grid.cards .twemoji svg,
-.md-typeset .grid.cards .md-typeset .twemoji { fill: var(--ap-blue); }
+.md-typeset .grid.cards .twemoji svg { fill: var(--ap-accent); }
 
-/* ---- Admonitions: softer, rounder --------------------------------------- */
-.md-typeset .admonition, .md-typeset details {
-  border-radius: var(--ap-radius-sm);
+/* ---- Admonitions, tables, footer ---------------------------------------- */
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: var(--ap-r-sm);
   border-width: 1px;
   box-shadow: none;
+  background: var(--ap-surface);
 }
 
-/* ---- Tables: hairline, roomy -------------------------------------------- */
+/* Informational admonitions wear the palette; warning, danger and the rest
+   keep their reserved semantic colours. */
+.md-typeset :is(.admonition, details):is(.note, .info, .tip, .abstract, .example, .quote) {
+  border-color: var(--ap-hairline-2);
+}
+.md-typeset :is(.note, .info, .tip, .abstract, .example, .quote) > :is(.admonition-title, summary) {
+  background-color: color-mix(in srgb, var(--ap-accent) 10%, transparent);
+  color: var(--ap-ink);
+}
+.md-typeset :is(.note, .info, .tip, .abstract, .example, .quote) > :is(.admonition-title, summary)::before {
+  background-color: var(--ap-accent);
+}
+.md-typeset :is(.note, .info, .tip, .abstract, .example, .quote) > summary::after {
+  color: var(--ap-accent);
+}
 .md-typeset table:not([class]) {
-  border-radius: var(--ap-radius-sm);
+  border-radius: var(--ap-r-sm);
   border: 1px solid var(--ap-hairline);
   box-shadow: none;
 }
@@ -255,20 +502,26 @@
   background: var(--md-code-bg-color);
   font-weight: 600;
 }
-
-/* ---- Footer: quiet ------------------------------------------------------- */
-.md-footer { background: var(--ap-bg); color: var(--ap-ink-2); }
+.md-footer { background: var(--ap-bg-deep); color: var(--ap-ink-2); }
 .md-footer-meta { background: transparent; border-top: 1px solid var(--ap-hairline); }
+.md-footer__link:hover { opacity: 1; color: var(--ap-accent); }
 
-/* ---- Motion respect ------------------------------------------------------ */
+/* ---- Motion respect ----------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
   .md-typeset .grid.cards > ul > li,
-  .md-typeset .md-button { transition: none; }
+  .md-typeset .md-button,
+  .md-typeset a,
+  .md-nav__link,
+  .md-tabs__link { transition: none; }
+  .md-typeset .grid.cards > ul > li:hover { transform: none; }
 }
 
-/* ---- Mobile: tighten the hero ------------------------------------------- */
+/* ---- Mobile ------------------------------------------------------------- */
 @media screen and (max-width: 44.9375em) {
+  .ap-hero { padding-top: 2.2rem; }
   .md-typeset .ap-hero__title { font-size: 2.3rem; }
-  .ap-hero__sub { font-size: 1.05rem; }
-  .md-typeset h1 { font-size: 2.1rem; }
+  .ap-hero__sub { font-size: 1.02rem; }
+  .md-typeset h1 { font-size: 2rem; }
+  .md-typeset h2 { font-size: 1.5rem; }
 }

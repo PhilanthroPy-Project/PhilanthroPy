@@ -80,16 +80,33 @@ class TestGratefulPatientFeaturizer:
         )
 
     def test_clinical_gravity_score_respects_service_line_weights(
-        self, fitted_featurizer, X_donors
+        self, enc_df, X_donors
     ):
-        """clinical_gravity_score must be scaled by service-line capacity weights."""
-        result = fitted_featurizer.transform(X_donors)
+        """clinical_gravity_score must be scaled by service-line capacity weights.
+
+        Weighting is opt-in: ``use_capacity_weights`` defaults to False because
+        the built-in multipliers have no published source.
+        """
+        gpf = GratefulPatientFeaturizer(
+            encounter_df=enc_df, use_capacity_weights=True
+        ).fit(X_donors)
+        result = gpf.transform(X_donors)
         # Donor 1: 2 cardiac encounters × 3.2 = 6.4
         assert result[0, 0] == pytest.approx(2 * 3.2, rel=1e-5), (
             f"Expected cardiac gravity 6.4, got {result[0, 0]}"
         )
         # Donor 2: 1 oncology encounter × 2.9 = 2.9
         assert result[1, 0] == pytest.approx(1 * 2.9, rel=1e-5)
+
+    def test_capacity_weights_are_off_by_default(self, fitted_featurizer, X_donors):
+        """Unsourced multipliers must not scale the headline score unasked.
+
+        Donor 1 has two cardiac encounters. With weighting on that would be
+        2 x 3.2 = 6.4; at the default it is the raw encounter count.
+        """
+        result = fitted_featurizer.transform(X_donors)
+        assert fitted_featurizer.use_capacity_weights is False
+        assert result[0, 0] == pytest.approx(2.0)
 
     def test_cardiac_patient_has_higher_gravity_than_general_patient(
         self, fitted_featurizer, X_donors
@@ -204,7 +221,9 @@ class TestGratefulPatientFeaturizer:
             "service_line": ["Cardiac"],  # mixed case
             "attending_physician_id": ["P1"],
         })
-        gpf = GratefulPatientFeaturizer(encounter_df=enc)
+        gpf = GratefulPatientFeaturizer(
+            encounter_df=enc, use_capacity_weights=True
+        )
         gpf.fit(X_donors)
         # After normalisation, "Cardiac" → "cardiac" → weight 3.2
         result = gpf.transform(pd.DataFrame({"donor_id": [1]}))

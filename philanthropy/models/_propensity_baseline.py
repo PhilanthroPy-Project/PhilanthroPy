@@ -13,8 +13,10 @@ class PropensityScorer(ClassifierMixin, BaseEstimator):
     """Constant-probability baseline that predicts P=0.5 for every donor.
 
     A deliberately trivial, sklearn-compliant reference point: it fits nothing
-    and returns 0.5 for all rows. Use it as a floor to beat when benchmarking.
-    For real
+    and returns 0.5 for all rows, which makes it equivalent in effect to
+    :class:`sklearn.dummy.DummyClassifier` with ``strategy="uniform"``. It
+    exists so a domain benchmark has a named floor to beat, not because it
+    scores anything. For real
     propensity scoring reach for
     :class:`~philanthropy.models.DonorPropensityModel` or
     :class:`~philanthropy.models.MajorGiftClassifier`.

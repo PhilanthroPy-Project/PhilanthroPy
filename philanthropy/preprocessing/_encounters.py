@@ -86,6 +86,35 @@ def _apply_as_of_cutoff(enc, discharge_col, as_of, class_name):
     return enc[keep]
 
 
+def _warn_if_unbounded(enc, discharge_col, gift_dates, class_name):
+    """Warn when ``as_of`` is unset and the encounter table runs past the gifts.
+
+    The default ``as_of=None`` aggregates the whole encounter table, which is
+    only safe if the table was already restricted upstream. When it is not, the
+    features are built from encounters that had not happened yet at the point
+    the gift decision was made, and no cross-validation splitter can see that:
+    the encounter table is a constructor argument, so its rows are never part of
+    any split.
+    """
+    if gift_dates is None or not len(enc):
+        return
+    latest_gift = gift_dates.max()
+    if pd.isna(latest_gift):
+        return
+    n_future = int((enc[discharge_col] > latest_gift).sum())
+    if n_future:
+        warnings.warn(
+            f"{class_name}(as_of=None) is aggregating {n_future} encounter "
+            f"row(s) discharged after the latest gift date in X "
+            f"({latest_gift.date()}), so features are built from encounters "
+            "that postdate the decision they describe. Set as_of to the end of "
+            "your training window, or restrict the encounter table before fit. "
+            "See docs/tutorials/avoiding_temporal_data_leakage.md.",
+            UserWarning,
+            stacklevel=2,
+        )
+
+
 class EncounterTransformer(TransformerMixin, BaseEstimator):
     """Merge clinical encounter history into philanthropic feature matrices.
 
@@ -132,6 +161,13 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
     merge_key : str, default="donor_id"
         Column name present in **both** ``encounter_df`` and ``X`` used to
         join the two tables.  This column is dropped from the output.
+
+        The join keys on the donor's **latest** discharge, so a donor with a
+        later encounter than the gift being scored is measured against that
+        later encounter (bounded by ``as_of``, and coerced to ``NaN`` unless
+        ``allow_negative_days``). Per-gift index-encounter keying is not
+        implemented: it would require the raw encounter rows at transform time,
+        which is exactly what ``__getstate__`` keeps out of saved bundles.
     allow_negative_days : bool, default=False
         If ``False`` (recommended), ``days_since_last_discharge`` values
         below zero are coerced to ``NaN``, indicating that the gift predates
@@ -335,7 +371,10 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
            ``encounter_df``, so a gift dated 2020 is scored against encounters
            recorded in 2024 if the table contains them. Set ``as_of`` to the end
            of your training window, or restrict ``encounter_df`` yourself before
-           calling ``fit``.
+           calling ``fit``. When ``as_of`` is ``None`` and the table does contain
+           discharges later than the latest gift date in ``X``, ``fit`` emits a
+           :class:`UserWarning` naming the row count rather than proceeding
+           silently.
 
         Parameters
         ----------
@@ -369,8 +408,13 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
             )
 
         self._validate_encounter_df(raw_enc)
-        
+
         self._validate_X(X)
+        gift_dates = (
+            pd.to_datetime(X[self.gift_date_col], errors="coerce")
+            if isinstance(X, pd.DataFrame) and self.gift_date_col in X.columns
+            else None
+        )
         X = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=True)
         self.n_features_in_ = X.shape[1]
 
@@ -389,6 +433,10 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
             )
 
         enc = enc.dropna(subset=[self.discharge_col])
+        if self.as_of is None:
+            _warn_if_unbounded(
+                enc, self.discharge_col, gift_dates, "EncounterTransformer"
+            )
         enc = _apply_as_of_cutoff(
             enc, self.discharge_col, self.as_of, "EncounterTransformer"
         )
@@ -484,13 +532,18 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
 
         # --- Strip identifiers (privacy firewall) ---
         cols_to_drop = self._identify_pii_columns(X_out.columns)
-        self.dropped_cols_ = cols_to_drop
         if cols_to_drop:
             X_out = X_out.drop(columns=cols_to_drop, errors="ignore")
 
         # --- Also drop the gift_date column (datetime, not modellable directly) ---
         if self.gift_date_col in X_out.columns:
             X_out = X_out.drop(columns=[self.gift_date_col])
+            # dropped_cols_ is the operator's audit trail (see
+            # docs/explanation/compliance_considerations.md), so it has to name
+            # every column that left, not only the PII-heuristic matches.
+            cols_to_drop = cols_to_drop + [self.gift_date_col]
+
+        self.dropped_cols_ = cols_to_drop
 
         # Convert back to numpy array float64 as instructed
         return X_out.to_numpy(dtype=np.float64)

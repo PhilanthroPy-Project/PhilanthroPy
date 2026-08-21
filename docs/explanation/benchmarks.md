@@ -231,6 +231,9 @@ These numbers, unlike the ones above, are on real donor data. They still
 establish a mechanism and its magnitude on one real file, not a value to
 quote for your program.
 
+The script's output and environment lock are archived separately on Zenodo:
+[10.5281/zenodo.22050649](https://doi.org/10.5281/zenodo.22050649).
+
 ## Validating on your own data
 
 1. Assemble a labelled historical dataset (features + a binary outcome you can

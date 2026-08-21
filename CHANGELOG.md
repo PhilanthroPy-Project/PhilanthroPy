@@ -102,8 +102,9 @@ work that ships for the first time in this release.
   synthetic), and a random `StratifiedKFold` split overstates the true future
   by +0.107 AUC (versus 0.014-0.030 synthetic). Documented in
   `docs/explanation/benchmarks.md` and in `paper.md`'s Statement of need and
-  Research impact statement. Closes the research-impact half of #124; the
-  Zenodo deposit of the script outputs is still pending.
+  Research impact statement. The script outputs and environment lock are
+  archived on Zenodo (DOI [10.5281/zenodo.22050649](https://doi.org/10.5281/zenodo.22050649)).
+  Closes #124.
 
 ### Deprecated
 - `WealthScreeningImputerKNN(group_col_idx=...)` is **deprecated** and will be

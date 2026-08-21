@@ -152,7 +152,21 @@ body {
   border-bottom: 1px solid var(--ap-hairline);
   box-shadow: none;
 }
-.md-header__button.md-logo svg { fill: var(--ap-accent); }
+[data-md-color-primary] .md-header__button.md-logo {
+  padding: 0.2rem;
+  margin-right: 0.2rem;
+}
+.md-nav__button.md-logo svg {
+  color: var(--ap-accent);
+  fill: none;
+}
+.md-header__button.md-logo svg {
+  width: 2rem;
+  height: 2rem;
+  color: var(--ap-accent);
+  /* Material sets fill: currentcolor on the logo svg; this mark is an outline. */
+  fill: none;
+}
 .md-header__title {
   font-weight: 600;
   letter-spacing: var(--ap-track-tight);

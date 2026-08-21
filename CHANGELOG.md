@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Changed
+- `GratefulPatientFeaturizer`, `EncounterTransformer` and the `philanthropy`
+  CLI now reject network-scheme paths (`https://`, `s3://`, `gs://`) with a
+  `ValueError` before any file read, keeping the documented "no network calls
+  of any kind" guarantee literally true for user-supplied paths. Local paths
+  are unaffected. Closes #114.
+
 ### Deprecated
 - `WealthScreeningImputerKNN(group_col_idx=...)` is **deprecated** and will be
   removed in 0.8.0. It still works and now emits a `DeprecationWarning`. There is

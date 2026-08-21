@@ -19,6 +19,7 @@ from philanthropy.models import (
 from philanthropy.preprocessing import (
     DischargeToSolicitationWindowTransformer,
     EncounterRecencyTransformer,
+    EncounterTransformer,
     RFMTransformer,
     WealthScreeningImputerKNN,
 )
@@ -245,3 +246,23 @@ def test_uplift_t_learner_rejects_column_reordered_dataframe():
         model.predict_uplift_score(train[["c", "b", "a"]])
     with pytest.raises(ValueError, match="feature names"):
         model.predict(train[["c", "b", "a"]])
+
+
+def test_dropped_cols_reports_the_gift_date_drop_too():
+    # compliance_considerations.md tells operators to inspect dropped_cols_ as
+    # their audit trail. It used to omit gift_date_col, which transform drops
+    # separately, so the trail under-reported what actually left.
+    enc = pd.DataFrame({"donor_id": [1], "discharge_date": ["2020-01-01"]})
+    X = pd.DataFrame(
+        {
+            "donor_id": [1],
+            "gift_date": ["2021-01-01"],
+            "mrn": [5],
+            "amount": [1.0],
+        }
+    )
+    t = EncounterTransformer(encounter_df=enc).fit(X)
+    out = t.transform(X)
+    assert "gift_date" in t.dropped_cols_
+    assert set(t.dropped_cols_) == set(X.columns) - set(t.get_feature_names_out())
+    assert out.shape[1] == len(t.get_feature_names_out())

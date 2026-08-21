@@ -15,6 +15,20 @@ def donor_retention_rate(
 
     Returns a fraction in ``[0.0, 1.0]``; ``0.0`` when ``prior_donors`` is
     empty (no base to retain from).
+
+    Parameters
+    ----------
+    current_donors : collection
+        Donor identifiers seen in the current period.
+
+    prior_donors : collection
+        Donor identifiers seen in the prior period.
+
+    Returns
+    -------
+    float
+        Retained share in ``[0.0, 1.0]``. Returns ``0.0`` when
+        ``prior_donors`` is empty (no base to retain from).
     """
     current_set = set(current_donors)
     prior_set = set(prior_donors)
@@ -35,6 +49,20 @@ def donor_acquisition_cost(
 
     Returns ``np.inf`` when ``new_donors_acquired`` is 0 (spend with nothing
     acquired), so the result is always safe to compare or plot.
+
+    Parameters
+    ----------
+    total_fundraising_expense : float
+        Total fundraising expense for the period.
+
+    new_donors_acquired : int
+        Number of first-time donors acquired in the period.
+
+    Returns
+    -------
+    float
+        Expense per new donor. Returns ``np.inf`` when
+        ``new_donors_acquired`` is 0.
     """
     if new_donors_acquired == 0:
         return np.inf
@@ -52,6 +80,20 @@ def cost_per_dollar_raised(
     A headline efficiency KPI: values below ~0.20 are typically healthy for a
     mature program. Returns ``np.inf`` when ``total_raised`` is 0 (spend with
     nothing raised), so the result is always safe to compare or plot.
+
+    Parameters
+    ----------
+    total_fundraising_expense : float
+        Total fundraising expense for the period.
+
+    total_raised : float
+        Total revenue raised in the period.
+
+    Returns
+    -------
+    float
+        Expense per dollar raised. Returns ``np.inf`` when ``total_raised``
+        is 0.
     """
     if total_raised == 0:
         return np.inf
@@ -69,6 +111,20 @@ def fundraising_roi(
     ``0.0`` means the program broke even; ``3.0`` means every dollar spent
     returned three dollars of net revenue. Returns ``np.inf`` when
     ``total_fundraising_expense`` is 0 (revenue with no spend).
+
+    Parameters
+    ----------
+    total_raised : float
+        Total revenue raised in the period.
+
+    total_fundraising_expense : float
+        Total fundraising expense for the period.
+
+    Returns
+    -------
+    float
+        Net return per dollar of fundraising expense. Returns ``np.inf``
+        when ``total_fundraising_expense`` is 0.
     """
     if total_fundraising_expense == 0:
         return np.inf

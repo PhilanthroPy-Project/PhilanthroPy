@@ -433,27 +433,51 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
     produces two outputs per row:
 
     ``sow_score`` (float64, [0, 1])
-        Normalised Share-of-Wallet:
+        Capacity utilisation:
 
-            SoW = estimated_capacity / (total_modelled_wealth + epsilon)
+            score = estimated_capacity / (clipped_modelled_wealth + epsilon)
 
-        where ``total_modelled_wealth`` is the row-wise sum of all columns
-        specified in ``wealth_col_indices`` (or all columns if not
-        specified), and ``estimated_capacity`` is the column at
-        ``capacity_col_idx``.
+        where ``clipped_modelled_wealth`` is the row-wise sum of the columns in
+        ``wealth_col_indices`` (or all columns if unspecified), clipped at the
+        95th percentile of that sum frozen at ``fit`` time, and
+        ``estimated_capacity`` is the column at ``capacity_col_idx``.
+
+        .. warning::
+           Despite the class name this is **not** share of wallet in the
+           fundraising sense. No term for giving to *your* institution appears
+           anywhere in the formula, so the score cannot say what fraction of a
+           donor's philanthropy you receive. A true share of wallet needs
+           institutional giving in the numerator and total estimated giving in
+           the denominator, and this transformer is given neither. Read it as
+           "how much of this donor's modelled wealth is estimated to be
+           philanthropic capacity". The output name is kept for backward
+           compatibility and is scheduled to be renamed in the next major
+           release.
+
+        The denominator is clipped at the fit-time 95th percentile, so the
+        wealthiest rows share one denominator and are pushed toward the top of
+        the range. That keeps the ratio in a usable band, but it means
+        top-tier membership is partly an artefact of the clip, in exactly the
+        tier a principal-gift program cares about most. Inspect
+        ``wealth_scale_`` before trusting the tiers.
 
     ``capacity_tier`` (float64, categorical encoding)
         A numeric encoding of the human-readable tier label, usable by
         downstream sklearn estimators (e.g., a classifier trained to
-        predict tier upgrades).  The mapping is:
+        predict tier upgrades).  The cut points are the
+        ``major_tier_threshold`` and ``principal_tier_threshold`` parameters,
+        which have no published source and are institution-specific:
 
-        ============ ============ =========================================
-        SoW score    Tier label   Recommended action
-        ============ ============ =========================================
-        ≥ 0.75       Principal    Schedule personal visit with campaign chair.
-        0.40 – 0.75  Major        Assign major gift officer.
-        0.00 – 0.40  Leadership   Include in leadership annual giving.
-        ============ ============ =========================================
+        ================================ ============
+        Score                            Tier label
+        ================================ ============
+        >= ``principal_tier_threshold``  Principal
+        >= ``major_tier_threshold``      Major
+        otherwise                        Leadership
+        ================================ ============
+
+        What a gift officer should do with each tier is a program decision, not
+        a property of the score, so no action is prescribed here.
 
     Parameters
     ----------
@@ -506,11 +530,15 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         wealth_col_indices: Optional[list[int]] = None,
         epsilon: float = 1.0,
         capacity_floor: float = 0.0,
+        major_tier_threshold: float = 0.40,
+        principal_tier_threshold: float = 0.75,
     ) -> None:
         self.capacity_col_idx = capacity_col_idx
         self.wealth_col_indices = wealth_col_indices
         self.epsilon = epsilon
         self.capacity_floor = capacity_floor
+        self.major_tier_threshold = major_tier_threshold
+        self.principal_tier_threshold = principal_tier_threshold
 
     def fit(self, X, y=None) -> "ShareOfWalletScorer":
         """Fit the scorer: record wealth scale from training data.
@@ -601,8 +629,12 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
 
         # Tier encoding (vectorised)
         tiers = np.zeros(len(sow), dtype=np.float64)
-        tiers[sow >= 0.40] = float(self.TIER_ENCODING["Major"])
-        tiers[sow >= 0.75] = float(self.TIER_ENCODING["Principal"])
+        tiers[sow >= float(self.major_tier_threshold)] = float(
+            self.TIER_ENCODING["Major"]
+        )
+        tiers[sow >= float(self.principal_tier_threshold)] = float(
+            self.TIER_ENCODING["Principal"]
+        )
 
         return np.column_stack([sow, tiers])
 

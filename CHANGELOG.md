@@ -22,6 +22,136 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   docstring merely mentioning the class is not miscounted. Closes #85.
 
 ### Added
+- `paper.md` now carries the four JOSS sections it was missing: **State of the
+  field**, **Software design**, **Research impact statement**, and **AI usage
+  disclosure**. JOSS made all six sections required and moved the length window
+  to 750-1750 words in January 2026; the paper was 635 words with two of six
+  sections, which is a pre-review bounce on its own. It is now 1447 words. The
+  AI usage disclosure restates the one already in `README.md` and in
+  `philanthropy/__init__.py`, since JOSS requires it as a named section of the
+  paper itself.
+- `paper.bib` gains the prior art the paper had never cited: feature-engine,
+  mlxtend, sktime, pymc-marketing, MAPIE, crepes, Fader-Hardie-Lee (BTYD),
+  Zhang (2003) for the linear-plus-nonlinear forecast decomposition, and Bates
+  et al. (2023) for the conformal p-value the code already attributes to it.
+  JOSS accepts re-implementations "provided that they cite prior similar work",
+  and the bibliography previously cited no comparable package.
+- `RFMTransformer(include_tenure=True)` emits a fifth column, `tenure`: days
+  from the donor's first gift to the frozen reference date. Recency, frequency
+  and monetary alone cannot feed a buy-till-you-die model, which needs the
+  observation window T as well. Defaults to False so the output shape does not
+  move under existing callers.
+- `ShareOfWalletScorer(major_tier_threshold=..., principal_tier_threshold=...)`.
+  The 0.40 and 0.75 cut points were hardcoded in `transform` with no source and
+  no way to match an institution's own tiering.
+- `DischargeToSolicitationWindowTransformer(window_shape=...)`, with the legacy
+  symmetric triangle available as `"triangle"` for reproducing older runs.
+- `EncounterTransformer.fit` warns when `as_of=None` and the encounter table
+  contains discharges later than the latest gift date in `X`, naming the row
+  count. That is the one leakage path no cross-validation splitter can see: the
+  encounter table is a constructor argument, so its rows are never part of any
+  split.
+- `GratefulPatientFeaturizer` warns when `drg_weight_col` is set. A DRG relative
+  weight is diagnosis-derived, and diagnosis is not in the element list the HIPAA
+  fundraising carve-out permits (45 CFR 164.514(f)).
+
+### Changed
+- **Behaviour change.** `DischargeToSolicitationWindowTransformer` now decays
+  `window_position_score` from 1.0 at `min_days_post_discharge` to 0.0 at
+  `max_days_post_discharge` instead of peaking at the window midpoint. The old
+  symmetric triangle treated the ethical cooling-off floor as a propensity
+  minimum: with the default 90-365 window, day 91 and day 364 both scored about
+  0.007 while day 227 scored 1.0. Pass `window_shape="triangle"` to reproduce
+  the previous numbers.
+- **Behaviour change.** A missing days-since-discharge value now yields
+  `window_position_score=NaN` rather than `0.0`, so "no discharge on record" is
+  distinguishable from "discharged, but outside the window", which still scores a
+  hard 0.0. `in_solicitation_window` is unchanged at 0.
+- **Behaviour change.** `GratefulPatientFeaturizer(use_capacity_weights=...)`
+  now defaults to `False`. The built-in service-line multipliers have no
+  published source, and defaulting them on meant the headline
+  `clinical_gravity_score` silently carried unsourced 2.7x to 3.2x weighting.
+- `EncounterTransformer.dropped_cols_` now includes `gift_date_col`, which
+  `transform` drops separately. `compliance_considerations.md` tells operators to
+  inspect this attribute as their audit trail, and it was under-reporting what
+  actually left.
+- `philanthropy.preprocessing.SolicitationWindowTransformer` is deprecated and
+  emits a `DeprecationWarning` on access via PEP 562 module `__getattr__`. It
+  still resolves to `DischargeToSolicitationWindowTransformer` itself, so
+  `isinstance` and `clone` are unaffected, and it is registered in
+  `tests/test_deprecations.py` for removal in 1.0.0. Two public names for one
+  transformer inflated the API surface without adding capability.
+- `CITATION.cff` and `.zenodo.json` now match `paper.md` on title and author
+  name, and both carry the ORCID. `CITATION.cff` records `version: 0.6.0`, the
+  release the concept DOI actually resolves to, instead of the in-development
+  `1.0.0` from `pyproject.toml`. A reviewer following the archive DOI was landing
+  on a record that contradicted the paper byline.
+
+### Fixed
+- Four claims in `paper.md` that were falsifiable by running the code. The
+  conformance claim named `UpliftTLearner` as "the one documented exception"
+  against four entries in `_MANUALLY_COVERED`; the leakage claim said a
+  PhilanthroPy pipeline "cannot leak test-period or future information" while
+  `_encounters.py` documents that exact leak at the default `as_of=None`;
+  fiscal-year boundaries were listed as a frozen fitted statistic although
+  `FiscalYearTransformer` has no fitted state (its own test is named
+  `test_fiscal_year_stateless`); and "compose directly inside
+  `sklearn.pipeline.Pipeline`" did not exclude the row-reducing
+  `RFMTransformer`. The Summary now describes the conformance registry as the
+  mechanism it is: 20 configured instances, 1016 checks on scikit-learn 1.8.0,
+  four documented exemptions, and a build-failing guard against a public
+  estimator appearing in neither list.
+- `conformal_pvalue`: thresholding at `alpha` bounds the expected **selection
+  rate**, not the false-positive rate. The FPR reading needs a calibration set
+  of nulls only, which is the construction in Bates et al. (2023) and not what
+  "donors held out of training" gives you. The wrong statement was in the shipped
+  module docstring and therefore in the rendered API docs, not only in the paper.
+- The `check_estimator` claim was corrected in `paper.md` but still stood in
+  three other places, in its strongest and most falsifiable form: `README.md`
+  ("Every public estimator passes `check_estimator`", with the `UpliftTLearner`
+  qualification trimmed off at some point), `docs/explanation/design_principles.md`
+  ("the one exception"), and `docs/explanation/security_review_answers.md`, which
+  is the page written to be forwarded to a privacy or procurement reviewer. All
+  three now describe the battery, its four documented exemptions, and the
+  build-failing guard, matching the paper.
+- `EncounterRecencyTransformer` described itself as producing "HIPAA-safe"
+  features in four places. Date-only input is not de-identified: Safe Harbor
+  strips every date element more granular than a year, so encounter dates are
+  themselves identifiers, permitted for fundraising only under the narrower
+  164.514(f) carve-out. This contradicted the project's own compliance page.
+- `security_review_answers.md` attributed `PII_PATTERNS` column-dropping to
+  `CRMCleaner`, which has neither the attribute nor any dropping logic. It lives
+  on `EncounterTransformer`. That page exists to be forwarded to a privacy
+  officer, so the error cost more than a docs bug normally would. It now also
+  states that `pii_patterns` replaces rather than extends the defaults.
+- `ShareOfWalletScorer`'s docstring claimed a share of wallet. The formula has no
+  term for giving to your institution anywhere in it, so it cannot express what
+  fraction of a donor's philanthropy you receive; it is capacity over modelled
+  wealth. `docs/index.md` repeated the wrong definition. The output name is kept
+  for compatibility and flagged for renaming in the next major release. The
+  fit-time 95th-percentile denominator clip, which inflates exactly the top tier,
+  is now documented rather than silent.
+- The README figure caption said the affinity scores "cleanly separate major from
+  non-major donors", 21 lines below the text explaining that the distributions
+  overlap. That was the in-sample overclaim commit c54a6b3 retracted, left behind
+  in the caption.
+- `AskAmountRecommender` and `ShareOfWalletRegressor` now say in their docstrings
+  that they are the same `HistGradientBoostingRegressor` wrapper with different
+  targets, and `PropensityScorer` that it is equivalent in effect to
+  `DummyClassifier(strategy="uniform")`. Four classes exposed `proba * 100`
+  under four names with nothing saying they were the same thing.
+
+### Notes
+- `paper.md` cites `scripts/leakage_experiment.py` and its measured result
+  (whole-history feature aggregation inflates walk-forward ROC-AUC from 0.625 to
+  0.750, +0.126, against 0.014 and 0.030 of splitter-choice error). That script
+  arrives with #101, so #101 must land for the reference to resolve. The numbers
+  above were reproduced locally against this branch before being written down.
+- Still open, and not fixable in a pull request: JOSS requires demonstrated
+  research impact, and no estimator here has ever been fitted on real donor
+  data. `load_ciob_fundraising` carries no donor rows, amounts or labels. The
+  paper's Research impact statement says so plainly rather than implying
+  adoption that does not exist.
 - `WealthScreeningImputerKNN.group_col_idx` now does what it always claimed.
   It was documented as stratifying KNN imputation per group "improving local
   accuracy", and was stored and never read. When set with `strategy="knn"`, a
@@ -101,8 +231,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `philanthropy.metrics.conformal_pvalue`: the non-smoothed split-conformal
   p-value of a donor score against a held-out calibration set,
   `(1 + |{i : s_i >= s}|) / (n + 1)`. A calibrated probability threshold fixes no
-  error rate; thresholding this p-value at `alpha` bounds the false-positive rate
-  at `alpha` in finite samples with no distributional assumption. Both the `1 +`
+  error rate; thresholding this p-value at `alpha` bounds the expected selection
+  rate at `alpha` in finite samples with no distributional assumption. It is a
+  selection-rate bound, not a false-positive rate: the latter reading needs a
+  calibration set of nulls only, as in Bates et al. (2023). Both the `1 +`
   and the `+ 1` are load-bearing and tested: the result is never 0 and never
   above 1, and leave-one-out over exchangeable scores lands exactly on the
   uniform lattice.
@@ -236,6 +368,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   installable release since `0.6.0`. Now `0.6.x`, and kept current by the
   `RELEASING.md` checklist. Adds GitHub private vulnerability reporting as the
   preferred disclosure channel.
+- `AGENTS.md`'s merging section no longer bars agents from merging outright.
+  An agent may now merge a PR under the same bar as the maintainer's own-PR
+  merge (all required CI checks green, no second reviewer available), plus
+  having actually read the diff and judged it good.
+- `.gitignore` now excludes `.claude/CLAUDE.local.md`, for personal working
+  notes that shouldn't end up in the repo.
 
 ### Fixed
 - Version metadata now names the release that actually exists. `pyproject.toml`

@@ -28,6 +28,13 @@ contribution. Code, docs, tests, and review all count.
   two untested guards in `constituent_events_to_features`: the all-unparseable-
   timestamps empty-frame path and the `distinct_source_systems` default when
   `sourceSystem` is absent.
+- [@shubhrai23](https://github.com/shubhrai23): added missing docstrings to
+  `UpliftTLearner` and `cli.main`, `Raises` sections to five metrics functions,
+  and fallback-path coverage for `predict_affinity_score`
+  ([#64](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/64),
+  [#65](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/65),
+  [#66](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/66)).
+
 ## Getting listed
 
 Add yourself here in the same pull request as your change: one line, your name

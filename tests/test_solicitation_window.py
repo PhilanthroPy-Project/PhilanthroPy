@@ -57,28 +57,55 @@ class TestDischargeToSolicitationWindowTransformer:
         np.testing.assert_array_equal(result[:, 0], [0.0, 0.0, 0.0, 0.0])
         np.testing.assert_array_equal(result[:, 1], [0.0, 0.0, 0.0, 0.0])
 
-    def test_midpoint_produces_score_of_one(self):
-        """Days at the window midpoint must produce window_score == 1.0."""
+    def test_score_peaks_at_the_floor_and_decays(self):
+        """The cooling-off floor is peak signal, not the window midpoint.
+
+        ``min_days_post_discharge`` exists to stop solicitation during and just
+        after treatment, so the day it is cleared is the strongest timing
+        signal. The old symmetric triangle had this backwards: it scored the day
+        after the floor the same as the day before the window closed.
+        """
         t = DischargeToSolicitationWindowTransformer(
             min_days_post_discharge=100,
             max_days_post_discharge=200,
         )
-        midpoint = 150.0
-        t.fit(_make_X_df([midpoint]))
-        result = t.transform(_make_X_df([midpoint]))
-        assert result[0, 1] == pytest.approx(1.0)
+        t.fit(_make_X_df([150.0]))
+        result = t.transform(_make_X_df([100.0, 125.0, 150.0, 199.0, 200.0]))
+        scores = result[:, 1]
+        assert scores[0] == pytest.approx(1.0)
+        assert scores[2] == pytest.approx(0.5)
+        assert scores[4] == pytest.approx(0.0)
+        assert (np.diff(scores) <= 0).all(), "score must be monotone non-increasing"
 
-    def test_nan_days_produce_zero_in_both_columns(self):
-        """NaN days → both in_window and window_score are 0.0."""
+    def test_triangle_shape_still_available_for_reproducibility(self):
+        """The legacy symmetric triangle is opt-in, not deleted."""
+        t = DischargeToSolicitationWindowTransformer(
+            min_days_post_discharge=100,
+            max_days_post_discharge=200,
+            window_shape="triangle",
+        )
+        t.fit(_make_X_df([150.0]))
+        result = t.transform(_make_X_df([150.0, 101.0]))
+        assert result[0, 1] == pytest.approx(1.0)
+        assert result[1, 1] == pytest.approx(0.02)
+
+    def test_unknown_window_shape_raises(self):
+        with pytest.raises(ValueError, match="window_shape must be one of"):
+            DischargeToSolicitationWindowTransformer(window_shape="gaussian").fit(
+                _make_X_df([150.0])
+            )
+
+    def test_nan_days_are_distinguishable_from_out_of_window(self):
+        """Missing discharge date gives NaN; out of window gives a hard 0.0."""
         t = DischargeToSolicitationWindowTransformer(
             min_days_post_discharge=100, max_days_post_discharge=300
         )
         t.fit(_make_X_df([150.0]))
-        result = t.transform(_make_X_df([np.nan, 150.0, np.nan]))
+        result = t.transform(_make_X_df([np.nan, 150.0, 400.0]))
         assert result[0, 0] == 0.0
-        assert result[0, 1] == 0.0
+        assert np.isnan(result[0, 1]), "no discharge on record must not read as 0.0"
         assert result[2, 0] == 0.0
-        assert result[2, 1] == 0.0
+        assert result[2, 1] == 0.0, "out of window is a real zero, not missing"
 
     def test_window_score_range_is_zero_to_one(self):
         """All window_score values must be in [0.0, 1.0]."""
@@ -166,21 +193,18 @@ class TestDischargeToSolicitationWindowTransformer:
         assert result[0, 0] == 1.0  # 200 in window
         assert result[1, 0] == 0.0  # 50 out of window
 
-    def test_window_score_decreases_from_midpoint(self):
-        """Window score should be highest at midpoint and decrease toward edges."""
+    def test_window_score_decays_with_elapsed_time(self):
+        """Score is highest at the floor and falls monotonically to the edge."""
         t = DischargeToSolicitationWindowTransformer(
             min_days_post_discharge=100,
             max_days_post_discharge=300,
         )
-        midpoint = 200.0
-        t.fit(_make_X_df([midpoint]))
+        t.fit(_make_X_df([200.0]))
         days = [100.0, 150.0, 200.0, 250.0, 300.0]
         result = t.transform(_make_X_df(days))
         scores = result[:, 1]
-        # Midpoint (index 2) should have highest score
-        assert scores[2] == pytest.approx(1.0)
-        # Symmetric: score at 100 == score at 300 (both at edges)
-        assert scores[0] == pytest.approx(scores[4], abs=1e-10)
-        # Monotonically increasing from edge to midpoint
-        assert scores[0] < scores[1] < scores[2]
-        assert scores[4] < scores[3] < scores[2]
+        assert scores[0] == pytest.approx(1.0)
+        assert scores[4] == pytest.approx(0.0)
+        assert scores[0] > scores[1] > scores[2] > scores[3] > scores[4]
+        # Every one of them is still inside the window.
+        assert (result[:, 0] == 1.0).all()

@@ -62,6 +62,13 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
     upstream imputation step, reducing pipeline complexity and eliminating one
     source of potential leakage.
 
+    Structurally this is the same wrapper as
+    :class:`~philanthropy.models.ShareOfWalletRegressor`: same estimator, same
+    NaN handling, different target and different domain method name. Both exist
+    because the two quantities are separate columns in a real advancement
+    workflow, not because the modelling differs. If you want a plain regressor,
+    use ``HistGradientBoostingRegressor`` directly.
+
     The companion method :meth:`ask_ladder` expands the base ask into a
     discrete **gift array** (or *ask ladder*): the low / target / stretch
     rungs presented in a real solicitation.

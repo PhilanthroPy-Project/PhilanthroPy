@@ -12,6 +12,7 @@ import warnings
 import numpy as np
 import pytest
 
+from philanthropy import preprocessing
 from philanthropy.preprocessing import WealthScreeningImputerKNN
 
 # (id, removed_in, callable that should emit exactly one DeprecationWarning)
@@ -22,6 +23,13 @@ DEPRECATIONS = [
         lambda: WealthScreeningImputerKNN(
             strategy="knn", n_neighbors=3, add_indicator=False, group_col_idx=1
         ).fit(_two_group_X()),
+    ),
+    (
+        "preprocessing.SolicitationWindowTransformer",
+        "1.0.0",
+        # Attribute access, not instantiation: the alias resolves through the
+        # subpackage's PEP 562 __getattr__ so it stays the canonical class.
+        lambda: preprocessing.SolicitationWindowTransformer,
     ),
 ]
 

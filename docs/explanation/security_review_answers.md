@@ -72,11 +72,15 @@ subtree (`preprocessing/`, `models/`, `ingest/`, the CLI, and model persistence)
 declared dependency floors on the oldest supported Python, a packaging check
 (`python -m build` plus `twine check`), and CodeQL static analysis.
 
-Every estimator that fits the scikit-learn `fit(X, y)` contract also passes
-`sklearn.utils.estimator_checks.check_estimator`, a third-party conformance suite
-rather than tests written by the same author. The one documented exception is
-`UpliftTLearner` (Tier 3, `philanthropy.experimental`), whose `fit(X, y,
-treatment)` signature breaks that contract; see `docs/reference/experimental.md`.
+Public estimators are also exercised by `sklearn.utils.estimator_checks`, a
+third-party conformance suite rather than tests written by the same author: 20
+configured instances, 1016 checks. Four classes are row-reducing or require a
+constructor argument, so they cannot run the generated battery bare
+(`RFMTransformer`, `MatchingGiftFeaturizer`, `EncounterTransformer`,
+`GratefulPatientFeaturizer`); each has hand-written equivalent coverage and a
+recorded reason, and a test fails the build if any public estimator is in
+neither list. `UpliftTLearner` (Tier 3, `philanthropy.experimental`) is outside
+the `fit(X, y)` contract altogether; see `docs/reference/experimental.md`.
 
 ## 6. What is the biggest security caveat we should know about?
 
@@ -91,10 +95,15 @@ applies equally to any scikit-learn model you load. See
 
 ## 7. Does it de-identify our data for us?
 
-**No, and you should not rely on it as though it did.** `CRMCleaner`'s
-`PII_PATTERNS` column-dropping is a name-based heuristic, defence in depth against
+**No, and you should not rely on it as though it did.** The `PII_PATTERNS`
+column-dropping lives on `EncounterTransformer` (and is inherited by
+`GratefulPatientFeaturizer`), not on `CRMCleaner`, which does no dropping at all.
+It is a name-based heuristic, defence in depth against
 obvious identifier columns being fed into a model, not de-identification under HIPAA
-Safe Harbor (45 CFR 164.514(b)) or Expert Determination (164.514(a)).
+Safe Harbor (45 CFR 164.514(b)) or Expert Determination (164.514(a)). Note also
+that `pii_patterns` **replaces** the default tuple rather than extending it, so
+passing your own patterns switches off the built-in `mrn`/`ssn` entries unless you
+repeat them.
 
 De-identification remains your determination to make. The reasoning, including the
 164.514(f) fundraising carve-out and its minimum-necessary and opt-out obligations,

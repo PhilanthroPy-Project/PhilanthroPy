@@ -1,10 +1,17 @@
 """
 philanthropy.preprocessing._encounter_recency
 =============================================
-HIPAA-safe encounter-date recency features for Grateful Patient Programs.
+Encounter-date recency features for Grateful Patient Programs.
 
 This transformer operates exclusively on **date columns**: no PHI fields
-(names, MRNs, diagnosis codes) should be present.  The resulting features
+(names, MRNs, diagnosis codes) should be present. Date-only input is *not*
+the same as de-identified input: Safe Harbor (45 CFR 164.514(b)) strips every
+date element more granular than a year, so the encounter dates these features
+are built from are themselves identifiers. Dates of service are permitted for
+fundraising under the narrower carve-out at 45 CFR 164.514(f), subject to
+minimum-necessary scoping and opt-out handling. See
+``docs/explanation/compliance_considerations.md``; this transformer enforces
+none of it.  The resulting features
 are strong temporal signals in major-gift propensity models trained at
 academic medical centres (AMCs):
 
@@ -43,7 +50,7 @@ from ..utils._validation import validate_fiscal_year_start
 
 
 class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
-    """Transform HIPAA-safe encounter-date columns into predictive recency features.
+    """Transform encounter-date columns into predictive recency features.
 
     Given one or more date-only columns (no PHI, dates only), this
     transformer produces three downstream-model-ready features per date
@@ -88,8 +95,8 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         provided, timezone-naive datetimes in ``X`` are localised to this
         timezone before difference computation, preventing offset errors for
         hospitals that cross daylight-saving boundaries.  If ``None``,
-        all dates are kept timezone-naive (recommended for HIPAA-safe
-        de-identified datasets where the exact timezone is unknown).
+        all dates are kept timezone-naive (recommended when the exact
+        timezone is unknown).
 
     Attributes
     ----------
@@ -131,6 +138,8 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
     -----
     **HIPAA note:** This transformer accepts only date columns.  Ensure that
     no PHI fields (MRN, patient name, diagnosis code) are included in ``X``.
+    Date-only is not de-identified: see the module docstring and
+    ``docs/explanation/compliance_considerations.md``.
 
     **Fiscal year convention:** With ``fiscal_year_start=7``, the fiscal year
     is identified by the calendar year in which it *ends*.  A date of

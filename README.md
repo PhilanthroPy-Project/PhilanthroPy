@@ -118,9 +118,9 @@ the threshold from your team's capacity, not from this table.
 > **Runnable scripts:** [`examples/quickstart.py`](examples/quickstart.py) and [`examples/unischema_to_scores.py`](examples/unischema_to_scores.py) run end to end and are smoke-tested in CI.
 
 <p align="center">
-  <img src="docs/assets/affinity_distribution.png" alt="Affinity score distribution separating major from non-major donors" width="640"/>
+  <img src="docs/assets/affinity_distribution.png" alt="Distribution of 0-100 affinity scores for major and non-major donors, with overlapping tails" width="640"/>
   <br/>
-  <em>Output of <code>plot_affinity_distribution()</code>: the 0–100 affinity scores cleanly separate major from non-major donors.</em>
+  <em>Output of <code>plot_affinity_distribution()</code>: the 0-100 affinity scores separate the two groups on average, with tails that overlap. Ranking works; a single clean cut point does not exist.</em>
 </p>
 
 ### No Python? Use the CLI
@@ -260,8 +260,15 @@ coverage floor (`pyproject.toml`). CI additionally enforces a 93% coverage floor
 on the risk-tier subtree, runs the suite across an OS and Python-version matrix,
 installs at the declared dependency floors on Python 3.9, builds the
 distributions and checks their metadata with `twine`, and verifies the package
-imports without a plotting stack installed. Every public estimator passes
-`sklearn.utils.estimator_checks.check_estimator`.
+imports without a plotting stack installed. Public estimators are exercised by
+a `parametrize_with_checks` battery over
+`sklearn.utils.estimator_checks`: 20 configured instances, 1016 checks passing
+on scikit-learn 1.8.0. Four classes are covered by hand-written equivalents
+instead, each with a recorded reason (`RFMTransformer` is row-reducing;
+`MatchingGiftFeaturizer`, `EncounterTransformer` and `GratefulPatientFeaturizer`
+cannot be instantiated bare), and a test fails the build if a public estimator
+appears in neither list. `UpliftTLearner` is outside the contract entirely,
+since its `fit(X, y, treatment)` signature is not `fit(X, y)`.
 
 No approximate scale is attached to the AI use here. The author has not measured
 the split and will not estimate one; the mechanism and the review gate above are

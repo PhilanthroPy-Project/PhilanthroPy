@@ -70,11 +70,24 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         Column in the encounter table holding the attending physician ID.
     drg_weight_col : str | None, default=None
         Optional column holding DRG (Diagnosis Related Group) relative weights.
-        If present, total DRG weight per donor is computed.
-    use_capacity_weights : bool, default=True
+        If present, total DRG weight per donor is computed. Off by default, and
+        it should stay off unless your governance process has cleared it: a DRG
+        weight is derived from the discharge diagnosis, and diagnosis is not in
+        the element list the HIPAA fundraising carve-out permits (45 CFR
+        164.514(f) covers demographics, dates and department of service,
+        treating physician, outcome, and insurance status). Setting it emits a
+        :class:`UserWarning`. See
+        ``docs/explanation/compliance_considerations.md``.
+    use_capacity_weights : bool, default=False
         If True, apply service-line capacity weights to scale the clinical
         gravity score. Weights come from ``capacity_weights`` (or the illustrative
         defaults in :data:`_SERVICE_LINE_CAPACITY_WEIGHTS` when unset).
+
+        Defaults to False. The built-in multipliers have no published source,
+        and defaulting them on meant the headline ``clinical_gravity_score``
+        silently carried unsourced 2.7x to 3.2x weighting on cardiac, oncology
+        and neuroscience encounters. Turn it on deliberately, and pass
+        ``capacity_weights`` your institution has reviewed.
     capacity_weights : dict of {str: float} or None, default=None
         Per-service-line multipliers applied when ``use_capacity_weights=True``.
         Keys are normalised service-line names (lowercased, non-alpha collapsed to
@@ -151,7 +164,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         service_line_col: str = "service_line",
         physician_col: str = "attending_physician_id",
         drg_weight_col: str | None = None,
-        use_capacity_weights: bool = True,
+        use_capacity_weights: bool = False,
         capacity_weights: dict[str, float] | None = None,
         merge_key: str = "donor_id",
         discharge_col: str = "discharge_date",
@@ -274,6 +287,16 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         summary_parts["last_discharge"] = grouped[self.discharge_col].max()
 
         # Step 5: DRG weight column
+        if self.drg_weight_col is not None:
+            warnings.warn(
+                f"drg_weight_col={self.drg_weight_col!r} aggregates a "
+                "diagnosis-derived field. Diagnosis is outside the element "
+                "list permitted for fundraising by 45 CFR 164.514(f); confirm "
+                "your governance approval before using it. See "
+                "docs/explanation/compliance_considerations.md.",
+                UserWarning,
+                stacklevel=2,
+            )
         if (
             self.drg_weight_col is not None
             and self.drg_weight_col in raw_enc.columns
@@ -291,6 +314,15 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         encounter_summary = pd.DataFrame(summary_parts)
 
         # Step 6: Clinical gravity score
+        if self.capacity_weights is not None and not self.use_capacity_weights:
+            warnings.warn(
+                "capacity_weights was provided but use_capacity_weights=False "
+                "(the default since service-line multipliers have no published "
+                "source), so the weights are ignored. Pass "
+                "use_capacity_weights=True to apply them.",
+                UserWarning,
+                stacklevel=2,
+            )
         if self.use_capacity_weights:
             weights = (
                 self.capacity_weights

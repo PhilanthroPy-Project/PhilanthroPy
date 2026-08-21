@@ -38,6 +38,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   and the `+ 1` are load-bearing and tested: the result is never 0 and never
   above 1, and leave-one-out over exchangeable scores lands exactly on the
   uniform lattice.
+- `as_of` on `EncounterTransformer` and `GratefulPatientFeaturizer`: an as-of
+  cutoff that excludes encounters discharged after a given date from
+  `encounter_summary_` at fit time. Without it there was no way to bound the
+  encounter table to what was observable at the decision point, so a gift dated
+  2020 was featurised from encounters recorded in 2024 and
+  `days_since_last_discharge` was measured from the all-time max discharge. The
+  failure was systematic rather than random: the more a donor engaged *after* the
+  gift, the further the feature was pushed past the gift date and the more often
+  it collapsed to `NaN`, destroying it for exactly the donors it should be
+  strongest for. Defaults to `None`, which is the previous behaviour, so nothing
+  changes until you opt in; set it to the last day of your training window for
+  walk-forward evaluation.
 - Test coverage for `constituent_events_to_features`: the all-unparseable-timestamps empty-frame path and the `distinct_source_systems` default-to-zero path when `sourceSystem` is absent from the input. (#51)
 - `AGENTS.md`: every change, including maintainer- and agent-authored ones, must
   go on a branch and through a PR — no direct commits to `main`, no self-merges.
@@ -61,6 +73,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   deliberately does not check.
 
 ### Changed
+- Logo: a new mark, an outlined heart crossed by a rising arrow, drawn as SVG so it
+  stays crisp at favicon size and follows the colour scheme. `docs/assets/logo.svg`
+  is the favicon, `overrides/.icons/philanthropy/heart-rise.svg` is inlined as the
+  header logo, and `docs/assets/logo.png` is the regenerated wordmark lockup the
+  README uses.
+- Homepage figure: the affinity-score distribution is now a chart, not an ASCII dump
+  of `describe()`, and it plots the held-out scores the quickstart reports after
+  #89, not the in-sample ones. Interquartile bar, median notch, full min-to-max
+  range, the overlapping tails left visible, and the 47-point separation between the
+  two middle halves called out beside the held-out ROC-AUC of 0.932. The accent marks
+  the group being ranked, muted ink the reference group; both fills clear 3:1 on
+  their surface in each scheme. Hover gives the five-number summary and a
+  collapsible table view carries every number, so nothing is gated behind the
+  tooltip.
+- Informational admonitions (note, info, tip, abstract, example, quote) now wear the
+  palette instead of Material's blue; warning and danger keep their semantic colours.
+- Documentation site: a new visual system (Fraunces display serif over Geist,
+  a single amber accent, warm near-black canvas with a paper light mode),
+  dark scheme first, and a homepage that shows the ten-line quickstart and its
+  output above the fold. `mkdocs.yml` also gains section index pages, instant
+  navigation, prev/next footer links, footer social links, and a correct
+  `edit_uri` (the "edit this page" links previously pointed at a `master`
+  branch that does not exist).
 - Four docstrings described behaviour the code does not have, each now corrected
   against a test in `tests/test_documented_contracts.py`. `FiscalYearTransformer`
   said it *appends* `fiscal_year`/`fiscal_quarter`; `transform` in fact returns
@@ -73,6 +108,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   The `GratefulPatientFeaturizer` service-line weights were attributed to
   "commonly-cited AMC development benchmarks"; they have no published source.
   No behaviour changed in this entry: the docs moved to meet the code.
+- `FiscalYearGroupedSplitter` now documents the leakage it does **not** prevent:
+  its grouping unit is the fiscal year, not the donor, so a donor with gifts in
+  several fiscal years appears in both folds of a split. That is correct for a
+  time-varying target and is leakage for a static per-donor label such as
+  `is_major_donor`. The class docstring previously implied it prevented leakage
+  generally.
 - Added complete output-column documentation to all eleven preprocessing
   `get_feature_names_out` overrides that previously rendered blank in the API
   reference.
@@ -99,6 +140,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   preferred disclosure channel.
 
 ### Fixed
+- The README quickstart fitted and scored **the same rows**, then reported the
+  resulting gap ("non-major donors top out at 39; no major donor scores below 65")
+  as the headline result. That gap was a random forest reciting its training set:
+  RF leaves go pure and `predict_affinity_score` is
+  `predict_proba(X)[:, 1] * 100`. On held-out rows from the same 500-row sample
+  the two groups overlap almost completely (non-major max 97.5, major min 6.5).
+  The quickstart now splits before fitting and reports held-out ROC-AUC 0.932
+  with overlapping score distributions, which is a weaker claim and a true one.
+- `docs/explanation/benchmarks.md` distrusted its own numbers for the wrong
+  reason. It said the synthetic data was "cleanly separable by construction"; the
+  label is a Bernoulli draw with a real noise term and the irreducible error over
+  the causal features is 23.2%. The actual problem is that the generator draws
+  `total_gift_amount` **from** the label, so including that feature lets a model
+  score ROC-AUC 0.935 against a causal Bayes ceiling of 0.768 accuracy: it beats
+  the Bayes rate of its own data-generating process by about 19 AUC points, which
+  is the signature of a target-derived feature. The page now measures and states
+  this, and records that there is no validation on real donor data anywhere in the
+  repository.
 - `LapsePredictor` and `experimental.UpliftTLearner` validated input with
   `check_array`/`check_X_y` instead of `validate_data`, the convention every
   other estimator follows. Neither set `feature_names_in_`, so a DataFrame with
@@ -145,6 +204,32 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   to be supplied again rather than reusing stale clinical rows. `SECURITY.md`
   previously treated pickles only as an inbound code-execution risk and never
   mentioned that a bundle you produce is itself donor data; it now does.
+- `FiscalYearGroupedSplitter` never validated `n_splits`, despite documenting a
+  `ValueError` for `n_splits < 1`. A non-positive value reached the
+  `unique_fy[-(n_splits):]` slice, where it flips open-ended: `n_splits=0`
+  yielded 3 folds on a 4-fiscal-year panel while `get_n_splits()` reported 0, and
+  `n_splits=-1` yielded 3 while reporting -1. `cross_val_score` sizes its result
+  array from `get_n_splits()`, so the two disagreeing is a real failure. Both
+  entry points now validate through one helper, `gap_years < 0` and non-integer
+  values are rejected, and a test asserts `get_n_splits() == len(list(split()))`
+  across the parameter grid.
+- **`donor_lifetime_value` overstated LTV whenever `retention_rate` was given.**
+  It converted the retention rate to an expected lifespan, `L = 1 / (1 - r)`, and
+  fed that mean into the concave annuity formula. By Jensen's inequality
+  `NPV(E[L]) >= E[NPV(L)]`, so the result was biased high in one direction every
+  time: +8.2% at `r = 0.8, d = 0.05` and +22.9% at `r = 0.9, d = 0.10`. A
+  one-signed error does not average out across a portfolio, and this is a number
+  that goes into board decks and acquisition-cost justifications. The retention
+  branch now uses the correct closed form for a geometric lifetime,
+  `E[NPV] = m / (1 + d - r)`, verified against a term-by-term expectation and a
+  two-million-draw Monte Carlo. `retention_rate=1.0` with a positive discount
+  rate now returns the perpetuity `m / d` rather than `inf`; it is still `inf`
+  when `discount_rate` is 0. `retention_rate > 1` now raises instead of returning
+  a negative number. The fixed-horizon path (`retention_rate=None`) is unchanged
+  and was always correct, as is the `discount_rate=0` path in both modes, since an
+  undiscounted sum is linear in the lifespan. **This changes returned values**:
+  see `docs/explanation/fundraising_metrics.md` for both formulas and why they
+  differ.
 - `mkdocs.yml` had no `site_url`, so the generated `sitemap.xml` was empty and all
   38 documentation pages were uncrawlable, with no `rel=canonical` anywhere.
 - `CONTRIBUTING.md` documented a risk-tier coverage command measuring `metrics/` and

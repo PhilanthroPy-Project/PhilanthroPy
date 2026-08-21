@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none"><style>svg{color:#a4571b}@media (prefers-color-scheme:dark){svg{color:#e8935a}}</style>
+<defs><mask id="ph-cut"><rect width="64" height="64" fill="#fff"/><path d="M16.5 35.5C24 31 34 27 46.5 14.5" stroke="#000" stroke-width="9" stroke-linecap="round"/><path d="M56 7 51.3 18.7 43.5 9.1Z" fill="#000" stroke="#000" stroke-width="5" stroke-linejoin="round"/></mask></defs>
+<path d="M28 55C17.5 46.5 5 38.5 5 28.5 5 21.9 10.1 16.8 16.2 16.8c4.8 0 9 3 11.8 7.4 2.8-4.4 7-7.4 11.8-7.4C45.9 16.8 51 21.9 51 28.5c0 10-12.5 18-23 26.5Z" stroke="currentColor" stroke-width="5" stroke-linejoin="round" mask="url(#ph-cut)"/>
+<path d="M16.5 35.5C24 31 34 27 46.5 14.5" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+<path d="M56 7 51.3 18.7 43.5 9.1Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+</svg>

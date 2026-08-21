@@ -6,8 +6,10 @@ docstring has to reword it to match a passing test rather than to match intent.
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from philanthropy.preprocessing import (
+    EncounterTransformer,
     FiscalYearTransformer,
     WealthScreeningImputerKNN,
 )
@@ -57,3 +59,45 @@ def test_group_col_idx_is_inert():
     np.testing.assert_array_equal(without, with_group)
     # Still round-trips through get_params, which is why the parameter stays.
     assert WealthScreeningImputerKNN(group_col_idx=3).get_params()["group_col_idx"] == 3
+
+
+def test_days_since_last_discharge_is_float_and_carries_nan():
+    # Documented as an "Integer number of days". It is float64, and it has to be:
+    # a donor absent from the encounter table gets NaN, which an integer dtype
+    # cannot represent. Casting to int here would silently destroy missingness.
+    enc = pd.DataFrame({"donor_id": [1], "discharge_date": ["2019-01-01"]})
+    X = pd.DataFrame({
+        "donor_id": [1, 2],
+        "gift_date": ["2021-01-01", "2021-01-01"],
+        "amt": [1.0, 2.0],
+    })
+    out = (
+        EncounterTransformer(encounter_df=enc)
+        .set_output(transform="pandas")
+        .fit(X)
+        .transform(X)
+    )
+    col = out["days_since_last_discharge"]
+    assert col.dtype == np.float64
+    assert col.iloc[0] == 731.0          # donor 1, a real gap
+    assert np.isnan(col.iloc[1])         # donor 2, no encounter at all
+
+
+def test_encounter_frequency_score_counts_rows_not_distinct_encounters():
+    # Documented as a "Log-scaled count of distinct encounter records". It is
+    # log1p of the ROW count: donor 1 has three rows on two distinct dates and
+    # scores log1p(3), not log1p(2).
+    enc = pd.DataFrame({
+        "donor_id": [1, 1, 1],
+        "discharge_date": ["2019-01-01", "2019-06-01", "2019-06-01"],
+    })
+    X = pd.DataFrame({"donor_id": [1], "gift_date": ["2021-01-01"], "amt": [1.0]})
+    out = (
+        EncounterTransformer(encounter_df=enc)
+        .set_output(transform="pandas")
+        .fit(X)
+        .transform(X)
+    )
+    score = out["encounter_frequency_score"].iloc[0]
+    assert score == pytest.approx(np.log1p(3))
+    assert score != pytest.approx(np.log1p(2))

@@ -42,18 +42,31 @@ def test_fiscal_year_transformer_all_nan_when_date_col_absent():
     assert np.isnan(out).all()
 
 
-def test_group_col_idx_is_inert():
-    # Documented as stratifying KNN imputation per group; it is stored and never
-    # read. The docstring now says "ignored", so lock that in: passing it must
-    # not change the output.
+def test_group_col_idx_is_wired_up_not_ignored():
+    # This test previously asserted the opposite, locking in "group_col_idx is
+    # stored and never read" from when the docstring said "ignored".
+    #
+    # It deliberately does NOT assert that grouping changes the imputed values.
+    # Measured across several synthetic setups, that difference is small and not
+    # reliably reproducible: a donor's nearest neighbours by feature distance
+    # usually share their group already, so the grouped and global fits often
+    # agree exactly. What is reliable, and what this locks in, is that the
+    # parameter is honoured rather than discarded.
     rng = np.random.default_rng(0)
-    X = rng.random((30, 4))
-    X[X < 0.2] = np.nan
+    n = 40
+    X = np.column_stack([
+        np.r_[rng.normal(5e4, 2e3, n), rng.normal(5e6, 2e5, n)],
+        np.r_[np.zeros(n), np.ones(n)],
+    ])
+    X[0, 0] = np.nan
+    X[n, 0] = np.nan
 
-    kwargs = dict(strategy="knn", n_neighbors=3, add_indicator=False)
-    without = WealthScreeningImputerKNN(**kwargs).fit_transform(X)
-    with_group = WealthScreeningImputerKNN(group_col_idx=3, **kwargs).fit_transform(X)
+    kwargs = dict(strategy="knn", n_neighbors=5, add_indicator=False)
+    model = WealthScreeningImputerKNN(group_col_idx=1, **kwargs).fit(X)
 
-    np.testing.assert_array_equal(without, with_group)
-    # Still round-trips through get_params, which is why the parameter stays.
-    assert WealthScreeningImputerKNN(group_col_idx=3).get_params()["group_col_idx"] == 3
+    # A per-group imputer exists for each qualifying group, which is the thing
+    # that was previously absent entirely.
+    assert set(model.group_imputers_) == {0.0, 1.0}
+    out = model.transform(X)
+    assert not np.isnan(out).any()
+    assert out[0, 0] < 1e5 and out[n, 0] > 1e6

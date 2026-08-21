@@ -110,6 +110,11 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
         Wealth columns that were actually present in ``X`` at fit time.
     fill_values_ : dict of {str: float}
         Fill statistics (only populated for non-KNN strategies).
+    group_imputers_ : dict of {float: tuple}
+        Maps each group value that qualified for its own imputer to
+        ``(fitted KNNImputer, boolean mask of columns entirely missing within
+        that group)``. Empty when ``group_col_idx`` is ``None`` or ``strategy``
+        is not ``"knn"``.
     knn_imputer_ : KNNImputer or None
         The fitted :class:`~sklearn.impute.KNNImputer` instance
         (only populated for ``strategy="knn"``).
@@ -240,7 +245,16 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
                         keep_empty_features=True,
                     )
                     sub_imputer.fit(X_arr[rows])
-                    self.group_imputers_[float(value)] = sub_imputer
+                    # Columns entirely missing WITHIN this group. KNNImputer with
+                    # keep_empty_features=True fills those with a hard 0.0, not
+                    # NaN, so a NaN check at transform time cannot see them. For a
+                    # wealth column, 0.0 reads as "no capacity", which is a
+                    # materially wrong answer rather than a missing one. Record
+                    # them so transform defers to the global imputer instead.
+                    self.group_imputers_[float(value)] = (
+                        sub_imputer,
+                        np.isnan(X_arr[rows]).all(axis=0),
+                    )
         else:
             self.knn_imputer_ = None
             self.group_imputers_ = {}
@@ -310,16 +324,17 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
             group_imputers = getattr(self, "group_imputers_", {})
             if group_imputers and self.group_col_idx is not None:
                 groups = X_arr[:, int(self.group_col_idx)]
-                for value, sub_imputer in group_imputers.items():
+                for value, (sub_imputer, empty_cols) in group_imputers.items():
                     rows = groups == value
                     if not rows.any():
                         continue
                     X_group = sub_imputer.transform(X_arr[rows])
-                    # Prefer the group-local value, but never let it reintroduce
-                    # a NaN that the global imputer already resolved.
-                    X_out[rows] = np.where(
-                        np.isnan(X_group), X_out[rows], X_group
-                    )
+                    # Prefer the group-local value, except where it cannot be
+                    # trusted: a NaN it failed to fill, or a column entirely
+                    # missing inside this group, where KNNImputer returns a hard
+                    # 0.0 that would read as real data.
+                    reject = np.isnan(X_group) | empty_cols[None, :]
+                    X_out[rows] = np.where(reject, X_out[rows], X_group)
         else:
             X_out = X_arr.copy()
             for col in self.imputed_cols_:

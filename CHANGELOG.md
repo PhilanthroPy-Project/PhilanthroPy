@@ -11,16 +11,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   accuracy", and was stored and never read. When set with `strategy="knn"`, a
   separate `KNNImputer` is now fitted per group, so a donor's missing wealth is
   filled from neighbours inside their own group instead of from the whole
-  database. On a two-group pool an order of magnitude apart, a missing value in
-  the low group now fills to ~48k and one in the high group to ~5.1M, rather
-  than both being dragged toward the pooled neighbourhood. Both fallbacks are
-  frozen at fit time so nothing is learned at transform time: a group with fewer
-  than `n_neighbors + 1` training rows gets no imputer of its own, and a group
-  value unseen at fit, or a row whose group label is missing, uses the global
-  imputer. The global imputer is always fitted, so output is never `NaN`
-  regardless of grouping. Ignored for the columnwise strategies, which have no
-  notion of a neighbourhood. An out-of-range index now raises instead of being
-  silently accepted. Closes #85.
+  database. **The measured benefit is small and setup-dependent**, which is worth
+  saying plainly given the old docstring promised "improving local accuracy":
+  across several synthetic two-group pools the grouped and global fits often
+  agree exactly, because a donor's nearest neighbours by feature distance usually
+  share their group already, and `KNNImputer`'s distance is dominated by
+  large-magnitude columns so a 0/1 group flag contributes little either way. The
+  honest case for the parameter is explicit control, not a demonstrated accuracy
+  gain. Three fallbacks are frozen at fit time so nothing is learned at transform
+  time: a group with fewer than `n_neighbors + 1` training rows gets no imputer of
+  its own; a group value unseen at fit, or a row whose group label is missing,
+  uses the global imputer; and a column entirely missing *within* a group also
+  defers to the global imputer, because
+  `KNNImputer(keep_empty_features=True)` fills such a column with a hard `0.0`
+  rather than `NaN`, which for a wealth column reads as "no capacity" and would be
+  a materially wrong number for every donor in that group. The global imputer is
+  always fitted, so output is never `NaN` regardless of grouping. Ignored for the
+  columnwise strategies, which have no notion of a neighbourhood. An out-of-range
+  index raises, for `strategy="knn"` where the parameter has any effect.
+  Closes #85.
 - `philanthropy.metrics.conformal_pvalue` — the non-smoothed split-conformal
   p-value of a donor score against a held-out calibration set,
   `(1 + |{i : s_i >= s}|) / (n + 1)`. A calibrated probability threshold fixes no

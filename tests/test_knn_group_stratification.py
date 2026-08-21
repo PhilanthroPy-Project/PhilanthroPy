@@ -26,12 +26,36 @@ def _two_group_pool(seed=0, n=40):
 
 
 def test_grouped_fill_comes_from_inside_the_group():
+    # The bounds alone are a weak assertion: plain KNN also satisfies them,
+    # because a donor's nearest neighbours in feature space tend to share their
+    # group anyway. So assert the bounds AND that grouping moved the answer.
     X, n = _two_group_pool()
-    out = WealthScreeningImputerKNN(group_col_idx=1, **KW).fit(X).transform(X)
-    # Each fill sits in its own group's range rather than between them.
-    assert out[0, 0] < 100_000
-    assert out[n, 0] > 1_000_000
-    assert not np.isnan(out).any()
+    grouped = WealthScreeningImputerKNN(group_col_idx=1, **KW).fit(X).transform(X)
+    plain = WealthScreeningImputerKNN(**KW).fit(X).transform(X)
+
+    assert grouped[0, 0] < 100_000
+    assert grouped[n, 0] > 1_000_000
+    assert not np.isnan(grouped).any()
+    assert grouped[0, 0] != plain[0, 0]
+    assert grouped[n, 0] != plain[n, 0]
+
+
+def test_column_all_missing_within_a_group_does_not_become_zero():
+    # The bug this guard exists for. KNNImputer(keep_empty_features=True) fills a
+    # wholly-missing column with a hard 0.0 rather than NaN, so a NaN check at
+    # transform time cannot see it. For a wealth column, 0.0 reads as "no
+    # capacity": a materially wrong number, silently, for every donor in that
+    # group. Those columns must defer to the global imputer.
+    n = 20
+    X = np.vstack([
+        np.column_stack([np.full(n, np.nan), np.linspace(1e3, 2e3, n), np.zeros(n)]),
+        np.column_stack([np.linspace(4e6, 6e6, n), np.linspace(5e5, 7e5, n), np.ones(n)]),
+    ])
+    grouped = WealthScreeningImputerKNN(group_col_idx=2, **KW).fit(X).transform(X)
+    plain = WealthScreeningImputerKNN(**KW).fit(X).transform(X)
+
+    assert not np.any(grouped[:n, 0] == 0.0)
+    np.testing.assert_allclose(grouped[:n, 0], plain[:n, 0])
 
 
 def test_grouping_changes_the_result():
@@ -78,10 +102,11 @@ def test_transform_is_idempotent_and_fits_nothing():
     X, _ = _two_group_pool()
     model = WealthScreeningImputerKNN(group_col_idx=1, **KW).fit(X)
     first = model.transform(X)
-    fitted_groups = dict(model.group_imputers_)
-    model.transform(np.vstack([X, X]))            # a bigger, different batch
+    fitted_groups = set(model.group_imputers_)     # snapshot the keys themselves
+    assert fitted_groups                           # and it is not vacuously empty
+    model.transform(np.vstack([X, X]))             # a bigger, different batch
     np.testing.assert_array_equal(first, model.transform(X))
-    assert set(model.group_imputers_) == set(fitted_groups)
+    assert set(model.group_imputers_) == fitted_groups
 
 
 @pytest.mark.parametrize("strategy", ["median", "mean", "zero"])

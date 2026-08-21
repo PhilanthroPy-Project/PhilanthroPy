@@ -44,6 +44,9 @@ def test_fiscal_year_transformer_all_nan_when_date_col_absent():
     assert np.isnan(out).all()
 
 
+@pytest.mark.filterwarnings(
+    "ignore:WealthScreeningImputerKNN\\(group_col_idx:DeprecationWarning"
+)
 def test_group_col_idx_is_wired_up_not_ignored():
     # This test previously asserted the opposite, locking in "group_col_idx is
     # stored and never read" from when the docstring said "ignored".

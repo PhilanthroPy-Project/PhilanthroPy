@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from philanthropy.utils import make_donor_dataset
+from philanthropy.datasets import make_donor_dataset
 
 # Pin the process timezone before any test imports pandas' date machinery.
 # `EncounterRecencyTransformer` falls back to `pd.Timestamp.today().normalize()`

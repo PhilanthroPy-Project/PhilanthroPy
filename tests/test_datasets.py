@@ -150,3 +150,17 @@ def test_zero_samples_returns_empty_df():
 def test_no_random_state_does_not_raise():
     df = generate_synthetic_donor_data(n_samples=20)
     assert df.shape == (20, 5)
+
+
+def test_make_donor_dataset_importable_from_datasets():
+    from philanthropy.datasets import make_donor_dataset as fn
+
+    df = fn(n_donors=5, random_state=0)
+    assert list(df.columns) == [
+        "donor_id",
+        "gift_date",
+        "gift_amount",
+        "appeal_code",
+        "is_major_gift",
+    ]
+    assert df["donor_id"].nunique() == 5

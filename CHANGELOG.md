@@ -240,6 +240,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   An agent may now merge a PR under the same bar as the maintainer's own-PR
   merge (all required CI checks green, no second reviewer available), plus
   having actually read the diff and judged it good.
+- `.gitignore` now excludes `.claude/CLAUDE.local.md`, for personal working
+  notes that shouldn't end up in the repo.
 
 ### Fixed
 - Version metadata now names the release that actually exists. `pyproject.toml`

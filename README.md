@@ -117,6 +117,27 @@ the threshold from your team's capacity, not from this table.
 >
 > **Runnable scripts:** [`examples/quickstart.py`](examples/quickstart.py) and [`examples/unischema_to_scores.py`](examples/unischema_to_scores.py) run end to end and are smoke-tested in CI.
 
+### From R via reticulate
+
+```r
+library(reticulate)
+datasets <- import("philanthropy.datasets")
+
+df <- datasets$generate_synthetic_donor_data(n_samples = 1000L, random_state = 0L)
+```
+
+> [!IMPORTANT]
+> The `L` suffix on integer arguments is **required**, not stylistic:
+> `reticulate` sends bare R numerics as doubles and scikit-learn rejects
+> floats for integer-typed parameters (`n_samples`, `random_state`,
+> `n_estimators`, …). Without it the call dies with a confusing error like
+> `SeedSequence expects int or sequence of ints for entropy not 0.0`.
+> Verified against PhilanthroPy on R 4.6.1 / reticulate: the block above
+> returns a 1000×5 data frame (`total_gift_amount`, `years_active`,
+> `last_gift_date`, `event_attendance_count`, `is_major_donor`), and
+> estimators work the same way —
+> `models$DonorPropensityModel(n_estimators = 200L, random_state = 0L)`.
+
 <p align="center">
   <img src="docs/assets/affinity_distribution.png" alt="Distribution of 0-100 affinity scores for major and non-major donors, with overlapping tails" width="640"/>
   <br/>

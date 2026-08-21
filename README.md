@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="PhilanthroPy logo" width="180"/>
+  <img src="docs/assets/logo.png" alt="PhilanthroPy" width="420"/>
 </p>
 
 <p align="center">
@@ -66,27 +66,52 @@ pip install -e ".[dev]"
 ## Quick Start
 
 ```python
+import pandas as pd
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import train_test_split
+
 from philanthropy.datasets import generate_synthetic_donor_data
 from philanthropy.models import DonorPropensityModel
 
-df = generate_synthetic_donor_data(n_samples=500, random_state=42)
+df = generate_synthetic_donor_data(n_samples=2000, random_state=42)
 X = df[["total_gift_amount", "years_active", "event_attendance_count"]].to_numpy()
+y = df["is_major_donor"].to_numpy()
+
+# Split BEFORE fitting. Scoring the rows you trained on tells you nothing.
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, stratify=y, random_state=42
+)
 
 model = DonorPropensityModel(n_estimators=200, random_state=0)
-model.fit(X, df["is_major_donor"].to_numpy())
-df["affinity_score"] = model.predict_affinity_score(X)   # 0–100, not a raw probability
+model.fit(X_train, y_train)
 
-print(df.groupby("is_major_donor")["affinity_score"].describe()[["count", "mean", "min", "max"]])
+scores = model.predict_affinity_score(X_test)   # 0–100, not a raw probability
+auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
+
+print(f"held-out ROC-AUC: {auc:.3f}")
+print(pd.Series(scores).groupby(y_test).describe()[["count", "mean", "min", "max"]])
 ```
 
 ```
-                count       mean   min    max
-is_major_donor
-0               165.0   9.636364   0.0   39.0
-1               335.0  94.865672  65.0  100.0
+held-out ROC-AUC: 0.932
+   count       mean   min    max
+0  153.0  25.019608   0.0  100.0
+1  347.0  88.665706  18.0  100.0
 ```
 
-Non-major donors top out at 39; no major donor scores below 65. That gap is the whole product: a gift-officer call list, sorted.
+Held-out ROC-AUC 0.932, and the score distributions **overlap**: some non-major
+donors score 100 and some major donors score 18. Ranking works, separation is
+not clean, and a call list cut at any single threshold will contain mistakes.
+Pick the threshold from your team's capacity, not from this table.
+
+> An earlier version of this section fitted and scored the *same* rows and
+> reported a clean gap ("non-major donors top out at 39, no major donor below
+> 65"). That gap was a random forest reciting its training set, since RF leaves
+> go pure and `predict_affinity_score` is `predict_proba(X)[:, 1] * 100`. On
+> held-out rows from that same 500-row sample the two groups overlap almost
+> completely (non-major max 97.5, major min 6.5). These numbers are also
+> synthetic and optimistic for a further reason: see
+> [Benchmarks](docs/explanation/benchmarks.md).
 
 > **Try it now — zero install:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/quickstart.ipynb)
 >

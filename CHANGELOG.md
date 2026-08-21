@@ -236,6 +236,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   installable release since `0.6.0`. Now `0.6.x`, and kept current by the
   `RELEASING.md` checklist. Adds GitHub private vulnerability reporting as the
   preferred disclosure channel.
+- `AGENTS.md`'s merging section no longer bars agents from merging outright.
+  An agent may now merge a PR under the same bar as the maintainer's own-PR
+  merge (all required CI checks green, no second reviewer available), plus
+  having actually read the diff and judged it good.
 
 ### Fixed
 - Version metadata now names the release that actually exists. `pyproject.toml`

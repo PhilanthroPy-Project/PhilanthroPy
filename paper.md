@@ -55,7 +55,8 @@ at two extremes: proprietary, closed-source scoring add-ons bundled with CRM
 platforms (e.g. Salesforce NPSP, Blackbaud Raiser's Edge), which are not
 inspectable, not extensible, and not portable across systems; or ad hoc,
 one-off scripts written independently at each institution, which are rarely
-tested for the temporal-leakage failure mode endemic to donor data — fitting
+tested for the temporal-leakage failure mode endemic to donor data
+[@kaufman2012leakage; @kapoor2023leakage] — fitting
 imputers, scalers, or feature encoders on a full historical dataset before
 splitting it into train and test windows, so a model's reported performance
 silently includes information from the future relative to the point a
@@ -66,7 +67,7 @@ PhilanthroPy addresses this gap by being simultaneously (1) fully
 search, and pipeline tooling that practitioners and researchers already use;
 (2) leakage-safe by construction and by test, rather than by convention; and
 (3) domain-specific, encoding fundraising and (for AMCs) grateful-patient
-program knowledge — such as discharge-to-solicitation windows and matching-gift
+program knowledge [@collins2018grateful] — such as discharge-to-solicitation windows and matching-gift
 detection — directly into named, documented transformers instead of leaving
 that domain logic to be re-derived ad hoc at every institution. The
 compliance posture is scoped explicitly: PhilanthroPy documents where its PII

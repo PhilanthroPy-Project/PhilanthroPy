@@ -30,11 +30,11 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
     frequency, monetary value, event attendance, giving capacity estimates), the
     model outputs:
 
-    * **Binary predictions** (``predict``) — 0 for standard donors, 1 for
+    * **Binary predictions** (``predict``): 0 for standard donors, 1 for
       major-gift prospects above the team's threshold.
-    * **Probability estimates** (``predict_proba``) — calibrated class
+    * **Probability estimates** (``predict_proba``): calibrated class
       probabilities in the standard sklearn two-column format.
-    * **Affinity scores** (``predict_affinity_score``) — the positive-class
+    * **Affinity scores** (``predict_affinity_score``): the positive-class
       probability mapped to a 0–100 integer scale, enabling gift officers to
       quickly rank prospects in wealth-screening reports or CRM dashboards
       (e.g. Salesforce NPSP, Raiser's Edge NXT, Veeva CRM).
@@ -69,7 +69,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
         explicit dict such as ``{0: 1, 1: 10}`` for finer control.
     random_state : int or None, default=None
         Seed for the internal random-number generator.  Pass an integer to
-        make model training fully reproducible — important for audit trails
+        make model training fully reproducible, important for audit trails
         in gift-officer accountability dashboards.
 
     Attributes

@@ -1,10 +1,10 @@
 # Estimate appeal uplift
 
-A propensity model ranks who is *likely to give*. That is not the same as who gives *because you asked*. Some donors would have given anyway — soliciting them costs money and goodwill for nothing. A few are "sleeping dogs": the appeal actively suppresses their giving.
+A propensity model ranks who is *likely to give*. That is not the same as who gives *because you asked*. Some donors would have given anyway; soliciting them costs money and goodwill for nothing. A few are "sleeping dogs": the appeal actively suppresses their giving.
 
 `UpliftTLearner` estimates the causal lift of the appeal itself: `P(give | solicited) − P(give | not solicited)`.
 
-!!! warning "Tier 3 — Experimental"
+!!! warning "Tier 3: Experimental"
     `UpliftTLearner` lives in `philanthropy.experimental`. Its `fit(X, y, treatment)` signature breaks the sklearn `fit(X, y)` contract, so it is not `check_estimator` compliant, it cannot go into a `Pipeline`, and its API may change without a deprecation cycle. Do not build production infrastructure on it.
 
 ## You need a randomised holdout
@@ -60,7 +60,7 @@ with pytest.raises(ValueError, match="binary"):
 
 ## Read the score on its own scale
 
-`predict_uplift_score` returns a value in **[−1, 1]** — not the 0–100 scale the propensity models use. Zero means the appeal makes no difference.
+`predict_uplift_score` returns a value in **[−1, 1]**, not the 0–100 scale the propensity models use. Zero means the appeal makes no difference.
 
 ```python
 uplift = model.predict_uplift_score(X.to_numpy())
@@ -85,14 +85,14 @@ segments = pd.cut(
 )
 print(pd.Series(segments).value_counts())
 
-# The simulated lift was concentrated in newer donors — recover that.
+# The simulated lift was concentrated in newer donors; recover that.
 by_tenure = pd.DataFrame({"uplift": uplift, "new": X["years_active"] < 5})
 print(by_tenure.groupby("new")["uplift"].mean().round(3))
 assert by_tenure.loc[by_tenure["new"], "uplift"].mean() > \
        by_tenure.loc[~by_tenure["new"], "uplift"].mean()
 ```
 
-`predict` is a convenience wrapper — `(predict_uplift_score(X) > 0).astype(int)` — marking donors worth soliciting.
+`predict` is a convenience wrapper, `(predict_uplift_score(X) > 0).astype(int)`, marking donors worth soliciting.
 
 ```python
 solicit = model.predict(X.to_numpy())

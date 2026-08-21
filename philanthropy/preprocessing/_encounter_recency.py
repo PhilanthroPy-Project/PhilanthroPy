@@ -3,14 +3,14 @@ philanthropy.preprocessing._encounter_recency
 =============================================
 HIPAA-safe encounter-date recency features for Grateful Patient Programs.
 
-This transformer operates exclusively on **date columns** — no PHI fields
+This transformer operates exclusively on **date columns**: no PHI fields
 (names, MRNs, diagnosis codes) should be present.  The resulting features
 are strong temporal signals in major-gift propensity models trained at
 academic medical centres (AMCs):
 
-* ``days_since_last_encounter`` — Continuous, naturally right-skewed.
-* ``encounter_in_last_90d``     — Boolean trigger for hot-zone solicitations.
-* ``fiscal_year_of_encounter``  — Integer FY for cohort-level reporting.
+* ``days_since_last_encounter``: Continuous, naturally right-skewed.
+* ``encounter_in_last_90d``: Boolean trigger for hot-zone solicitations.
+* ``fiscal_year_of_encounter``: Integer FY for cohort-level reporting.
 
 All three features handle ``NaT`` / ``NaN`` gracefully (``NaN`` fill for
 continuous, ``False`` for the boolean, ``pd.NA`` for the FY integer).
@@ -45,7 +45,7 @@ from ..utils._validation import validate_fiscal_year_start
 class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
     """Transform HIPAA-safe encounter-date columns into predictive recency features.
 
-    Given one or more date-only columns (no PHI — dates only), this
+    Given one or more date-only columns (no PHI, dates only), this
     transformer produces three downstream-model-ready features per date
     column:
 
@@ -57,7 +57,7 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         to detect data-quality anomalies.
 
     ``encounter_in_last_90d``
-        Float64 0.0 / 1.0 flag — 1.0 if ``days_since_last_encounter <= 90``.
+        Float64 0.0 / 1.0 flag: 1.0 if ``days_since_last_encounter <= 90``.
         Missing dates → 0.0.
 
     ``fiscal_year_of_encounter``
@@ -216,7 +216,7 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
             delta_days = (ref_ts - dates).dt.days.astype("float64")
         except (OverflowError, OutOfBoundsTimedelta):
             # A datetime64[ns] timedelta overflows int64 once two representable
-            # dates span >~292 years — never real encounter data, but don't crash
+            # dates span >~292 years: never real encounter data, but don't crash
             # on it. Day-resolution differencing always fits in int64 days.
             delta_days = self._days_since_day_resolution(ref_ts, dates)
 
@@ -304,7 +304,7 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
             else:
                 # Cannot infer from ndarray without column names; default to today.
                 warnings.warn(
-                    "EncounterRecencyTransformer: X is not a DataFrame — "
+                    "EncounterRecencyTransformer: X is not a DataFrame, "
                     "defaulting reference_date_ to today. Provide reference_date "
                     "explicitly for reproducibility.",
                     UserWarning,
@@ -346,7 +346,7 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
                 np.asarray(X, dtype=object), columns=self.feature_names_in_
             )
         else:
-            # Fallback: cannot resolve column names — produce NaN output.
+            # Fallback: cannot resolve column names; produce NaN output.
             n = np.asarray(X).shape[0]
             cols = self._resolve_date_cols()
             n_out = len(cols) * 3

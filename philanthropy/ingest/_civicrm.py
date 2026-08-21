@@ -9,8 +9,8 @@ actually run, and ``civicrm_contribution`` is where their giving history lives.
 It surfaces that table two ways and they disagree on spelling: a CSV export
 carries human labels (``Contact ID``, ``Total Amount``, ``Contribution Date``),
 while APIv4 returns the underlying DB columns (``contact_id``, ``total_amount``,
-``receive_date``).  Both are accepted here — headers are normalised to the APIv4
-name — so a hand-run export and a scripted API pull take the same code path.
+``receive_date``).  Both are accepted here (headers are normalised to the APIv4
+name), so a hand-run export and a scripted API pull take the same code path.
 
 :func:`read_civicrm_contributions` loads the CSV(s);
 :func:`civicrm_contributions_to_features` aggregates the gift log into the
@@ -111,7 +111,7 @@ def civicrm_contributions_to_features(
         ``first_name`` and ``last_name`` are used when present.
     reference_date : str or datetime-like, optional
         Anchor for the recency features (``years_active``, ``recency_days``).
-        If ``None``, the latest ``receive_date`` in the batch is used — this
+        If ``None``, the latest ``receive_date`` in the batch is used; this
         keeps the aggregation reproducible and free of "now" leakage. Naive
         timestamps are interpreted as UTC.
     statuses : sequence of str or None, default=``("Completed",)``
@@ -139,7 +139,7 @@ def civicrm_contributions_to_features(
     -----
     UserWarning
         If ``statuses`` was requested but the batch carries no
-        ``contribution_status`` column — the filter silently counting refunded
+        ``contribution_status`` column: the filter silently counting refunded
         and failed gifts is exactly the error this bridge exists to prevent.
     UserWarning
         If the batch mixes currencies. ``total_gift_amount`` is a plain sum with
@@ -176,7 +176,7 @@ def civicrm_contributions_to_features(
 
     df = df.copy()
 
-    # Two rows sharing a CiviCRM contribution id are the same contribution —
+    # Two rows sharing a CiviCRM contribution id are the same contribution;
     # concatenating overlapping monthly exports is how that happens. Collapse
     # only rows with a real id: pandas' duplicated() treats NaN == NaN, which
     # would drop every id-less gift once any row carries one.
@@ -229,7 +229,7 @@ def civicrm_contributions_to_features(
 
     grouped = df.groupby("_contact_id", sort=True)
     out = pd.DataFrame(index=grouped.size().index)
-    # Optional identity fields — carried through when the export supplies them
+    # Optional identity fields: carried through when the export supplies them
     # (this is a donor-level table keyed by CRM id, not a de-identified feature
     # store). ``.first()`` skips nulls, so a donor whose name rode in on only
     # some rows still resolves. Absent column -> None.
@@ -266,7 +266,7 @@ def read_civicrm_contributions(path: Union[str, Path]) -> pd.DataFrame:
 
     Accepts either a single ``.csv`` file or a directory, which is walked
     **recursively** and whose ``*.csv`` files are concatenated in sorted
-    relative-path order — the shape you get from keeping a folder of monthly
+    relative-path order, the shape you get from keeping a folder of monthly
     exports. Symlinks are not followed.
 
     Every column is read as text and the headers are normalised to the APIv4

@@ -1,6 +1,6 @@
 # Building a Grateful Patient Pipeline from EHR Export to Major Gift Score
 
-Academic medical centers (AMCs) have a fundraising channel most nonprofits don't: grateful patients. Linking clinical encounters from an electronic health record — Epic, Cerner — to your CRM metrics gives a propensity model signals it can learn from.
+Academic medical centers (AMCs) have a fundraising channel most nonprofits don't: grateful patients. Linking clinical encounters from an electronic health record (Epic, Cerner) to your CRM metrics gives a propensity model signals it can learn from.
 
 This tutorial takes an EHR export, turns it into clinical features, and passes them to a major-gift model. You build the pipeline one step at a time.
 
@@ -13,7 +13,7 @@ You start with two tables and join them:
 - **`encounter_df`**: Patient-level hospital discharge data, one row per encounter.
 - **`donor_df`**: Gift transactions and CRM constituent metrics, one row per donor.
 
-`mrn` is the merge key. It never reaches the model — `EncounterTransformer` uses it to join and then drops it as an identifier.
+`mrn` is the merge key. It never reaches the model: `EncounterTransformer` uses it to join and then drops it as an identifier.
 
 ```python
 import numpy as np
@@ -56,7 +56,7 @@ print(donor_df.shape, encounter_df.shape, donor_df["made_major_gift"].mean())
 
 The pipeline has three parts: pull clinical encounters with `EncounterTransformer`, format CRM features with `CRMCleaner`, and pass both to a major-gift propensity scorer.
 
-Route with a `ColumnTransformer`, not a serial `Pipeline`. Each transformer here consumes named columns and replaces them, so chaining them in series would hand the second one the first one's output under the wrong names — which produces a constant feature block and a model that trains on nothing while exiting 0.
+Route with a `ColumnTransformer`, not a serial `Pipeline`. Each transformer here consumes named columns and replaces them, so chaining them in series would hand the second one the first one's output under the wrong names, which produces a constant feature block and a model that trains on nothing while exiting 0.
 
 ```python
 from sklearn.compose import ColumnTransformer
@@ -105,7 +105,7 @@ prospects_df = donor_df.drop(columns=["made_major_gift"]).head(10)
 scores = grateful_patient_pipeline.predict_proba(prospects_df)[:, 1]
 print(scores.round(3))
 
-# A constant score means the features never reached the model — the exact
+# A constant score means the features never reached the model: the exact
 # failure the ColumnTransformer above prevents. Assert it, don't eyeball it.
 assert scores.shape == (10,)
 assert len(set(scores.round(6))) > 1, "degenerate pipeline: every score identical"
@@ -113,4 +113,4 @@ assert len(set(scores.round(6))) > 1, "degenerate pipeline: every score identica
 
 ## Next Steps
 
-Try other models — `DonorPropensityModel` gives you random forest classification — or evaluate your results with the PhilanthroPy metrics. To add service-line weighting on top of raw encounter counts, see [Build grateful patient features](../how-to/build_grateful_patient_features.md).
+Try other models (`DonorPropensityModel` gives you random forest classification), or evaluate your results with the PhilanthroPy metrics. To add service-line weighting on top of raw encounter counts, see [Build grateful patient features](../how-to/build_grateful_patient_features.md).

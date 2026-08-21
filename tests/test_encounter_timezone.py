@@ -40,7 +40,7 @@ def test_encounter_recency_localises_to_a_non_utc_timezone():
 def test_unspecified_reference_date_uses_the_pinned_clock():
     X = pd.DataFrame({"last_encounter_date": ["2020-01-01"]})
     t = EncounterRecencyTransformer().fit(X)
-    # Batch max, not the wall clock — the fallback only fires with no dates.
+    # Batch max, not the wall clock: the fallback only fires with no dates.
     assert t.reference_date_ == pd.Timestamp("2020-01-01")
 
     empty = pd.DataFrame({"last_encounter_date": [None]})

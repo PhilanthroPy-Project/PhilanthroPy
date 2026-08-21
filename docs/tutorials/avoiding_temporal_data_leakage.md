@@ -1,6 +1,6 @@
 # Avoiding temporal data leakage in fundraising models
 
-Predicting major gifts or donor retention carries one common trap: **temporal data leakage** — using information from the future to predict an outcome in the past. PhilanthroPy's transformers and models are leakage-safe by design.
+Predicting major gifts or donor retention carries one common trap: **temporal data leakage**, using information from the future to predict an outcome in the past. PhilanthroPy's transformers and models are leakage-safe by design.
 
 This tutorial shows how temporal leakage happens and how PhilanthroPy prevents it.
 

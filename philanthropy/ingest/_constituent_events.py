@@ -9,7 +9,7 @@ fragmented advancement webhooks (GiveCampus, Slate, NPSP, Cvent, ...) into a
 single ``ConstituentEvent`` schema and egresses them as per-event JSON or
 newline-delimited JSON (NDJSON) batches.  Those events are the raw material for
 PhilanthroPy models, but every estimator expects **one row per donor** with
-engineered features — not a raw event log.
+engineered features, not a raw event log.
 
 :func:`constituent_events_to_features` performs that aggregation.  Its output
 columns (``total_gift_amount``, ``years_active``, ``event_attendance_count``,
@@ -79,7 +79,7 @@ def constituent_events_to_features(
         same fields.
     reference_date : str or datetime-like, optional
         Anchor for the recency features (``years_active``, ``recency_days``).
-        If ``None``, the latest ``createdAt`` in the batch is used — this keeps
+        If ``None``, the latest ``createdAt`` in the batch is used; this keeps
         the aggregation reproducible and free of "now" leakage.  Naive
         timestamps are interpreted as UTC.
     deduplicate : bool, default=True
@@ -136,7 +136,7 @@ def constituent_events_to_features(
     if deduplicate and "eventId" in df.columns:
         # Collapse only rows that share a real eventId.  A missing eventId is not
         # "equal" to another missing one, but pandas' drop_duplicates treats
-        # NaN == NaN — which would silently drop every id-less donation (and even
+        # NaN == NaN, which would silently drop every id-less donation (and even
         # whole donors) once any event carries an id.
         is_dup = df["eventId"].notna() & df.duplicated(subset="eventId")
         df = df[~is_dup]
@@ -160,7 +160,7 @@ def constituent_events_to_features(
     )
     raw_amount = df["amount"] if "amount" in df.columns else pd.Series(np.nan, index=df.index)
     # ponytail: UniSchema guarantees `amount` is a JSON number, so a missing
-    # amount coerces to 0 (a real absent gift) — an unparseable string would too.
+    # amount coerces to 0 (a real absent gift); an unparseable string would too.
     # Parse currency strings ('$250', '1,250.00') here only if a non-conforming
     # feed is ever fed in directly, bypassing UniSchema's validation.
     amount = pd.to_numeric(raw_amount, errors="coerce")
@@ -177,7 +177,7 @@ def constituent_events_to_features(
     grouped = df.groupby("_constituent_id", sort=True)
     out = pd.DataFrame(index=grouped.size().index)
     out["constituent_email"] = grouped["constituentEmail"].first()
-    # Optional identity fields — carried through when the feed supplies them
+    # Optional identity fields: carried through when the feed supplies them
     # (the output is a donor-level table, not a de-identified feature store, so
     # it already holds constituent_email). ``.first()`` skips nulls, so a donor
     # whose name rode in on only some events still resolves. Absent column -> None.
@@ -213,7 +213,7 @@ def read_constituent_events(
 
     * a single ``.json`` file holding one event (object) or many (array);
     * a ``.ndjson`` / ``.jsonl`` batch, one event per line;
-    * a directory, which is walked **recursively** — every ``*.json``,
+    * a directory, which is walked **recursively**: every ``*.json``,
       ``*.ndjson``, and ``*.jsonl`` file at any depth is read and concatenated,
       sorted by relative path.  This handles UniSchema's date-partitioned egress
       (``{prefix}/{vendor}/{yyyy}/{mm}/{dd}/{eventId}.json``); a flat directory
@@ -239,7 +239,7 @@ def read_constituent_events(
     if not p.exists():
         raise FileNotFoundError(f"No such file or directory: {p}")
     if p.is_dir():
-        # UniSchema's local egress is date-partitioned — it writes each event to
+        # UniSchema's local egress is date-partitioned: it writes each event to
         # {prefix}/{vendor}/{yyyy}/{mm}/{dd}/{eventId}.json (see UniSchema
         # src/egress/objectKey.ts), so the files sit several levels down and a
         # non-recursive scan of the top dir finds nothing. Walk the whole tree.
@@ -252,7 +252,7 @@ def read_constituent_events(
             # it must not be followed and read (path-traversal hardening).
             and not f.is_symlink()
             and f.suffix.lower() in {".json", ".ndjson", ".jsonl"}
-            # Skip S3 batch sidecars — batch metadata, not ConstituentEvents.
+            # Skip S3 batch sidecars: batch metadata, not ConstituentEvents.
             and not f.name.lower().endswith(".manifest.json")
         ]
         # Sort by relative path so ordering is deterministic across platforms.
@@ -314,7 +314,7 @@ def _to_utc_naive(series: pd.Series) -> pd.Series:
     """Parse ISO timestamps to tz-naive UTC (matches the datasets' naive dates).
 
     ``createdAt`` is guaranteed ISO-8601 by the ConstituentEvent schema, so we
-    pin ``format="ISO8601"`` — this parses mixed offsets/precisions without the
+    pin ``format="ISO8601"``; this parses mixed offsets/precisions without the
     slow, warning-emitting per-element dateutil fallback.
     """
     ts = pd.to_datetime(series, utc=True, format="ISO8601", errors="coerce")

@@ -52,7 +52,7 @@ from philanthropy.preprocessing import (
 
 
 # ---------------------------------------------------------------------------
-# SECTION 1 — Standard estimators (no required args)
+# SECTION 1: Standard estimators (no required args)
 #
 # This is the ONE place that answers "is X check_estimator compliant?".  Every
 # estimator that can run the battery belongs here, configured and/or at bare
@@ -106,7 +106,7 @@ def test_sklearn_compliance(estimator, check):
 
 
 # ---------------------------------------------------------------------------
-# SECTION 1b — RFMTransformer
+# SECTION 1b: RFMTransformer
 #
 # RFMTransformer is row-reducing (one row per donor, not per input row) and
 # returns a DataFrame whose first column is a string donor_id, so it is not a
@@ -166,10 +166,10 @@ class TestRFMTransformerCompliance:
 
 
 # ---------------------------------------------------------------------------
-# SECTION 1c — MatchingGiftFeaturizer
+# SECTION 1c: MatchingGiftFeaturizer
 #
 # Requires two named DataFrame columns, one of them (employer) categorical
-# text — it raises TypeError on the bare numeric ndarrays the generic battery
+# text; it raises TypeError on the bare numeric ndarrays the generic battery
 # feeds, so it cannot run parametrize_with_checks either. It used to sit in
 # _STANDARD_ESTIMATORS with tags._skip_test = True, the same "1 check instead
 # of 46" failure mode RFMTransformer had above. The contracts that do apply
@@ -179,7 +179,7 @@ class TestRFMTransformerCompliance:
 
 
 # ---------------------------------------------------------------------------
-# SECTION 1d — every public estimator is covered by one of the above
+# SECTION 1d: every public estimator is covered by one of the above
 #
 # Prevents a repeat of the MatchingGiftFeaturizer gap: a class landing in
 # preprocessing.__all__ or models.__all__ with no check_estimator coverage
@@ -230,7 +230,7 @@ def test_every_public_estimator_is_covered_by_the_battery_or_documented():
 
 
 # ---------------------------------------------------------------------------
-# SECTION 2 — EncounterTransformer manual compliance
+# SECTION 2: EncounterTransformer manual compliance
 # ---------------------------------------------------------------------------
 
 _MINIMAL_ENCOUNTER_DF = pd.DataFrame({
@@ -292,7 +292,7 @@ class TestEncounterTransformerCompliance:
 
 
 # ---------------------------------------------------------------------------
-# SECTION 3 — GratefulPatientFeaturizer manual compliance
+# SECTION 3: GratefulPatientFeaturizer manual compliance
 # ---------------------------------------------------------------------------
 
 _MINIMAL_ENC_DF = pd.DataFrame({
@@ -354,7 +354,7 @@ class TestGratefulPatientFeaturizerCompliance:
 
 
 # ---------------------------------------------------------------------------
-# SECTION 4 — Pipeline integration smoke tests
+# SECTION 4: Pipeline integration smoke tests
 # ---------------------------------------------------------------------------
 
 def test_donor_propensity_model_in_pipeline_with_5fold_cv():
@@ -402,7 +402,7 @@ def test_wealth_imputer_in_pipeline_does_not_contaminate_folds():
 
     # Not all fold fill values should be identical
     assert len(set(fill_values)) > 1, (
-        "All fold fill values are identical — possible full-dataset leakage"
+        "All fold fill values are identical: possible full-dataset leakage"
     )
 
 

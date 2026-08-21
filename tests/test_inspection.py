@@ -1,4 +1,4 @@
-"""tests/test_inspection.py — permutation feature importance helper."""
+"""tests/test_inspection.py: permutation feature importance helper."""
 
 import numpy as np
 import pytest

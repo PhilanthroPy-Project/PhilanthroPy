@@ -6,7 +6,7 @@ Leakage-safe imputation for third-party wealth-screening vendor data.
 Academic medical centre (AMC) advancement shops routinely purchase wealth
 screenings from vendors such as DonorSearch, iWave, or Wealth Engine.  These
 datasets contain high-value features (Estimated Net Worth, Real Estate Equity,
-Stock Holdings, etc.) but are *notoriously* incomplete — coverage typically
+Stock Holdings, etc.) but are *notoriously* incomplete: coverage typically
 ranges from 30 % to 70 % of a prospect pool.  Naively imputing with
 population-level statistics *after* a train/test split can introduce target
 leakage when the imputer observes test-set wealth patterns.
@@ -72,11 +72,11 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
     strategy : {"median", "mean", "zero"}, default="median"
         Imputation strategy applied to each wealth column:
 
-        * ``"median"`` — Robust to the extreme right-skew and outliers common
+        * ``"median"``: Robust to the extreme right-skew and outliers common
           in wealth data.  Strongly recommended for raw vendor exports.
-        * ``"mean"``   — Computationally equivalent to OLS; use only after
+        * ``"mean"``: Computationally equivalent to OLS; use only after
           outlier treatment.
-        * ``"zero"``   — Sets missing values to 0.0, which is semantically
+        * ``"zero"``: Sets missing values to 0.0, which is semantically
           meaningful when absence of a record implies zero capacity (e.g., no
           real-estate holdings found).
     add_indicator : bool, default=True

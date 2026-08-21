@@ -5,7 +5,7 @@ Share-of-Wallet capacity estimation for major-gift fundraising.
 
 Academic medical centre (AMC) advancement teams need not only a *binary*
 propensity signal ("will this donor upgrade?") but also a *continuous*
-estimate of their total philanthropic capacity — what fundraising professionals
+estimate of their total philanthropic capacity, what fundraising professionals
 call the donor's **share of wallet (SoW)**.  This capacity prediction drives:
 
 * Minimum and maximum ask amounts in gift-range tables
@@ -16,7 +16,7 @@ call the donor's **share of wallet (SoW)**.  This capacity prediction drives:
 philanthropic capacity of each prospect from CRM and wealth-screening features.
 It also exposes :meth:`capacity_ratio`, which compares the predicted
 capacity against historical cumulative giving and surfaces a **untapped-capacity
-ratio** — the primary metric used by major-gift officers to prioritise outreach.
+ratio**: the primary metric used by major-gift officers to prioritise outreach.
 
 Under the hood the model deliberately uses
 :class:`~sklearn.ensemble.HistGradientBoostingRegressor`, which handles
@@ -56,7 +56,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
 
     ``ShareOfWalletRegressor`` is a scikit-learn–compatible regressor that
     wraps :class:`~sklearn.ensemble.HistGradientBoostingRegressor` to estimate
-    a prospect's **total philanthropic capacity** — i.e., the maximum lifetime
+    a prospect's **total philanthropic capacity**, i.e. the maximum lifetime
     gift they *could* make given their wealth profile, giving history, and
     engagement signals.
 
@@ -82,7 +82,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         Maximum depth of each individual decision tree.
     l2_regularization : float, default=0.0
         L2 regularisation term on leaf weights.  Increase (e.g., to 1.0)
-        to combat overfitting when the feature-to-sample ratio is high —
+        to combat overfitting when the feature-to-sample ratio is high,
         a common scenario in small-shop advancement analytics.
     min_samples_leaf : int, default=20
         Minimum number of samples per leaf.  Larger values prevent
@@ -151,7 +151,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
     See Also
     --------
     philanthropy.models.DonorPropensityModel :
-        Binary propensity model — use alongside this regressor for a
+        Binary propensity model; use alongside this regressor for a
         two-stage (propensity × capacity) portfolio ranking.
     philanthropy.preprocessing.WealthScreeningImputer :
         Optional upstream imputer for non-NaN-native downstream models.
@@ -224,7 +224,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
 
         This ratio is the primary metric for gift officers prioritising
         discovery calls.  A ratio of 5.0 means the model estimates the donor
-        could give five times more than they have historically — a strong
+        could give five times more than they have historically, a strong
         signal of untapped major-gift potential.
 
         Parameters

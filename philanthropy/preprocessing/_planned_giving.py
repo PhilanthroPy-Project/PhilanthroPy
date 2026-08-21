@@ -121,7 +121,7 @@ class PlannedGivingSignalTransformer(TransformerMixin, BaseEstimator):
         ----------
         X : array-like of shape (n_samples, n_features)
             Donor-level feature matrix. Accepts pd.DataFrame (columns may or
-            may not exist — missing columns are handled gracefully with NaN / 0).
+            may not exist; missing columns are handled gracefully with NaN / 0).
 
         Returns
         -------

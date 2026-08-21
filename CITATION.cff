@@ -3,9 +3,9 @@ message: "If you use PhilanthroPy in your research, please cite it as below."
 title: "PhilanthroPy: A scikit-learn compatible toolkit for predictive donor analytics"
 abstract: >-
   PhilanthroPy is a production-ready, scikit-learn native library for nonprofit
-  and academic medical center (AMC) fundraising analytics — donor propensity,
+  and academic medical center (AMC) fundraising analytics: donor propensity,
   lapse prediction, planned-giving intent, wealth screening, and hybrid
-  revenue forecasting — with leakage-safe, pipeline-compatible estimators.
+  revenue forecasting, with leakage-safe, pipeline-compatible estimators.
 type: software
 authors:
   - family-names: Lalakiya
@@ -16,7 +16,7 @@ date-released: "2026-08-01"
 license: MIT
 repository-code: "https://github.com/PhilanthroPy-Project/PhilanthroPy"
 url: "https://PhilanthroPy-Project.github.io/PhilanthroPy/"
-# Zenodo concept DOI — always resolves to the latest deposited release. This is
+# Zenodo concept DOI: always resolves to the latest deposited release. This is
 # deliberately NOT the per-version DOI (v0.6.0 is 10.5281/zenodo.21751097); the
 # concept DOI is the one to cite so the reference does not go stale.
 identifiers:

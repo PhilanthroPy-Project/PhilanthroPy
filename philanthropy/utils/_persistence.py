@@ -3,7 +3,7 @@ philanthropy.utils._persistence
 ================================
 Save / load PhilanthroPy model bundles.
 
-A *bundle* is a self-describing dict — the fitted model plus the feature list,
+A *bundle* is a self-describing dict: the fitted model plus the feature list,
 target name, and the scikit-learn / PhilanthroPy versions it was trained with.
 :func:`load_model` warns when those versions differ from the running
 environment, which silently un-pickling with plain ``joblib.load`` never did.

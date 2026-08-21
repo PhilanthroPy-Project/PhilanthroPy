@@ -1,9 +1,9 @@
-"""UniSchema -> PhilanthroPy — score donors straight from an event stream.
+"""UniSchema -> PhilanthroPy: score donors straight from an event stream.
 
 `UniSchema <https://github.com/PhilanthroPy-Project/UniSchema>`_ normalises
 fragmented advancement webhooks (GiveCampus, Slate, NPSP, Cvent, ...) into one
 ``ConstituentEvent`` stream. ``philanthropy.ingest`` turns that stream into the
-one-row-per-donor feature table the estimators consume — the same columns the
+one-row-per-donor feature table the estimators consume, the same columns the
 Quick Start trains on, so a UniSchema feed drops in with no glue code.
 
 The realistic flow, end to end:
@@ -38,7 +38,7 @@ EVENTS = [
      "sourceSystem": "CVENT", "createdAt": "2025-10-02T18:00:00Z"},
     {"eventId": "5", "constituentEmail": "grace@uni.edu", "eventType": "DONATION",
      "sourceSystem": "GIVECAMPUS", "amount": 75000.0, "createdAt": "2025-11-15T11:00:00Z"},
-    # A redelivered webhook (same eventId as #1) — dropped, not double-counted.
+    # A redelivered webhook (same eventId as #1): dropped, not double-counted.
     {"eventId": "1", "constituentEmail": "ada@uni.edu", "eventType": "DONATION",
      "sourceSystem": "GIVECAMPUS", "amount": 250.0, "createdAt": "2022-03-01T12:00:00Z"},
 ]

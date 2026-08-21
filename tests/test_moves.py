@@ -1,6 +1,6 @@
 """Tests for MovesManagementClassifier.
 
-Moved here from the deleted tests/test_coverage_boost.py — a filename that named
+Moved here from the deleted tests/test_coverage_boost.py, a filename that named
 a metric as the goal rather than the behaviour under test.
 """
 

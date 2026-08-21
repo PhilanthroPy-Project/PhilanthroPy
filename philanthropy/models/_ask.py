@@ -6,7 +6,7 @@ Ask-amount recommendation and gift-array ("ask ladder") generation.
 Deciding *how much to ask for* is one of the highest-leverage judgement calls
 in major-gift fundraising.  Ask too low and the organisation leaves money on
 the table; ask too high and the prospect disengages.  Gift officers therefore
-work from a **gift array** (also called an *ask ladder*) — a short, discrete
+work from a **gift array** (also called an *ask ladder*): a short, discrete
 menu of ascending amounts anchored on a single recommended **base ask**.
 
 ``AskAmountRecommender`` predicts that base ask amount from CRM, wealth-screening
@@ -54,7 +54,7 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
 
     ``AskAmountRecommender`` is a scikit-learn–compatible regressor that wraps
     :class:`~sklearn.ensemble.HistGradientBoostingRegressor` to predict the
-    **base ask amount** — the single dollar figure a gift officer anchors a
+    **base ask amount**: the single dollar figure a gift officer anchors a
     solicitation on for a given prospect.
 
     By using ``HistGradientBoostingRegressor`` internally, the model handles
@@ -63,7 +63,7 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
     source of potential leakage.
 
     The companion method :meth:`ask_ladder` expands the base ask into a
-    discrete **gift array** (or *ask ladder*) — the low / target / stretch
+    discrete **gift array** (or *ask ladder*): the low / target / stretch
     rungs presented in a real solicitation.
 
     Parameters
@@ -78,7 +78,7 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         Maximum depth of each individual decision tree.
     l2_regularization : float, default=0.0
         L2 regularisation term on leaf weights.  Increase (e.g., to 1.0)
-        to combat overfitting when the feature-to-sample ratio is high —
+        to combat overfitting when the feature-to-sample ratio is high,
         a common scenario in small-shop advancement analytics.
     min_samples_leaf : int, default=20
         Minimum number of samples per leaf.  Larger values prevent
@@ -139,15 +139,15 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
     ======= ==================================================
     Rung    Meaning
     ======= ==================================================
-    Low     The base ask — a comfortable, likely-accepted gift.
-    Target  1.5× the base — the amount the ask is anchored on.
-    Stretch 2.5× the base — the aspirational upgrade ask.
+    Low     The base ask, a comfortable, likely-accepted gift.
+    Target  1.5× the base, the amount the ask is anchored on.
+    Stretch 2.5× the base, the aspirational upgrade ask.
     ======= ==================================================
 
     See Also
     --------
     philanthropy.models.ShareOfWalletRegressor :
-        Continuous capacity model — pair with this recommender to bound the
+        Continuous capacity model; pair with this recommender to bound the
         top of the gift array by estimated philanthropic capacity.
     """
 

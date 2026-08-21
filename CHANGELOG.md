@@ -32,6 +32,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Added
 - Question 1a in the security review Q&A documents the remote-path rejection,
   which is the behaviour a privacy officer asks about after reading question 1.
+- `philanthropy.datasets.fetch_kdd98_donors`, an opt-in fetcher for the KDD Cup
+  1998 direct-mail donor dataset, cached locally after first download. It is
+  the one entry in the no-network allowlist added above, and it exists so the
+  library can be validated against real donor data instead of only synthetic
+  data. Part of #124.
+- `scripts/real_data_leakage_experiment.py` replicates `leakage_experiment.py`
+  on the real KDD Cup 1998 file instead of the synthetic panel. The predicted
+  effect (recorded in the script before it was run) was smaller than the
+  synthetic numbers; the measured effect is larger: whole-history feature
+  construction inflates walk-forward ROC-AUC by +0.376 AUC (versus +0.126
+  synthetic), and a random `StratifiedKFold` split overstates the true future
+  by +0.107 AUC (versus 0.014-0.030 synthetic). Documented in
+  `docs/explanation/benchmarks.md` and in `paper.md`'s Statement of need and
+  Research impact statement. Closes the research-impact half of #124; the
+  Zenodo deposit of the script outputs is still pending.
 
 ### Deprecated
 - `WealthScreeningImputerKNN(group_col_idx=...)` is **deprecated** and will be

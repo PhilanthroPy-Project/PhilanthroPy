@@ -23,6 +23,30 @@ unpickling, exactly like scikit-learn's own persisted estimators.
 party. See scikit-learn's
 [persistence security note](https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations).
 
+## Saving models (outbound disclosure)
+
+The section above is about code you load. A bundle you **produce** is a
+different risk: it is donor data, and for an AMC it can be patient data.
+
+`EncounterTransformer` and `GratefulPatientFeaturizer` take the clinical
+encounter table as a constructor parameter. Serialising a fitted one used to
+write those raw rows — medical record numbers, attending physicians, service
+lines — straight into the `.joblib`. Both now drop the raw table on
+serialisation, so a bundle no longer carries it.
+
+What a bundle **still** contains:
+
+- `encounter_summary_`, the per-donor aggregate frozen at `fit` time (last
+  discharge date, encounter count, clinical gravity score), keyed by your
+  `merge_key`. `transform` cannot work without it.
+- `feature_names_in_`, i.e. your CRM column names.
+
+So: treat every bundle you produce as donor data. Do not attach one to a public
+issue, do not hand one to a vendor without the agreement that covers the
+underlying data, and store it where the source data is allowed to live. If you
+need to share a scoring artefact outside that boundary, refit on de-identified
+inputs rather than stripping a bundle after the fact.
+
 ## Reporting a vulnerability
 
 Please **do not open a public issue** for security problems.

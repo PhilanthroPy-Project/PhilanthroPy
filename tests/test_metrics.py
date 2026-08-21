@@ -74,8 +74,9 @@ def test_ltv_retention_rate_overrides_lifespan():
 
 
 def test_ltv_retention_rate_one_perpetuity():
+    # Perpetuity at the default 5% discount rate: 1000 / 0.05.
     ltv = donor_lifetime_value(1000.0, lifespan_years=5.0, retention_rate=1.0)
-    assert ltv == float('inf')
+    assert math.isclose(ltv, 20000.0)
 
 
 def test_ltv_zero_average_donation():

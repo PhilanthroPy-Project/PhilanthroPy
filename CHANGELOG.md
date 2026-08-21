@@ -5,6 +5,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Deprecated
+- `WealthScreeningImputerKNN(group_col_idx=...)` is **deprecated** and will be
+  removed in 0.8.0. It still works and now emits a `DeprecationWarning`. There is
+  no replacement because there is nothing to replace: measured across several
+  synthetic two-group pools, and on five Python versions in CI, per-group and
+  global KNN imputation produce bit-identical output (`50263.48615163204` both
+  ways). A donor's nearest neighbours by feature distance almost always share
+  their group already, and `KNNImputer` weights distance by column magnitude, so
+  a 0/1 group flag barely registers. The parameter costs a per-group imputer,
+  three fallback paths and a documented contract, and buys no measurable
+  accuracy. Split the frame by group and fit one imputer per part if you need
+  that behaviour. `tests/test_deprecations.py` is reintroduced per `RELEASING.md`,
+  with the registry meta-test that fails when a shim ships untested; it walks the
+  package AST for `warnings.warn(..., DeprecationWarning)` call sites, so a
+  docstring merely mentioning the class is not miscounted. Closes #85.
+
 ### Added
 - `WealthScreeningImputerKNN.group_col_idx` now does what it always claimed.
   It was documented as stratifying KNN imputation per group "improving local

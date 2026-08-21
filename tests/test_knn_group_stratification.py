@@ -11,6 +11,14 @@ import pytest
 
 from philanthropy.preprocessing import WealthScreeningImputerKNN
 
+pytestmark = pytest.mark.filterwarnings(
+    # This whole file exercises the deprecated `group_col_idx`, so the shim
+    # warning is expected here rather than a signal. Scoped to that message so an
+    # unrelated DeprecationWarning still surfaces. When the parameter goes in
+    # 0.8.0, this file goes with it.
+    "ignore:WealthScreeningImputerKNN\\(group_col_idx:DeprecationWarning"
+)
+
 KW = dict(strategy="knn", n_neighbors=5, add_indicator=False)
 
 

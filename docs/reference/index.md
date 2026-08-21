@@ -100,6 +100,25 @@ These still work and emit `DeprecationWarning`. Migrate before upgrading.
 | `MovesManagementClassifier.predict_action_priority` | `action_priority` |
 | `PlannedGivingIntentScorer.predict_bequest_intent_score` | `predict_intent_score` |
 
+### Live in 0.7.0, removed in 0.8.0
+
+| Deprecated | Use instead |
+|---|---|
+| `WealthScreeningImputerKNN(group_col_idx=...)` | nothing; see below |
+
+`group_col_idx` has no replacement because there is nothing to replace. It was
+documented for a long time as stratifying KNN imputation per group "improving
+local accuracy" while being stored and never read, then implemented, and the
+implementation is what retired it: measured across several synthetic two-group
+pools and on five Python versions in CI, per-group and global KNN imputation
+produce **bit-identical** output (`50263.48615163204` both ways). A donor's
+nearest neighbours by feature distance almost always share their group already,
+and `KNNImputer` weights distance by column magnitude, so a 0/1 group flag
+barely registers.
+
+If you need per-group behaviour, split the frame by group and fit one imputer per
+part. That is explicit, and it costs nothing that the parameter was buying.
+
 The `predict_` prefix is reserved for methods that take `X` alone and return one
 value per row. The first three returned a `(n, 3)` dollar matrix, required a
 second argument, and returned a dict respectively.

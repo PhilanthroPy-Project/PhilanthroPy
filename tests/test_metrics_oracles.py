@@ -2,7 +2,7 @@
 
 Closed-form oracles for the money metrics.
 
-The rest of the metrics suite checks ranges, monotonicity and error paths — all
+The rest of the metrics suite checks ranges, monotonicity and error paths, all
 of which a subtly wrong formula still satisfies. These assert each function
 against an independent source: the textbook definition of the Gini coefficient,
 the discounted-annuity NPV written out term by term, and the EEOC's own
@@ -42,7 +42,7 @@ def test_gini_of_a_single_giver_is_n_minus_one_over_n():
 
 def test_gini_matches_the_mean_absolute_difference_definition():
     # Population Gini: G = sum_i sum_j |x_i - x_j| / (2 * n^2 * mean(x)).
-    # This is the convention the implementation uses — consistent with the
+    # This is the convention the implementation uses, consistent with the
     # (n-1)/n maximum asserted above, not the sample-corrected n/(n-1) variant.
     rng = np.random.default_rng(0)
     x = rng.uniform(10.0, 10_000.0, 40)
@@ -134,19 +134,19 @@ def test_ltv_rejects_retention_rate_above_one():
 
 
 # ---------------------------------------------------------------------------
-# disparate_impact_ratio — the EEOC four-fifths worked example
+# disparate_impact_ratio: the EEOC four-fifths worked example
 # ---------------------------------------------------------------------------
 
 def test_disparate_impact_matches_the_eeoc_four_fifths_example():
     # The EEOC's canonical illustration: 80/100 of group A selected (0.80) and
-    # 40/100 of group B (0.40) gives a ratio of 0.50 — adverse impact.
+    # 40/100 of group B (0.40) gives a ratio of 0.50, adverse impact.
     y_pred = [1] * 80 + [0] * 20 + [1] * 40 + [0] * 60
     groups = ["A"] * 100 + ["B"] * 100
     assert disparate_impact_ratio(y_pred, groups) == pytest.approx(0.5)
 
 
 def test_disparate_impact_of_exactly_four_fifths_is_the_threshold():
-    # 50/100 (0.50) versus 40/100 (0.40) is exactly 0.8 — the EEOC boundary.
+    # 50/100 (0.50) versus 40/100 (0.40) is exactly 0.8, the EEOC boundary.
     y_pred = [1] * 50 + [0] * 50 + [1] * 40 + [0] * 60
     groups = ["A"] * 100 + ["B"] * 100
     assert disparate_impact_ratio(y_pred, groups) == pytest.approx(0.8)
@@ -166,7 +166,7 @@ def test_disparate_impact_is_min_over_max_across_three_groups():
 
 
 # ---------------------------------------------------------------------------
-# Campaign efficiency — arithmetic identities
+# Campaign efficiency: arithmetic identities
 # ---------------------------------------------------------------------------
 
 def test_campaign_efficiency_metrics_are_reciprocal_and_consistent():
@@ -200,7 +200,7 @@ def test_fundraising_roi_is_zero_at_break_even():
     (fundraising_roi, (1_000_000.0, 250_000.0)),
 ])
 def test_money_metrics_reject_positional_arguments(fn, args):
-    # These three do not share an argument order — cost_per_dollar_raised takes
+    # These three do not share an argument order: cost_per_dollar_raised takes
     # expense first, fundraising_roi takes raised first. Positional calls used
     # to be silently accepted and return a plausible wrong number. Keyword-only
     # since 0.7.0.

@@ -1,4 +1,4 @@
-"""tests/test_cli.py — end-to-end CLI (train -> score -> validate)."""
+"""tests/test_cli.py: end-to-end CLI (train -> score -> validate)."""
 
 import pandas as pd
 import pytest

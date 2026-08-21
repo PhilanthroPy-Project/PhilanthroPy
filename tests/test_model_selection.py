@@ -118,7 +118,7 @@ def test_repr_and_get_n_splits_reflect_the_groups():
 
 
 # ---------------------------------------------------------------------------
-# n_splits validation — split() and get_n_splits() must never disagree
+# n_splits validation: split() and get_n_splits() must never disagree
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("bad_n_splits", [0, -1, -3])

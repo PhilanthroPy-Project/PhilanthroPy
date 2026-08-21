@@ -24,9 +24,9 @@ bibliography: paper.bib
 PhilanthroPy is a scikit-learn-native Python library for predictive fundraising
 analytics at nonprofits and academic medical center (AMC) foundations. It
 covers the full predictive workflow used by advancement and development
-offices — CRM cleaning, wealth-screening imputation, RFM segmentation,
+offices (CRM cleaning, wealth-screening imputation, RFM segmentation,
 donor-propensity and major-gift scoring, lapse prediction, planned-giving
-intent, share-of-wallet estimation, and hybrid revenue forecasting — as a set
+intent, share-of-wallet estimation, and hybrid revenue forecasting) as a set
 of `fit`/`transform`/`predict` estimators and transformers that compose
 directly inside `sklearn.pipeline.Pipeline`. Every estimator that fits the
 scikit-learn `fit(X, y)` contract passes
@@ -38,8 +38,8 @@ surface (`EncounterTransformer`, `GratefulPatientFeaturizer`,
 for grateful-patient programs, where PHI-adjacent inputs raise the compliance
 bar relative to general nonprofit use.
 
-Every fitted statistic in the library — imputation fill values, wealth
-percentile lookups, fiscal-year boundaries — is computed from training data
+Every fitted statistic in the library (imputation fill values, wealth
+percentile lookups, fiscal-year boundaries) is computed from training data
 inside `fit` and frozen before `transform` or `predict` is ever called, so a
 pipeline built on PhilanthroPy cannot leak test-period or future information
 into a score without the user deliberately refitting on it. This contract is
@@ -56,7 +56,7 @@ platforms (e.g. Salesforce NPSP, Blackbaud Raiser's Edge), which are not
 inspectable, not extensible, and not portable across systems; or ad hoc,
 one-off scripts written independently at each institution, which are rarely
 tested for the temporal-leakage failure mode endemic to donor data
-[@kaufman2012leakage; @kapoor2023leakage] — fitting
+[@kaufman2012leakage; @kapoor2023leakage]: fitting
 imputers, scalers, or feature encoders on a full historical dataset before
 splitting it into train and test windows, so a model's reported performance
 silently includes information from the future relative to the point a
@@ -67,8 +67,8 @@ PhilanthroPy addresses this gap by being simultaneously (1) fully
 search, and pipeline tooling that practitioners and researchers already use;
 (2) leakage-safe by construction and by test, rather than by convention; and
 (3) domain-specific, encoding fundraising and (for AMCs) grateful-patient
-program knowledge [@collins2018grateful] — such as discharge-to-solicitation windows and matching-gift
-detection — directly into named, documented transformers instead of leaving
+program knowledge [@collins2018grateful] (such as discharge-to-solicitation windows and matching-gift
+detection) directly into named, documented transformers instead of leaving
 that domain logic to be re-derived ad hoc at every institution. The
 compliance posture is scoped explicitly: PhilanthroPy documents where its PII
 handling is a name-based heuristic rather than a formal HIPAA

@@ -81,7 +81,7 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
         other strategies.
     add_indicator : bool, default=True
         Append a binary ``<col>__was_missing`` column for each imputed
-        wealth column.  Strongly recommended — absence of vendor records
+        wealth column.  Strongly recommended: absence of vendor records
         itself carries predictive signal.
     group_col_idx : int or None, default=None
         Accepted and stored so ``get_params``/``set_params`` round-trip, but
@@ -487,7 +487,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
             self.capacity_floor,
         )
 
-        # Wealth sum — clip at 95th-percentile scale from fit to prevent score collapse
+        # Wealth sum: clip at 95th-percentile scale from fit to prevent score collapse
         wealth_raw = np.nansum(X_arr[:, w_indices], axis=1)
         wealth_clipped = np.clip(wealth_raw, 0.0, self.wealth_scale_)
 

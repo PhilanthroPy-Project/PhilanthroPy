@@ -40,7 +40,7 @@ by 8.2% at `r = 0.8, d = 0.05` and by 22.9% at `r = 0.9, d = 0.10`. The error is
 one-signed, so it never averages out across a portfolio. PhilanthroPy made
 exactly this mistake before version 0.7.0.
 
-**Why it matters.** DLV lets you justify higher Acquisition Costs for high-value segments — like grateful patients — even when the initial gift is small.
+**Why it matters.** DLV lets you justify higher Acquisition Costs for high-value segments (like grateful patients) even when the initial gift is small.
 
 ## Efficiency & ROI
 
@@ -56,4 +56,4 @@ The cost of bringing in one new donor.
 
 The percentage of donors from Period A who gave again in Period B.
 
-Retention is the single biggest lever for total revenue growth. PhilanthroPy's metrics module lets you segment retention by acquisition channel, so you can see which sources — Direct Mail versus High-Touch Events, say — produce the most loyal donors.
+Retention is the single biggest lever for total revenue growth. PhilanthroPy's metrics module lets you segment retention by acquisition channel, so you can see which sources (Direct Mail versus High-Touch Events, say) produce the most loyal donors.

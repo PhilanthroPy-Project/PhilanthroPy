@@ -1,13 +1,13 @@
 """tests/test_doc_examples.py
 
-Executes the fenced ``python`` blocks in every documentation page — ``docs/**``
-recursively plus the top-level ``README.md`` — so a broken public API in the
+Executes the fenced ``python`` blocks in every documentation page (``docs/**``
+recursively plus the top-level ``README.md``), so a broken public API in the
 documentation fails CI instead of a user's copy-paste.
 
 Each file's python blocks are concatenated in order and executed in a single
 fresh namespace (later blocks may rely on earlier imports/variables). Files with
 no python fence are not collected at all. A file can only be muted by adding an
-explicit ``<!-- docs-notest -->`` marker *and* naming it in ``_NOTEST`` below —
+explicit ``<!-- docs-notest -->`` marker *and* naming it in ``_NOTEST`` below;
 ``test_notest_allowlist_is_exact`` makes muting a page a visible diff.
 """
 

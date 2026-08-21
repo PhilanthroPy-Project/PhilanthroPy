@@ -241,7 +241,7 @@ def test_negative_historical_giving_uses_floor(wallet_Xy):
 
 
 # --------------------------------------------------------------------------- #
-# WealthScreeningImputerKNN — the feature-name contract on money columns
+# WealthScreeningImputerKNN: the feature-name contract on money columns
 # (philanthropy/preprocessing/_share_of_wallet.py:279-292 was never executed)
 # --------------------------------------------------------------------------- #
 def _knn_frame():

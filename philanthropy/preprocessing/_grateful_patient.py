@@ -79,7 +79,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         Per-service-line multipliers applied when ``use_capacity_weights=True``.
         Keys are normalised service-line names (lowercased, non-alpha collapsed to
         ``_``); unknown lines fall back to ``1.0``. If ``None``, illustrative AMC
-        defaults are used — override with your foundation's board-approved values.
+        defaults are used; override with your foundation's board-approved values.
     merge_key : str, default="donor_id"
         Column name present in both the encounter table and ``X`` used to merge.
     as_of : str, datetime-like or None, default=None
@@ -211,7 +211,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         ValueError
             If neither ``encounter_df`` nor ``encounter_path`` is set.
         """
-        # Step 1: Load encounter data — snapshot, never store raw_enc
+        # Step 1: Load encounter data (snapshot it; never store raw_enc)
         if self.encounter_path is not None:
             raw_enc = pd.read_parquet(self.encounter_path)
         elif self.encounter_df is not None:
@@ -351,7 +351,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
             if self.merge_key in self.feature_names_in_:
                 X_df = X[[self.merge_key]].copy()
             else:
-                # No merge key available — return zeros
+                # No merge key available: return zeros
                 warnings.warn(
                     f"merge_key {self.merge_key!r} is not in X (columns: "
                     f"{list(X.columns)}); every clinical feature is 0.0. Route "
@@ -371,7 +371,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
                 {self.merge_key: arr[:, col_idx]}
             )
         else:
-            # No merge key — cannot join, return zeros
+            # No merge key: cannot join, return zeros
             warnings.warn(
                 f"merge_key {self.merge_key!r} could not be located in X; every "
                 f"clinical feature is 0.0. Pass a DataFrame carrying "
@@ -390,7 +390,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
             how="left",
         )
 
-        # Step 5: fillna(0.0) — unknown donors get zeros
+        # Step 5: fillna(0.0) so unknown donors get zeros
         result = merged[_FEATURE_COLS].fillna(0.0)
 
         return result.to_numpy(dtype=np.float64)

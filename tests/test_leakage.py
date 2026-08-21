@@ -5,7 +5,7 @@ Temporal data-leakage prevention tests for PhilanthroPy pipelines.
 
 These tests verify that the ``EncounterTransformer`` and surrounding pipeline
 infrastructure **cannot** be exploited to inject future-period target values
-into fitted transformer state — a critical correctness guarantee for any
+into fitted transformer state, a critical correctness guarantee for any
 time-series or cross-fiscal-year split in prospect-management models.
 
 Background
@@ -74,7 +74,7 @@ def future_encounters():
             "discharge_date": [
                 "2023-02-14",  # future discharge for donor 1
                 "2023-05-20",  # future discharge for donor 2
-                "2023-08-01",  # new donor 5 — only in future
+                "2023-08-01",  # new donor 5, only in future
             ],
         }
     )
@@ -100,7 +100,7 @@ def test_gift_df():
             "donor_id": [1, 2, 3, 4, 5],
             "gift_date": ["2023-09-01", "2023-10-01", "2023-08-01", "2023-11-01", "2023-08-15"],
             "gift_amount": [
-                1_000_000.0,  # extreme future gift — leakage would inject this
+                1_000_000.0,  # extreme future gift, leakage would inject this
                 9_999_999.0,
                 5_555_555.0,
                 7_777_777.0,
@@ -166,7 +166,7 @@ class TestEncounterTransformerNoLeakage:
     ):
         """
         Donor 5 appears only in the test set.  After fitting on train_encounters,
-        the transformer must NOT leak donor 5's future values — it must return NaN.
+        the transformer must NOT leak donor 5's future values; it must return NaN.
         """
         t = EncounterTransformer(encounter_df=train_encounters).set_output(transform="pandas")
         t.fit(train_gift_df)
@@ -178,10 +178,10 @@ class TestEncounterTransformerNoLeakage:
 
         assert np.isnan(donor5_days), (
             "Donor 5 (unseen at fit time) must yield NaN for "
-            "days_since_last_discharge — returning a real value would "
+            "days_since_last_discharge; returning a real value would "
             "constitute leakage of future data."
         )
-        # log1p(0) == 0.0 — unknown donors get frequency score of 0
+        # log1p(0) == 0.0, unknown donors get frequency score of 0
         assert donor5_freq == pytest.approx(0.0), (
             "Donor 5 (unseen at fit time) must yield 0.0 encounter_frequency_score."
         )
@@ -200,7 +200,7 @@ class TestEncounterTransformerNoLeakage:
         future_amounts = np.array([1_000_000.0, 9_999_999.0, 5_555_555.0, 7_777_777.0])
 
         t = EncounterTransformer(encounter_df=train_encounters).set_output(transform="pandas")
-        # Attempt to fit with future gift amounts as y — this must be ignored by EncounterTransformer
+        # Attempt to fit with future gift amounts as y; this must be ignored by EncounterTransformer
         t.fit(train_gift_df, y=future_amounts)
 
         # Encounter summary should still reflect encounter_df aggregation only
@@ -298,12 +298,12 @@ class TestWealthImputerNoLeakage:
         assert final_fill == pytest.approx(500_000.0), (
             f"fill_values_['real_estate_value'] changed after transform(X_test): "
             f"got {final_fill}, expected 500_000.0.  "
-            "This is a leakage bug — test-set statistics must not alter fitted values."
+            "This is a leakage bug: test-set statistics must not alter fitted values."
         )
 
 
 # ---------------------------------------------------------------------------
-# Leakage Test 3: Temporal split — future gift amounts cannot flow backward
+# Leakage Test 3: Temporal split, future gift amounts cannot flow backward
 # ---------------------------------------------------------------------------
 
 
@@ -329,7 +329,7 @@ class TestTemporalSplitLeakage:
         # Now transform the test set (with outrageous future gift amounts)
         _ = t.transform(test_gift_df.copy())
 
-        # Transform train again after processing test — must be identical
+        # Transform train again after processing test, must be identical
         out_train_B = t.transform(train_gift_df.copy())
 
         pd.testing.assert_frame_equal(
@@ -442,7 +442,7 @@ class TestFiscalYearNoLeakage:
 
 def test_fiscal_year_transformer_uses_no_future_data():
     """
-    FiscalYearTransformer is stateless — fit on training split, transform
+    FiscalYearTransformer is stateless: fit on training split, transform
     test split with completely disjoint date ranges; both must be correct.
     """
     from philanthropy.preprocessing import FiscalYearTransformer
@@ -477,7 +477,7 @@ def test_fiscal_year_transformer_uses_no_future_data():
 def test_encounter_transformer_summary_is_fit_time_snapshot():
     """
     Mutate encounter_df AFTER fit() completes.
-    Assert that transform() output is unchanged — proving encounter_summary_
+    Assert that transform() output is unchanged, proving encounter_summary_
     is a snapshot, not a view into the original DataFrame.
     """
     enc_df = pd.DataFrame({
@@ -499,7 +499,7 @@ def test_encounter_transformer_summary_is_fit_time_snapshot():
     t.fit(X_train)
     original_output = t.transform(X_test).copy()
 
-    # Mutate the original enc_df AFTER fit — should not affect transform()
+    # Mutate the original enc_df AFTER fit, should not affect transform()
     enc_df.iloc[0, enc_df.columns.get_loc("discharge_date")] = "2099-01-01"
     post_mutation_output = t.transform(X_test)
 
@@ -507,7 +507,7 @@ def test_encounter_transformer_summary_is_fit_time_snapshot():
         original_output,
         post_mutation_output,
         err_msg=(
-            "transform() output changed after mutating encounter_df — "
+            "transform() output changed after mutating encounter_df, "
             "encounter_summary_ must be a snapshot taken at fit() time."
         ),
     )
@@ -516,7 +516,7 @@ def test_encounter_transformer_summary_is_fit_time_snapshot():
 def test_wealth_imputer_fill_statistics_are_fold_specific_in_cv():
     """
     In 5-fold CV, fill statistics computed in each training fold must NOT all
-    be identical — which would indicate the full dataset was used (leakage).
+    be identical, which would indicate the full dataset was used (leakage).
     """
     from sklearn.model_selection import StratifiedKFold
 
@@ -542,7 +542,7 @@ def test_wealth_imputer_fill_statistics_are_fold_specific_in_cv():
 
     # If all fold fill values are identical, test-set leakage is likely
     assert len(set(fill_values_per_fold)) > 1, (
-        "All fold fill values are identical — possible full-dataset leakage. "
+        "All fold fill values are identical: possible full-dataset leakage. "
         f"Fill values: {fill_values_per_fold}"
     )
 
@@ -607,7 +607,7 @@ def test_every_stateful_transformer_has_a_leakage_test():
     )
 
     stateful = _stateful_preprocessing_classes()
-    assert stateful, "source scan found no stateful transformers — regex broke"
+    assert stateful, "source scan found no stateful transformers: regex broke"
 
     missing = sorted(
         name for name in stateful

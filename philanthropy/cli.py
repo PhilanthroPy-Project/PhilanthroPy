@@ -192,7 +192,7 @@ def _build_parser():
         "--model",
         required=True,
         help="saved model bundle (.joblib). WARNING: a bundle is unpickled on "
-        "load and can execute arbitrary code — only load bundles you trust.",
+        "load and can execute arbitrary code; only load bundles you trust.",
     )
     score.add_argument("--data", required=True, help="path to a CSV to score")
     score.add_argument("--features", default=None, help="override the bundle's features")
@@ -206,7 +206,7 @@ def _build_parser():
         "--model",
         required=True,
         help="saved model bundle (.joblib). WARNING: a bundle is unpickled on "
-        "load and can execute arbitrary code — only load bundles you trust.",
+        "load and can execute arbitrary code; only load bundles you trust.",
     )
     validate.add_argument("--data", required=True, help="path to a labelled CSV")
     validate.add_argument("--target", default=None, help="label column (else bundle's)")

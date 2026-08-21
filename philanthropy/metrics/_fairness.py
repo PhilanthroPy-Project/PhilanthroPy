@@ -7,7 +7,7 @@ Wealth- and capacity-based features (estimated net worth, real-estate value,
 geography) can act as proxies for protected characteristics, so a model that
 never sees a protected attribute can still produce disparate outcomes. These
 functions are **diagnostics, not guarantees**: they surface disparity so a human
-can investigate it — they do not certify a model as fair or legally compliant.
+can investigate it; they do not certify a model as fair or legally compliant.
 See ``docs/explanation/compliance_considerations.md``.
 """
 
@@ -78,7 +78,7 @@ def disparate_impact_ratio(
     "four-fifths rule" flags a ratio below ``0.8`` as evidence of adverse impact
     that warrants investigation.
 
-    This is a **diagnostic, not a fairness guarantee or legal clearance** — a
+    This is a **diagnostic, not a fairness guarantee or legal clearance**: a
     passing ratio does not certify a model as non-discriminatory, and the choice
     of protected groups and decision threshold materially affects the result.
 

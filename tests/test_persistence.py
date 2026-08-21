@@ -54,7 +54,7 @@ def test_load_no_warning_when_versions_match(tmp_path):
 
     # Scope this to the warnings load_model is responsible for. A blanket
     # simplefilter("error") also fails on unrelated third-party warnings raised
-    # during unpickling — numpy 2.5 makes joblib/numpy_pickle.py emit a
+    # during unpickling: numpy 2.5 makes joblib/numpy_pickle.py emit a
     # DeprecationWarning, which has nothing to do with version matching.
     mismatch = [w for w in caught if "was saved with" in str(w.message)]
     assert not mismatch, [str(w.message) for w in mismatch]

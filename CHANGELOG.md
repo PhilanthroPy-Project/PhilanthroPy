@@ -238,6 +238,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   preferred disclosure channel.
 
 ### Fixed
+- Version metadata now names the release that actually exists. `pyproject.toml`
+  and `CITATION.cff` both declared `1.0.0`, which has no git tag, no PyPI
+  artifact and no Zenodo deposit; PyPI's newest is `0.6.0` and so is the newest
+  tag. `CITATION.cff` additionally dated that phantom 1.0.0 to `2026-08-01`,
+  which is 0.6.0's release date, and its DOI comment cited the v0.6.0
+  per-version DOI while the file claimed 1.0.0. Both now say `0.6.0`, and the
+  comment states the rule: `version` tracks the newest **published** release,
+  not `main`. `main` continues to carry unreleased `0.7.0` and `1.0.0` work, and
+  those CHANGELOG headings stay `- TBD` until a release is cut. This also
+  unblocks the JOSS archive step, which requires the submitted version to
+  correspond to a real tagged, archived release. `RELEASING.md`'s "cutting a
+  release `main` has already moved past" section assumed the tip carried the
+  newest staged version and walked through tagging an older commit; with the
+  tip back at the published version the normal branch-bump-date-tag path
+  applies, so that section documents that instead and keeps the older-commit
+  case as the caveat it is. Closes #88.
 - **`generate_synthetic_donor_data` ran the domain's causal arrow backwards.**
   It drew `is_major_donor` from a logistic model of `years_active` and
   `event_attendance_count`, then drew `total_gift_amount` *conditional on that

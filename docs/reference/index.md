@@ -76,7 +76,7 @@ Every domain method returns a number on its own scale. None of them are calibrat
 | `LapsePredictor.predict_lapse_score` | `(n,)` float | 0–100, higher = more likely to lapse |
 | `PlannedGivingIntentScorer.predict_intent_score` | `(n,)` float | 0–100 |
 | `UpliftTLearner.predict_uplift_score` | `(n,)` float | **−1 to 1**, negative means the appeal suppresses giving |
-| `ShareOfWalletScorer.transform` | `(n, 2)` float | `sow_score` 0–1; `capacity_tier` in {0, 1, 2} |
+| `ShareOfWalletScorer.transform` | `(n, 2)` float | `capacity_utilisation_ratio` 0–1; `capacity_tier` in {0, 1, 2} |
 | `ShareOfWalletRegressor.capacity_ratio` | `(n,)` float | Unbounded ratio ≥ 0 (capacity ÷ historical giving) |
 | `DischargeToSolicitationWindowTransformer.transform` | `(n, 2)` float | `in_solicitation_window` in {0, 1}; `window_position_score` 0–1 |
 | `GratefulPatientFeaturizer.transform` | `(n, 4)` float | Unbounded counts and weighted sums, all ≥ 0 |
@@ -143,3 +143,20 @@ barely registers.
 
 If you need per-group behaviour, split the frame by group and fit one imputer per
 part. That is explicit, and it costs nothing that the parameter was buying.
+
+### Live on `main` (0.8.0), removed in 0.9.0
+
+| Deprecated | Use instead |
+|---|---|
+| `ShareOfWalletScorer` output name `sow_score` | `capacity_utilisation_ratio` |
+
+`ShareOfWalletScorer.transform` column 0 is now named
+`capacity_utilisation_ratio` in `get_feature_names_out()`: the formula is
+capacity ÷ clipped modelled wealth, which is capacity utilisation. It was never
+share of wallet; the docstring has said so since the class shipped, and the old
+name claimed a quantity the formula does not compute. The values, the column
+order, and the `capacity_tier` encoding are unchanged, so code that reads the
+column positionally needs nothing. Code that spells the name can call
+`get_legacy_feature_names_out()` for one published minor: it returns the old
+`["sow_score", "capacity_tier"]` spelling under a `DeprecationWarning` and is
+removed in 0.9.0.

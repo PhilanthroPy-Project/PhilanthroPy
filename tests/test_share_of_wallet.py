@@ -372,3 +372,33 @@ def test_share_of_wallet_scorer_tier_labels_are_exact():
                                             dtype=object)
     )
     np.testing.assert_array_equal(scorer.transform(X)[:, 1], [1.0, 0.0, 0.0])
+
+
+def test_capacity_utilisation_ratio_is_the_new_column_name():
+    # The formula is capacity / clipped modelled wealth: capacity utilisation,
+    # not share of wallet. Column 0 is renamed accordingly; the values and the
+    # column order are unchanged.
+    # Wealth sums are equal, so the fit-time p95 clip cannot bind.
+    X = np.array([[100.0, 100.0], [50.0, 150.0]])
+    scorer = ShareOfWalletScorer(capacity_col_idx=0).fit(X)
+    assert list(scorer.get_feature_names_out()) == [
+        "capacity_utilisation_ratio",
+        "capacity_tier",
+    ]
+    out = scorer.transform(X)
+    np.testing.assert_allclose(out[:, 0], [100.0 / 201.0, 50.0 / 201.0])
+
+
+def test_sow_score_still_works_and_warns():
+    # One published minor of grace: the old spelling stays reachable and
+    # describes the same column, under a DeprecationWarning saying when it
+    # goes.
+    X = np.array([[100.0, 100.0], [50.0, 150.0]])
+    scorer = ShareOfWalletScorer(capacity_col_idx=0).fit(X)
+    with pytest.warns(DeprecationWarning, match="removed in 0.9.0"):
+        legacy = scorer.get_legacy_feature_names_out()
+    assert list(legacy) == ["sow_score", "capacity_tier"]
+    # The rename is a spelling change only: column 0 holds the same ratio.
+    np.testing.assert_allclose(
+        scorer.transform(X)[:, 0], [100.0 / 201.0, 50.0 / 201.0]
+    )

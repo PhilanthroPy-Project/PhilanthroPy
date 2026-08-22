@@ -432,7 +432,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
     capacity scoring pipeline.  It consumes a numeric feature matrix and
     produces two outputs per row:
 
-    ``sow_score`` (float64, [0, 1])
+    ``capacity_utilisation_ratio`` (float64, [0, 1])
         Capacity utilisation:
 
             score = estimated_capacity / (clipped_modelled_wealth + epsilon)
@@ -450,9 +450,10 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
            institutional giving in the numerator and total estimated giving in
            the denominator, and this transformer is given neither. Read it as
            "how much of this donor's modelled wealth is estimated to be
-           philanthropic capacity". The output name is kept for backward
-           compatibility and is scheduled to be renamed in the next major
-           release.
+           philanthropic capacity". Until 0.8.0 the column was named
+           ``sow_score``, which claimed a quantity the formula does not
+           compute; :meth:`get_legacy_feature_names_out` still spells it that
+           way, under a `DeprecationWarning`, until 0.9.0 removes it.
 
         The denominator is clipped at the fit-time 95th percentile, so the
         wealthiest rows share one denominator and are pushed toward the top of
@@ -588,7 +589,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         Returns
         -------
         X_out : np.ndarray of shape (n_samples, 2), dtype float64
-            Column 0: ``sow_score`` in [0, 1].
+            Column 0: ``capacity_utilisation_ratio`` in [0, 1].
             Column 1: ``capacity_tier`` (0 = Leadership, 1 = Major, 2 = Principal).
 
         Raises
@@ -639,12 +640,37 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         return np.column_stack([sow, tiers])
 
     def get_feature_names_out(self, input_features=None) -> np.ndarray:
-        """Return the share-of-wallet score and encoded tier names.
+        """Return the capacity-utilisation ratio and encoded tier names.
 
         Parameters
         ----------
         input_features : array-like of str or None, default=None
             Ignored because the scorer always emits the same two features.
+
+        Returns
+        -------
+        feature_names_out : ndarray of str
+            ``["capacity_utilisation_ratio", "capacity_tier"]``.
+
+        Raises
+        ------
+        NotFittedError
+            If the scorer has not been fitted.
+        """
+        check_is_fitted(self)
+        return np.array(
+            ["capacity_utilisation_ratio", "capacity_tier"], dtype=object
+        )
+
+    def get_legacy_feature_names_out(self) -> np.ndarray:
+        """Return the pre-0.8.0 output names, ``sow_score`` first.
+
+        The formula behind column 0 is capacity utilisation, not share of
+        wallet, so the column is now named ``capacity_utilisation_ratio``
+        (see :meth:`get_feature_names_out`). This method keeps the old
+        spelling reachable for one published minor release: it emits a
+        `DeprecationWarning` and returns ``["sow_score", "capacity_tier"]``.
+        Removed in 0.9.0.
 
         Returns
         -------
@@ -657,6 +683,15 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
             If the scorer has not been fitted.
         """
         check_is_fitted(self)
+        warnings.warn(
+            "ShareOfWalletScorer output name 'sow_score' is deprecated since "
+            "0.8.0 and will be removed in 0.9.0; the column measures capacity "
+            "utilisation, not share of wallet. Use "
+            "get_feature_names_out(), which reports "
+            "'capacity_utilisation_ratio' first.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return np.array(["sow_score", "capacity_tier"], dtype=object)
 
     def get_tier_labels(self, X) -> np.ndarray:

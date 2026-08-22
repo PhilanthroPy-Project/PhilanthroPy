@@ -35,9 +35,9 @@ One toolkit, two audiences:
 
 ### Maturity
 
-Single-maintainer MIT project. **`pip install philanthropy` gives you `0.6.0`**, the current release.
+Single-maintainer MIT project. **`pip install philanthropy` gives you `0.7.0`**, the current release.
 
-`main` is ahead of it: `0.7.0` (removes the `0.6.0` deprecations) and `1.0.0` (freezes the API) are merged and green but deliberately unreleased, so the `0.6.0` deprecation warnings get a real migration window rather than a token one. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
+`main` is ahead of it: `1.0.0` (freezes the API) is merged and green but deliberately unreleased, so 0.7.0 gets a real usage window before that promise takes effect. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
 
 Preprocessing and the core classifiers are Tier 1; grateful-patient featurization and `philanthropy.ingest` are Tier 2 (Beta); `FinancialForecastModel` and `philanthropy.experimental.*` are Tier 3 (Experimental) and carry no API guarantees. From `1.0.0`, Tier 1 becomes semver-protected: breaking one requires a major release preceded by a full published minor of `DeprecationWarning`. Per-symbol tiers are in the [API reference](docs/reference/index.md).
 
@@ -139,7 +139,9 @@ philanthropy score --data prospects.csv --model model.joblib --out scored.csv
 
 ### Your data never leaves your machine
 
-PhilanthroPy makes **no network calls**. There is no telemetry, no license check, no phone-home, and no third-party data append; the package imports no HTTP client at all, and `tests/test_no_network.py` enforces that in CI by making every socket raise. It models only what is already in your database. See **[Compliance considerations](docs/explanation/compliance_considerations.md)** and the **[security review Q&A](docs/explanation/security_review_answers.md)** for the questions an institutional review will ask.
+**PhilanthroPy never sends your data anywhere.** No telemetry, no usage analytics, no license check, no phone-home, no third-party data append. It models only what is already in your database.
+
+Nothing in the package downloads anything on its own either. No module imports a network client without being on an explicit allowlist, nothing is fetched at import time or during `fit`/`transform`, and `tests/test_no_network.py` enforces both halves in CI: it makes every socket raise across a full train/score cycle, and it parses every module in the package and fails the build if one imports a network-capable library off that allowlist. The allowlist currently names exactly one module: `philanthropy.datasets.fetch_kdd98_donors`, an opt-in function you call by name to fetch a public research dataset (KDD Cup 1998) to a local cache for validating the library against real donor data. It still never transmits any of *your* data; the only thing it fetches is a public file, once, and it is never called automatically. See **[Compliance considerations](docs/explanation/compliance_considerations.md)** and the **[security review Q&A](docs/explanation/security_review_answers.md)** for the questions an institutional review will ask.
 
 ---
 

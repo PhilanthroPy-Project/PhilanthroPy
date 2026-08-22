@@ -226,6 +226,9 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         """
         # Step 1: Load encounter data (snapshot it; never store raw_enc)
         if self.encounter_path is not None:
+            from ..utils._validation import ensure_local_path
+
+            ensure_local_path(self.encounter_path, "encounter_path")
             raw_enc = pd.read_parquet(self.encounter_path)
         elif self.encounter_df is not None:
             raw_enc = self.encounter_df.copy()  # critical: snapshot here

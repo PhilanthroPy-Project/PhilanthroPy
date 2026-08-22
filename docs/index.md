@@ -122,9 +122,9 @@ PhilanthroPy is a production-ready Python library that slots directly into `skle
 
 Get up and running in seconds:
 
-!!! info "Current release: 0.6.0"
-    `pip install philanthropy` gives you **0.6.0**. These docs are built from
-    `main`, which also carries the merged-but-unreleased 0.7.0 and 1.0.0 work.
+!!! info "Current release: 0.7.0"
+    `pip install philanthropy` gives you **0.7.0**. These docs are built from
+    `main`, which also carries the merged-but-unreleased 1.0.0 work.
     See [Deprecations](reference/index.md#deprecations) for the handful of
     differences that affect you today.
 

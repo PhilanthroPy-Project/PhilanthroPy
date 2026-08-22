@@ -1,18 +1,36 @@
-"""The package must never open a socket.
+"""The package must never send your data anywhere, and must never download
+anything behind your back.
 
-README.md and docs/explanation/security_review_answers.md both promise that
-PhilanthroPy makes no network calls: no telemetry, no license check, no
-third-party data append. That promise is the first question an institutional
-security review asks, so it is enforced here rather than merely documented.
+README.md, SECURITY.md and docs/explanation/security_review_answers.md all
+promise this, and it is the first question an institutional security review
+asks, so it is enforced here rather than merely documented.
 
-The guard poisons every socket entry point, then runs a full train/score cycle
-plus a CRM ingest. Any HTTP client, telemetry hook, or lazily downloaded asset
-added later fails this test instead of shipping.
+Two separate guarantees are enforced, because they fail in different ways:
+
+1. **Runtime.** ``no_network`` poisons every socket entry point, then runs a
+   full train/score cycle plus a CRM ingest. A telemetry hook or a lazily
+   downloaded asset on any of those paths fails immediately.
+2. **Import surface.** ``test_no_module_imports_a_network_client`` parses every
+   module in the package and fails if one imports a network-capable library
+   without being on ``_NETWORK_ALLOWED``. This is the guarantee the runtime
+   fixture cannot give: the fixture only covers the code paths its own tests
+   walk, so a downloader added to a module no test imports would slip through
+   and quietly falsify the README.
+
+``_NETWORK_ALLOWED`` names exactly one module today,
+``philanthropy.datasets._kdd98``, an opt-in fetcher for a public research
+dataset that a user calls by name; nothing else in this package downloads
+anything. The allowlist exists so that adding such a fetcher is a deliberate,
+reviewed, one-line act with a matching docs change, rather than an accident
+nobody notices.
 """
 
+import ast
+import pathlib
 import socket
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from philanthropy.datasets import generate_synthetic_donor_data
@@ -88,3 +106,135 @@ def test_the_guard_itself_actually_bites(no_network):
     """Guard against a silently ineffective fixture."""
     with pytest.raises(NetworkAccessAttempted):
         socket.socket()
+
+
+def test_encounter_path_rejects_remote_scheme(no_network):
+    """User-supplied paths are validated before any pandas read: remote
+    schemes must raise locally instead of reaching for the network."""
+    from philanthropy.preprocessing import (
+        EncounterTransformer,
+        GratefulPatientFeaturizer,
+    )
+
+    donor_frame = pd.DataFrame({"a": [1.0]})
+    for path in ("https://example.com/encounters.parquet", "s3://bucket/e.parquet"):
+        with pytest.raises(ValueError, match="must be a local file path"):
+            GratefulPatientFeaturizer(encounter_path=path).fit(donor_frame)
+
+        with pytest.raises(ValueError, match="must be a local file path"):
+            EncounterTransformer(encounter_path=path).fit(donor_frame)
+
+
+def test_cli_data_path_rejects_remote_scheme(no_network):
+    from philanthropy.cli import _read_csv
+
+    with pytest.raises(ValueError, match="must be a local file path"):
+        _read_csv("https://example.com/gifts.csv")
+
+    with pytest.raises(ValueError, match="must be a local file path"):
+        _read_csv("gs://bucket/prospects.csv")
+
+
+def test_local_paths_still_load_under_the_guard(no_network, tmp_path):
+    from philanthropy.cli import _read_csv
+
+    csv = tmp_path / "gifts.csv"
+    csv.write_text("a,b\n1,2\n")
+    df = _read_csv(str(csv))
+    assert list(df.columns) == ["a", "b"]
+
+
+def test_kdd98_fetcher_reads_a_cached_archive_without_touching_the_network(
+    no_network, tmp_path
+):
+    """download_if_missing=False must never reach for the socket the fixture
+    poisons, even indirectly through the zip/CSV read of a cache hit."""
+    import zipfile
+
+    from philanthropy.datasets import fetch_kdd98_donors
+
+    archive = tmp_path / "cup98lrn.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("cup98LRN.txt", "TARGET_B,TARGET_D\n0,0\n1,25\n")
+
+    df = fetch_kdd98_donors(data_home=str(tmp_path), download_if_missing=False)
+    assert list(df.columns) == ["TARGET_B", "TARGET_D"]
+
+
+# Importing any of these gives a module the ability to open a socket. Note that
+# `urllib.parse` is absent on purpose: it is pure string manipulation, and it is
+# what `philanthropy.utils._validation.ensure_local_path` uses to *reject*
+# remote paths.
+_NETWORK_MODULES = frozenset(
+    {
+        "aiohttp",
+        "ftplib",
+        "http.client",
+        "httpx",
+        "requests",
+        "smtplib",
+        "socket",
+        "socketserver",
+        "ssl",
+        "telnetlib",
+        "urllib.request",
+        "urllib3",
+        "xmlrpc.client",
+    }
+)
+
+# Package-relative paths permitted to import from _NETWORK_MODULES. Every entry
+# must be an explicitly documented, opt-in dataset fetcher that the user calls
+# on purpose, and must never run at import time or inside fit/transform.
+#
+# Adding an entry is a policy change, not just a code change: update the "does
+# the software send data anywhere?" answer in
+# docs/explanation/security_review_answers.md, plus README.md and SECURITY.md,
+# in the same pull request, or those three pages start lying.
+_NETWORK_ALLOWED = frozenset({"philanthropy/datasets/_kdd98.py"})
+
+
+def _imported_modules(path):
+    """Yield every module name `path` imports, as dotted strings."""
+    for node in ast.walk(ast.parse(path.read_text())):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                yield alias.name
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            yield node.module
+
+
+def test_no_module_imports_a_network_client():
+    """No module may import a network client unless it is allowlisted.
+
+    The runtime fixture only covers the paths its own tests walk. This covers
+    every module in the package, including ones no test imports, which is where
+    a lazily added downloader would otherwise hide.
+    """
+    package_root = pathlib.Path(__file__).resolve().parent.parent / "philanthropy"
+    assert package_root.is_dir(), package_root
+
+    offenders = {}
+    for module_path in sorted(package_root.rglob("*.py")):
+        relative = module_path.relative_to(package_root.parent).as_posix()
+        if relative in _NETWORK_ALLOWED:
+            continue
+        hits = sorted(set(_imported_modules(module_path)) & _NETWORK_MODULES)
+        if hits:
+            offenders[relative] = hits
+
+    assert not offenders, (
+        "These modules import a network client but are not in _NETWORK_ALLOWED:\n"
+        + "\n".join(f"  {name}: {', '.join(mods)}" for name, mods in offenders.items())
+        + "\n\nIf this is a deliberate, opt-in, user-invoked dataset fetcher, add "
+        "its path to _NETWORK_ALLOWED and update the no-network wording in "
+        "README.md, SECURITY.md and docs/explanation/security_review_answers.md "
+        "in the same pull request."
+    )
+
+
+def test_the_allowlist_only_names_modules_that_exist():
+    """A stale allowlist entry would hide a typo, or permit nothing at all."""
+    package_parent = pathlib.Path(__file__).resolve().parent.parent
+    missing = [n for n in _NETWORK_ALLOWED if not (package_parent / n).is_file()]
+    assert not missing, f"_NETWORK_ALLOWED names files that do not exist: {missing}"

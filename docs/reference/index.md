@@ -56,6 +56,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `civicrm_contributions_to_features`, `read_civicrm_contributions` | `ingest` | Tracks CiviCRM's contribution export labels and APIv4 field names, which move with the CRM. |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Chart composition is presentation, not contract. |
 | `fetch_kdd98_donors` | `datasets` | Returns the raw upstream columns untyped; may gain as-of date parsing as the real-data leakage replication in #124 lands. |
+| `GiftIntervalCalibrator`, `GiftInterval` | `models` | The conformity-score menu is expected to grow (conformalised quantile regression is not shipped), which adds `score` values rather than changing existing ones. |
 
 ### Tier 3: Experimental
 
@@ -82,6 +83,7 @@ Every domain method returns a number on its own scale. None of them are calibrat
 | `AskAmountRecommender.ask_ladder` | `(n, 3)` float | **Dollars**, not a score: conservative / target / stretch |
 | `MovesManagementClassifier.action_priority` | `dict` | Not an array: `stage`, `confidence` (0–1), `portfolio_summary` |
 | `FinancialForecastModel.predict_revenue_forecast` | `(horizon,)` float | **Dollars per future period**, length is `horizon`, not `len(X)` |
+| `GiftIntervalCalibrator.predict_gift_interval` | `GiftInterval` | Not a score: two `(n,)` dollar bounds, plus the `attained_level` they certify, which is `r / (n + 1)` and not the requested `1 - alpha` |
 
 ## Deprecations
 

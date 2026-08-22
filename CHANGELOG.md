@@ -11,6 +11,69 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   old location emits a `DeprecationWarning`; removed in 0.8.0. The gift-level
   generator now lives next to `generate_synthetic_donor_data`, which is the
   canonical datasets home. Closes #111.
+## [1.0.0] - TBD
+
+The API freeze. No code changes: 1.0.0 is a promise, not a feature.
+
+### Changed
+- `Development Status :: 5 - Production/Stable`.
+- **Tier 1 is now semver-protected.** A breaking change to any Tier 1 symbol
+  requires a major release, preceded by one full published minor emitting
+  `DeprecationWarning`. Tier 2 may still break in a minor; Tier 3 carries no
+  guarantee. The tiers are listed per-symbol in
+  [docs/reference/index.md](docs/reference/index.md).
+
+### Added
+- `test_stability_tier_table_covers_every_public_symbol`: the tier table is now
+  machine-checked against `__all__`, so a new public symbol cannot ship without
+  a stated tier. At 1.0 that table is the contract; an out-of-date one is a
+  broken promise, not a docs nit.
+
+### Notes
+The five 1.0 gates all hold at this commit: 0.7.0 published; the public-API
+contract test green with no exemption added since 0.7.0; no `deprecated_alias`
+anywhere in `philanthropy/`; `__version__ == importlib.metadata.version(...)`
+and `py.typed` in the wheel; every `__all__` symbol carries a tier and no Tier 1
+entry is mid-deprecation.
+
+## [0.7.0] - 2026-08-21
+
+The removal release, plus everything else merged since 0.6.0. Every shim
+under Breaking shipped in 0.6.0 emitting a `DeprecationWarning` for one full
+published minor; everything under Added, Changed and Deprecated below is new
+work that ships for the first time in this release.
+
+### Breaking
+- **Four deprecated method aliases removed.** Use the replacement in every case:
+
+  | Removed | Use instead |
+  |---|---|
+  | `AskAmountRecommender.predict_ask_array` | `ask_ladder` |
+  | `ShareOfWalletRegressor.predict_capacity_ratio` | `capacity_ratio` |
+  | `MovesManagementClassifier.predict_action_priority` | `action_priority` |
+  | `PlannedGivingIntentScorer.predict_bequest_intent_score` | `predict_intent_score` |
+
+- **Three dead constructor parameters removed.** Passing any of them is now a
+  `TypeError`: `LapsePredictor(lapse_window_years=...)` (the window is a
+  property of how you labelled `y`), `PropensityScorer(estimator=...)` (the
+  baseline is a constant 0.5), `FiscalYearGroupedSplitter(fiscal_year_start=...)`
+  (`groups` already carries fiscal-year labels).
+- **`donor_acquisition_cost`, `cost_per_dollar_raised` and `fundraising_roi` are
+  keyword-only.** They do not share an argument order:
+  `cost_per_dollar_raised` takes expense first, `fundraising_roi` takes raised
+  first, so a positional call was silently accepted and returned a plausible
+  wrong number. It is now a `TypeError`.
+- **Four accidental second import paths moved behind underscores** so 1.0 does
+  not freeze them: `metrics.scoring` → `metrics._scoring`,
+  `preprocessing.transformers` → `preprocessing._transformers`,
+  `models.propensity` → `models._propensity_baseline`, `utils.testing` →
+  `utils._testing`. Every public symbol is unchanged and still exported from its
+  subpackage; only a direct `from philanthropy.metrics.scoring import ...`
+  breaks. Import from the subpackage instead.
+- `philanthropy/utils/_deprecation.py` is gone. `tests/test_deprecations.py`,
+  which existed solely to police the shims removed above, went with it, then
+  came back later in this same release to police a new one; see Deprecated
+  below.
 
 ### Changed
 - `GratefulPatientFeaturizer`, `EncounterTransformer` and the `philanthropy`
@@ -45,8 +108,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   synthetic), and a random `StratifiedKFold` split overstates the true future
   by +0.107 AUC (versus 0.014-0.030 synthetic). Documented in
   `docs/explanation/benchmarks.md` and in `paper.md`'s Statement of need and
-  Research impact statement. Closes the research-impact half of #124; the
-  Zenodo deposit of the script outputs is still pending.
+  Research impact statement. The script outputs and environment lock are
+  archived on Zenodo (DOI [10.5281/zenodo.22050649](https://doi.org/10.5281/zenodo.22050649)).
+  Closes #124.
 
 ### Deprecated
 - `WealthScreeningImputerKNN(group_col_idx=...)` is **deprecated** and will be
@@ -599,68 +663,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   Recency is anchored to `reference_date` or the batch's latest gift, never a
   moving "now", the same leakage contract as the UniSchema bridge. See
   [docs/how-to/ingest_civicrm_contributions.md](docs/how-to/ingest_civicrm_contributions.md).
-
-## [1.0.0] - TBD
-
-The API freeze. No code changes: 1.0.0 is a promise, not a feature.
-
-### Changed
-- `Development Status :: 5 - Production/Stable`.
-- **Tier 1 is now semver-protected.** A breaking change to any Tier 1 symbol
-  requires a major release, preceded by one full published minor emitting
-  `DeprecationWarning`. Tier 2 may still break in a minor; Tier 3 carries no
-  guarantee. The tiers are listed per-symbol in
-  [docs/reference/index.md](docs/reference/index.md).
-
-### Added
-- `test_stability_tier_table_covers_every_public_symbol`: the tier table is now
-  machine-checked against `__all__`, so a new public symbol cannot ship without
-  a stated tier. At 1.0 that table is the contract; an out-of-date one is a
-  broken promise, not a docs nit.
-
-### Notes
-The five 1.0 gates all hold at this commit: 0.7.0 published; the public-API
-contract test green with no exemption added since 0.7.0; no `deprecated_alias`
-anywhere in `philanthropy/`; `__version__ == importlib.metadata.version(...)`
-and `py.typed` in the wheel; every `__all__` symbol carries a tier and no Tier 1
-entry is mid-deprecation.
-
-## [0.7.0] - TBD
-
-The removal release. Every shim below shipped in 0.6.0 emitting a
-`DeprecationWarning` for one full published minor.
-
-### Breaking
-- **Four deprecated method aliases removed.** Use the replacement in every case:
-
-  | Removed | Use instead |
-  |---|---|
-  | `AskAmountRecommender.predict_ask_array` | `ask_ladder` |
-  | `ShareOfWalletRegressor.predict_capacity_ratio` | `capacity_ratio` |
-  | `MovesManagementClassifier.predict_action_priority` | `action_priority` |
-  | `PlannedGivingIntentScorer.predict_bequest_intent_score` | `predict_intent_score` |
-
-- **Three dead constructor parameters removed.** Passing any of them is now a
-  `TypeError`: `LapsePredictor(lapse_window_years=...)` (the window is a
-  property of how you labelled `y`), `PropensityScorer(estimator=...)` (the
-  baseline is a constant 0.5), `FiscalYearGroupedSplitter(fiscal_year_start=...)`
-  (`groups` already carries fiscal-year labels).
-- **`donor_acquisition_cost`, `cost_per_dollar_raised` and `fundraising_roi` are
-  keyword-only.** They do not share an argument order:
-  `cost_per_dollar_raised` takes expense first, `fundraising_roi` takes raised
-  first, so a positional call was silently accepted and returned a plausible
-  wrong number. It is now a `TypeError`.
-- **Four accidental second import paths moved behind underscores** so 1.0 does
-  not freeze them: `metrics.scoring` → `metrics._scoring`,
-  `preprocessing.transformers` → `preprocessing._transformers`,
-  `models.propensity` → `models._propensity_baseline`, `utils.testing` →
-  `utils._testing`. Every public symbol is unchanged and still exported from its
-  subpackage; only a direct `from philanthropy.metrics.scoring import ...`
-  breaks. Import from the subpackage instead.
-- `philanthropy/utils/_deprecation.py` is gone: nothing is deprecated at 0.7.0.
-
-### Removed
-- `tests/test_deprecations.py`, which existed solely to police the shims.
 
 ## [0.6.0] - 2026-08-01
 

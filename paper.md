@@ -169,11 +169,13 @@ PhilanthroPy is not yet in documented use at a third-party institution, and
 this paper does not claim otherwise. What exists today is the software, a
 reproducible leakage experiment whose result is reported above and now
 replicated on real donor data (KDD Cup 1998 [@kddcup1998]) rather than only on
-a synthetic generator, a benchmark page that states its own synthetic-data
-limitations and the Bayes-optimal ceiling of its generator, an archived
-release on Zenodo, and eleven merged pull requests from four contributors
-external to the project. The author's prior conference paper on predictive
-donor analytics [@lalakiya2025] is related work by the same author on
+a synthetic generator, with its script output and environment archived
+separately on Zenodo with its own DOI [@kddcup1998replicationzenodo], a
+benchmark page that states its own synthetic-data limitations and the
+Bayes-optimal ceiling of its generator, an archived release on Zenodo, and
+eleven merged pull requests from four contributors external to the project.
+The author's prior conference paper on predictive donor analytics
+[@lalakiya2025] is related work by the same author on
 different data, not an independent evaluation of this software.
 
 The intended research audience is twofold: advancement-analytics practitioners

@@ -86,20 +86,42 @@ Every domain method returns a number on its own scale. None of them are calibrat
 ## Deprecations
 
 !!! info "This page is built from `main`, which is ahead of the release"
-    `pip install philanthropy` currently gives you **0.6.0**. The tier tables
+    `pip install philanthropy` currently gives you **0.7.0**. The tier tables
     above describe the API as it stands on `main`; the deprecations below are
     live in the version you actually have installed.
 
-### Live in 0.6.0, removed in 0.7.0
+### Removed in 0.7.0
 
-These still work and emit `DeprecationWarning`. Migrate before upgrading.
+If you are upgrading from 0.6.0, these are gone, each after one full published
+minor of `DeprecationWarning`:
 
-| Deprecated | Use instead |
+| Removed | Use instead |
 |---|---|
 | `AskAmountRecommender.predict_ask_array` | `ask_ladder` |
 | `ShareOfWalletRegressor.predict_capacity_ratio` | `capacity_ratio` |
 | `MovesManagementClassifier.predict_action_priority` | `action_priority` |
 | `PlannedGivingIntentScorer.predict_bequest_intent_score` | `predict_intent_score` |
+
+The `predict_` prefix is reserved for methods that take `X` alone and return one
+value per row. The first three returned a `(n, 3)` dollar matrix, required a
+second argument, and returned a dict respectively.
+
+Three constructor parameters that had no effect are gone too; passing any of
+them is now a `TypeError`: `LapsePredictor(lapse_window_years=...)`,
+`PropensityScorer(estimator=...)`, `FiscalYearGroupedSplitter(fiscal_year_start=...)`.
+
+`donor_acquisition_cost`, `cost_per_dollar_raised` and `fundraising_roi` are now
+**keyword-only**: they do not share an argument order, so a positional call was
+silently accepted and returned a plausible wrong number. Write them with
+keywords and the upgrade is a no-op.
+
+Four accidental second import paths moved behind underscores, so 1.0 does not
+freeze them: `metrics.scoring` → `metrics._scoring`,
+`preprocessing.transformers` → `preprocessing._transformers`,
+`models.propensity` → `models._propensity_baseline`, `utils.testing` →
+`utils._testing`. Every public symbol they export is unchanged; import from the
+subpackage (`from philanthropy.metrics import ...`), as the documented examples
+always have, and nothing breaks.
 
 ### Live in 0.7.0, removed in 0.8.0
 
@@ -119,29 +141,3 @@ barely registers.
 
 If you need per-group behaviour, split the frame by group and fit one imputer per
 part. That is explicit, and it costs nothing that the parameter was buying.
-
-The `predict_` prefix is reserved for methods that take `X` alone and return one
-value per row. The first three returned a `(n, 3)` dollar matrix, required a
-second argument, and returned a dict respectively.
-
-Three constructor parameters have no effect and warn when set to a non-default
-value: `LapsePredictor(lapse_window_years=...)`,
-`PropensityScorer(estimator=...)`,
-`FiscalYearGroupedSplitter(fiscal_year_start=...)`. All three are removed in
-0.7.0.
-
-### Already merged for 0.7.0
-
-Beyond removing everything above, 0.7.0 makes `donor_acquisition_cost`,
-`cost_per_dollar_raised` and `fundraising_roi` **keyword-only**: they do not
-share an argument order, so a positional call was silently accepted and returned
-a plausible wrong number. Write them with keywords today and the upgrade is a
-no-op.
-
-It also moves four accidental second import paths behind underscores, so 1.0
-does not freeze them: `metrics.scoring` → `metrics._scoring`,
-`preprocessing.transformers` → `preprocessing._transformers`,
-`models.propensity` → `models._propensity_baseline`, `utils.testing` →
-`utils._testing`. Every public symbol they export is unchanged; import from the
-subpackage (`from philanthropy.metrics import ...`), as the documented examples
-always have, and nothing breaks.

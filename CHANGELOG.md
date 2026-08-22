@@ -58,6 +58,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   old location emits a `DeprecationWarning`; removed in 0.8.0. The gift-level
   generator now lives next to `generate_synthetic_donor_data`, which is the
   canonical datasets home. Closes #111.
+
 ## [1.0.0] - TBD
 
 The API freeze. No code changes: 1.0.0 is a promise, not a feature.

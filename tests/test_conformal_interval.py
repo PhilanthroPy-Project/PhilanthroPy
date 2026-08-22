@@ -689,6 +689,20 @@ def test_interval_report_median_and_trimmed_mean_resist_one_row():
     assert np.isnan(report.median_bound_ratio)  # every lower bound is zero
 
 
+def test_width_ratio_when_the_median_gift_is_zero():
+    # A segment of declined asks has a median target of 0, and the ratio is
+    # undefined rather than enormous. Failing input: median_target == 0, which
+    # divides. Coverage counts the ternary as one line, so this branch needs its
+    # own test to be exercised at all.
+    y = np.zeros(4)
+    wide = interval_report(y, np.zeros(4), np.full(4, 500.0), alpha=0.05)
+    assert wide.median_target == 0.0
+    assert wide.width_ratio == np.inf
+    exact = interval_report(y, np.zeros(4), np.zeros(4), alpha=0.05)
+    assert np.isnan(exact.width_ratio)
+    assert exact.coverage == 1.0
+
+
 def test_interval_report_trim_bounds_are_checked():
     y, lower, upper = np.arange(1.0, 11.0), np.zeros(10), np.full(10, 20.0)
     assert interval_report(y, lower, upper, trim=0.0).score_trimmed_mean == 20.0

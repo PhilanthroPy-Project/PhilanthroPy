@@ -565,7 +565,7 @@ def _donor_panel():
 
     rows = []
     for donor in range(80):
-        for fy, n in ((2019, 6), (2020, 1), (2021, 1)):
+        for fy, n in ((2019, 10), (2020, 1), (2021, 1)):
             rows.extend((donor, fy) for _ in range(n))
     for donor in range(80, 120):
         rows.extend((donor, 2021) for _ in range(2))
@@ -594,8 +594,14 @@ def test_row_split_flatters_conformal_coverage_and_a_donor_split_does_not():
 
     ``FiscalYearGroupedSplitter(drop_repeat_donors=True)`` is what separates the
     two folds. The failing input for anyone tempted to split by row instead: the
-    shared-donor coverage below, which clears the requested level while the
-    honest number is far under it.
+    shared-donor coverage below sits near the attained level while the honest
+    number is a third of it.
+
+    The assertions are on the *gap*, not on the shared-donor fold clearing the
+    attained level. That fold has no guarantee to clear: exchangeability is
+    exactly what the leak breaks, so its coverage is an artefact and drifts with
+    the boosting fit (0.96 locally, 0.93 on another sklearn build). The gap is
+    the finding and it is stable.
     """
     from sklearn.ensemble import HistGradientBoostingRegressor
 
@@ -648,9 +654,11 @@ def test_row_split_flatters_conformal_coverage_and_a_donor_split_does_not():
     shared = coverage(shared_donor_idx)
     new = coverage(new_donor_idx)
 
-    assert shared > calibrator.attained_level_, (shared, new)
+    # Measured: shared 0.96, new 0.35, against an attained level of 0.9506.
     assert new < 0.6, (shared, new)
-    assert shared - new > 0.3, (shared, new)
+    assert shared > 0.85, (shared, new)
+    assert shared - new > 0.35, (shared, new)
+    assert new < calibrator.attained_level_ - 0.3, (new, calibrator.attained_level_)
 
 
 # ---------------------------------------------------------------------------

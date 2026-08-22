@@ -244,20 +244,36 @@ def test_calibration_targets_below_the_bound_are_refused():
 # ---------------------------------------------------------------------------
 
 
-def _segmented_panel(n_per=400, seed=0):
+_SEGMENTS = {
+    # Row counts deliberately imbalanced, the way a real file is: most rows are
+    # annual donors, so a pooled calibration set is theirs whether anyone
+    # intended that or not.
+    "annual": (1_500, 400.0),
+    "leadership": (300, 6_000.0),
+    "principal": (200, 60_000.0),
+}
+_N_TRAIN, _N_CAL = 800, 400
+
+
+def _segmented_panel(seed=0):
     """Three segments sharing a trend and differing in residual scale."""
     rng = np.random.default_rng(seed)
-    scales = {"annual": 400.0, "leadership": 6_000.0, "principal": 60_000.0}
     frames = []
-    for name, scale in scales.items():
-        X = rng.uniform(0.0, 1.0, (n_per, 3))
-        y = 40_000.0 + 60_000.0 * X[:, 0] + rng.normal(0.0, scale, n_per)
-        frames.append((X, np.maximum(y, 0.0), np.full(n_per, name)))
+    for name, (n_rows, scale) in _SEGMENTS.items():
+        X = rng.uniform(0.0, 1.0, (n_rows, 3))
+        y = 40_000.0 + 60_000.0 * X[:, 0] + rng.normal(0.0, scale, n_rows)
+        frames.append((X, np.maximum(y, 0.0), np.full(n_rows, name)))
     X = np.vstack([f[0] for f in frames])
     y = np.concatenate([f[1] for f in frames])
     seg = np.concatenate([f[2] for f in frames])
     order = rng.permutation(len(y))
     return X[order], y[order], seg[order]
+
+
+def _split():
+    """``(train, calibration, test)`` slices of the segmented panel."""
+    cal_end = _N_TRAIN + _N_CAL
+    return slice(0, _N_TRAIN), slice(_N_TRAIN, cal_end), slice(cal_end, None)
 
 
 def test_segment_calibration_covers_the_segment_pooling_starves():
@@ -267,9 +283,10 @@ def test_segment_calibration_covers_the_segment_pooling_starves():
     # 100 rows drawn from the base and reading the marginal coverage as if it
     # applied per segment.
     X, y, seg = _segmented_panel()
-    model = _fitted(X, y, n_train=600)
-    X_cal, y_cal, seg_cal = X[600:900], y[600:900], seg[600:900]
-    X_test, y_test, seg_test = X[900:], y[900:], seg[900:]
+    train, cal, test = _split()
+    model = _fitted(X, y, n_train=_N_TRAIN)
+    X_cal, y_cal, seg_cal = X[cal], y[cal], seg[cal]
+    X_test, y_test, seg_test = X[test], y[test], seg[test]
 
     pooled = GiftIntervalCalibrator(model, alpha=0.05).fit(X_cal, y_cal)
     grouped = GiftIntervalCalibrator(model, alpha=0.05).fit(
@@ -292,25 +309,32 @@ def test_segment_calibration_covers_the_segment_pooling_starves():
         grouped.predict_gift_interval(X_test, groups=seg_test)
     )
 
-    assert min(pooled_cov.values()) < 0.90, pooled_cov
-    assert min(grouped_cov.values()) > min(pooled_cov.values()), (
+    # Measured: principal covers at 0.41 pooled against 0.95 grouped, while the
+    # marginal number over all three segments clears 0.95 either way.
+    assert min(pooled_cov.values()) < 0.80, pooled_cov
+    # 0.88 rather than 0.90: the worst segment has 68 test rows, so one row is
+    # 0.015 of the estimate and the bound has to leave room for sampling noise
+    # rather than tracking the measured 0.953 exactly.
+    assert min(grouped_cov.values()) > 0.88, grouped_cov
+    assert min(grouped_cov.values()) > min(pooled_cov.values()) + 0.3, (
         pooled_cov,
         grouped_cov,
     )
-    assert min(grouped_cov.values()) > 0.90, grouped_cov
 
     # And the segment that pooling over-served gets a narrower interval, not
-    # merely a differently-wrong one.
+    # merely a differently-wrong one: measured $3.1k grouped against $78k
+    # pooled.
     pooled_iv = pooled.predict_gift_interval(X_test)
     grouped_iv = grouped.predict_gift_interval(X_test, groups=seg_test)
     annual = seg_test == "annual"
-    assert np.median(
-        (grouped_iv.upper - grouped_iv.lower)[annual]
-    ) < np.median((pooled_iv.upper - pooled_iv.lower)[annual])
+    pooled_width = float(np.median((pooled_iv.upper - pooled_iv.lower)[annual]))
+    grouped_width = float(np.median((grouped_iv.upper - grouped_iv.lower)[annual]))
+    assert grouped_width < 0.5 * pooled_width, (grouped_width, pooled_width)
 
     # Each segment is calibrated on its own rows, so the ranks differ.
-    assert set(grouped.n_calibration_) == {"annual", "leadership", "principal"}
+    assert set(grouped.n_calibration_) == set(_SEGMENTS)
     assert sum(grouped.n_calibration_.values()) == len(y_cal)
+    assert len(set(grouped.rank_.values())) > 1, grouped.rank_
 
 
 def test_more_pooled_rows_do_not_close_the_gap():
@@ -318,13 +342,14 @@ def test_more_pooled_rows_do_not_close_the_gap():
     # tripling the pooled calibration set, which leaves the worst segment where
     # it was.
     X, y, seg = _segmented_panel()
-    model = _fitted(X, y, n_train=600)
-    X_test, y_test, seg_test = X[900:], y[900:], seg[900:]
+    _, _, test = _split()
+    model = _fitted(X, y, n_train=_N_TRAIN)
+    X_test, y_test, seg_test = X[test], y[test], seg[test]
 
     worst = []
-    for n_cal in (100, 300):
+    for n_cal in (100, 400, 1_200):
         cal = GiftIntervalCalibrator(model, alpha=0.05).fit(
-            X[600:600 + n_cal], y[600:600 + n_cal]
+            X[_N_TRAIN:_N_TRAIN + n_cal], y[_N_TRAIN:_N_TRAIN + n_cal]
         )
         interval = cal.predict_gift_interval(X_test)
         worst.append(
@@ -338,7 +363,9 @@ def test_more_pooled_rows_do_not_close_the_gap():
                 for name in np.unique(seg_test)
             )
         )
-    assert max(worst) < 0.90, worst
+    # Measured 0.15 at 100 rows and 0.41 at 400; twelve times the data does not
+    # reach the level, because the shortfall is not a sample-size problem.
+    assert max(worst) < 0.80, worst
 
 
 def test_group_below_the_floor_is_refused_not_pooled():
@@ -346,11 +373,12 @@ def test_group_below_the_floor_is_refused_not_pooled():
     # implementation would silently calibrate at another segment's capacity
     # level.
     X, y, seg = _segmented_panel()
-    model = _fitted(X, y, n_train=600)
+    _, cal, _ = _split()
+    model = _fitted(X, y, n_train=_N_TRAIN)
     idx = np.concatenate([
-        np.where(seg[600:900] == "annual")[0][:60],
-        np.where(seg[600:900] == "principal")[0][:5],
-    ]) + 600
+        np.where(seg[cal] == "annual")[0][:60],
+        np.where(seg[cal] == "principal")[0][:5],
+    ]) + _N_TRAIN
     with pytest.raises(ValueError) as excinfo:
         GiftIntervalCalibrator(model, alpha=0.05).fit(
             X[idx], y[idx], groups=seg[idx]
@@ -365,13 +393,14 @@ def test_unseen_group_at_predict_is_refused():
     # Failing input: a segment that had no calibration rows. Borrowing another
     # segment's quantile is exactly the pooling groups= exists to prevent.
     X, y, seg = _segmented_panel()
-    model = _fitted(X, y, n_train=600)
-    keep = seg[600:900] != "principal"
+    _, cal_s, test_s = _split()
+    model = _fitted(X, y, n_train=_N_TRAIN)
+    keep = seg[cal_s] != "principal"
     cal = GiftIntervalCalibrator(model, alpha=0.05).fit(
-        X[600:900][keep], y[600:900][keep], groups=seg[600:900][keep]
+        X[cal_s][keep], y[cal_s][keep], groups=seg[cal_s][keep]
     )
     with pytest.raises(ValueError, match="no calibration rows for group"):
-        cal.predict_gift_interval(X[900:], groups=seg[900:])
+        cal.predict_gift_interval(X[test_s], groups=seg[test_s])
 
 
 def test_groups_must_be_supplied_consistently():
@@ -380,22 +409,24 @@ def test_groups_must_be_supplied_consistently():
         cal.predict_gift_interval(X_test, groups=np.zeros(len(X_test)))
 
     X, y, seg = _segmented_panel()
-    model = _fitted(X, y, n_train=600)
+    _, cal_s, test_s = _split()
+    model = _fitted(X, y, n_train=_N_TRAIN)
     grouped = GiftIntervalCalibrator(model, alpha=0.05).fit(
-        X[600:900], y[600:900], groups=seg[600:900]
+        X[cal_s], y[cal_s], groups=seg[cal_s]
     )
     with pytest.raises(ValueError, match="fitted with groups"):
-        grouped.predict_gift_interval(X[900:])
+        grouped.predict_gift_interval(X[test_s])
 
 
 def test_groups_length_and_shape_are_checked():
     X, y, seg = _segmented_panel()
-    model = _fitted(X, y, n_train=600)
+    _, cal_s, _ = _split()
+    model = _fitted(X, y, n_train=_N_TRAIN)
     cal = GiftIntervalCalibrator(model, alpha=0.05)
     with pytest.raises(ValueError, match="label"):
-        cal.fit(X[600:900], y[600:900], groups=seg[600:899])
+        cal.fit(X[cal_s], y[cal_s], groups=seg[cal_s][:-1])
     with pytest.raises(ValueError, match="one-dimensional"):
-        cal.fit(X[600:900], y[600:900], groups=seg[600:900].reshape(-1, 1))
+        cal.fit(X[cal_s], y[cal_s], groups=seg[cal_s].reshape(-1, 1))
 
 
 def test_donor_ids_passed_as_groups_are_refused():

@@ -27,6 +27,7 @@ from philanthropy.models import (
     AskAmountRecommender,
     DonorPropensityModel,
     FinancialForecastModel,
+    GiftIntervalCalibrator,
     LapsePredictor,
     MajorGiftClassifier,
     MovesManagementClassifier,
@@ -202,6 +203,15 @@ _MANUALLY_COVERED = {
     GratefulPatientFeaturizer: (
         "Constructor requires encounter_df, so it cannot be instantiated "
         "bare; see TestGratefulPatientFeaturizerCompliance above."
+    ),
+    GiftIntervalCalibrator: (
+        "The battery clones with default params and calls fit(X, y), which a "
+        "prefit calibrator cannot satisfy: its estimator has to be fitted "
+        "already, and fitting it on the rows passed to fit would make every "
+        "conformity score in-sample and void the coverage guarantee. The "
+        "alternative, a parameter that carves training rows out of the "
+        "calibration set, lets the battery pick the statistics. See "
+        "tests/test_conformal_interval.py."
     ),
 }
 

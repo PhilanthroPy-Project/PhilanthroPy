@@ -20,8 +20,10 @@ passes `sklearn.utils.estimator_checks.check_estimator`.
 - Declare `__sklearn_tags__` when relevant (e.g. `tags.input_tags.allow_nan =
   True`, `tags.regressor_tags.poor_score = True`).
 - Name the domain scoring/forecast method `predict_<thing>_score` /
-  `predict_<thing>_forecast` (cf. `predict_affinity_score`,
-  `predict_lapse_score`, `predict_revenue_forecast`).
+  `predict_<thing>_forecast` / `predict_<thing>_interval` (cf.
+  `predict_affinity_score`, `predict_lapse_score`, `predict_revenue_forecast`,
+  `predict_gift_interval`). `tests/test_public_api_contract.py` enforces the
+  three suffixes; anything else keeping the `predict_` prefix fails.
 - Expose `n_iter_` after fit if the class takes a `max_iter` param
   (`check_estimator` requires it).
 

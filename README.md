@@ -279,6 +279,14 @@ stated instead. This follows the
 
 ---
 
+## Using from R (reticulate)
+
+```r
+library(reticulate)
+datasets <- import("philanthropy.datasets")
+df <- datasets$generate_synthetic_donor_data(n_samples = 500L)
+```
+
 ## Contributing
 
 Contributions are welcome, and a first PR does not need to be big: docs fixes,

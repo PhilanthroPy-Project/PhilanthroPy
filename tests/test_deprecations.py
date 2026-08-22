@@ -12,7 +12,7 @@ import warnings
 import numpy as np
 import pytest
 
-from philanthropy import preprocessing
+from philanthropy import preprocessing, utils
 from philanthropy.preprocessing import WealthScreeningImputerKNN
 
 # (id, removed_in, callable that should emit exactly one DeprecationWarning)
@@ -23,6 +23,11 @@ DEPRECATIONS = [
         lambda: WealthScreeningImputerKNN(
             strategy="knn", n_neighbors=3, add_indicator=False, group_col_idx=1
         ).fit(_two_group_X()),
+    ),
+    (
+        "utils.make_donor_dataset",
+        "0.8.0",
+        lambda: utils.make_donor_dataset(n_donors=5, random_state=0),
     ),
     (
         "preprocessing.SolicitationWindowTransformer",

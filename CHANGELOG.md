@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- `CRMCleaner.transform` no longer silently corrupts complex amounts into
+  wrong finite floats: cells holding actual `complex` values are masked to
+  NaN with a `UserWarning` naming them, and a column where nothing parses
+  (all-complex included) still raises `could not parse` per the documented
+  contract. Closes #129.
+
 ## [1.0.0] - TBD
 
 The API freeze. No code changes: 1.0.0 is a promise, not a feature.

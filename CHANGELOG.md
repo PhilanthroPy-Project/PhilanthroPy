@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added
+- `credit-guard` CI job: pull requests touching `philanthropy/` must also
+  update this changelog, and the author must be credited in
+  CONTRIBUTORS.md. Implemented as `scripts/check_credit.sh`, wired into
+  `ci.yml` on `pull_request` events only; failures surface as inline
+  `::error::` annotations on the Files tab. Closes #113.
+
 ### Deprecated
 - `philanthropy.utils.make_donor_dataset` moves to
   [`philanthropy.datasets.make_donor_dataset`](philanthropy/datasets/) and the

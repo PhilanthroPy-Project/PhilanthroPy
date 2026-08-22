@@ -15,6 +15,19 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  credit-guard:
+    name: Changelog and contributor credit (issue #113)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check CHANGELOG.md and CONTRIBUTORS.md updates
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash scripts/check_credit.sh "$BASE_SHA" "$HEAD_SHA" "$PR_AUTHOR"
   lint:
     name: Lint and type check
     runs-on: ubuntu-latest

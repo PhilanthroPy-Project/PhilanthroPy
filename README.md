@@ -123,6 +123,30 @@ the threshold from your team's capacity, not from this table.
   <em>Output of <code>plot_affinity_distribution()</code>: the 0-100 affinity scores separate the two groups on average, with tails that overlap. Ranking works; a single clean cut point does not exist.</em>
 </p>
 
+### Using PhilanthroPy from R
+
+Advancement analytics has been an R-first field for years, so PhilanthroPy
+also works from R through [`reticulate`](https://rstudio.github.io/reticulate/):
+
+```r
+library(reticulate)
+datasets <- import("philanthropy.datasets")
+models   <- import("philanthropy.models")
+
+df <- datasets$generate_synthetic_donor_data(n_samples = 1000L, random_state = 0L)
+X  <- as.matrix(df[c("total_gift_amount", "years_active", "event_attendance_count")])
+y  <- df$is_major_donor
+
+model  <- models$DonorPropensityModel(n_estimators = 100L, random_state = 0L)
+model$fit(X, y)
+scores <- model$predict_affinity_score(X)   # 0-100 affinity scores
+```
+
+> **Note the `L` suffixes.** `reticulate` passes bare R numerics as doubles,
+> and scikit-learn rejects floats wherever an integer is expected
+> (`n_samples`, `random_state`, ...). Write `1000L`, not `1000`, or the call
+> dies inside sklearn's parameter validation with a confusing type error.
+
 ### No Python? Use the CLI
 
 `pip install philanthropy` also puts a `philanthropy` command on your PATH. CSV in, scored CSV out, no Python file to write.

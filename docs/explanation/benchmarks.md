@@ -4,16 +4,18 @@ Every model here ships with a reproducible benchmark number. This page shows you
 those numbers, and why you should **not** trust them for your own program until
 you re-validate on your own data.
 
-!!! warning "These numbers are synthetic"
+!!! warning "The model-benchmark numbers below are synthetic"
     The table below is measured on `generate_synthetic_donor_data`, a
     reproducible but **artificial** donor pool. It says nothing about how a model
     will perform on your CRM. **Re-run the evaluation on your own labelled giving
     history before trusting any score in production.**
 
-    There is no validation on real donor data anywhere in this repository. The
-    one real dataset that ships, `load_ciob_fundraising`, has no donor rows, no
-    gift amounts and no labels, and no estimator is ever fitted on it. Every
-    number on this page, in the README, and in the paper is synthetic.
+    The leakage experiment further down this page is different: it is also run
+    on a real donor file, [KDD Cup 1998](https://kdd.ics.uci.edu/databases/kddcup98/kddcup98.html),
+    via `scripts/real_data_leakage_experiment.py`. No estimator's *accuracy*
+    numbers above are validated on real data; the *leakage mechanism* now is.
+    The one other real dataset that ships, `load_ciob_fundraising`, has no
+    donor rows, no gift amounts and no labels, and no estimator is fitted on it.
 
 ## What was wrong with these numbers before 0.7.0, and what fixed it
 
@@ -174,6 +176,63 @@ worth 0.126, roughly eight times more.
 These are synthetic numbers on a generator whose persistence and drift I chose.
 They establish the mechanism and its rough magnitude, not a value to quote for
 your program.
+
+## Real-data replication: KDD Cup 1998
+
+The two experiments above were re-run, unchanged in structure, on a real donor
+file: [KDD Cup 1998](https://kdd.ics.uci.edu/databases/kddcup98/kddcup98.html),
+95,412 donors with a 24-mailing direct-mail history, reshaped into a
+22-period donor-period panel (`philanthropy.datasets.fetch_kdd98_donors`).
+Label: did the donor give at the following mailing; the final period's label
+is the dataset's own held-out target. Five seeds, mean with min-max.
+
+```bash
+python scripts/real_data_leakage_experiment.py
+```
+
+**Prediction, recorded in the script before it was run:** real leakage would
+be *smaller* than the synthetic figures below, because real giving habits
+persist without the synthetic generator's manufactured drift working against
+them. **That prediction was wrong**, in the direction that strengthens this
+library's argument rather than weakening it:
+
+| Evaluation | ROC-AUC | Error vs the true future |
+|---|---:|---:|
+| True future, final period genuinely held out | 0.541 | |
+| Walk-forward `FiscalYearGroupedSplitter` | 0.482 | **-0.059** |
+| Random `StratifiedKFold` | 0.648 | **+0.107** |
+
+| Walk-forward CV, features built... | ROC-AUC |
+|---|---:|
+| as of each period | 0.482 |
+| over the whole file, including future periods | 0.858 |
+| | **+0.376 AUC of pure inflation** |
+
+Whole-history feature construction inflates real-data ROC-AUC by **+0.376
+AUC**, roughly three times the synthetic **+0.126**. A real donor's lifetime
+total repeats identically across all 22 of their period-rows, which is a
+stronger, more identity-revealing signal for a leaky feature to exploit than
+the synthetic panel's softer persistence. Splitter choice also matters more
+here than in the synthetic run: random `StratifiedKFold` overstates the true
+future by **+0.107 AUC**, an order of magnitude past the synthetic 0.014-0.030,
+reversing the direction the synthetic run found (there, random split *understated*
+the future).
+
+One more honest discrepancy, reported rather than smoothed: walk-forward CV
+(0.482) undershoots the true-future baseline (0.541) here, where in the
+synthetic run it slightly overshot. Real promotion response rates swing
+sharply by campaign type (8%-22% across the historical mailings) rather than
+drifting smoothly the way the synthetic generator's drift term does, so the
+three most-recent periods walk-forward evaluates on are not uniformly easier
+or harder than the single held-out final period. That is a property of this
+donor file, not a bug in the splitter.
+
+These numbers, unlike the ones above, are on real donor data. They still
+establish a mechanism and its magnitude on one real file, not a value to
+quote for your program.
+
+The script's output and environment lock are archived separately on Zenodo:
+[10.5281/zenodo.22050649](https://doi.org/10.5281/zenodo.22050649).
 
 ## Validating on your own data
 

@@ -17,10 +17,12 @@ Two separate guarantees are enforced, because they fail in different ways:
    walk, so a downloader added to a module no test imports would slip through
    and quietly falsify the README.
 
-``_NETWORK_ALLOWED`` is empty today, because nothing in this package downloads
-anything. It exists so that adding a public dataset fetcher later is a
-deliberate, reviewed, one-line act with a matching docs change, rather than an
-accident nobody notices.
+``_NETWORK_ALLOWED`` names exactly one module today,
+``philanthropy.datasets._kdd98``, an opt-in fetcher for a public research
+dataset that a user calls by name; nothing else in this package downloads
+anything. The allowlist exists so that adding such a fetcher is a deliberate,
+reviewed, one-line act with a matching docs change, rather than an accident
+nobody notices.
 """
 
 import ast
@@ -142,6 +144,23 @@ def test_local_paths_still_load_under_the_guard(no_network, tmp_path):
     assert list(df.columns) == ["a", "b"]
 
 
+def test_kdd98_fetcher_reads_a_cached_archive_without_touching_the_network(
+    no_network, tmp_path
+):
+    """download_if_missing=False must never reach for the socket the fixture
+    poisons, even indirectly through the zip/CSV read of a cache hit."""
+    import zipfile
+
+    from philanthropy.datasets import fetch_kdd98_donors
+
+    archive = tmp_path / "cup98lrn.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("cup98LRN.txt", "TARGET_B,TARGET_D\n0,0\n1,25\n")
+
+    df = fetch_kdd98_donors(data_home=str(tmp_path), download_if_missing=False)
+    assert list(df.columns) == ["TARGET_B", "TARGET_D"]
+
+
 # Importing any of these gives a module the ability to open a socket. Note that
 # `urllib.parse` is absent on purpose: it is pure string manipulation, and it is
 # what `philanthropy.utils._validation.ensure_local_path` uses to *reject*
@@ -168,11 +187,11 @@ _NETWORK_MODULES = frozenset(
 # must be an explicitly documented, opt-in dataset fetcher that the user calls
 # on purpose, and must never run at import time or inside fit/transform.
 #
-# EMPTY ON PURPOSE. Adding an entry is a policy change, not just a code change:
-# update the "does the software send data anywhere?" answer in
+# Adding an entry is a policy change, not just a code change: update the "does
+# the software send data anywhere?" answer in
 # docs/explanation/security_review_answers.md, plus README.md and SECURITY.md,
 # in the same pull request, or those three pages start lying.
-_NETWORK_ALLOWED = frozenset()
+_NETWORK_ALLOWED = frozenset({"philanthropy/datasets/_kdd98.py"})
 
 
 def _imported_modules(path):

@@ -8,8 +8,8 @@ cannot `pip install`, that is a bug, please report it.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.6.x   | :white_check_mark: |
-| < 0.6   | :x:                |
+| 0.7.x   | :white_check_mark: |
+| < 0.7   | :x:                |
 
 ## Loading models (trust boundary)
 
@@ -65,14 +65,16 @@ expect an acknowledgement within a few days and a coordinated fix and disclosure
 no license check, no phone-home, and no third-party data append. Donor data you
 pass to it stays on the machine that ran it.
 
-It also downloads nothing. No module imports a network client, and nothing is
-fetched at import time or during `fit`/`transform`.
-`tests/test_no_network.py` enforces both properties in CI: it makes every socket
-raise across a full train/score cycle, and it parses every module in the package
-and fails the build if one imports a network-capable library without appearing on
-an explicit allowlist, which is currently empty. If an opt-in public-dataset
-fetcher is ever added it will be listed there and documented here, and it will
-still never transmit your data.
+It also downloads nothing on its own. No module imports a network client
+without appearing on an explicit allowlist, and nothing is fetched at import
+time or during `fit`/`transform`. `tests/test_no_network.py` enforces both
+properties in CI: it makes every socket raise across a full train/score
+cycle, and it parses every module in the package and fails the build if one
+imports a network-capable library off that allowlist. The allowlist names
+exactly one module, `philanthropy.datasets.fetch_kdd98_donors`: an opt-in
+function you call by name to fetch a public research dataset (KDD Cup 1998)
+to a local cache, so the library can be validated against real donor data. It
+is never called automatically, and it still never transmits your data.
 
 For the full set of questions an institutional security or privacy review asks,
 see [security review Q&A](docs/explanation/security_review_answers.md).

@@ -45,6 +45,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   information; the ratio is what separates the two.
 
 ### Changed
+- `ShareOfWalletScorer` output column 0 is renamed `sow_score` →
+  `capacity_utilisation_ratio`. The formula was always capacity ÷ clipped
+  modelled wealth: utilisation of estimated capacity, with no term for giving to
+  *your* institution, so the old name claimed a share-of-wallet quantity the
+  score cannot express (the class docstring has warned about exactly this since
+  it shipped). Values, column order, and `capacity_tier` are unchanged; code
+  reading column 0 positionally needs nothing. Code spelling the name gets one
+  published minor of grace via `get_legacy_feature_names_out()`, which returns
+  the old `["sow_score", "capacity_tier"]` under a `DeprecationWarning` and is
+  removed in 0.9.0; the shim is registered in `tests/test_deprecations.py`.
+  Closes #109.
 - `predict_<thing>_interval` joins `_score` and `_forecast` as an accepted
   domain-method suffix in the public-API naming contract
   (`tests/test_public_api_contract.py`, `AGENTS.md`).

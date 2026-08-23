@@ -244,8 +244,10 @@ class GiftIntervalCalibrator(RegressorMixin, BaseEstimator):
             the domain.
 
         Equal-tailed two-rank intervals are deliberately absent: two order
-        statistics at ``alpha / 2`` double the floor (39 rows at the 95 % level,
-        against 19) and buy nothing these three do not.
+        statistics at ``alpha / 2`` more than double the floor (39 rows at the
+        95 % level against 19) and buy nothing these three do not. The ratio is
+        ``(2 - alpha) / (1 - alpha)``, which is strictly above two at every level
+        and reaches two only as ``alpha`` goes to zero.
     difficulty_estimator : object or callable, default=None
         Required when ``score="difficulty"``. Either an object with ``predict``
         or a callable, mapping ``X`` to strictly positive scale estimates. Fit it

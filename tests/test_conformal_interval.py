@@ -560,7 +560,8 @@ def test_log_score_refuses_negative_dollars():
 
 
 def test_equal_tailed_two_rank_is_not_on_offer():
-    # Two order statistics at alpha / 2 double the floor for no gain the
+    # Two order statistics at alpha / 2 MORE than double the floor -- the ratio is
+    # (2 - alpha)/(1 - alpha), above two at every level -- for no gain the
     # one-rank scores do not already deliver. Failing input: score="quantile"
     # or any other value, which must raise rather than fall through.
     X, y = _panel(n=300)

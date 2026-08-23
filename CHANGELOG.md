@@ -11,6 +11,69 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   CONTRIBUTORS.md. Implemented as `scripts/check_credit.sh`, wired into
   `ci.yml` on `pull_request` events only; failures surface as inline
   `::error::` annotations on the Files tab. Closes #113.
+### Fixed
+- `CRMCleaner.transform` no longer silently corrupts complex amounts into
+  wrong finite floats: cells holding actual `complex` values are masked to
+  NaN with a `UserWarning` naming them, and a column where nothing parses
+  (all-complex included) still raises `could not parse` per the documented
+  contract. Closes #129.
+### Added
+- **`models.GiftIntervalCalibrator`**: distribution-free intervals on a dollar
+  amount. Wraps an already-fitted regressor (`AskAmountRecommender`,
+  `ShareOfWalletRegressor`, or any `predict`-per-row estimator) and calibrates on
+  held-out rows via split conformal prediction. Until now nothing in the package
+  returned an interval on a gift amount; every dollar-valued estimator returned
+  a point.
+  - Refuses below the certification floor. One order statistic needs
+    `n >= 1/alpha - 1` calibration rows, 19 at the 95 % level, and `fit` raises
+    rather than returning an interval it cannot certify. The floor is computed in
+    `fractions.Fraction`, because it is a ceiling and `int(1 / alpha - 1)`
+    truncates: at `alpha = 0.07` that reports 13 where the floor is 14. There is
+    no parameter that switches the check off.
+  - Reports the **attained** level, `r / (n + 1)`, on the returned
+    `GiftInterval` and as `attained_level_`. A request for 0.95 resolves to
+    0.9677 at 30 calibration rows and 0.9524 at 20; the requested level is kept
+    separately as `requested_level_`.
+  - Three one-rank conformity scores via `score=`: `"absolute"`,
+    `"difficulty"` (residual over a difficulty estimate) and `"log"` (residual
+    on `log1p` dollars, inverted). Equal-tailed two-rank intervals are
+    deliberately not offered: two order statistics at `alpha / 2` more than double the
+    floor to 39 rows and buy nothing the one-rank forms do not.
+  - Intersects the interval with `[lower_bound, inf)`, default `0.0`. A gift
+    cannot be negative, so coverage is bit-identical and width strictly falls.
+    Calibration targets below the bound raise, since they are evidence the bound
+    is wrong.
+  - Optional `groups=` calibrates within a segment. A pooled calibration set is
+    dominated by whichever segment supplies most of the rows and under-covers the
+    others however much marginal data is added; a group below the per-group floor
+    is refused by name rather than quietly pooled with a segment at another
+    capacity level.
+- **`metrics.interval_score` and `metrics.interval_report`**: the interval score
+  `(u - l) + (2/alpha)(l - y)+ + (2/alpha)(y - u)+`, which is proper for a
+  central interval, plus a report carrying coverage, the score as mean/median/
+  trimmed mean (it is a heavy-tailed loss on gift amounts, and a ranking that
+  flips between the three is a ranking of the tail), median width, and
+  `width_ratio` = median width over median target. A valid interval can carry no
+  information; the ratio is what separates the two.
+
+### Changed
+- `ShareOfWalletScorer` output column 0 is renamed `sow_score` →
+  `capacity_utilisation_ratio`. The formula was always capacity ÷ clipped
+  modelled wealth: utilisation of estimated capacity, with no term for giving to
+  *your* institution, so the old name claimed a share-of-wallet quantity the
+  score cannot express (the class docstring has warned about exactly this since
+  it shipped). Values, column order, and `capacity_tier` are unchanged; code
+  reading column 0 positionally needs nothing. Code spelling the name gets one
+  published minor of grace via `get_legacy_feature_names_out()`, which returns
+  the old `["sow_score", "capacity_tier"]` under a `DeprecationWarning` and is
+  removed in 0.9.0; the shim is registered in `tests/test_deprecations.py`.
+  Closes #109.
+- `predict_<thing>_interval` joins `_score` and `_forecast` as an accepted
+  domain-method suffix in the public-API naming contract
+  (`tests/test_public_api_contract.py`, `AGENTS.md`).
+- `test_predict_methods_are_callable_with_x_alone_and_return_one_value_per_row`
+  now skips non-estimator symbols in `models.__all__` instead of raising
+  `KeyError` on the first one.
 
 ### Deprecated
 - `philanthropy.utils.make_donor_dataset` moves to
@@ -18,6 +81,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   old location emits a `DeprecationWarning`; removed in 0.8.0. The gift-level
   generator now lives next to `generate_synthetic_donor_data`, which is the
   canonical datasets home. Closes #111.
+
 ## [1.0.0] - TBD
 
 The API freeze. No code changes: 1.0.0 is a promise, not a feature.

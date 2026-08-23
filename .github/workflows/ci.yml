@@ -96,7 +96,7 @@ jobs:
       # SHA-pinned like every other third-party action. This is the commit v5
       # resolved to on the run that first went green; Dependabot proposes
       # upgrades as normal PRs.
-      - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d  # v10.0.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
       # Plain pip resolves the newest wheels even on the 3.9 leg, which is how
       # a false `pandas>=1.5` floor survived. Install exactly what the metadata
       # declares instead.

@@ -56,6 +56,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `civicrm_contributions_to_features`, `read_civicrm_contributions` | `ingest` | Tracks CiviCRM's contribution export labels and APIv4 field names, which move with the CRM. |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Chart composition is presentation, not contract. |
 | `fetch_kdd98_donors` | `datasets` | Returns the raw upstream columns untyped; may gain as-of date parsing as the real-data leakage replication in #124 lands. |
+| `GiftIntervalCalibrator`, `GiftInterval` | `models` | The conformity-score menu is expected to grow (conformalised quantile regression is not shipped), which adds `score` values rather than changing existing ones. |
 
 ### Tier 3: Experimental
 
@@ -75,13 +76,14 @@ Every domain method returns a number on its own scale. None of them are calibrat
 | `LapsePredictor.predict_lapse_score` | `(n,)` float | 0–100, higher = more likely to lapse |
 | `PlannedGivingIntentScorer.predict_intent_score` | `(n,)` float | 0–100 |
 | `UpliftTLearner.predict_uplift_score` | `(n,)` float | **−1 to 1**, negative means the appeal suppresses giving |
-| `ShareOfWalletScorer.transform` | `(n, 2)` float | `sow_score` 0–1; `capacity_tier` in {0, 1, 2} |
+| `ShareOfWalletScorer.transform` | `(n, 2)` float | `capacity_utilisation_ratio` 0–1; `capacity_tier` in {0, 1, 2} |
 | `ShareOfWalletRegressor.capacity_ratio` | `(n,)` float | Unbounded ratio ≥ 0 (capacity ÷ historical giving) |
 | `DischargeToSolicitationWindowTransformer.transform` | `(n, 2)` float | `in_solicitation_window` in {0, 1}; `window_position_score` 0–1 |
 | `GratefulPatientFeaturizer.transform` | `(n, 4)` float | Unbounded counts and weighted sums, all ≥ 0 |
 | `AskAmountRecommender.ask_ladder` | `(n, 3)` float | **Dollars**, not a score: conservative / target / stretch |
 | `MovesManagementClassifier.action_priority` | `dict` | Not an array: `stage`, `confidence` (0–1), `portfolio_summary` |
 | `FinancialForecastModel.predict_revenue_forecast` | `(horizon,)` float | **Dollars per future period**, length is `horizon`, not `len(X)` |
+| `GiftIntervalCalibrator.predict_gift_interval` | `GiftInterval` | Not a score: two `(n,)` dollar bounds, plus the `attained_level` they certify, which is `r / (n + 1)` and not the requested `1 - alpha` |
 
 ## Deprecations
 
@@ -141,3 +143,20 @@ barely registers.
 
 If you need per-group behaviour, split the frame by group and fit one imputer per
 part. That is explicit, and it costs nothing that the parameter was buying.
+
+### Live on `main` (0.8.0), removed in 0.9.0
+
+| Deprecated | Use instead |
+|---|---|
+| `ShareOfWalletScorer` output name `sow_score` | `capacity_utilisation_ratio` |
+
+`ShareOfWalletScorer.transform` column 0 is now named
+`capacity_utilisation_ratio` in `get_feature_names_out()`: the formula is
+capacity ÷ clipped modelled wealth, which is capacity utilisation. It was never
+share of wallet; the docstring has said so since the class shipped, and the old
+name claimed a quantity the formula does not compute. The values, the column
+order, and the `capacity_tier` encoding are unchanged, so code that reads the
+column positionally needs nothing. Code that spells the name can call
+`get_legacy_feature_names_out()` for one published minor: it returns the old
+`["sow_score", "capacity_tier"]` spelling under a `DeprecationWarning` and is
+removed in 0.9.0.

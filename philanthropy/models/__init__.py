@@ -12,9 +12,12 @@ from ._moves import MovesManagementClassifier
 from ._lapse import LapsePredictor
 from ._planned_giving import PlannedGivingIntentScorer
 from ._forecast import FinancialForecastModel
+from ._conformal_interval import GiftInterval, GiftIntervalCalibrator
 
 __all__ = [
     "AskAmountRecommender",
+    "GiftInterval",
+    "GiftIntervalCalibrator",
     "DonorPropensityModel",
     "FinancialForecastModel",
     "LapsePredictor",

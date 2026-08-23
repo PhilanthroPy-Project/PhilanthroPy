@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 
 from philanthropy import preprocessing, utils
-from philanthropy.preprocessing import WealthScreeningImputerKNN
+from philanthropy.preprocessing import ShareOfWalletScorer, WealthScreeningImputerKNN
 
 # (id, removed_in, callable that should emit exactly one DeprecationWarning)
 DEPRECATIONS = [
@@ -23,6 +23,13 @@ DEPRECATIONS = [
         lambda: WealthScreeningImputerKNN(
             strategy="knn", n_neighbors=3, add_indicator=False, group_col_idx=1
         ).fit(_two_group_X()),
+    ),
+    (
+        "ShareOfWalletScorer.get_legacy_feature_names_out",
+        "0.9.0",
+        lambda: ShareOfWalletScorer()
+        .fit(_two_group_X())
+        .get_legacy_feature_names_out(),
     ),
     (
         "utils.make_donor_dataset",

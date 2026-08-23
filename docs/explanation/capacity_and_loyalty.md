@@ -18,9 +18,9 @@ This ratio is rooted in industry standards and aligns with benchmarks establishe
 
 ### Capacity Tiers
 
-Categories are easier to act on than raw numbers, so `ShareOfWalletScorer.transform` emits a second column, `capacity_tier`, alongside `sow_score`. It is a numeric encoding; `get_tier_labels(X)` returns the strings.
+Categories are easier to act on than raw numbers, so `ShareOfWalletScorer.transform` emits a second column, `capacity_tier`, alongside `capacity_utilisation_ratio`. It is a numeric encoding; `get_tier_labels(X)` returns the strings.
 
-| `sow_score` | `capacity_tier` | Label | Recommended action |
+| `capacity_utilisation_ratio` | `capacity_tier` | Label | Recommended action |
 |---|---|---|---|
 | ≥ 0.75 | 2 | **Principal** | Schedule a personal visit with the campaign chair. |
 | 0.40 – 0.75 | 1 | **Major** | Assign a major gift officer. |

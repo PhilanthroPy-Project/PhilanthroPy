@@ -31,7 +31,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   - Three one-rank conformity scores via `score=`: `"absolute"`,
     `"difficulty"` (residual over a difficulty estimate) and `"log"` (residual
     on `log1p` dollars, inverted). Equal-tailed two-rank intervals are
-    deliberately not offered: two order statistics at `alpha / 2` double the
+    deliberately not offered: two order statistics at `alpha / 2` more than double the
     floor to 39 rows and buy nothing the one-rank forms do not.
   - Intersects the interval with `[lower_bound, inf)`, default `0.0`. A gift
     cannot be negative, so coverage is bit-identical and width strictly falls.
@@ -51,6 +51,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   information; the ratio is what separates the two.
 
 ### Changed
+- `ShareOfWalletScorer` output column 0 is renamed `sow_score` →
+  `capacity_utilisation_ratio`. The formula was always capacity ÷ clipped
+  modelled wealth: utilisation of estimated capacity, with no term for giving to
+  *your* institution, so the old name claimed a share-of-wallet quantity the
+  score cannot express (the class docstring has warned about exactly this since
+  it shipped). Values, column order, and `capacity_tier` are unchanged; code
+  reading column 0 positionally needs nothing. Code spelling the name gets one
+  published minor of grace via `get_legacy_feature_names_out()`, which returns
+  the old `["sow_score", "capacity_tier"]` under a `DeprecationWarning` and is
+  removed in 0.9.0; the shim is registered in `tests/test_deprecations.py`.
+  Closes #109.
 - `predict_<thing>_interval` joins `_score` and `_forecast` as an accepted
   domain-method suffix in the public-API naming contract
   (`tests/test_public_api_contract.py`, `AGENTS.md`).

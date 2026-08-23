@@ -26,7 +26,16 @@ if [ -z "$author" ]; then
   exit 1
 fi
 
-if ! grep -qE "@${author}([^A-Za-z0-9_-]|$)" CONTRIBUTORS.md; then
+# Match the literal token "@<author>" not followed by another login character.
+# The author is interpolated literally (awk index, no regex), so bot logins
+# such as dependabot[bot] are not misread as a character class.
+if ! awk -v token="@$author" '
+  index($0, token) {
+    rest = substr($0, index($0, token) + length(token))
+    if (rest == "" || rest !~ /^[A-Za-z0-9_-]/) { found = 1; exit }
+  }
+  END { exit found ? 0 : 1 }
+' CONTRIBUTORS.md; then
   echo "::error::This PR touches files under philanthropy/ but its author (@$author) is not listed in CONTRIBUTORS.md. Add yourself in the same pull request (see 'Getting listed')."
   exit 1
 fi

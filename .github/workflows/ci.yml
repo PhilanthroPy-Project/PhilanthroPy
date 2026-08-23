@@ -17,6 +17,7 @@ concurrency:
 jobs:
   credit-guard:
     name: Changelog and contributor credit (issue #113)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

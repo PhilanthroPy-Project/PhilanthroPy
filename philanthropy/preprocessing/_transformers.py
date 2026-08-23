@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import warnings
+
 import numpy as np
 import pandas as pd
 
@@ -59,7 +61,24 @@ def _coerce_currency_to_float(col: pd.Series) -> pd.Series:
     if pd.api.types.is_numeric_dtype(col):
         return pd.to_numeric(col, errors="coerce").astype("float64")
 
+    # Complex values (e.g. np.complex128 cells that survive an object-cast
+    # retry, as when a formula column round-trips through Excel/openpyxl)
+    # must never reach the string path: str(3+4j) is "(3+4j)", which matches
+    # the parenthesised-negative rule and corrupts the cell into -34.0
+    # (#129). NaN + warning, consistent with "values that still don't parse
+    # become NaN".
     had_value = col.notna()
+
+    if col.dtype == object:
+        complex_mask = col.map(lambda v: isinstance(v, complex)).fillna(False)
+        if complex_mask.any():
+            warnings.warn(
+                f"CRMCleaner: {int(complex_mask.sum())} complex value(s) in "
+                f"amount column {col.name!r} cannot be parsed as currency; "
+                f"they became NaN.",
+                stacklevel=2,
+            )
+            col = col.mask(complex_mask)
     cleaned = col.astype(str).str.strip()
     cleaned = cleaned.str.replace(r"^\((.*)\)$", r"-\1", regex=True)
     cleaned = cleaned.str.replace(r"[^0-9eE.\-]", "", regex=True)

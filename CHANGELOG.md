@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- `CRMCleaner.transform` no longer silently corrupts complex amounts into
+  wrong finite floats: cells holding actual `complex` values are masked to
+  NaN with a `UserWarning` naming them, and a column where nothing parses
+  (all-complex included) still raises `could not parse` per the documented
+  contract. Closes #129.
 ### Added
 - **`models.GiftIntervalCalibrator`**: distribution-free intervals on a dollar
   amount. Wraps an already-fitted regressor (`AskAmountRecommender`,

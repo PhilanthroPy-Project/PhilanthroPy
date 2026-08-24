@@ -5,6 +5,7 @@ a metric as the goal rather than the behaviour under test.
 """
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from philanthropy.models import MovesManagementClassifier
@@ -55,3 +56,21 @@ def test_action_priority_summary_counts_every_donor(stage_Xy):
     summary = clf.action_priority(X)["portfolio_summary"]
     assert sum(summary.values()) == 30
     assert set(summary) <= set(_STAGES)
+
+
+def test_fit_with_dataframe_sets_feature_names_in():
+    X = pd.DataFrame(
+        np.random.default_rng(0).random((30, 5)),
+        columns=["age", "income", "donations", "engagement", "years_active"],
+    )
+    y = np.asarray(_STAGES * 10)
+
+    clf = MovesManagementClassifier(max_iter=10, random_state=0).fit(X, y)
+
+    np.testing.assert_array_equal(
+        clf.feature_names_in_,
+        np.array(
+            ["age", "income", "donations", "engagement", "years_active"],
+            dtype=object,
+        ),
+    )

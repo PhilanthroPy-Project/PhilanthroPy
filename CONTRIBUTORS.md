@@ -34,6 +34,10 @@ contribution. Code, docs, tests, and review all count.
   ([#64](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/64),
   [#65](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/65),
   [#66](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/66)).
+- **Harikrishna KP** ([@Mr-Neutr0n](https://github.com/Mr-Neutr0n)): added a
+  regression test pinning the `donor_id` error that `RFMTransformer.fit` raises
+  for non-DataFrame input
+  ([#139](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/139)).
 
 ## Getting listed
 

@@ -34,6 +34,8 @@ contribution. Code, docs, tests, and review all count.
   ([#64](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/64),
   [#65](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/65),
   [#66](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/66)).
+  - [@stoppo22](https://github.com/stoppo22): added DataFrame feature-name
+  coverage for `MovesManagementClassifier.fit`.
 
 ## Getting listed
 

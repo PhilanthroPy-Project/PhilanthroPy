@@ -11,6 +11,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   NaN with a `UserWarning` naming them, and a column where nothing parses
   (all-complex included) still raises `could not parse` per the documented
   contract. Closes #129.
+  - Added regression coverage ensuring `MovesManagementClassifier.fit` preserves
+  DataFrame column names in `feature_names_in_`. Closes #54.
 ### Added
 - **`models.GiftIntervalCalibrator`**: distribution-free intervals on a dollar
   amount. Wraps an already-fitted regressor (`AskAmountRecommender`,

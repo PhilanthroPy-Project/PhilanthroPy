@@ -91,6 +91,22 @@ def test_hybrid_uses_nonlinear_component(revenue_Xy):
     assert not np.allclose(linear_only, hybrid)
 
 
+def test_predict_without_nonlinear_model_uses_linear_only(revenue_Xy):
+    """A single training sample leaves the residual network unfitted
+    (`nonlinear_model_ is None`): `predict` must return the bare linear
+    prediction instead of adding any residual term."""
+    X, y = revenue_Xy
+    model = FinancialForecastModel(random_state=0).fit(X[:1], y[:1])
+    assert model.nonlinear_model_ is None
+    # NaN-free probe, so imputation is the identity and comparing against
+    # `linear_model_.predict` directly is exact.
+    X_probe = np.asarray(X[:3], dtype=float)
+    np.testing.assert_allclose(
+        model.predict(X_probe),
+        model.linear_model_.predict(X_probe),
+    )
+
+
 # ---------------------------------------------------------------------------
 # predict_revenue_forecast
 # ---------------------------------------------------------------------------
@@ -109,6 +125,32 @@ def test_forecast_flat_when_ar_order_zero(revenue_Xy):
     model = FinancialForecastModel(ar_order=0, random_state=0).fit(X, y)
     forecast = model.predict_revenue_forecast(X, horizon=5)
     assert np.allclose(forecast, forecast[0])
+
+
+def test_predict_revenue_forecast_pads_short_history_with_training_mean(revenue_Xy):
+    """Context with fewer rows than `ar_order` must not crash: the seed window
+    is padded to length p with the frozen training mean before the
+    autoregressive roll-forward starts."""
+    X, y = revenue_Xy
+    p = 5
+    horizon = 4
+    model = FinancialForecastModel(ar_order=p, random_state=0).fit(X, y)
+
+    short = model.predict_revenue_forecast(X[:2], horizon=horizon)
+    assert short.shape == (horizon,)
+    assert np.isfinite(short).all()
+
+    # Reproduce the documented roll-forward by hand from the frozen fitted
+    # statistics: most-recent-first hybrid predictions, padded out to p lags
+    # with y_mean_. This pins the pad value, not just finiteness.
+    history = model.predict(X[:2])
+    window = list(history[::-1]) + [model.y_mean_] * (p - history.size)
+    expected = []
+    for _ in range(horizon):
+        nxt = model.ar_intercept_ + float(np.dot(model.ar_coef_, window))
+        expected.append(nxt)
+        window = [nxt] + window[:-1]
+    np.testing.assert_allclose(short, np.asarray(expected))
 
 
 @pytest.mark.parametrize("bad", [0, -1, 2.5, True, "3"])

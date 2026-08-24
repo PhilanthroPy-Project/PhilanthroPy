@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added
+- `credit-guard` CI job: pull requests touching `philanthropy/` must also
+  update this changelog, and the author must be credited in
+  CONTRIBUTORS.md. Implemented as `scripts/check_credit.sh`, wired into
+  `ci.yml` on `pull_request` events only; failures surface as inline
+  `::error::` annotations on the Files tab. Closes #113.
 ### Fixed
 - `CRMCleaner.transform` no longer silently corrupts complex amounts into
   wrong finite floats: cells holding actual `complex` values are masked to

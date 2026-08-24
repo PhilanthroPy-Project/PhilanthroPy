@@ -38,6 +38,9 @@ contribution. Code, docs, tests, and review all count.
   regression test pinning the `donor_id` error that `RFMTransformer.fit` raises
   for non-DataFrame input
   ([#139](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/139)).
+- [@stoppo22](https://github.com/stoppo22): added DataFrame feature-name
+  coverage for `MovesManagementClassifier.fit`
+  ([#146](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/146)).
 
 ## Getting listed
 

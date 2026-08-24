@@ -11,6 +11,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   CONTRIBUTORS.md. Implemented as `scripts/check_credit.sh`, wired into
   `ci.yml` on `pull_request` events only; failures surface as inline
   `::error::` annotations on the Files tab. Closes #113.
+- Regression coverage ensuring `MovesManagementClassifier.fit` preserves
+  DataFrame column names in `feature_names_in_`. Closes #54.
 ### Fixed
 - `CRMCleaner.transform` no longer silently corrupts complex amounts into
   wrong finite floats: cells holding actual `complex` values are masked to

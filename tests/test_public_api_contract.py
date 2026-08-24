@@ -7,8 +7,8 @@ Introspection only: no fixtures, no data files. It asserts four things:
 1. Every subpackage in ``philanthropy.__all__`` declares a non-empty ``__all__``,
    every name in it resolves, and it has a ``docs/reference/<name>.md`` page.
 2. Every public ``predict_*`` method beyond ``predict``/``predict_proba``/
-   ``predict_log_proba`` matches ``^predict_\\w+_(score|forecast)$``, is callable
-   with X alone, and returns a 1-D ndarray of ``len(X)``.
+   ``predict_log_proba`` matches ``^predict_\\w+_(score|forecast|interval)$``, is
+   callable with X alone, and returns a 1-D ndarray of ``len(X)``.
 3. Every ``preprocessing.__all__`` class defines its own
    ``get_feature_names_out(self, input_features=None)`` whose length equals
    ``transform(X).shape[1]``.
@@ -29,6 +29,7 @@ import warnings
 
 import numpy as np
 import pytest
+from sklearn.base import BaseEstimator
 
 import philanthropy
 import philanthropy.experimental as experimental
@@ -39,7 +40,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 PACKAGE_ROOT = pathlib.Path(philanthropy.__file__).parent
 REFERENCE_DIR = REPO_ROOT / "docs" / "reference"
 
-_PREDICT_NAME = re.compile(r"^predict_\w+_(score|forecast)$")
+_PREDICT_NAME = re.compile(r"^predict_\w+_(score|forecast|interval)$")
 _SKLEARN_PREDICTORS = {"predict", "predict_proba", "predict_log_proba"}
 
 # Named exemptions, one reason each. Nothing may be added here silently.
@@ -57,6 +58,12 @@ _EXEMPT = {
     "FinancialForecastModel": (
         "predict_revenue_forecast(X, horizon) returns `horizon` values, not "
         "len(X): it is a forward projection, not a per-row prediction."
+    ),
+    "GiftIntervalCalibrator": (
+        "Wraps an already-fitted regressor, so it cannot be built by "
+        "cls(**kwargs) and fitted on one array pair; and "
+        "predict_gift_interval returns a GiftInterval carrying two bounds plus "
+        "the attained level, not a single value per row."
     ),
 }
 
@@ -176,6 +183,12 @@ def test_predict_methods_follow_the_naming_contract(name):
 def test_predict_methods_are_callable_with_x_alone_and_return_one_value_per_row(name):
     if name in _EXEMPT:
         pytest.skip(_EXEMPT[name])
+    # models.__all__ also carries the return types of the estimators (e.g.
+    # GiftInterval). Without this, _fit_model raises KeyError on the first one
+    # rather than the test skipping it.
+    cls = getattr(models, name)
+    if not (isinstance(cls, type) and issubclass(cls, BaseEstimator)):
+        pytest.skip(f"{name} is not an estimator; the predict contract cannot apply")
 
     est, X = _fit_model(name)
     methods = _predict_methods(type(est))

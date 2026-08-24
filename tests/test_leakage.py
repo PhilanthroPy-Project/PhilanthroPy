@@ -547,6 +547,118 @@ def test_wealth_imputer_fill_statistics_are_fold_specific_in_cv():
     )
 
 
+# ---------------------------------------------------------------------------
+# Conformal interval coverage: a row split flatters it, a donor split does not
+# ---------------------------------------------------------------------------
+
+
+def _donor_panel():
+    """A panel whose capacity term lives with the donor, not the row.
+
+    Donors 0-79 have rows in FY2019 (training), FY2020 (calibration) and
+    FY2021. Donors 80-119 appear only in FY2021, so they are new to the file.
+    ``donor_id`` is a feature, which is what lets the regressor memorise a
+    donor's capacity term rather than learning it from the other columns.
+    """
+    rng = np.random.default_rng(11)
+    capacity = rng.normal(0.0, 30_000.0, 120)
+
+    rows = []
+    for donor in range(80):
+        for fy, n in ((2019, 10), (2020, 1), (2021, 1)):
+            rows.extend((donor, fy) for _ in range(n))
+    for donor in range(80, 120):
+        rows.extend((donor, 2021) for _ in range(2))
+
+    donor_id = np.array([r[0] for r in rows], dtype=float)
+    fiscal_year = np.array([r[1] for r in rows])
+    x1 = rng.uniform(0.0, 1.0, len(rows))
+    y = np.maximum(
+        40_000.0
+        + 40_000.0 * x1
+        + capacity[donor_id.astype(int)]
+        + rng.normal(0.0, 500.0, len(rows)),
+        0.0,
+    )
+    return np.column_stack([donor_id, x1]), y, fiscal_year, donor_id
+
+
+def test_row_split_flatters_conformal_coverage_and_a_donor_split_does_not():
+    """Calibrating on donors the model already knows hides the real coverage.
+
+    The capacity term is memorised from training, so it is absent from the
+    residuals of every donor in the training file and present in full for a
+    donor who is new. Calibrate on FY2020 rows (all training donors) and the
+    interval looks excellent on FY2021 rows from those same donors and falls
+    apart on the donors that are new in FY2021.
+
+    ``FiscalYearGroupedSplitter(drop_repeat_donors=True)`` is what separates the
+    two folds. The failing input for anyone tempted to split by row instead: the
+    shared-donor coverage below sits near the attained level while the honest
+    number is a third of it.
+
+    The assertions are on the *gap*, not on the shared-donor fold clearing the
+    attained level. That fold has no guarantee to clear: exchangeability is
+    exactly what the leak breaks, so its coverage is an artefact and drifts with
+    the boosting fit (0.96 locally, 0.93 on another sklearn build). The gap is
+    the finding and it is stable.
+    """
+    from sklearn.ensemble import HistGradientBoostingRegressor
+
+    from philanthropy.model_selection import FiscalYearGroupedSplitter
+    from philanthropy.models import GiftIntervalCalibrator
+
+    X, y, fiscal_year, donor_id = _donor_panel()
+
+    train = fiscal_year == 2019
+    model = HistGradientBoostingRegressor(
+        max_iter=400, min_samples_leaf=1, random_state=0
+    ).fit(X[train], y[train])
+
+    # Calibration and evaluation live in FY2020/FY2021; FY2019 is the model's.
+    later = fiscal_year >= 2020
+    X_later, y_later = X[later], y[later]
+    fy_later, donors_later = fiscal_year[later], donor_id[later]
+
+    # Flag off: the FY2021 fold keeps donors that are also in the FY2020
+    # calibration rows. Flag on: those donors are dropped.
+    splitter = FiscalYearGroupedSplitter(n_splits=1)
+    cal_idx, all_test_idx = next(
+        iter(splitter.split(X_later, groups=fy_later))
+    )
+    grouped = FiscalYearGroupedSplitter(n_splits=1, drop_repeat_donors=True)
+    with pytest.warns(UserWarning, match="drop_repeat_donors"):
+        _, new_donor_idx = next(
+            iter(
+                grouped.split(
+                    X_later, groups=np.column_stack([fy_later, donors_later])
+                )
+            )
+        )
+    shared_donor_idx = np.setdiff1d(all_test_idx, new_donor_idx)
+    assert shared_donor_idx.size and new_donor_idx.size
+
+    calibrator = GiftIntervalCalibrator(model, alpha=0.05).fit(
+        X_later[cal_idx], y_later[cal_idx]
+    )
+
+    def coverage(idx):
+        interval = calibrator.predict_gift_interval(X_later[idx])
+        return float(
+            np.mean(
+                (y_later[idx] >= interval.lower)
+                & (y_later[idx] <= interval.upper)
+            )
+        )
+
+    shared = coverage(shared_donor_idx)
+    new = coverage(new_donor_idx)
+
+    # Measured: shared 0.96, new 0.35, against an attained level of 0.9506.
+    assert new < 0.6, (shared, new)
+    assert shared > 0.85, (shared, new)
+    assert shared - new > 0.35, (shared, new)
+    assert new < calibrator.attained_level_ - 0.3, (new, calibrator.attained_level_)
 
 
 # ---------------------------------------------------------------------------

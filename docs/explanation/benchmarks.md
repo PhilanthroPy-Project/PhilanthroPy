@@ -70,6 +70,10 @@ Five seeds rather than one on purpose. A single three-decimal score reads as a
 claim about the method when it is mostly a claim about the split; the spread
 below is the honest resolution of these numbers.
 
+CI runs `scripts/benchmark_models.py` on every push and diffs the output against
+the committed golden file `docs/explanation/benchmark_results.txt` (generated on
+Linux so BLAS rounding matches the runner).
+
 ## Results
 
 Synthetic pool: 4,000 rows, positive rate 0.378; test split 1,000 rows.

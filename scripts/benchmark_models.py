@@ -36,7 +36,6 @@ from philanthropy.models import (
     PropensityScorer,
 )
 
-RANDOM_STATE = 42
 # Five seeds, not one: a three-decimal score from a single split reads as a
 # claim about the method when it is mostly a claim about the split.
 SEEDS = (42, 43, 44, 45, 46)

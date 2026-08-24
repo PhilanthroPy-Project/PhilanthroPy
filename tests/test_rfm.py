@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 from philanthropy.preprocessing import RFMTransformer
@@ -74,3 +75,8 @@ def test_rfm_transformer_validation():
 
     with pytest.raises(TypeError, match="X must be a pandas DataFrame"):
         transformer.transform([1, 2, 3])
+
+
+def test_rfm_transformer_ndarray_input_raises_missing_columns():
+    with pytest.raises(ValueError, match="donor_id"):
+        RFMTransformer().fit(np.ones((3, 3)))

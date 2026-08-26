@@ -9,32 +9,32 @@ from philanthropy.model_selection import FiscalYearGroupedSplitter
 
 
 def test_groups_none_raises():
-    s = FiscalYearGroupedSplitter(n_splits=2)
+    s = FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=2)
     with pytest.raises(ValueError, match="groups"):
         list(s.split(np.zeros((10, 2))))
 
 
 def test_length_mismatch_raises():
-    s = FiscalYearGroupedSplitter(n_splits=2)
+    s = FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=2)
     with pytest.raises(ValueError, match="match"):
         list(s.split(np.zeros((10, 2)), groups=[2020, 2021, 2022]))
 
 
 def test_single_fiscal_year_raises():
-    s = FiscalYearGroupedSplitter(n_splits=2)
+    s = FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=2)
     with pytest.raises(ValueError, match="at least 2"):
         list(s.split(np.zeros((10, 2)), groups=[2020] * 10))
 
 
 def test_get_n_splits_without_groups():
-    assert FiscalYearGroupedSplitter(n_splits=4).get_n_splits() == 4
+    assert FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=4).get_n_splits() == 4
 
 
 def test_cross_val_score_integration():
     fy = np.array([2018] * 40 + [2019] * 50 + [2020] * 55 + [2021] * 30 + [2022] * 25)
     X = np.zeros((len(fy), 3))
     y = np.random.default_rng(0).integers(0, 2, len(fy))
-    s = FiscalYearGroupedSplitter(n_splits=3)
+    s = FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=3)
     scores = cross_val_score(
         DummyClassifier(strategy="most_frequent"), X, y, cv=s, groups=fy
     )
@@ -42,14 +42,14 @@ def test_cross_val_score_integration():
 
 
 def test_n_samples_list_input():
-    s = FiscalYearGroupedSplitter(n_splits=2)
+    s = FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=2)
     X = [[0, 0]] * 10  # plain list, no .shape attribute
     groups = [2019] * 3 + [2020] * 3 + [2021] * 4
     assert len(list(s.split(X, groups=groups))) == 2
 
 
 def test_n_samples_none_raises():
-    s = FiscalYearGroupedSplitter()
+    s = FiscalYearGroupedSplitter(drop_repeat_donors=False)
     with pytest.raises(ValueError):
         list(s.split(None, groups=[2019, 2020]))
 
@@ -62,7 +62,7 @@ _FY_GROUPS = [2018, 2018, 2019, 2019, 2020, 2020, 2021, 2021, 2022, 2022]
 
 def test_gap_years_withholds_the_year_before_each_test_fold():
     X = np.zeros((10, 2))
-    splitter = FiscalYearGroupedSplitter(n_splits=2, gap_years=1)
+    splitter = FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=2, gap_years=1)
     splits = list(splitter.split(X, groups=_FY_GROUPS))
     assert len(splits) == 2
 
@@ -78,7 +78,7 @@ def test_default_splitter_no_leakage_gap_years_zero():
     """Default gap_years=0: training fold never contains a FY at or after the test FY,
     and each test fold is exactly one fiscal year."""
     X = np.zeros((10, 2))
-    splitter = FiscalYearGroupedSplitter(n_splits=3)
+    splitter = FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=3)
     splits = list(splitter.split(X, groups=_FY_GROUPS))
     assert len(splits) == 3
 
@@ -103,16 +103,17 @@ def test_not_enough_fiscal_years_names_the_shortfall():
         match=r"Not enough fiscal years \(5\) for n_splits=2 with gap_years=5\.\s+"
               r"Need at least 8 distinct fiscal years\.",
     ):
-        list(FiscalYearGroupedSplitter(n_splits=2, gap_years=5).split(
+        list(FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=2, gap_years=5).split(
             X, groups=_FY_GROUPS
         ))
 
 
 def test_repr_and_get_n_splits_reflect_the_groups():
-    splitter = FiscalYearGroupedSplitter(n_splits=2, gap_years=1)
+    with pytest.warns(DeprecationWarning):
+        splitter = FiscalYearGroupedSplitter(n_splits=2, gap_years=1)
     assert repr(splitter) == (
         "FiscalYearGroupedSplitter(n_splits=2, gap_years=1, "
-        "drop_repeat_donors=False)"
+        "drop_repeat_donors='warn')"
     )
     assert splitter.get_n_splits(groups=_FY_GROUPS) == 2
 
@@ -129,7 +130,7 @@ def test_non_positive_n_splits_raises_instead_of_slicing(bad_n_splits):
     # get_n_splits(), so the disagreement is a real failure.
     X = np.zeros((100, 3))
     fy = np.array([2019] * 25 + [2020] * 25 + [2021] * 25 + [2022] * 25)
-    splitter = FiscalYearGroupedSplitter(n_splits=bad_n_splits)
+    splitter = FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=bad_n_splits)
 
     with pytest.raises(ValueError, match="n_splits must be >= 1"):
         list(splitter.split(X, groups=fy))
@@ -141,14 +142,14 @@ def test_negative_gap_years_raises():
     X = np.zeros((100, 3))
     fy = np.array([2019] * 25 + [2020] * 25 + [2021] * 25 + [2022] * 25)
     with pytest.raises(ValueError, match="gap_years must be >= 0"):
-        list(FiscalYearGroupedSplitter(gap_years=-1).split(X, groups=fy))
+        list(FiscalYearGroupedSplitter(drop_repeat_donors=False, gap_years=-1).split(X, groups=fy))
 
 
 def test_non_integer_params_raise():
     X = np.zeros((100, 3))
     fy = np.array([2019] * 50 + [2020] * 50)
     with pytest.raises(ValueError, match="must be integers"):
-        list(FiscalYearGroupedSplitter(n_splits="three").split(X, groups=fy))
+        list(FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits="three").split(X, groups=fy))
 
 
 @pytest.mark.parametrize("n_splits", [1, 2, 3])
@@ -158,7 +159,7 @@ def test_get_n_splits_matches_the_folds_actually_yielded(n_splits, gap_years):
     # that the two independent code paths stay in step.
     X = np.zeros((150, 3))
     fy = np.array([2018] * 30 + [2019] * 30 + [2020] * 30 + [2021] * 30 + [2022] * 30)
-    splitter = FiscalYearGroupedSplitter(n_splits=n_splits, gap_years=gap_years)
+    splitter = FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=n_splits, gap_years=gap_years)
     assert splitter.get_n_splits(groups=fy) == len(list(splitter.split(X, groups=fy)))
 
 
@@ -185,8 +186,9 @@ def test_default_leaves_repeat_donors_in_both_folds():
     # Documented and correct for a time-varying target; this pins the default so
     # the new flag cannot quietly become the default later.
     X, fy, donor = _repeat_donor_panel()
-    for train, test in FiscalYearGroupedSplitter(n_splits=2).split(X, groups=fy):
-        assert set(donor[train]) & set(donor[test]) == {1, 2, 3}
+    with pytest.warns(DeprecationWarning):
+        for train, test in FiscalYearGroupedSplitter(n_splits=2).split(X, groups=fy):
+            assert set(donor[train]) & set(donor[test]) == {1, 2, 3}
 
 
 def test_drop_repeat_donors_removes_the_overlap():
@@ -229,22 +231,38 @@ def test_drop_repeat_donors_raises_rather_than_silently_dropping_a_fold():
         list(splitter.split(np.zeros((4, 2)), groups=groups))
 
 
+def test_default_drop_repeat_donors_emits_deprecation_warning():
+    with pytest.warns(DeprecationWarning, match="default of False"):
+        FiscalYearGroupedSplitter()
+
+
+def test_explicit_drop_repeat_donors_false_silences_warning():
+    import warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter('always')
+        FiscalYearGroupedSplitter(drop_repeat_donors=False)
+        assert not any(issubclass(x.category, DeprecationWarning) for x in w)
+
+
 def test_drop_repeat_donors_is_off_by_default():
     # BaseCrossValidator, not BaseEstimator, so there is no get_params here.
-    assert FiscalYearGroupedSplitter().drop_repeat_donors is False
+    with pytest.warns(DeprecationWarning):
+        assert FiscalYearGroupedSplitter().drop_repeat_donors == "warn"
 
 
 def test_repr_distinguishes_splitters_that_behave_differently():
     # This test used to assert the opposite, that drop_repeat_donors was absent
     # from __repr__. That pinned a defect: two splitters that split differently
     # printed identically, which is exactly what a repr exists to prevent.
-    assert "drop_repeat_donors=False" in repr(FiscalYearGroupedSplitter())
+    with pytest.warns(DeprecationWarning):
+        assert "drop_repeat_donors='warn'" in repr(FiscalYearGroupedSplitter())
     assert "drop_repeat_donors=True" in repr(
         FiscalYearGroupedSplitter(drop_repeat_donors=True)
     )
-    assert repr(FiscalYearGroupedSplitter()) != repr(
-        FiscalYearGroupedSplitter(drop_repeat_donors=True)
-    )
+    with pytest.warns(DeprecationWarning):
+        assert repr(FiscalYearGroupedSplitter()) != repr(
+            FiscalYearGroupedSplitter(drop_repeat_donors=True)
+        )
 
 
 def test_missing_donor_id_is_treated_as_already_seen():

@@ -24,7 +24,7 @@ Typical usage
 >>> from philanthropy.model_selection import FiscalYearGroupedSplitter
 >>> X = np.zeros((100, 3))
 >>> fiscal_years = np.array([2019]*20 + [2020]*30 + [2021]*25 + [2022]*25)
->>> splitter = FiscalYearGroupedSplitter(n_splits=3)
+>>> splitter = FiscalYearGroupedSplitter(n_splits=3, drop_repeat_donors=False)
 >>> splits = list(splitter.split(X, groups=fiscal_years))
 >>> len(splits)
 3
@@ -72,6 +72,12 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
         training (useful when gift officers use current-year pipeline
         intelligence that would not have been available historically).
     drop_repeat_donors : bool, default=False
+        .. deprecated:: 0.7.0
+            Leaving ``drop_repeat_donors`` at its default emits a
+            ``DeprecationWarning``. The default changes to ``True`` in 0.8.0.
+            Pass ``drop_repeat_donors=False`` explicitly to silence this warning
+            and keep the current behaviour.
+
         Whether to remove from each test fold any donor who already appears in
         that fold's training rows.
 
@@ -115,7 +121,7 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
     >>> from philanthropy.model_selection import FiscalYearGroupedSplitter
     >>> X = np.zeros((200, 5))
     >>> fy = np.array([2018]*40 + [2019]*50 + [2020]*55 + [2021]*30 + [2022]*25)
-    >>> splitter = FiscalYearGroupedSplitter(n_splits=3, gap_years=0)
+    >>> splitter = FiscalYearGroupedSplitter(n_splits=3, gap_years=0, drop_repeat_donors=False)
     >>> for train_idx, test_idx in splitter.split(X, groups=fy):
     ...     train_fy = np.unique(fy[train_idx])
     ...     test_fy  = np.unique(fy[test_idx])
@@ -178,12 +184,22 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
         self,
         n_splits: int = 5,
         gap_years: int = 0,
-        drop_repeat_donors: bool = False,
+        drop_repeat_donors: bool | str = "warn",
     ) -> None:
         # MUST call super().__init__() for BaseCrossValidator compat.
         self.n_splits = n_splits
         self.gap_years = gap_years
         self.drop_repeat_donors = drop_repeat_donors
+        
+        if self.drop_repeat_donors == "warn":
+            warnings.warn(
+                "The FiscalYearGroupedSplitter(drop_repeat_donors=...) default "
+                "of False is deprecated and allows repeat donors across train "
+                "and test folds. This default will change to True in 0.8.0. Pass "
+                "drop_repeat_donors=False explicitly to silence this warning.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
     # ------------------------------------------------------------------
     # Required abstract-method implementations
@@ -251,6 +267,7 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
             If ``drop_repeat_donors=True`` empties a test fold entirely.
         """
         requested_splits, gap_years = self._validate_params()
+        drop_repeat = False if self.drop_repeat_donors == "warn" else bool(self.drop_repeat_donors)
 
         if groups is None:
             raise ValueError(
@@ -261,7 +278,7 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
 
         groups_arr = np.asarray(groups)
         donor_ids = None
-        if self.drop_repeat_donors:
+        if drop_repeat:
             if groups_arr.ndim != 2 or groups_arr.shape[1] != 2:
                 raise ValueError(
                     "drop_repeat_donors=True requires `groups` with shape "
@@ -385,7 +402,8 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
         n_splits, gap_years = self._validate_params()
         if groups is not None:
             groups = np.asarray(groups)
-            if self.drop_repeat_donors and groups.ndim == 2 and groups.shape[1] == 2:
+            drop_repeat = False if self.drop_repeat_donors == "warn" else bool(self.drop_repeat_donors)
+            if drop_repeat and groups.ndim == 2 and groups.shape[1] == 2:
                 groups = groups[:, 0]
             unique_fy = np.unique(groups)
             n_fy = len(unique_fy)
@@ -402,7 +420,7 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
             f"{self.__class__.__name__}("
             f"n_splits={self.n_splits}, "
             f"gap_years={self.gap_years}, "
-            f"drop_repeat_donors={self.drop_repeat_donors})"
+            f"drop_repeat_donors={self.drop_repeat_donors!r})"
         )
 
 

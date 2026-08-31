@@ -43,6 +43,11 @@ DEPRECATIONS = [
         # subpackage's PEP 562 __getattr__ so it stays the canonical class.
         lambda: preprocessing.SolicitationWindowTransformer,
     ),
+    (
+        "FiscalYearGroupedSplitter.drop_repeat_donors",
+        "0.8.0",
+        lambda: __import__("philanthropy.model_selection").model_selection.FiscalYearGroupedSplitter(),
+    ),
 ]
 
 

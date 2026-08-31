@@ -622,7 +622,7 @@ def test_row_split_flatters_conformal_coverage_and_a_donor_split_does_not():
 
     # Flag off: the FY2021 fold keeps donors that are also in the FY2020
     # calibration rows. Flag on: those donors are dropped.
-    splitter = FiscalYearGroupedSplitter(n_splits=1)
+    splitter = FiscalYearGroupedSplitter(n_splits=1, drop_repeat_donors=False)
     cal_idx, all_test_idx = next(
         iter(splitter.split(X_later, groups=fy_later))
     )

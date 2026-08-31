@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Deprecated
+- `FiscalYearGroupedSplitter`'s default for `drop_repeat_donors` (currently `False`) is deprecated and will change to `True` in 0.8.0. Leaving it at its default now emits a `DeprecationWarning`. Pass `drop_repeat_donors=False` explicitly to silence the warning and retain current behavior. Closes #108, by @shubhrai23.
+
 ### Added
 - `credit-guard` CI job: pull requests touching `philanthropy/` must also
   update this changelog, and the author must be credited in

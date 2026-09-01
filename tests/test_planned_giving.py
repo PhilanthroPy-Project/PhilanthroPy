@@ -13,7 +13,8 @@ from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
 
 from philanthropy.preprocessing import PlannedGivingSignalTransformer
-
+from philanthropy.models import PlannedGivingIntentScorer
+from unittest.mock import patch
 
 # ---------------------------------------------------------------------------
 # Shared helper
@@ -210,3 +211,61 @@ class TestPlannedGivingSignalTransformer:
         assert result[0, 3] == pytest.approx(2.0), (
             "composite_score must ignore sentinel -1.0 (treat as 0 in max)"
         )
+
+
+class TestPlannedGivingIntentScorer:
+
+    def test_predict_intent_score_single_class_returns_zeros(self):
+        """Single-class probability output must return all zeros."""
+        rng = np.random.default_rng(0)
+        X = rng.random((20, 4))
+
+        # Fit with multi-class data because CalibratedClassifierCV
+        # requires at least two classes during fitting.
+        m = PlannedGivingIntentScorer(n_estimators=5, random_state=0).fit(
+            X,
+            np.array([
+                0, 0, 0, 0, 1, 1, 1, 1,
+                0, 0, 0, 0, 1, 1, 1, 1,
+                0, 0, 0, 1,
+            ]),
+        )
+
+        # Simulate predict_proba() returning one column,
+        # which triggers the single-class fallback.
+        with patch.object(
+            m,
+            "predict_proba",
+            return_value=np.zeros((20, 1)),
+        ):
+            scores = m.predict_intent_score(X)
+
+        assert scores.shape == (20,)
+        np.testing.assert_array_equal(scores, np.zeros(20))
+
+
+
+    def test_predict_intent_score_multi_class(self):
+        """Multi-class training fold must return P(class=1) * 100."""
+        rng = np.random.default_rng(0)
+        X = rng.random((20, 4))
+        y = (X[:, 0] + rng.random(20) * 0.1 > 0.5).astype(int)
+
+        m = PlannedGivingIntentScorer(n_estimators=5, random_state=0).fit(X, y)
+        scores = m.predict_intent_score(X)
+
+        assert scores.shape == (20,)
+        assert np.all(scores >= 0.0) and np.all(scores <= 100.0)
+        # Score is P(class=1) * 100, rounded to 2 dp.
+        expected = np.round(m.predict_proba(X)[:, 1] * 100.0, 2)
+        np.testing.assert_array_almost_equal(scores, expected)
+
+    def test_predict(self):
+        """Test predict method."""
+        rng = np.random.default_rng(0)
+        X = rng.random((20, 4))
+        y = (X[:, 0] + rng.random(20) * 0.1 > 0.5).astype(int)
+
+        m = PlannedGivingIntentScorer(n_estimators=5, random_state=0).fit(X, y)
+        predictions = m.predict(X)
+        assert predictions.shape == (20,)

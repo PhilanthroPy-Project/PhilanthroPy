@@ -12,6 +12,7 @@ import pytest
 from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
 
+from philanthropy.models import PlannedGivingIntentScorer
 from philanthropy.preprocessing import PlannedGivingSignalTransformer
 
 
@@ -210,3 +211,24 @@ class TestPlannedGivingSignalTransformer:
         assert result[0, 3] == pytest.approx(2.0), (
             "composite_score must ignore sentinel -1.0 (treat as 0 in max)"
         )
+
+
+def test_predict_intent_score_single_class_returns_zeros():
+    """predict_intent_score returns zeros when predict_proba has one column."""
+    rng = np.random.default_rng(0)
+    X = rng.random((60, 4))
+    y = np.zeros(60, dtype=int)
+
+    scorer = PlannedGivingIntentScorer(n_estimators=10, random_state=0)
+    # CalibratedClassifierCV requires two classes to fit; stub the single-column
+    # predict_proba output seen when only one label was observed at fit time.
+    scorer.fit(X, (X[:, 0] + rng.random(60) * 0.1 > 0.5).astype(int))
+
+    def _single_class_proba(X_in):
+        return np.ones((X_in.shape[0], 1), dtype=float)
+
+    scorer.predict_proba = _single_class_proba  # type: ignore[method-assign]
+
+    scores = scorer.predict_intent_score(X)
+    assert scores.shape == (y.shape[0],)
+    assert np.all(scores == 0.0)

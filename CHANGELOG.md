@@ -142,6 +142,16 @@ anywhere in `philanthropy/`; `__version__ == importlib.metadata.version(...)`
 and `py.typed` in the wheel; every `__all__` symbol carries a tier and no Tier 1
 entry is mid-deprecation.
 
+### Documentation
+- New page **Real-Data Replication: KDD Cup 1998**
+  (`docs/explanation/real_data_replication.md`), promoted out of a section of
+  `benchmarks.md` and expanded: synthetic and real numbers side by side, the
+  panel construction from the wide promotion history, the pre-registered
+  prediction that was wrong by a factor of five, the download caveat, and the
+  Zenodo replication DOI. `benchmarks.md` keeps the headline tables and links
+  out, so the measured numbers still live in exactly one place. The README
+  gains a "Validated on real donor data" section pointing at it.
+
 ## [0.7.0] - 2026-08-21
 
 The removal release, plus everything else merged since 0.6.0. Every shim

@@ -6,20 +6,22 @@ Model-agnostic feature attribution for fitted donor-scoring estimators.
 
 from __future__ import annotations
 
+from typing import Any, Optional, Sequence
+
 import numpy as np
 import pandas as pd
 from sklearn.inspection import permutation_importance
 
 
 def donor_feature_importance(
-    estimator,
-    X,
-    y,
+    estimator: Any,
+    X: Any,
+    y: Any,
     *,
-    feature_names=None,
+    feature_names: Optional[Sequence[str]] = None,
     n_repeats: int = 10,
-    random_state=None,
-    scoring=None,
+    random_state: Any = None,
+    scoring: Any = None,
 ) -> pd.DataFrame:
     """Permutation feature importance for a fitted donor-scoring estimator.
 

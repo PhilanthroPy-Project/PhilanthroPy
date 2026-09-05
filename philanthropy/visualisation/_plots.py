@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 import pandas as pd
 
@@ -13,7 +13,9 @@ if TYPE_CHECKING:  # only for the return-type hints; never imported at runtime
 # annotations` keeps the return hints from evaluating at import time.
 
 
-def plot_affinity_distribution(scores, labels=None) -> matplotlib.axes.Axes:
+def plot_affinity_distribution(
+    scores: Any, labels: Optional[Any] = None
+) -> matplotlib.axes.Axes:
     """
     Plots a Seaborn KDE or histogram of the 0-100 affinity scores. 
     If actual major-gift labels are provided, plots overlaid distributions 
@@ -65,7 +67,9 @@ def plot_affinity_distribution(scores, labels=None) -> matplotlib.axes.Axes:
     
     return ax
 
-def plot_retention_waterfall(starting_donors, acquired, lapsed, recovered) -> matplotlib.axes.Axes:
+def plot_retention_waterfall(
+    starting_donors: int, acquired: int, lapsed: int, recovered: int
+) -> matplotlib.axes.Axes:
     """
     Generates a step-by-step waterfall chart showing the net change 
     in the donor file year-over-year.

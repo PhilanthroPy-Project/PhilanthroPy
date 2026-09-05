@@ -1,0 +1,54 @@
+name: Installed package smoke test
+
+# The main CI suite tests the working tree. Nobody tests what PyPI actually
+# serves, which is the only thing a new user or a JOSS reviewer ever runs:
+# `pip install philanthropy`, then the quickstart. This job walks that path on a
+# schedule, so a broken wheel, a missing package-data file, or a dependency that
+# moved under us surfaces here rather than in someone's first five minutes.
+#
+# Windows is deliberately included. The main matrix is Linux plus macOS, so this
+# is the cheapest place to find out that a path join or a
+# `pd.Timestamp.today().normalize()` behaves differently there.
+
+on:
+  schedule:
+    - cron: "0 12 * * 1"   # Mondays 12:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: pip install philanthropy (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      # Checked out into a subdirectory on purpose. The examples have to come
+      # from somewhere, but a `philanthropy/` package sitting in the working
+      # directory would shadow the installed wheel and this job would silently
+      # test the working tree, which is exactly what it exists not to do.
+      - uses: actions/checkout@v7
+        with:
+          path: repo
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install from PyPI
+        run: pip install philanthropy
+      - name: Assert the import resolves to the wheel, not the checkout
+        shell: bash   # one quoting dialect across all three runners
+        run: |
+          python -c "
+          import pathlib, philanthropy
+          here = pathlib.Path(philanthropy.__file__).resolve()
+          assert 'site-packages' in here.parts, f'not the installed wheel: {here}'
+          print(philanthropy.__version__, here)
+          "
+      - name: Run the quickstart a reviewer would run
+        run: python repo/examples/quickstart.py
+      - name: Run the console script
+        run: philanthropy --help

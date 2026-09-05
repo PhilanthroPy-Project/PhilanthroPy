@@ -1,0 +1,86 @@
+name: Bug report
+description: Something isn't working as documented
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing. The fields below are the ones that decide whether a bug
+        can be reproduced, which is the difference between a fix this week and a
+        thread of clarifying questions.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead.
+      placeholder: |
+        I expected WealthScreeningImputer to fill the NaNs in `wealth_estimate`.
+        It returned the column unchanged and did not warn.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: >
+        The smallest script that triggers it, runnable as pasted. If your data is
+        the trigger, `philanthropy.datasets.generate_synthetic_donor_data` or a
+        five-row hand-built DataFrame will usually do; please do not paste real
+        donor records.
+      render: python
+      placeholder: |
+        import pandas as pd
+        from philanthropy.preprocessing import WealthScreeningImputer
+
+        df = pd.DataFrame({"wealth_estimate": [1000.0, None, 3000.0]})
+        print(WealthScreeningImputer().fit_transform(df))
+    validations:
+      required: true
+
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Full traceback
+      description: If it raised, paste the whole thing, not just the last line.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: PhilanthroPy version
+      description: "`python -c \"import philanthropy; print(philanthropy.__version__)\"`"
+      placeholder: "0.7.0"
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Python, scikit-learn, pandas, OS
+      description: >
+        `python -c "import sys, sklearn, pandas; print(sys.version.split()[0],
+        sklearn.__version__, pandas.__version__)"`, plus your OS.
+      placeholder: "3.12.4, sklearn 1.8.0, pandas 2.2.3, macOS 15"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before filing
+      options:
+        - label: >
+            I checked that my install matches my source tree
+            (`pip install -e ".[dev]"` if working from a clone; a stale
+            non-editable copy in site-packages is a common cause of confusing
+            behaviour).
+          required: false
+        - label: >
+            The reproduction above contains no real donor, patient, or otherwise
+            identifiable data.
+          required: true

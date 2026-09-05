@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import argparse
 import sys
+from typing import Any, Dict, List, Optional, Sequence
 
+import numpy as np
 import pandas as pd
 
 from . import __version__
@@ -31,7 +33,7 @@ _MODEL_CHOICES = (
 )
 
 
-def _resolve_model(name):
+def _resolve_model(name: str) -> type:
     # argparse already rejects anything outside _MODEL_CHOICES, so there is no
     # unknown-name branch to handle here.
     from . import models
@@ -39,7 +41,7 @@ def _resolve_model(name):
     return getattr(models, name)
 
 
-def _read_csv(path):
+def _read_csv(path: str) -> pd.DataFrame:
     from .utils._validation import ensure_local_path
 
     ensure_local_path(path, "data")
@@ -49,7 +51,9 @@ def _read_csv(path):
         raise SystemExit(f"Data file not found: {path}")
 
 
-def _require_columns(df, columns, path):
+def _require_columns(
+    df: pd.DataFrame, columns: Sequence[str], path: str
+) -> None:
     missing = [c for c in columns if c not in df.columns]
     if missing:
         raise SystemExit(
@@ -58,13 +62,13 @@ def _require_columns(df, columns, path):
         )
 
 
-def _split_features(features):
+def _split_features(features: Optional[str]) -> Optional[List[str]]:
     if not features:
         return None
     return [f.strip() for f in features.split(",") if f.strip()]
 
 
-def _load_bundle(path):
+def _load_bundle(path: str) -> Dict[str, Any]:
     from .utils import load_model
 
     try:
@@ -75,7 +79,7 @@ def _load_bundle(path):
         raise SystemExit(str(exc))
 
 
-def _score_array(model, X):
+def _score_array(model: Any, X: Any) -> np.ndarray:
     if hasattr(model, "predict_affinity_score"):
         return model.predict_affinity_score(X)
     return model.predict_proba(X)[:, 1]
@@ -84,7 +88,7 @@ def _score_array(model, X):
 _CSV_INJECTION_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
 
-def _neutralise_csv_injection(df):
+def _neutralise_csv_injection(df: pd.DataFrame) -> pd.DataFrame:
     """Prefix an apostrophe to object-dtype cells beginning with a spreadsheet
     formula trigger (=, +, -, @, tab, CR).
 
@@ -108,7 +112,7 @@ def _neutralise_csv_injection(df):
     return out
 
 
-def _cmd_train(args):
+def _cmd_train(args: argparse.Namespace) -> None:
     features = _split_features(args.features)
     # Falsy, not `is None`: "--features ' , '" parses to [] and used to reach
     # fit() with a zero-column matrix.
@@ -126,7 +130,7 @@ def _cmd_train(args):
     print(f"Trained {args.model} on {len(df)} rows; saved to {args.out}")
 
 
-def _cmd_score(args):
+def _cmd_score(args: argparse.Namespace) -> None:
     bundle = _load_bundle(args.model)
     features = _split_features(args.features) or bundle["features"]
     df = _read_csv(args.data)
@@ -142,7 +146,7 @@ def _cmd_score(args):
         out.to_csv(sys.stdout, index=False)
 
 
-def _cmd_validate(args):
+def _cmd_validate(args: argparse.Namespace) -> None:
     from sklearn.metrics import (
         f1_score,
         precision_score,
@@ -171,7 +175,7 @@ def _cmd_validate(args):
     print(f"roc_auc   {roc_auc_score(y, y_proba):.3f}")
 
 
-def _build_parser():
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="philanthropy",
         description="Train, score, and validate PhilanthroPy models from CSV files.",
@@ -219,7 +223,7 @@ def _build_parser():
     return parser
 
 
-def main(argv=None):
+def main(argv: Optional[Sequence[str]] = None) -> None:
     """Execute the philanthropy command-line interface.
 
     Parameters

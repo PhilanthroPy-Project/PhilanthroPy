@@ -112,7 +112,7 @@ which is the model reciting its training set, not a result.
     | Non-major donors | 153 | 0.0 | 1.5 | 8.5 | 38.5 | 100.0 |
     | Major donors | 347 | 18.0 | 85.5 | 96.5 | 99.5 | 100.0 |
 
-[Run it in Colab, zero install](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/quickstart.ipynb){ .md-button .md-button--secondary }
+[Run it in Colab, zero install](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/notebooks/01_quickstart_propensity.ipynb){ .md-button .md-button--secondary }
 
 ## What is PhilanthroPy?
 

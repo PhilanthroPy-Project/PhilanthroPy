@@ -40,6 +40,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
     private generator produced, on all five published seeds. Gift amounts are
     deliberately **not** rounded to cents for that reason; rounding moved the
     reported min-max ranges by 0.001 AUC.
+- **Three notebooks under `examples/notebooks/`**, each with a Colab badge,
+  executed end to end in CI on every push (`pytest --nbmake examples/notebooks`,
+  one leg of the `lint` job): `01_quickstart_propensity.ipynb` (the README
+  quickstart plus a call list, a distribution plot, and permutation
+  importance), `02_temporal_leakage.ipynb` (builds `make_donor_panel`'s
+  features as-of and over the whole export and measures the inflation, an
+  optional cell behind `PHILANTHROPY_FETCH_KDD98` reproduces the real-data
+  number), and `03_grateful_patient_pipeline.ipynb` (encounters, an `as_of`
+  cutoff, service-line weighting, the solicitation window, routed through a
+  `ColumnTransformer` rather than a serial `Pipeline`, with an assertion that
+  the pipeline is not degenerate). `nbmake>=1.5` added to the `dev` extra as a
+  dev-only dependency; the runtime dependency rule (scikit-learn, pandas,
+  numpy, matplotlib, seaborn, nothing else) is untouched.
+  `examples/quickstart.ipynb` becomes a one-cell redirect to notebook 01 for
+  one release, so the previous Colab badge and any existing links keep
+  working; `tests/test_examples.py`'s docstring now says notebooks are covered
+  by `nbmake`, not by it.
 
 ### Deprecated
 - `FiscalYearGroupedSplitter`'s default for `drop_repeat_donors` (currently `False`) is deprecated and will change to `True` in 0.8.0. Leaving it at its default now emits a `DeprecationWarning`. Pass `drop_repeat_donors=False` explicitly to silence the warning and retain current behavior. Closes #108, by @shubhrai23.

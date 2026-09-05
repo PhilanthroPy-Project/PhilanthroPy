@@ -113,7 +113,9 @@ the threshold from your team's capacity, not from this table.
 > data-generating process. They are still synthetic: see
 > [Benchmarks](docs/explanation/benchmarks.md).
 
-> **Try it now, zero install:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/quickstart.ipynb)
+> **Try it now, zero install:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/notebooks/01_quickstart_propensity.ipynb)
+>
+> **More notebooks:** [`02_temporal_leakage.ipynb`](examples/notebooks/02_temporal_leakage.ipynb) measures where the leakage this library exists to prevent actually comes from; [`03_grateful_patient_pipeline.ipynb`](examples/notebooks/03_grateful_patient_pipeline.ipynb) builds the academic-medical-center path end to end. All three run in CI on every push (`pytest --nbmake`).
 >
 > **Runnable scripts:** [`examples/quickstart.py`](examples/quickstart.py) and [`examples/unischema_to_scores.py`](examples/unischema_to_scores.py) run end to end and are smoke-tested in CI.
 

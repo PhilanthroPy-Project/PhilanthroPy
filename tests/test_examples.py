@@ -2,6 +2,10 @@
 
 Keeps the examples honest: if the public API drifts, ``main()`` breaks here
 before it breaks for a user copy-pasting from the docs.
+
+Notebooks under ``examples/notebooks/`` are covered separately, by
+``pytest --nbmake examples/notebooks`` in the ``lint`` job of ``ci.yml``, not
+by this file: a notebook has no ``main()`` to call.
 """
 
 import importlib.util

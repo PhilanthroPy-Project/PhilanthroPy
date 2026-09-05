@@ -167,6 +167,12 @@ philanthropy score --data prospects.csv --model model.joblib --out scored.csv
 
 Nothing in the package downloads anything on its own either. No module imports a network client without being on an explicit allowlist, nothing is fetched at import time or during `fit`/`transform`, and `tests/test_no_network.py` enforces both halves in CI: it makes every socket raise across a full train/score cycle, and it parses every module in the package and fails the build if one imports a network-capable library off that allowlist. The allowlist currently names exactly one module: `philanthropy.datasets.fetch_kdd98_donors`, an opt-in function you call by name to fetch a public research dataset (KDD Cup 1998) to a local cache for validating the library against real donor data. It still never transmits any of *your* data; the only thing it fetches is a public file, once, and it is never called automatically. See **[Compliance considerations](docs/explanation/compliance_considerations.md)** and the **[security review Q&A](docs/explanation/security_review_answers.md)** for the questions an institutional review will ask.
 
+### Validated on real donor data
+
+The leakage-safety design was tested on [KDD Cup 1998](https://kdd.ics.uci.edu/databases/kddcup98/kddcup98.html), a real file of 95,412 donors with a 24-mailing giving history. Building features from the whole export instead of as of each decision point inflated walk-forward ROC-AUC by **+0.376** (0.482 → 0.858), roughly three times the effect on synthetic data, and no choice of splitter recovers any of it. That is the failure mode this library is built to prevent.
+
+The script had a prediction written into it before it ran, that real leakage would be *smaller*. It was wrong by about a factor of five, and it is reported that way. Script, output, and environment lock are archived at [doi:10.5281/zenodo.22050649](https://doi.org/10.5281/zenodo.22050649). Walkthrough: **[Real-data replication](docs/explanation/real_data_replication.md)**.
+
 ---
 
 ## From your CRM to scores

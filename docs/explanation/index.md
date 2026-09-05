@@ -8,3 +8,4 @@ These pages build understanding. They cover the concepts and architecture behind
 * [Responsible Use & Compliance](compliance_considerations.md)
 * [PhilanthroPy vs. Commercial Vendors](comparison_to_vendors.md)
 * [Model Validation & Benchmarks](benchmarks.md)
+* [Real-Data Replication: KDD Cup 1998](real_data_replication.md)

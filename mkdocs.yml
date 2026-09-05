@@ -119,6 +119,7 @@ nav:
     - explanation/security_review_answers.md
     - explanation/comparison_to_vendors.md
     - explanation/benchmarks.md
+    - explanation/real_data_replication.md
   - Contributing: contributing.md
   - API Reference:
     - reference/index.md

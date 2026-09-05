@@ -31,6 +31,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 
+from philanthropy.datasets import make_donor_panel
 from philanthropy.model_selection import FiscalYearGroupedSplitter
 
 SEEDS = [42, 43, 44, 45, 46]
@@ -40,23 +41,30 @@ FEATURES = ["total", "n", "recent"]
 
 
 def _panel(seed):
-    """A donor-year panel with a stable per-donor propensity and sector drift.
+    """Aggregate the shipped donor panel two ways: as-of, and whole-history.
 
-    Persistence is deliberate: real donors have habits, and that is what any
-    leakage has to exploit. Drift makes later years genuinely harder, so a CV
-    scheme cannot look good just by ignoring time.
+    The panel itself comes from ``philanthropy.datasets.make_donor_panel``, so
+    this experiment and the tutorials run on the same generator rather than on
+    a private copy of it. Its persistence is deliberate: real donors have
+    habits, and that is what any leakage has to exploit. Its drift makes later
+    years genuinely harder, so a CV scheme cannot look good just by ignoring
+    time.
+
+    What happens *here* is the actual subject: the same aggregates computed
+    once as of each panel year, and once over the whole export.
     """
-    rng = np.random.default_rng(seed)
-    theta = rng.normal(0, 1.2, N_DONORS)
-    drift = np.linspace(0.3, -0.3, len(YEARS))
-    gave = np.zeros((N_DONORS, len(YEARS)), dtype=bool)
+    gifts = make_donor_panel(
+        n_donors=N_DONORS,
+        n_years=len(YEARS),
+        start_fiscal_year=YEARS[0],
+        random_state=seed,
+    )["gifts"]
+
+    # Dense donor x year amounts. At most one gift per donor-year, which the
+    # generator guarantees, so this assignment cannot silently drop a gift.
     amount = np.zeros((N_DONORS, len(YEARS)))
-    for j in range(len(YEARS)):
-        p = 1.0 / (1.0 + np.exp(-(theta + drift[j])))
-        gave[:, j] = rng.random(N_DONORS) < p
-        amount[:, j] = np.where(
-            gave[:, j], rng.lognormal(6 + 0.35 * theta, 0.8), 0.0
-        )
+    amount[gifts["donor_id"], gifts["fiscal_year"] - YEARS[0]] = gifts["gift_amount"]
+    gave = amount > 0
 
     as_of, whole = [], []
     for j, year in enumerate(YEARS[:-1]):

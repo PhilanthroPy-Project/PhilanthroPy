@@ -5,6 +5,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added
+- **`datasets.make_donor_panel`** (Tier 2, Beta): a seeded multi-year donor
+  panel returning gift-level rows rather than one aggregated row per donor.
+  `generate_synthetic_donor_data` cannot demonstrate `RFMTransformer` (needs a
+  gift log), `FiscalYearGroupedSplitter` (needs repeated donor-years), an
+  `as_of` cutoff (needs something to cut off), or the grateful-patient
+  transformers (need encounters), so the only generator that could show the
+  library's central ideas lived privately inside
+  `scripts/leakage_experiment.py`. This promotes it.
+  - Returns `{"gifts", "donors"}`, plus `"encounters"` when
+    `include_encounters=True`. Column names match what the transformers
+    already require, so nothing has to be renamed on the way in.
+  - Fiscal years run 1 July to 30 June, labelled by the year they end in. At
+    most one gift per donor-year, so "recent" is well defined.
+  - **No label column, deliberately.** A label is a claim about a point in
+    time, and shipping one pre-computed hands every user the exact mistake this
+    package exists to prevent. The docstring shows the one-line derivation.
+  - `wealth_estimate` is ~30% missing by design, because a wealth screen that
+    came back for every record is not a wealth screen anyone has received.
+  - `scripts/leakage_experiment.py` now imports it instead of defining a
+    private copy, so the published experiment and the tutorials run on the same
+    generator. The experiment's numbers are unchanged, and not merely to three
+    decimals: the aggregated frames are asserted byte-identical to the ones the
+    private generator produced, on all five published seeds. Gift amounts are
+    deliberately **not** rounded to cents for that reason; rounding moved the
+    reported min-max ranges by 0.001 AUC.
+
 ### Deprecated
 - `FiscalYearGroupedSplitter`'s default for `drop_repeat_donors` (currently `False`) is deprecated and will change to `True` in 0.8.0. Leaving it at its default now emits a `DeprecationWarning`. Pass `drop_repeat_donors=False` explicitly to silence the warning and retain current behavior. Closes #108, by @shubhrai23.
 

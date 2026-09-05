@@ -161,6 +161,12 @@ entry is mid-deprecation.
   Zenodo replication DOI. `benchmarks.md` keeps the headline tables and links
   out, so the measured numbers still live in exactly one place. The README
   gains a "Validated on real donor data" section pointing at it.
+- "Which estimator do I need?" table at the top of `docs/tutorials/index.md`,
+  keyed by the question a fundraising shop actually asks rather than by module.
+  Fifteen rows covering every Tier 1 and Tier 2 estimator plus the metrics, with
+  the required data shape in the middle column, because that is usually the real
+  work. Closes the gap where a reader had to infer the entry point from the
+  feature tables.
 
 ### Typing
 - **mypy ratchet started.** `py.typed` ships in the wheel, so a user's type

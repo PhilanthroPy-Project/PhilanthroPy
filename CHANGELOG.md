@@ -125,6 +125,21 @@ entry is mid-deprecation.
   out, so the measured numbers still live in exactly one place. The README
   gains a "Validated on real donor data" section pointing at it.
 
+### Typing
+- **mypy ratchet started.** `py.typed` ships in the wheel, so a user's type
+  checker treats every unannotated function here as `Any`, which is worse than
+  shipping no type information: it silently disables checking at the boundary
+  instead of admitting there is nothing to check. `philanthropy.datasets`,
+  `.inspection`, `.metrics`, `.utils` and `.visualisation` are now fully
+  annotated and listed under a `[[tool.mypy.overrides]]` block with
+  `disallow_untyped_defs = true`, so a new unannotated function in any of them
+  fails CI rather than enlarging the backlog. `model_selection`, `experimental`,
+  `cli`, `models` and `preprocessing` remain, tracked in #166.
+- `ensure_local_path` is now generic in its argument (`TypeVar`) rather than
+  declared `-> str`. It returns its input unchanged, and both call sites pass
+  something that may be a `Path`, so the old annotation was a small lie; the
+  docstring said "the unchanged path" and now the type says so too.
+
 ## [0.7.0] - 2026-08-21
 
 The removal release, plus everything else merged since 0.6.0. Every shim

@@ -49,7 +49,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Collection
+from typing import Collection, Tuple
 
 import numpy as np
 
@@ -163,7 +163,12 @@ class IntervalReport:
     median_bound_ratio: float
 
 
-def _interval_inputs(y_true, lower, upper, alpha) -> tuple:
+def _interval_inputs(
+    y_true: Collection,
+    lower: Collection,
+    upper: Collection,
+    alpha: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
     y = np.asarray(y_true, dtype=float).ravel()
     lo = np.asarray(lower, dtype=float).ravel()
     hi = np.asarray(upper, dtype=float).ravel()
@@ -185,7 +190,9 @@ def _interval_inputs(y_true, lower, upper, alpha) -> tuple:
     return y, lo, hi, a
 
 
-def _interval_score_per_row(y, lo, hi, a) -> np.ndarray:
+def _interval_score_per_row(
+    y: np.ndarray, lo: np.ndarray, hi: np.ndarray, a: float
+) -> np.ndarray:
     return (
         (hi - lo)
         + (2.0 / a) * np.maximum(lo - y, 0.0)
@@ -193,7 +200,12 @@ def _interval_score_per_row(y, lo, hi, a) -> np.ndarray:
     )
 
 
-def interval_score(y_true, lower, upper, alpha: float = 0.05) -> float:
+def interval_score(
+    y_true: Collection,
+    lower: Collection,
+    upper: Collection,
+    alpha: float = 0.05,
+) -> float:
     """Mean interval score of a central ``1 - alpha`` interval.
 
     ``(u - l) + (2/alpha)(l - y)+ + (2/alpha)(y - u)+``, averaged. Lower is
@@ -236,7 +248,11 @@ def interval_score(y_true, lower, upper, alpha: float = 0.05) -> float:
 
 
 def interval_report(
-    y_true, lower, upper, alpha: float = 0.05, trim: float = 0.1
+    y_true: Collection,
+    lower: Collection,
+    upper: Collection,
+    alpha: float = 0.05,
+    trim: float = 0.1,
 ) -> IntervalReport:
     """Coverage, interval score and width-to-target for a set of intervals.
 

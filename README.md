@@ -323,6 +323,12 @@ Everyone who has landed a change is credited in
 Questions are welcome in
 [Discussions](https://github.com/PhilanthroPy-Project/PhilanthroPy/discussions).
 
+**Already using PhilanthroPy?** There is no telemetry in this package and there
+never will be, so
+[Are you using PhilanthroPy?](https://github.com/PhilanthroPy-Project/PhilanthroPy/discussions/158)
+is the only place adoption is visible. One reply is enough, and "evaluated it and
+passed" is more useful than a star.
+
 ---
 
 ## License

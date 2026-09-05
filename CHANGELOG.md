@@ -202,9 +202,11 @@ entry is mid-deprecation.
   `.inspection`, `.metrics`, `.utils` and `.visualisation` are now fully
   annotated and listed under a `[[tool.mypy.overrides]]` block with
   `disallow_untyped_defs = true`, so a new unannotated function in any of them
-  fails CI rather than enlarging the backlog. `cli` is now annotated and
-  listed too. `model_selection` and `experimental` (both open PRs), plus
-  `models` and `preprocessing`, remain, tracked in #166.
+  fails CI rather than enlarging the backlog. `cli` and `model_selection` are
+  now annotated and listed too (`split`'s generator return is
+  `Iterator[Tuple[ndarray, ndarray]]`, matching its `Yields` docstring
+  section). `experimental` (open PR), `models` and `preprocessing` remain,
+  tracked in #166.
 - `ensure_local_path` is now generic in its argument (`TypeVar`) rather than
   declared `-> str`. It returns its input unchanged, and both call sites pass
   something that may be a `Path`, so the old annotation was a small lie; the

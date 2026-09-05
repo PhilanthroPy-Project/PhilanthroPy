@@ -41,6 +41,10 @@ contribution. Code, docs, tests, and review all count.
 - [@stoppo22](https://github.com/stoppo22): added DataFrame feature-name
   coverage for `MovesManagementClassifier.fit`
   ([#146](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/146)).
+- [@Mohd-Hamza-Khan](https://github.com/Mohd-Hamza-Khan): added the missing
+  single-class fallback coverage for
+  `PlannedGivingIntentScorer.predict_intent_score`
+  ([#149](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/149)).
 
 ## Getting listed
 

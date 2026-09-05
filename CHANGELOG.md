@@ -16,6 +16,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `::error::` annotations on the Files tab. Closes #113.
 - Regression coverage ensuring `MovesManagementClassifier.fit` preserves
   DataFrame column names in `feature_names_in_`. Closes #54.
+- `.github/workflows/pypi-smoke.yml`: a weekly (Mondays 12:00 UTC) and
+  manually dispatchable job that installs the **published wheel** from PyPI on
+  Linux, macOS and Windows, then runs `examples/quickstart.py` and
+  `philanthropy --help`. Every other job tests the working tree; this one tests
+  what `pip install philanthropy` actually serves, which is the only thing a new
+  user or a reviewer runs. The repository is checked out into a subdirectory and
+  the job asserts `philanthropy.__file__` resolves inside `site-packages`, so a
+  `philanthropy/` directory in the working directory cannot silently shadow the
+  wheel and turn this into a second working-tree test. Windows is included
+  because the main matrix is Linux plus macOS.
 ### Fixed
 - `CRMCleaner.transform` no longer silently corrupts complex amounts into
   wrong finite floats: cells holding actual `complex` values are masked to
@@ -130,6 +140,17 @@ entry is mid-deprecation.
   the required data shape in the middle column, because that is usually the real
   work. Closes the gap where a reader had to infer the entry point from the
   feature tables.
+
+### Changed
+- Issue templates converted from Markdown to **YAML issue forms**
+  (`bug_report.yml`, `feature_request.yml`). The Markdown versions asked for a
+  version and a reproducer and could be submitted without either, and GitHub's
+  community profile reported `issue_template: false` because it counts only
+  forms. The bug form requires the version, the environment line and a runnable
+  reproducer, plus an explicit tick that the reproducer contains no real donor
+  or patient data. The feature form states the two constraints that decide most
+  requests (frozen dependency set, no network in the core) before the author
+  starts writing. `config.yml` is unchanged.
 
 ## [0.7.0] - 2026-08-21
 

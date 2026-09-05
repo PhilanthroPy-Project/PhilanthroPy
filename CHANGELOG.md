@@ -60,6 +60,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   flips between the three is a ranking of the tail), median width, and
   `width_ratio` = median width over median target. A valid interval can carry no
   information; the ratio is what separates the two.
+- Test coverage for `PlannedGivingIntentScorer.predict_intent_score`: the
+  single-class `predict_proba` fallback path that returns an all-zero score.
+  (#56)
 
 ### Changed
 - `ShareOfWalletScorer` output column 0 is renamed `sow_score` →

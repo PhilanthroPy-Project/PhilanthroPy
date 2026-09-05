@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Changed
+- README coverage badge now links to `pyproject.toml` and reads "≥92% floor"
+  rather than a bare "≥92%". It was a static shields.io string with no tie to
+  the enforced number, so it would have silently lied had `fail_under` ever
+  moved. Not wiring a dynamic gist badge (`schneegans/dynamic-badges-action`):
+  that needs a personal-access-token secret this change doesn't have standing
+  to create, and Codecov/Coveralls are explicitly ruled out elsewhere in this
+  project's standing rules.
+
 ### Added
 - **`datasets.make_donor_panel`** (Tier 2, Beta): a seeded multi-year donor
   panel returning gift-level rows rather than one aggregated row per donor.

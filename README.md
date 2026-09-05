@@ -10,7 +10,7 @@
   <a href="https://pypi.org/project/philanthropy/"><img src="https://img.shields.io/pypi/v/philanthropy?color=blue" alt="PyPI version"/></a>
   <img src="https://img.shields.io/pypi/pyversions/philanthropy" alt="Python versions"/>
   <a href="https://github.com/PhilanthroPy-Project/PhilanthroPy/actions/workflows/ci.yml"><img src="https://github.com/PhilanthroPy-Project/PhilanthroPy/actions/workflows/ci.yml/badge.svg" alt="Tests"/></a>
-  <img src="https://img.shields.io/badge/coverage-%E2%89%A592%25-brightgreen" alt="Coverage at least 92 percent"/>
+  <a href="https://github.com/PhilanthroPy-Project/PhilanthroPy/blob/main/pyproject.toml"><img src="https://img.shields.io/badge/coverage-%E2%89%A592%25_floor-brightgreen" alt="Coverage floor at least 92 percent, enforced in CI"/></a>
   <img src="https://img.shields.io/badge/sklearn-compatible-orange" alt="sklearn compatible"/>
   <a href="https://PhilanthroPy-Project.github.io/PhilanthroPy/"><img src="https://img.shields.io/badge/docs-GitHub%20Pages-informational" alt="documentation"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/pypi/l/philanthropy?color=green" alt="License"/></a>

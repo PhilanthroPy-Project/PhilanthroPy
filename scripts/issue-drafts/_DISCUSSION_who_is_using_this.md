@@ -1,8 +1,11 @@
 # Draft: pinned Discussion "Are you using PhilanthroPy?"
 
-Not posted. Create it under the **General** category at
-<https://github.com/PhilanthroPy-Project/PhilanthroPy/discussions/new?category=general>,
-then pin it and link it from the README.
+**Posted 2026-09-05** under **General** as
+<https://github.com/PhilanthroPy-Project/PhilanthroPy/discussions/158>, body verbatim
+from below, and linked from the README "Contributing" section. Pinning is a web-UI
+action; the GraphQL API exposes no `pinDiscussion` mutation.
+
+Kept here as the record of what was posted and why.
 
 Rationale: the package carries no telemetry and never will (`tests/test_no_network.py`
 enforces that), so this thread is the only adoption signal that exists. GitHub

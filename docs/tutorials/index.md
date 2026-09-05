@@ -35,7 +35,7 @@ Two things the table cannot say for you:
 modelling choice and are really a data-shaping choice. Building the features before splitting is
 worth more error than any estimator here is worth accuracy: measured at **+0.376 ROC-AUC** on a real
 donor file, against 0.107 for choosing the wrong splitter. See
-[the KDD Cup 1998 replication](../explanation/benchmarks.md#real-data-replication-kdd-cup-1998).
+[Real-data replication](../explanation/real_data_replication.md).
 
 **Every estimator here is Tier 1 or Tier 2 unless marked.** Tiers, and what each one promises, are in
 the [API reference](../reference/index.md#stability-tiers).

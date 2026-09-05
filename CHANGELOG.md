@@ -170,7 +170,27 @@ entry is mid-deprecation.
   Zenodo replication DOI. `benchmarks.md` keeps the headline tables and links
   out, so the measured numbers still live in exactly one place. The README
   gains a "Validated on real donor data" section pointing at it.
+- "Which estimator do I need?" table at the top of `docs/tutorials/index.md`,
+  keyed by the question a fundraising shop actually asks rather than by module.
+  Fifteen rows covering every Tier 1 and Tier 2 estimator plus the metrics, with
+  the required data shape in the middle column, because that is usually the real
+  work. Closes the gap where a reader had to infer the entry point from the
+  feature tables.
 
+### Typing
+- **mypy ratchet started.** `py.typed` ships in the wheel, so a user's type
+  checker treats every unannotated function here as `Any`, which is worse than
+  shipping no type information: it silently disables checking at the boundary
+  instead of admitting there is nothing to check. `philanthropy.datasets`,
+  `.inspection`, `.metrics`, `.utils` and `.visualisation` are now fully
+  annotated and listed under a `[[tool.mypy.overrides]]` block with
+  `disallow_untyped_defs = true`, so a new unannotated function in any of them
+  fails CI rather than enlarging the backlog. `model_selection`, `experimental`,
+  `cli`, `models` and `preprocessing` remain, tracked in #166.
+- `ensure_local_path` is now generic in its argument (`TypeVar`) rather than
+  declared `-> str`. It returns its input unchanged, and both call sites pass
+  something that may be a `Path`, so the old annotation was a small lie; the
+  docstring said "the unchanged path" and now the type says so too.
 ### Changed
 - Issue templates converted from Markdown to **YAML issue forms**
   (`bug_report.yml`, `feature_request.yml`). The Markdown versions asked for a

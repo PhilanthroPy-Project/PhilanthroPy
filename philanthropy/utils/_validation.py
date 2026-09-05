@@ -4,6 +4,10 @@ philanthropy.utils._validation
 Shared validation logic for PhilanthroPy estimators.
 """
 
+from typing import TypeVar
+
+_PathT = TypeVar("_PathT")
+
 def validate_fiscal_year_start(month: int) -> int:
     """
     Validate that the month is between 1 and 12.
@@ -33,7 +37,7 @@ def validate_fiscal_year_start(month: int) -> int:
 _LOCAL_SCHEMES = ("", "file")
 
 
-def ensure_local_path(path, param_name: str = "path") -> str:
+def ensure_local_path(path: _PathT, param_name: str = "path") -> _PathT:
     """
     Reject network-scheme URIs before a local file read.
 
@@ -49,7 +53,7 @@ def ensure_local_path(path, param_name: str = "path") -> str:
 
     Parameters
     ----------
-    path : str
+    path : str or path-like
         The file path about to be opened.
 
     param_name : str
@@ -57,8 +61,8 @@ def ensure_local_path(path, param_name: str = "path") -> str:
 
     Returns
     -------
-    path : str
-        The unchanged path.
+    path
+        The unchanged path, with its original type.
 
     Raises
     ------

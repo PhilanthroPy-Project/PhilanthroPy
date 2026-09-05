@@ -13,7 +13,7 @@ See ``docs/explanation/compliance_considerations.md``.
 
 from __future__ import annotations
 
-from typing import Collection, Dict
+from typing import Any, Collection, Dict
 
 import numpy as np
 import pandas as pd
@@ -22,7 +22,7 @@ import pandas as pd
 def selection_rate_by_group(
     y_pred: Collection,
     sensitive_features: Collection,
-    pos_label=1,
+    pos_label: Any = 1,
 ) -> Dict[object, float]:
     """Fraction selected (``y_pred == pos_label``) within each protected group.
 
@@ -69,7 +69,7 @@ def selection_rate_by_group(
 def disparate_impact_ratio(
     y_pred: Collection,
     sensitive_features: Collection,
-    pos_label=1,
+    pos_label: Any = 1,
 ) -> float:
     """Four-fifths-rule disparate-impact ratio across protected groups.
 

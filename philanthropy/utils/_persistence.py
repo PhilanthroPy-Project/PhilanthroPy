@@ -16,14 +16,24 @@ environment, which silently un-pickling with plain ``joblib.load`` never did.
 
 from __future__ import annotations
 
+import os
 import warnings
+from typing import Any, Dict, Optional, Sequence, Union
 
 import joblib
 
 from .. import __version__
 
+PathLike = Union[str, "os.PathLike[str]"]
 
-def save_model(model, path, *, features=None, target=None):
+
+def save_model(
+    model: Any,
+    path: PathLike,
+    *,
+    features: Optional[Sequence[str]] = None,
+    target: Optional[str] = None,
+) -> PathLike:
     """Persist ``model`` to ``path`` as a PhilanthroPy bundle.
 
     Parameters
@@ -55,7 +65,7 @@ def save_model(model, path, *, features=None, target=None):
     return path
 
 
-def load_model(path):
+def load_model(path: PathLike) -> Dict[str, Any]:
     """Load a bundle written by :func:`save_model`.
 
     Warns (does not raise) when the stored PhilanthroPy or scikit-learn version
@@ -85,7 +95,7 @@ def load_model(path):
     return bundle
 
 
-def _warn_on_version_mismatch(bundle):
+def _warn_on_version_mismatch(bundle: Dict[str, Any]) -> None:
     import sklearn
 
     saved_ph = bundle.get("philanthropy_version")

@@ -44,6 +44,11 @@ jobs:
         run: python -m flake8 philanthropy tests examples
       - name: Type check (mypy)
         run: python -m mypy philanthropy
+      # One leg is enough: these exercise the public API against the working
+      # tree, not the OS. --no-cov because pytest-cov's fail_under gate is for
+      # philanthropy/ itself, not notebook cells.
+      - name: Execute example notebooks
+        run: python -m pytest --nbmake examples/notebooks -q --no-cov
 
   test:
     name: Test (${{ matrix.os }}, py${{ matrix.python-version }})

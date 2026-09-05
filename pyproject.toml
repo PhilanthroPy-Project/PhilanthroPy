@@ -64,7 +64,8 @@ dev = [
     "flake8>=6.0",
     "mypy>=1.0",
     "matplotlib>=3.6",
-    "seaborn>=0.13"
+    "seaborn>=0.13",
+    "nbmake>=1.5"
 ]
 docs = [
     "mkdocs>=1.4.0,<2",

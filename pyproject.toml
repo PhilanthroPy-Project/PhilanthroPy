@@ -102,6 +102,24 @@ addopts = "--import-mode=importlib"
 files = ["philanthropy"]
 ignore_missing_imports = true
 
+# Ratchet, not a wish. `disallow_untyped_defs` is switched on one subpackage at
+# a time as its functions get annotated, so a newly-added unannotated function
+# in a listed subpackage fails CI instead of quietly enlarging the backlog.
+# Add a module to this list in the same PR that annotates it; when every
+# subpackage is listed, delete the override and set the flag at the top level.
+#
+# Still to do (count at the time of writing): model_selection 4,
+# experimental 5, cli 12, models 58, preprocessing 66. Tracked in #166.
+[[tool.mypy.overrides]]
+module = [
+    "philanthropy.datasets.*",
+    "philanthropy.inspection.*",
+    "philanthropy.metrics.*",
+    "philanthropy.utils.*",
+    "philanthropy.visualisation.*",
+]
+disallow_untyped_defs = true
+
 [tool.coverage.run]
 source = ["philanthropy"]
 branch = true

@@ -1,0 +1,79 @@
+name: Feature request
+description: Suggest an estimator, transformer, metric, or improvement
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Two constraints worth knowing before you write, because they decide most
+        requests:
+
+        - **Dependencies are frozen** at scikit-learn, pandas, numpy, matplotlib
+          and seaborn. Anything needing TensorFlow, torch, statsmodels or a
+          network client is a separate package, not a PR here.
+        - **Nothing in the core touches the network**, and that is enforced in CI.
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Problem or use case
+      description: >
+        Which advancement or fundraising workflow does this serve, and what do
+        you do today instead? Concrete beats general: "we score grateful-patient
+        prospects quarterly and hand-roll the discharge window each time" is a
+        better case than "encounter support could be richer".
+    validations:
+      required: true
+
+  - type: textarea
+    id: api
+    attributes:
+      label: Proposed API
+      description: >
+        Sketch the call. For an estimator or transformer, give the
+        sklearn-compatible signature: `__init__` params, what `fit` learns, what
+        `transform` / `predict_*` returns and on what scale.
+      render: python
+      placeholder: |
+        DonorRecencyTransformer(as_of=None, decay="exponential")
+            fit    -> freezes the reference date from training rows
+            transform -> (n, 2): days_since_last_gift, recency_weight in [0, 1]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of change is this
+      options:
+        - New estimator or transformer
+        - New metric
+        - New ingest adapter (a CRM or event source)
+        - Change to an existing public API
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: >
+        Including "compose two existing estimators", if you tried it. A request
+        that an existing combination already covers is still useful, as a
+        documentation gap.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: pr
+    attributes:
+      label: Would you be willing to open a PR?
+      options:
+        - "Yes"
+        - "Yes, with guidance on where to start"
+        - "No, requesting only"
+    validations:
+      required: true

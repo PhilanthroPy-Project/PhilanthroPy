@@ -135,6 +135,17 @@ entry is mid-deprecation.
   out, so the measured numbers still live in exactly one place. The README
   gains a "Validated on real donor data" section pointing at it.
 
+### Changed
+- Issue templates converted from Markdown to **YAML issue forms**
+  (`bug_report.yml`, `feature_request.yml`). The Markdown versions asked for a
+  version and a reproducer and could be submitted without either, and GitHub's
+  community profile reported `issue_template: false` because it counts only
+  forms. The bug form requires the version, the environment line and a runnable
+  reproducer, plus an explicit tick that the reproducer contains no real donor
+  or patient data. The feature form states the two constraints that decide most
+  requests (frozen dependency set, no network in the core) before the author
+  starts writing. `config.yml` is unchanged.
+
 ## [0.7.0] - 2026-08-21
 
 The removal release, plus everything else merged since 0.6.0. Every shim

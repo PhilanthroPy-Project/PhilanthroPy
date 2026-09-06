@@ -37,8 +37,12 @@ __all__ = [
 ]
 
 
+# Deprecated aliases resolve through __getattr__ (PEP 562) to the same class
+# object as the canonical name — not a subclass — so isinstance/clone behave
+# as before. They are removed in 1.0.0. No separate alias modules: those would
+# be unimported dead code (the alias never loads them).
 _DEPRECATED_ALIASES = {
-    # alias -> (canonical name, module attribute)
+    # alias -> canonical attribute name in this module's globals()
     "SolicitationWindowTransformer": "DischargeToSolicitationWindowTransformer",
 }
 

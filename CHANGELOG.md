@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Removed
+- Dead module `philanthropy/preprocessing/_solicitation_window.py`. The
+  deprecated alias `SolicitationWindowTransformer` already resolved only
+  through `__getattr__` in `__init__.py`; the file was unimported and
+  dragged coverage to 0%. Closes #153.
+
 ### Fixed
 - `GratefulPatientFeaturizer` now reports one fallback `general` service line
   per known donor when the encounter table omits the service-line column.

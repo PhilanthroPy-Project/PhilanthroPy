@@ -76,3 +76,4 @@ too; say so in the PR and it stays out.
 Not sure where to start? See
 [CONTRIBUTING.md](CONTRIBUTING.md) and the
 [good first issues](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+- [@haas26p-ctrl](https://github.com/haas26p-ctrl): deleted the unused `_solicitation_window` alias module ([#153](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/153)).

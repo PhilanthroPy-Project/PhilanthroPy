@@ -38,15 +38,18 @@ Typical usage
 from __future__ import annotations
 
 import warnings
-from typing import Optional
+from typing import Any, Optional, TypeVar
 
 import numpy as np
 import pandas as pd
 from pandas.errors import OutOfBoundsTimedelta
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
 
 from ..utils._validation import validate_fiscal_year_start
+
+_Self = TypeVar("_Self", bound="EncounterRecencyTransformer")
 
 
 class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
@@ -152,7 +155,7 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         self,
         date_col: str | list[str] = "last_encounter_date",
         fiscal_year_start: int = 7,
-        reference_date=None,
+        reference_date: Any = None,
         timezone: Optional[str] = None,
     ) -> None:
         # scikit-learn rule: __init__ ONLY assigns; no validation, no side-effects.
@@ -246,7 +249,7 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         return pd.DataFrame(cols)
 
     @staticmethod
-    def _days_since_day_resolution(ref_ts, dates: pd.Series) -> pd.Series:
+    def _days_since_day_resolution(ref_ts: Any, dates: pd.Series) -> pd.Series:
         """Overflow-safe ``days_since`` for extreme date spans (>~292 years).
 
         Differences at day resolution so the delta stays inside int64; ``NaT``
@@ -268,7 +271,7 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
     # fit / transform
     # ------------------------------------------------------------------
 
-    def fit(self, X, y=None) -> "EncounterRecencyTransformer":
+    def fit(self: _Self, X: Any, y: Any = None) -> _Self:
         """Validate parameters and freeze the reference date from training data.
 
         Parameters
@@ -322,7 +325,7 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
 
         return self
 
-    def transform(self, X, y=None) -> np.ndarray:
+    def transform(self, X: Any, y: Any = None) -> np.ndarray:
         """Compute encounter recency features.
 
         Parameters
@@ -384,7 +387,7 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         out_df = pd.concat(parts, axis=1) if parts else pd.DataFrame()
         return out_df.to_numpy(dtype=np.float64)
 
-    def get_feature_names_out(self, input_features=None) -> np.ndarray:
+    def get_feature_names_out(self, input_features: Any = None) -> np.ndarray:
         """Return output feature names.
 
         Returns
@@ -404,7 +407,7 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
             ]
         return np.array(names, dtype=object)
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         tags.input_tags.string = True  # Date columns are string-like on entry

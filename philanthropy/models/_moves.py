@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, TypeVar
+
 import numpy as np
 from sklearn.base import ClassifierMixin, BaseEstimator
 from sklearn.utils.validation import check_is_fitted, validate_data
@@ -8,6 +10,9 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import HistGradientBoostingClassifier
 
 MOVES_STAGES = ["IDENTIFY", "QUALIFY", "CULTIVATE", "SOLICIT", "STEWARD"]
+
+_Self = TypeVar("_Self", bound="MovesManagementClassifier")
+
 
 class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
     """
@@ -20,13 +25,13 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
         max_iter: int = 200,
         class_weight: str | dict | None = "balanced",
         random_state: int | None = None,
-    ):
+    ) -> None:
         self.learning_rate = learning_rate
         self.max_iter = max_iter
         self.class_weight = class_weight
         self.random_state = random_state
 
-    def fit(self, X, y):
+    def fit(self: _Self, X: Any, y: Any) -> _Self:
         """Fit the classifier to labelled moves-stage data.
 
         Parameters
@@ -72,7 +77,7 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
         self.n_iter_ = self.estimator_.n_iter_
         return self
 
-    def predict(self, X):
+    def predict(self, X: Any) -> np.ndarray:
         """Predict the next moves-management stage for each donor.
 
         Parameters
@@ -95,7 +100,7 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
         y_pred = self.estimator_.predict(X)
         return self.label_encoder_.inverse_transform(y_pred)
 
-    def predict_proba(self, X):
+    def predict_proba(self, X: Any) -> np.ndarray:
         """Return class probabilities for each moves-management stage.
 
         Parameters
@@ -117,7 +122,7 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
         X = validate_data(self, X, reset=False)
         return self.estimator_.predict_proba(X)
 
-    def action_priority(self, X) -> dict:
+    def action_priority(self, X: Any) -> dict:
         """Predict the next-best stage per donor plus a portfolio rollup.
 
         Unlike ``predict``/``predict_proba`` (which return ndarrays), this

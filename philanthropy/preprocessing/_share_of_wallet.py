@@ -38,12 +38,16 @@ True
 from __future__ import annotations
 
 import warnings
-from typing import Optional, Literal
+from typing import Any, Optional, Literal, TypeVar
 
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.impute import KNNImputer
+from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
+
+_SelfK = TypeVar("_SelfK", bound="WealthScreeningImputerKNN")
+_SelfS = TypeVar("_SelfS", bound="ShareOfWalletScorer")
 
 
 # ---------------------------------------------------------------------------
@@ -179,7 +183,7 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
         return [c for c in input_cols
                 if any(sub in c.lower() for sub in self._CANONICAL_SUBSTRINGS)]
 
-    def fit(self, X, y=None) -> "WealthScreeningImputerKNN":
+    def fit(self: _SelfK, X: Any, y: Any = None) -> _SelfK:
         """Learn fill statistics or fit the KNN imputer from training data.
 
         Parameters
@@ -305,7 +309,7 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
         self._col_indices_ = col_indices
         return self
 
-    def transform(self, X, y=None) -> np.ndarray:
+    def transform(self, X: Any, y: Any = None) -> np.ndarray:
         """Apply imputation and optionally append missingness indicators.
 
         Parameters
@@ -379,7 +383,7 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
             return np.hstack([X_out] + indicators)
         return X_out
 
-    def get_feature_names_out(self, input_features=None) -> np.ndarray:
+    def get_feature_names_out(self, input_features: Any = None) -> np.ndarray:
         """Return imputed feature names and optional missingness indicators.
 
         Parameters
@@ -414,7 +418,7 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
                     out.append(f"{col}__was_missing")
         return np.array(out, dtype=object)
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         return tags
@@ -541,7 +545,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         self.major_tier_threshold = major_tier_threshold
         self.principal_tier_threshold = principal_tier_threshold
 
-    def fit(self, X, y=None) -> "ShareOfWalletScorer":
+    def fit(self: _SelfS, X: Any, y: Any = None) -> _SelfS:
         """Fit the scorer: record wealth scale from training data.
 
         Parameters
@@ -579,7 +583,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
 
         return self
 
-    def transform(self, X, y=None) -> np.ndarray:
+    def transform(self, X: Any, y: Any = None) -> np.ndarray:
         """Compute SoW score and numeric capacity tier.
 
         Parameters
@@ -639,7 +643,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
 
         return np.column_stack([sow, tiers])
 
-    def get_feature_names_out(self, input_features=None) -> np.ndarray:
+    def get_feature_names_out(self, input_features: Any = None) -> np.ndarray:
         """Return the capacity-utilisation ratio and encoded tier names.
 
         Parameters
@@ -694,7 +698,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         )
         return np.array(["sow_score", "capacity_tier"], dtype=object)
 
-    def get_tier_labels(self, X) -> np.ndarray:
+    def get_tier_labels(self, X: Any) -> np.ndarray:
         """Return human-readable tier labels for each row.
 
         Parameters
@@ -710,7 +714,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         tier_ints = out[:, 1].astype(int)
         return np.array([self.TIER_LABELS[t] for t in tier_ints], dtype=object)
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         return tags

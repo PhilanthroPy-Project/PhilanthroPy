@@ -6,11 +6,16 @@ Models for predicting planned giving (bequest) intent.
 
 from __future__ import annotations
 
+from typing import Any, TypeVar
+
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
+
+_Self = TypeVar("_Self", bound="PlannedGivingIntentScorer")
 
 
 class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
@@ -32,11 +37,11 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         self,
         n_estimators: int = 100,
         random_state: int | None = None,
-    ):
+    ) -> None:
         self.n_estimators = n_estimators
         self.random_state = random_state
 
-    def fit(self, X, y) -> "PlannedGivingIntentScorer":
+    def fit(self: _Self, X: Any, y: Any) -> _Self:
         """Fit the calibrated classifier to planned-giving intent labels.
 
         Parameters
@@ -69,7 +74,7 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         self.estimator_.fit(X, y)
         return self
 
-    def predict(self, X) -> np.ndarray:
+    def predict(self, X: Any) -> np.ndarray:
         """Predict bequest/planned-giving intent labels.
 
         Parameters
@@ -91,7 +96,7 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         X = validate_data(self, X, reset=False)
         return self.estimator_.predict(X)
 
-    def predict_proba(self, X) -> np.ndarray:
+    def predict_proba(self, X: Any) -> np.ndarray:
         """Return calibrated class probabilities.
 
         Parameters
@@ -113,7 +118,7 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         X = validate_data(self, X, reset=False)
         return self.estimator_.predict_proba(X)
 
-    def predict_intent_score(self, X) -> np.ndarray:
+    def predict_intent_score(self, X: Any) -> np.ndarray:
         """
         Return P(planned giving intent) × 100, rounded to 2 decimal places.
 
@@ -133,6 +138,6 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
             scores = np.round(proba[:, 1] * 100.0, 2)
         return scores
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         return tags

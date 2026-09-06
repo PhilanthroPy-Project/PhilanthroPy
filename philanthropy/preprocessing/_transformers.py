@@ -53,6 +53,17 @@ def _get_pandas_output(estimator: Any) -> bool:
     return False
 
 
+def _validate_X(estimator: BaseEstimator, X: Any, reset: bool) -> np.ndarray:
+    """Validate data while allowing mixed types by falling back to object dtype."""
+    try:
+        return validate_data(estimator, X, dtype=None, ensure_all_finite="allow-nan", reset=reset)
+    except Exception as e:
+        if "Complex data not supported" in str(e):
+            raise
+        X_val = X.astype(object) if hasattr(X, "astype") else X
+        return validate_data(estimator, X_val, dtype=None, ensure_all_finite="allow-nan", reset=reset)
+
+
 def _coerce_currency_to_float(col: pd.Series) -> pd.Series:
     """Parse a gift-amount column to float64, tolerating currency formatting.
 
@@ -161,19 +172,7 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
             If ``fiscal_year_start`` is invalid or ``X`` contains complex data.
         """
         validate_fiscal_year_start(self.fiscal_year_start)
-        
-        # Try standard validation, fallback to object for mixed-type DataFrames or promotion errors
-        try:
-            X_validated = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=True)
-        except Exception as e:
-            if "Complex data not supported" in str(e):
-                raise
-            X_val = X.astype(object) if hasattr(X, "astype") else X
-            X_validated = validate_data(self, X_val, dtype=None, ensure_all_finite="allow-nan", reset=True)
-            
-        if np.iscomplexobj(X_validated):
-            raise ValueError("Complex data not supported")
-        
+        _validate_X(self, X, reset=True)
         return self
 
     def transform(self, X: Any) -> np.ndarray | pd.DataFrame:
@@ -199,16 +198,7 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
             If ``X`` contains complex data.
         """
         check_is_fitted(self)
-        try:
-            X_arr = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=False)
-        except Exception as e:
-            if "Complex data not supported" in str(e):
-                raise
-            X_val = X.astype(object) if hasattr(X, "astype") else X
-            X_arr = validate_data(self, X_val, dtype=None, ensure_all_finite="allow-nan", reset=False)
-
-        if np.iscomplexobj(X_arr):
-            raise ValueError("Complex data not supported")
+        X_arr = _validate_X(self, X, reset=False)
 
         X_df = pd.DataFrame(X_arr, columns=getattr(self, "feature_names_in_", None)).copy()
         
@@ -287,16 +277,7 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
             If ``fiscal_year_start`` is invalid or ``X`` contains complex data.
         """
         validate_fiscal_year_start(self.fiscal_year_start)
-        try:
-            X_validated = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=True)
-        except Exception as e:
-            if "Complex data not supported" in str(e):
-                raise
-            X_val = X.astype(object) if hasattr(X, "astype") else X
-            X_validated = validate_data(self, X_val, dtype=None, ensure_all_finite="allow-nan", reset=True)
-            
-        if np.iscomplexobj(X_validated):
-            raise ValueError("Complex data not supported")
+        _validate_X(self, X, reset=True)
         return self
 
     def transform(self, X: Any) -> np.ndarray | pd.DataFrame:
@@ -325,16 +306,7 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
             If ``X`` contains complex data.
         """
         check_is_fitted(self)
-        try:
-            X_arr = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=False)
-        except Exception as e:
-            if "Complex data not supported" in str(e):
-                raise
-            X_val = X.astype(object) if hasattr(X, "astype") else X
-            X_arr = validate_data(self, X_val, dtype=None, ensure_all_finite="allow-nan", reset=False)
-        
-        if np.iscomplexobj(X_arr):
-            raise ValueError("Complex data not supported")
+        X_arr = _validate_X(self, X, reset=False)
         
         X_df = pd.DataFrame(X_arr, columns=getattr(self, "feature_names_in_", None)).copy()
         

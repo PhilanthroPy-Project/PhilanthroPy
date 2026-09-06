@@ -790,3 +790,22 @@ class TestWealthPercentileTransformer:
         assert not pd.isna(out.loc[4, "net_worth_pct_rank"])
         # Other column passes through unchanged
         assert out["other"].tolist() == [1.0, 2.0, 3.0, 4.0, 5.0]
+
+    def test_unknown_explicit_wealth_columns_are_loud(self):
+        df = pd.DataFrame({"net_worth": [100.0], "other": [1.0]})
+        with pytest.raises(ValueError, match=r"estimated_networth.*net_worth.*other"):
+            WealthPercentileTransformer(wealth_cols=["estimated_networth"]).fit(df)
+
+    def test_partial_explicit_wealth_column_match_still_fits(self):
+        df = pd.DataFrame({"net_worth": [100.0, 200.0], "other": [1.0, 2.0]})
+        transformer = WealthPercentileTransformer(
+            wealth_cols=["net_worth", "estimated_networth"]
+        ).fit(df)
+        assert transformer.imputed_cols_ == ["net_worth"]
+
+    def test_feature_names_are_preserved_or_generated(self):
+        df = pd.DataFrame({"net_worth": [100.0], "other": [1.0]})
+        from_frame = WealthPercentileTransformer().fit(df)
+        from_array = WealthPercentileTransformer().fit(df.to_numpy())
+        assert from_frame.feature_names_in_.tolist() == ["net_worth", "other"]
+        assert from_array.feature_names_in_.tolist() == ["x0", "x1"]

@@ -37,7 +37,7 @@ produced, mirroring the contract of
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple, TypeVar
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
@@ -45,6 +45,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.neural_network import MLPRegressor
 from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
+
+_Self = TypeVar("_Self", bound="FinancialForecastModel")
 
 
 class FinancialForecastModel(RegressorMixin, BaseEstimator):
@@ -168,7 +170,7 @@ class FinancialForecastModel(RegressorMixin, BaseEstimator):
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _impute(self, X) -> np.ndarray:
+    def _impute(self, X: Any) -> np.ndarray:
         """Fill NaNs with the frozen per-column training medians.
 
         Casting to ``float64`` guarantees ``np.isnan`` works on integer inputs
@@ -208,7 +210,7 @@ class FinancialForecastModel(RegressorMixin, BaseEstimator):
     # Public API
     # ------------------------------------------------------------------
 
-    def fit(self, X, y) -> "FinancialForecastModel":
+    def fit(self: _Self, X: Any, y: Any) -> _Self:
         """Fit the hybrid forecaster on labelled revenue data.
 
         Parameters
@@ -267,7 +269,7 @@ class FinancialForecastModel(RegressorMixin, BaseEstimator):
         )
         return self
 
-    def predict(self, X) -> np.ndarray:
+    def predict(self, X: Any) -> np.ndarray:
         """Predict revenue for each period in ``X`` (cross-sectional hybrid).
 
         Parameters
@@ -289,7 +291,7 @@ class FinancialForecastModel(RegressorMixin, BaseEstimator):
             out = out + self.nonlinear_model_.predict(X_imp)
         return out
 
-    def predict_revenue_forecast(self, X, horizon: int) -> np.ndarray:
+    def predict_revenue_forecast(self, X: Any, horizon: int) -> np.ndarray:
         """Forecast giving revenue for the next ``horizon`` periods.
 
         The supplied ``X`` provides the most recent observed context: its hybrid

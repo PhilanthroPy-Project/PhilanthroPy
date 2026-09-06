@@ -220,11 +220,6 @@ def test_encounters_feed_the_encounter_transformer_with_an_as_of_cutoff():
     )
     gifts = panel["gifts"][["donor_id", "gift_date", "gift_amount"]].copy()
     cutoff = gifts["gift_date"].max()
-    # Dates as strings, exactly as EncounterTransformer's own documented
-    # example passes them. A real datetime64 column raises DTypePromotionError
-    # inside sklearn's validation; that is a wart in the transformer, not in
-    # this generator, and it is tracked separately.
-    gifts["gift_date"] = gifts["gift_date"].dt.strftime("%Y-%m-%d")
 
     transformer = EncounterTransformer(
         encounter_df=panel["encounters"],

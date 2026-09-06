@@ -41,12 +41,15 @@ True
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional, TypeVar
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
+
+_Self = TypeVar("_Self", bound="AskAmountRecommender")
 
 
 class AskAmountRecommender(RegressorMixin, BaseEstimator):
@@ -177,14 +180,14 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         self.random_state = random_state
         self.ask_floor = ask_floor
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         tags.regressor_tags.poor_score = True
         return tags
 
     @property
-    def n_iter_(self):
+    def n_iter_(self) -> int:
         """Number of iterations run by the backend estimator."""
         check_is_fitted(self, ["estimator_"])
         return self.estimator_.n_iter_
@@ -193,7 +196,7 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
     # Public API
     # ------------------------------------------------------------------
 
-    def fit(self, X, y) -> "AskAmountRecommender":
+    def fit(self: _Self, X: Any, y: Any) -> _Self:
         """Fit the ask-amount recommender to labelled prospect data."""
         X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
         self.n_features_in_ = X.shape[1]
@@ -209,7 +212,7 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         self.estimator_.fit(X, y)
         return self
 
-    def predict(self, X) -> np.ndarray:
+    def predict(self, X: Any) -> np.ndarray:
         """Predict the base ask amount for each prospect."""
         check_is_fitted(self, ["estimator_"])
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
@@ -218,8 +221,8 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
 
     def ask_ladder(
         self,
-        X,
-        multipliers=(1.0, 1.5, 2.5),
+        X: Any,
+        multipliers: Any = (1.0, 1.5, 2.5),
     ) -> np.ndarray:
         """Return a discrete gift array (ask ladder) for each prospect.
 

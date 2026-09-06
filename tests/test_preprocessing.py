@@ -316,6 +316,39 @@ class TestEncounterTransformer:
         assert "days_since_last_discharge" in out.columns
         assert "encounter_frequency_score" in out.columns
 
+    def test_string_and_datetime_gift_dates_produce_equal_output(
+        self, encounter_df, gift_df_with_ids
+    ):
+        parsed_gifts = gift_df_with_ids.assign(
+            gift_date=pd.to_datetime(gift_df_with_ids["gift_date"])
+        )
+
+        string_out = EncounterTransformer(
+            encounter_df=encounter_df, as_of="2023-06-01"
+        ).set_output(transform="pandas").fit_transform(gift_df_with_ids)
+        parsed_out = EncounterTransformer(
+            encounter_df=encounter_df, as_of=pd.Timestamp("2023-06-01")
+        ).set_output(transform="pandas").fit_transform(parsed_gifts)
+
+        pd.testing.assert_frame_equal(parsed_out, string_out)
+
+    @pytest.mark.parametrize("phase", ["fit", "transform"])
+    def test_unparseable_gift_date_names_column(self, phase):
+        encounters = pd.DataFrame(
+            {"donor_id": [1], "discharge_date": ["2022-01-01"]}
+        )
+        valid = pd.DataFrame(
+            {"donor_id": [1], "gift_date": ["2023-01-01"], "gift_amount": [1.0]}
+        )
+        invalid = valid.assign(gift_date=["not-a-date"])
+        transformer = EncounterTransformer(encounter_df=encounters)
+
+        with pytest.raises(ValueError, match="gift_date.*date-like"):
+            if phase == "fit":
+                transformer.fit(invalid)
+            else:
+                transformer.fit(valid).transform(invalid)
+
     def test_missing_discharge_dates_produce_nan(self, gift_df_with_ids):
         """Donors not in encounter_df get NaN for days_since_last_discharge."""
         enc = pd.DataFrame(
@@ -790,3 +823,22 @@ class TestWealthPercentileTransformer:
         assert not pd.isna(out.loc[4, "net_worth_pct_rank"])
         # Other column passes through unchanged
         assert out["other"].tolist() == [1.0, 2.0, 3.0, 4.0, 5.0]
+
+    def test_unknown_explicit_wealth_columns_are_loud(self):
+        df = pd.DataFrame({"net_worth": [100.0], "other": [1.0]})
+        with pytest.raises(ValueError, match=r"estimated_networth.*net_worth.*other"):
+            WealthPercentileTransformer(wealth_cols=["estimated_networth"]).fit(df)
+
+    def test_partial_explicit_wealth_column_match_still_fits(self):
+        df = pd.DataFrame({"net_worth": [100.0, 200.0], "other": [1.0, 2.0]})
+        transformer = WealthPercentileTransformer(
+            wealth_cols=["net_worth", "estimated_networth"]
+        ).fit(df)
+        assert transformer.imputed_cols_ == ["net_worth"]
+
+    def test_feature_names_are_preserved_or_generated(self):
+        df = pd.DataFrame({"net_worth": [100.0], "other": [1.0]})
+        from_frame = WealthPercentileTransformer().fit(df)
+        from_array = WealthPercentileTransformer().fit(df.to_numpy())
+        assert from_frame.feature_names_in_.tolist() == ["net_worth", "other"]
+        assert from_array.feature_names_in_.tolist() == ["x0", "x1"]

@@ -49,6 +49,13 @@ contribution. Code, docs, tests, and review all count.
   unit-test coverage for `WealthPercentileTransformer`'s all-missing and
   partially-missing column branches in `WealthPercentileTransformer` (closes
   [#169](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/169)).
+- [@be-student](https://github.com/be-student): made `EncounterTransformer`
+  accept parsed gift dates and report invalid dates with a column-specific
+  error (closes [#163](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/163)).
+- [@be-student](https://github.com/be-student): made explicit wealth-column
+  schema mismatches fail with actionable diagnostics and preserved automatic
+  and partial-match behavior (closes
+  [#156](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/156)).
 - [@be-student](https://github.com/be-student): aligned the missing service-line
   fallback with its `general` category and added regression coverage for
   missing service-line and physician columns (closes

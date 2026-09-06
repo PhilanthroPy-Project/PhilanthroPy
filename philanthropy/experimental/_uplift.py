@@ -10,10 +10,14 @@ this is why the estimator lives in the experimental package.
 
 from __future__ import annotations
 
+from typing import Any, TypeVar
+
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.utils.validation import check_is_fitted, validate_data
+
+_Self = TypeVar("_Self", bound="UpliftTLearner")
 
 
 class UpliftTLearner(ClassifierMixin, BaseEstimator):
@@ -85,7 +89,7 @@ class UpliftTLearner(ClassifierMixin, BaseEstimator):
         self.max_depth = max_depth
         self.random_state = random_state
 
-    def fit(self, X, y, treatment) -> "UpliftTLearner":
+    def fit(self: _Self, X: Any, y: Any, treatment: Any) -> _Self:
         """Fit the two arm-specific models.
 
         Parameters
@@ -134,7 +138,7 @@ class UpliftTLearner(ClassifierMixin, BaseEstimator):
         self.model_control_ = self._fit_arm(X[is_control], y[is_control])
         return self
 
-    def _fit_arm(self, X_arm, y_arm) -> RandomForestClassifier:
+    def _fit_arm(self, X_arm: Any, y_arm: Any) -> RandomForestClassifier:
         """Fit one arm's RandomForestClassifier."""
         model = RandomForestClassifier(
             n_estimators=self.n_estimators,
@@ -145,7 +149,7 @@ class UpliftTLearner(ClassifierMixin, BaseEstimator):
         return model
 
     @staticmethod
-    def _prob_give(model: RandomForestClassifier, X) -> np.ndarray:
+    def _prob_give(model: RandomForestClassifier, X: Any) -> np.ndarray:
         """Return P(class == 1) from a fitted arm, guarding single-class arms.
 
         If the arm saw only one class during fit, ``predict_proba`` returns a
@@ -158,7 +162,7 @@ class UpliftTLearner(ClassifierMixin, BaseEstimator):
             return np.full(proba.shape[0], 1.0 if 1 in model.classes_ else 0.0)
         return proba[:, 1]
 
-    def predict_uplift_score(self, X) -> np.ndarray:
+    def predict_uplift_score(self, X: Any) -> np.ndarray:
         """Return the estimated uplift for each donor.
 
         Parameters
@@ -184,7 +188,7 @@ class UpliftTLearner(ClassifierMixin, BaseEstimator):
         p_control = self._prob_give(self.model_control_, X)
         return p_treated - p_control
 
-    def predict(self, X) -> np.ndarray:
+    def predict(self, X: Any) -> np.ndarray:
         """Return 1 where soliciting is expected to help, else 0.
 
         Convenience wrapper: ``(predict_uplift_score(X) > 0).astype(int)``.

@@ -110,14 +110,17 @@ import math
 from dataclasses import dataclass
 from decimal import Decimal
 from fractions import Fraction
-from typing import Any, Optional, Union
+from typing import Any, Optional, TypeVar, Union
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.exceptions import NotFittedError
+from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
 
 _SCORES = ("absolute", "difficulty", "log")
+_Self = TypeVar("_Self", bound="GiftIntervalCalibrator")
+_Alpha = Union[float, Fraction, Decimal, int]
 
 
 @dataclass(frozen=True)
@@ -147,7 +150,7 @@ class GiftInterval:
     requested_level: float
 
 
-def _exact_alpha(alpha) -> Fraction:
+def _exact_alpha(alpha: _Alpha) -> Fraction:
     """Read ``alpha`` as an exact rational.
 
     A ``float`` is read as the shortest decimal that round-trips to it, so
@@ -169,7 +172,7 @@ def _exact_alpha(alpha) -> Fraction:
     )
 
 
-def _min_calibration_size(alpha) -> int:
+def _min_calibration_size(alpha: _Alpha) -> int:
     """Smallest calibration set that certifies ``1 - alpha`` from one rank.
 
     ``ceil((n + 1) * (1 - alpha)) <= n`` reduces to ``n >= 1 / alpha - 1``, so
@@ -202,7 +205,7 @@ def _calibrate(scores: np.ndarray, alpha: Fraction, where: str = "") -> tuple:
     return float(np.sort(scores)[r - 1]), r
 
 
-def _key(value):
+def _key(value: Any) -> Any:
     """Hashable Python key for a group label that may be a numpy scalar."""
     return value.item() if isinstance(value, np.generic) else value
 
@@ -349,10 +352,10 @@ class GiftIntervalCalibrator(RegressorMixin, BaseEstimator):
 
     def __init__(
         self,
-        estimator,
-        alpha: Union[float, Fraction, Decimal, int] = 0.05,
+        estimator: Any,
+        alpha: _Alpha = 0.05,
         score: str = "absolute",
-        difficulty_estimator=None,
+        difficulty_estimator: Any = None,
         lower_bound: Optional[float] = 0.0,
     ) -> None:
         # scikit-learn rule: __init__ stores parameters and does NO logic.
@@ -362,7 +365,7 @@ class GiftIntervalCalibrator(RegressorMixin, BaseEstimator):
         self.difficulty_estimator = difficulty_estimator
         self.lower_bound = lower_bound
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         tags.regressor_tags.poor_score = True
@@ -372,7 +375,7 @@ class GiftIntervalCalibrator(RegressorMixin, BaseEstimator):
     # Public API
     # ------------------------------------------------------------------
 
-    def fit(self, X, y, groups=None) -> "GiftIntervalCalibrator":
+    def fit(self: _Self, X: Any, y: Any, groups: Any = None) -> _Self:
         """Calibrate on held-out rows.
 
         Parameters
@@ -463,13 +466,13 @@ class GiftIntervalCalibrator(RegressorMixin, BaseEstimator):
             self.attained_level_[_key(k)] = float(Fraction(r, n_g + 1))
         return self
 
-    def predict(self, X) -> np.ndarray:
+    def predict(self, X: Any) -> np.ndarray:
         """Return ``estimator``'s point prediction, unchanged."""
         check_is_fitted(self, ["quantile_"])
         validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self._point(X, None)
 
-    def predict_gift_interval(self, X, groups=None) -> GiftInterval:
+    def predict_gift_interval(self, X: Any, groups: Any = None) -> GiftInterval:
         """Return a calibrated interval on the dollar amount for each row.
 
         Parameters
@@ -556,7 +559,7 @@ class GiftIntervalCalibrator(RegressorMixin, BaseEstimator):
                 f"amount; {type(self.estimator).__name__} does not."
             )
 
-    def _point(self, X, n: Optional[int]) -> np.ndarray:
+    def _point(self, X: Any, n: Optional[int]) -> np.ndarray:
         """Delegate to ``estimator``, passing X through untouched.
 
         ``validate_data`` has already checked the width; the original object
@@ -572,7 +575,7 @@ class GiftIntervalCalibrator(RegressorMixin, BaseEstimator):
             )
         return yhat
 
-    def _difficulty(self, X, n: int) -> np.ndarray:
+    def _difficulty(self, X: Any, n: int) -> np.ndarray:
         est = self.difficulty_estimator
         if est is None:
             raise ValueError(
@@ -595,7 +598,7 @@ class GiftIntervalCalibrator(RegressorMixin, BaseEstimator):
             )
         return sigma
 
-    def _conformity_scores(self, X, yhat: np.ndarray, y: np.ndarray) -> tuple:
+    def _conformity_scores(self, X: Any, yhat: np.ndarray, y: np.ndarray) -> tuple:
         if self.score == "absolute":
             return np.abs(y - yhat), None
         if self.score == "difficulty":
@@ -614,7 +617,7 @@ class GiftIntervalCalibrator(RegressorMixin, BaseEstimator):
                 'score="absolute" for a target that can go negative.'
             )
 
-    def _bounds(self, X, yhat: np.ndarray, q: np.ndarray) -> tuple:
+    def _bounds(self, X: Any, yhat: np.ndarray, q: np.ndarray) -> tuple:
         if self.score == "log":
             self._check_log_domain(yhat, None)
             base = np.log1p(yhat)
@@ -623,7 +626,7 @@ class GiftIntervalCalibrator(RegressorMixin, BaseEstimator):
         return yhat - half, yhat + half
 
     @staticmethod
-    def _group_labels(groups, n: int) -> np.ndarray:
+    def _group_labels(groups: Any, n: int) -> np.ndarray:
         labels = np.asarray(groups)
         if labels.ndim != 1:
             raise ValueError(
@@ -637,7 +640,7 @@ class GiftIntervalCalibrator(RegressorMixin, BaseEstimator):
         return labels
 
 
-def _n_rows(X) -> int:
+def _n_rows(X: Any) -> int:
     try:
         return int(X.shape[0])
     except AttributeError:

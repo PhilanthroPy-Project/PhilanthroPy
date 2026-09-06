@@ -5,6 +5,8 @@ CRM data cleaning, Fiscal Year-aware feature engineering, and
 clinical-encounter feature engineering for medical philanthropy.
 """
 
+from typing import Any
+
 from ._transformers import FiscalYearTransformer, CRMCleaner
 from ._wealth import WealthScreeningImputer
 from ._encounters import EncounterTransformer
@@ -41,7 +43,7 @@ _DEPRECATED_ALIASES = {
 }
 
 
-def __getattr__(name):
+def __getattr__(name: str) -> Any:
     """Resolve deprecated aliases lazily, warning once per access (PEP 562).
 
     Kept as an alias rather than a subclass on purpose: a subclass would be a

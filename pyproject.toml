@@ -109,14 +109,15 @@ ignore_missing_imports = true
 # Add a module to this list in the same PR that annotates it; when every
 # subpackage is listed, delete the override and set the flag at the top level.
 #
-# Still to do (count at the time of writing): model_selection 4 (open PR),
-# experimental 5 (open PR), models 58, preprocessing 66. Tracked in #166.
+# Still to do (count at the time of writing): experimental 5 (open PR),
+# models 58, preprocessing 66. Tracked in #166.
 [[tool.mypy.overrides]]
 module = [
     "philanthropy.cli",
     "philanthropy.datasets.*",
     "philanthropy.inspection.*",
     "philanthropy.metrics.*",
+    "philanthropy.model_selection.*",
     "philanthropy.utils.*",
     "philanthropy.visualisation.*",
 ]

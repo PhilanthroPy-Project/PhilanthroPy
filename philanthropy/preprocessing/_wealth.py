@@ -36,11 +36,14 @@ WealthScreeningImputer(...)
 
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+from typing import Any, List, Literal, Optional, TypeVar
 
 import numpy as np
 from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
+
+_Self = TypeVar("_Self", bound="WealthScreeningImputer")
 
 # Default column names used by common wealth-screening vendors
 _DEFAULT_WEALTH_COLS: List[str] = [
@@ -181,7 +184,7 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
     # fit / transform
     # ------------------------------------------------------------------
 
-    def fit(self, X, y=None) -> "WealthScreeningImputer":
+    def fit(self: _Self, X: Any, y: Any = None) -> _Self:
         """Learn fill statistics from training data.
 
         Parameters
@@ -249,7 +252,7 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
 
         return self
 
-    def transform(self, X) -> np.ndarray:
+    def transform(self, X: Any) -> np.ndarray:
         """Apply imputation with frozen fill values.
 
         Parameters
@@ -307,7 +310,7 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
             return np.hstack([X_out] + indicators)
         return X_out
 
-    def get_feature_names_out(self, input_features=None):
+    def get_feature_names_out(self, input_features: Any = None) -> np.ndarray:
         """Return imputed feature names and optional missingness indicators.
 
         Parameters
@@ -341,7 +344,7 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
                     out.append(f"{col}__was_missing")
         return np.array(out, dtype=object)
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         return tags

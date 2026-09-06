@@ -43,12 +43,15 @@ EncounterTransformer(...)
 from __future__ import annotations
 
 import warnings
-from typing import List
+from typing import Any, List, TypeVar
 
 import numpy as np
 import pandas as pd
 from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
+
+_Self = TypeVar("_Self", bound="EncounterTransformer")
 
 
 # ---------------------------------------------------------------------------
@@ -56,7 +59,9 @@ from sklearn.utils.validation import check_is_fitted, validate_data
 # ---------------------------------------------------------------------------
 
 
-def _apply_as_of_cutoff(enc, discharge_col, as_of, class_name):
+def _apply_as_of_cutoff(
+    enc: pd.DataFrame, discharge_col: str, as_of: Any, class_name: str
+) -> pd.DataFrame:
     """Drop encounter rows discharged after ``as_of``.
 
     Returns ``enc`` unchanged when ``as_of`` is ``None``. Rows whose discharge
@@ -86,7 +91,9 @@ def _apply_as_of_cutoff(enc, discharge_col, as_of, class_name):
     return enc[keep]
 
 
-def _warn_if_unbounded(enc, discharge_col, gift_dates, class_name):
+def _warn_if_unbounded(
+    enc: pd.DataFrame, discharge_col: str, gift_dates: Any, class_name: str
+) -> None:
     """Warn when ``as_of`` is unset and the encounter table runs past the gifts.
 
     The default ``as_of=None`` aggregates the whole encounter table, which is
@@ -258,8 +265,8 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         allow_negative_days: bool = False,
         id_cols_to_drop: list[str] | None = None,
         pii_patterns: tuple[str, ...] | None = None,
-        as_of=None,
-    ):
+        as_of: Any = None,
+    ) -> None:
         self.encounter_df = encounter_df
         self.encounter_path = encounter_path
         self.discharge_col = discharge_col
@@ -270,7 +277,7 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         self.pii_patterns = pii_patterns
         self.as_of = as_of
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict:
         """Drop the raw encounter table from pickles and joblib bundles.
 
         ``transform`` reads only ``encounter_summary_``, the per-donor aggregate
@@ -356,7 +363,7 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
     # fit / transform
     # ------------------------------------------------------------------
 
-    def fit(self, X: pd.DataFrame, y=None) -> "EncounterTransformer":
+    def fit(self: _Self, X: pd.DataFrame, y: Any = None) -> _Self:
         """Compute per-donor encounter summaries from ``encounter_df``.
 
         The fitted artefact ``encounter_summary_`` is a lightweight per-donor
@@ -548,7 +555,7 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         # Convert back to numpy array float64 as instructed
         return X_out.to_numpy(dtype=np.float64)
 
-    def get_feature_names_out(self, input_features=None):
+    def get_feature_names_out(self, input_features: Any = None) -> np.ndarray:
         """Return privacy-filtered donor and generated encounter feature names.
 
         Parameters
@@ -578,6 +585,6 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         out.extend(["days_since_last_discharge", "encounter_frequency_score"])
         return np.array(out, dtype=object)
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         return tags

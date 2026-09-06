@@ -3,10 +3,17 @@ philanthropy.models._propensity_baseline
 ================================
 """
 
+from __future__ import annotations
+
+from typing import Any, TypeVar
+
 import numpy as np
 from sklearn.base import ClassifierMixin, BaseEstimator
+from sklearn.utils import Tags
 from sklearn.utils.multiclass import check_classification_targets, type_of_target
 from sklearn.utils.validation import check_is_fitted, validate_data
+
+_Self = TypeVar("_Self", bound="PropensityScorer")
 
 
 class PropensityScorer(ClassifierMixin, BaseEstimator):
@@ -38,10 +45,10 @@ class PropensityScorer(ClassifierMixin, BaseEstimator):
         In :meth:`fit`, if ``y`` has more than two classes.
     """
 
-    def __init__(self, threshold: float = 0.5):
+    def __init__(self, threshold: float = 0.5) -> None:
         self.threshold = threshold
 
-    def fit(self, X, y):
+    def fit(self: _Self, X: Any, y: Any) -> _Self:
         """Validate input and record the target classes.
 
         Parameters
@@ -72,7 +79,7 @@ class PropensityScorer(ClassifierMixin, BaseEstimator):
         self.classes_ = np.unique(y)
         return self
 
-    def predict(self, X):
+    def predict(self, X: Any) -> np.ndarray:
         """Predict binary labels using the constant probability baseline.
 
         Parameters
@@ -100,7 +107,7 @@ class PropensityScorer(ClassifierMixin, BaseEstimator):
         idx = (proba > self.threshold).astype(int)
         return self.classes_[idx]
 
-    def predict_proba(self, X):
+    def predict_proba(self, X: Any) -> np.ndarray:
         """Return the constant probability baseline.
 
         Parameters
@@ -127,7 +134,7 @@ class PropensityScorer(ClassifierMixin, BaseEstimator):
         prob_pos = np.full(n, 0.5)
         return np.column_stack([1 - prob_pos, prob_pos])
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         tags.classifier_tags.poor_score = True
         tags.classifier_tags.multi_class = False

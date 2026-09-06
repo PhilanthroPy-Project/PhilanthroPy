@@ -15,7 +15,7 @@ fiscal-calendar start month.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypeVar
 
 import warnings
 
@@ -23,8 +23,12 @@ import numpy as np
 import pandas as pd
 
 from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
 from philanthropy.utils._validation import validate_fiscal_year_start
+
+_SelfC = TypeVar("_SelfC", bound="CRMCleaner")
+_SelfF = TypeVar("_SelfF", bound="FiscalYearTransformer")
 
 
 def _get_pandas_output(estimator: Any) -> bool:
@@ -136,7 +140,7 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         self.amount_col = amount_col
         self.fiscal_year_start = fiscal_year_start
 
-    def fit(self, X, y=None) -> "CRMCleaner":
+    def fit(self: _SelfC, X: Any, y: Any = None) -> _SelfC:
         """Validate configuration and input without learning state.
 
         Parameters
@@ -172,7 +176,7 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         
         return self
 
-    def transform(self, X) -> np.ndarray | pd.DataFrame:
+    def transform(self, X: Any) -> np.ndarray | pd.DataFrame:
         """Clean CRM dates and amounts using the fitted column configuration.
 
         Parameters
@@ -217,7 +221,7 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
             return X_df
         return X_df.to_numpy()
 
-    def get_feature_names_out(self, input_features=None):
+    def get_feature_names_out(self, input_features: Any = None) -> np.ndarray:
         """Return the CRM columns learned during fitting.
 
         Parameters
@@ -240,7 +244,7 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         names = list(self.feature_names_in_)
         return np.array(names, dtype=object)
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         tags.input_tags.string = True
@@ -258,11 +262,11 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
     or a :class:`~sklearn.pipeline.FeatureUnion`.
     """
 
-    def __init__(self, date_col: str = "gift_date", fiscal_year_start: int = 7):
+    def __init__(self, date_col: str = "gift_date", fiscal_year_start: int = 7) -> None:
         self.date_col = date_col
         self.fiscal_year_start = fiscal_year_start
 
-    def fit(self, X, y=None) -> "FiscalYearTransformer":
+    def fit(self: _SelfF, X: Any, y: Any = None) -> _SelfF:
         """Validate configuration and input without learning state.
 
         Parameters
@@ -295,7 +299,7 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
             raise ValueError("Complex data not supported")
         return self
 
-    def transform(self, X) -> np.ndarray | pd.DataFrame:
+    def transform(self, X: Any) -> np.ndarray | pd.DataFrame:
         """Return the fiscal year and quarter derived from ``date_col``.
 
         Parameters
@@ -355,7 +359,7 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
             return out_df
         return out_df.to_numpy()
 
-    def get_feature_names_out(self, input_features=None):
+    def get_feature_names_out(self, input_features: Any = None) -> np.ndarray:
         """Return the two generated fiscal-period feature names.
 
         Parameters
@@ -376,7 +380,7 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
         check_is_fitted(self)
         return np.array(["fiscal_year", "fiscal_quarter"], dtype=object)
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         tags.input_tags.string = True

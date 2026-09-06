@@ -32,6 +32,7 @@ from philanthropy.preprocessing import (
     EncounterTransformer,
     FiscalYearTransformer,
     WealthScreeningImputer,
+    WealthPercentileTransformer,
 )
 
 # Property-based tests for these transformers live in tests/test_properties.py.
@@ -723,3 +724,69 @@ class TestValidationReRaiseGuards:
         X = np.array([["2023-01-01", "1250.50"]], dtype=object)
         out = np.asarray(CRMCleaner().fit(X).transform(X))
         assert out.shape == (1, 2)
+
+
+# ===========================================================================
+# 2. WealthPercentileTransformer: edge-case unit tests
+# ===========================================================================
+
+
+class TestWealthPercentileTransformer:
+    """Unit tests for WealthPercentileTransformer edge cases.
+
+    These tests pin the behaviour of columns that are entirely missing or
+    partially missing, so the guard branches remain stable under future edits.
+    """
+
+    def test_all_missing_column_yields_nan_ranks(self):
+        # An all-NaN wealth column should store an empty reference array and
+        # return a column of NaN on transform -- NOT a RuntimeWarning or a
+        # column of inf.  The output width is also preserved so downstream
+        # pipelines have a stable shape regardless of whether the wealth
+        # screen matched anything.
+        df = pd.DataFrame({
+            "net_worth": [np.nan, np.nan, np.nan],
+            "other": [1.0, 2.0, 3.0],
+        })
+        t = WealthPercentileTransformer().set_output(transform="pandas")
+        t.fit(df)
+
+        # The guard branch stores an empty array
+        assert t.percentile_lookup_["net_worth"].size == 0
+
+        # Transform produces NaN in the rank column, other column unchanged
+        out = t.transform(df)
+        assert out["net_worth_pct_rank"].isna().all()
+        assert out["other"].tolist() == [1.0, 2.0, 3.0]
+
+        # The rank column is still named and present (stable output width)
+        assert "net_worth_pct_rank" in out.columns
+        assert "net_worth_pct_rank" in list(t.get_feature_names_out())
+        assert len(t.get_feature_names_out()) == 3  # net_worth, other, net_worth_pct_rank
+
+        # No warning should be raised (would surface as an error here)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            t.transform(df)  # must not warn
+
+    def test_partially_missing_column_ranks_only_observed_values(self):
+        # When a wealth column has some NaN and some real values, only the
+        # real values contribute to the reference distribution; NaN rows get
+        # NaN in the rank column while non-NaN rows receive a numeric rank.
+        df = pd.DataFrame({
+            "net_worth": [100_000.0, np.nan, 200_000.0, np.nan, 150_000.0],
+            "other": [1.0, 2.0, 3.0, 4.0, 5.0],
+        })
+        t = WealthPercentileTransformer().set_output(transform="pandas")
+        out = t.fit_transform(df)
+
+        assert "net_worth_pct_rank" in out.columns
+        # NaN input rows produce NaN rank
+        assert pd.isna(out.loc[1, "net_worth_pct_rank"])
+        assert pd.isna(out.loc[3, "net_worth_pct_rank"])
+        # Non-NaN input rows produce numeric rank
+        assert not pd.isna(out.loc[0, "net_worth_pct_rank"])
+        assert not pd.isna(out.loc[2, "net_worth_pct_rank"])
+        assert not pd.isna(out.loc[4, "net_worth_pct_rank"])
+        # Other column passes through unchanged
+        assert out["other"].tolist() == [1.0, 2.0, 3.0, 4.0, 5.0]

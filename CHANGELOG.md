@@ -15,6 +15,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   project's standing rules.
 
 ### Added
+- Tests pinning the two untested branches of `WealthPercentileTransformer`:
+  the all-missing column path (returns NaN ranks, keeps a stable output
+  width, raises no warning) and the partially-missing column path (NaN
+  input rows get NaN rank, observed rows get numeric rank). Closes #169.
 - **`datasets.make_donor_panel`** (Tier 2, Beta): a seeded multi-year donor
   panel returning gift-level rows rather than one aggregated row per donor.
   `generate_synthetic_donor_data` cannot demonstrate `RFMTransformer` (needs a

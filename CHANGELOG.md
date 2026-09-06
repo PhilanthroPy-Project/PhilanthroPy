@@ -84,6 +84,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   wheel and turn this into a second working-tree test. Windows is included
   because the main matrix is Linux plus macOS.
 ### Fixed
+- `EncounterTransformer` now accepts parsed `datetime64` gift dates alongside
+  date strings, and reports unparseable values with the configured gift-date
+  column name instead of exposing NumPy's mixed-dtype promotion error. Closes
+  #163.
 - `CRMCleaner.transform` no longer silently corrupts complex amounts into
   wrong finite floats: cells holding actual `complex` values are masked to
   NaN with a `UserWarning` naming them, and a column where nothing parses

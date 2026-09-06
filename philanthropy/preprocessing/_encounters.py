@@ -338,6 +338,18 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
                     f"the `{label}` parameter in EncounterTransformer."
                 )
 
+    def _parse_gift_dates(self, X: pd.DataFrame) -> pd.Series:
+        """Return parsed gift dates or raise a column-specific error."""
+        values = X[self.gift_date_col]
+        parsed = pd.to_datetime(values, errors="coerce")
+        invalid = values.notna() & parsed.isna()
+        if invalid.any():
+            raise ValueError(
+                f"Column {self.gift_date_col!r} must contain date-like values; "
+                f"could not parse {int(invalid.sum())} non-missing value(s)."
+            )
+        return parsed
+
 
     # ------------------------------------------------------------------
     # Column-drop utilities
@@ -418,10 +430,13 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
 
         self._validate_X(X)
         gift_dates = (
-            pd.to_datetime(X[self.gift_date_col], errors="coerce")
+            self._parse_gift_dates(X)
             if isinstance(X, pd.DataFrame) and self.gift_date_col in X.columns
             else None
         )
+        if gift_dates is not None:
+            X = X.copy()
+            X[self.gift_date_col] = gift_dates.astype(object)
         X = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=True)
         self.n_features_in_ = X.shape[1]
 
@@ -500,6 +515,10 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         
         if hasattr(X, "columns"):
             input_cols = list(X.columns)
+            self._validate_X(X)
+            gift_dates = self._parse_gift_dates(X)
+            X = X.copy()
+            X[self.gift_date_col] = gift_dates.astype(object)
         else:
             n_cols = np.shape(X)[1] if len(np.shape(X)) > 1 else 1
             input_cols = [f"x{i}" for i in range(n_cols)]
@@ -508,9 +527,7 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         X_out = pd.DataFrame(X, columns=input_cols)
         
         self._validate_X(X_out)
-        X_out[self.gift_date_col] = pd.to_datetime(
-            X_out[self.gift_date_col], errors="coerce"
-        )
+        X_out[self.gift_date_col] = self._parse_gift_dates(X_out)
 
         # --- Merge the encounter summary ---
         X_out = X_out.merge(

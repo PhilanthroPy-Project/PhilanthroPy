@@ -31,6 +31,7 @@ from philanthropy.preprocessing import (
     CRMCleaner,
     EncounterTransformer,
     FiscalYearTransformer,
+    WealthPercentileTransformer,
     WealthScreeningImputer,
 )
 
@@ -723,3 +724,12 @@ class TestValidationReRaiseGuards:
         X = np.array([["2023-01-01", "1250.50"]], dtype=object)
         out = np.asarray(CRMCleaner().fit(X).transform(X))
         assert out.shape == (1, 2)
+
+
+def test_wealth_percentile_feature_names_match_for_frame_and_array_input():
+    df = pd.DataFrame({"net_worth": [1.0, 2.0, 3.0], "other": [1.0, 2.0, 3.0]})
+    a = WealthPercentileTransformer().fit(df)
+    b = WealthPercentileTransformer().fit(df.to_numpy())
+    assert list(a.get_feature_names_out()) == ["net_worth", "other", "net_worth_pct_rank"]
+    assert list(b.get_feature_names_out()) == ["x0", "x1"]
+

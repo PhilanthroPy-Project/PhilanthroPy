@@ -45,6 +45,8 @@ contribution. Code, docs, tests, and review all count.
   single-class fallback coverage for
   `PlannedGivingIntentScorer.predict_intent_score`
   ([#149](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/149)).
+- [@HeaTTap](https://github.com/HeaTTap): removed dead `hasattr(X, "columns")` branch in `WealthPercentileTransformer.fit` and pinned feature-name handling for DataFrame and array inputs ([#168](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/168)).
+
 
 ## Getting listed
 

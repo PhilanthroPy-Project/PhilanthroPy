@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- Removed dead `hasattr(X, "columns")` branch in `WealthPercentileTransformer.fit` since `validate_data` returns a NumPy array and sets `feature_names_in_` for DataFrame inputs (issue #168).
+
 ### Changed
 - README coverage badge now links to `pyproject.toml` and reads "≥92% floor"
   rather than a bare "≥92%". It was a static shields.io string with no tie to

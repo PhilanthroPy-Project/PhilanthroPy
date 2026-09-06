@@ -6,11 +6,15 @@ Predictive model for donor lapse using RandomForestClassifier.
 
 from __future__ import annotations
 
+from typing import Any, TypeVar
+
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.utils.validation import check_is_fitted, validate_data
 from sklearn.utils import Tags
+
+_Self = TypeVar("_Self", bound="LapsePredictor")
 
 
 class LapsePredictor(ClassifierMixin, BaseEstimator):
@@ -40,15 +44,15 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         self,
         n_estimators: int = 100,
         max_depth: int | None = None,
-        class_weight=None,
+        class_weight: Any = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
         self.n_estimators = n_estimators
         self.max_depth = max_depth
         self.class_weight = class_weight
         self.random_state = random_state
 
-    def fit(self, X, y) -> "LapsePredictor":
+    def fit(self: _Self, X: Any, y: Any) -> _Self:
         """Fit the LapsePredictor.
 
         Parameters
@@ -75,19 +79,19 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         self.estimator_.fit(X, y)
         return self
 
-    def predict(self, X) -> np.ndarray:
+    def predict(self, X: Any) -> np.ndarray:
         """Predict binary lapse labels."""
         check_is_fitted(self)
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self.estimator_.predict(X)
 
-    def predict_proba(self, X) -> np.ndarray:
+    def predict_proba(self, X: Any) -> np.ndarray:
         """Return class probabilities of shape (n_samples, 2)."""
         check_is_fitted(self)
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self.estimator_.predict_proba(X)
 
-    def predict_lapse_score(self, X) -> np.ndarray:
+    def predict_lapse_score(self, X: Any) -> np.ndarray:
         """Return P(lapse) × 100 rounded to 2 decimal places (0–100 scale)."""
         check_is_fitted(self)
         proba = self.predict_proba(X)

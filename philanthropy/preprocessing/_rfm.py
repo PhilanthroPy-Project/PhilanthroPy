@@ -1,7 +1,15 @@
+from __future__ import annotations
+
+from typing import Any, TypeVar
+
 import numpy as np
 import pandas as pd
 from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted
+
+_Self = TypeVar("_Self", bound="RFMTransformer")
+
 
 class RFMTransformer(TransformerMixin, BaseEstimator):
     """
@@ -33,12 +41,17 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         the output shape does not change under existing callers, and will become
         the default in the next major release.
     """
-    def __init__(self, reference_date=None, agg_func='sum', include_tenure=False):
+    def __init__(
+        self,
+        reference_date: Any = None,
+        agg_func: Any = 'sum',
+        include_tenure: bool = False,
+    ) -> None:
         self.reference_date = reference_date
         self.agg_func = agg_func
         self.include_tenure = include_tenure
 
-    def fit(self, X, y=None):
+    def fit(self: _Self, X: Any, y: Any = None) -> _Self:
         """
         Fits the transformer. This simply validates the input and returns self.
         """
@@ -65,7 +78,7 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
             self.reference_date_ = pd.to_datetime(X_df["gift_date"]).max()
         return self
 
-    def transform(self, X):
+    def transform(self, X: Any) -> pd.DataFrame:
         """
         Transforms the transaction logs into RFM features.
         """
@@ -110,13 +123,13 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
 
         return rfm_df
         
-    def _validate_input(self, X):
+    def _validate_input(self, X: Any) -> None:
         cols = X.columns if hasattr(X, "columns") else self.feature_names_in_
         required_cols = {"donor_id", "gift_date", "gift_amount"}
         if not required_cols.issubset(cols):
             raise ValueError(f"X must contain columns: {required_cols}")
 
-    def get_feature_names_out(self, input_features=None):
+    def get_feature_names_out(self, input_features: Any = None) -> np.ndarray:
         """Return the donor identifier and generated RFM feature names.
 
         Parameters
@@ -142,7 +155,7 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
             names.append('tenure')
         return np.array(names, dtype=object)
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         tags.input_tags.string = True

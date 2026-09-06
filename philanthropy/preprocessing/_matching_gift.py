@@ -12,13 +12,18 @@ prioritisation model can weight prospects with employer-match upside.
 
 from __future__ import annotations
 
+from typing import Any, TypeVar
+
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted
 
+_Self = TypeVar("_Self", bound="MatchingGiftFeaturizer")
 
-def _normalise_employer(val) -> str:
+
+def _normalise_employer(val: Any) -> str:
     """Return a lookup key for an employer cell.
 
     Null cells and whitespace-only strings normalise to the empty string,
@@ -122,7 +127,7 @@ class MatchingGiftFeaturizer(TransformerMixin, BaseEstimator):
         if missing:
             raise ValueError(f"X is missing required columns: {missing}")
 
-    def fit(self, X, y=None) -> "MatchingGiftFeaturizer":
+    def fit(self: _Self, X: Any, y: Any = None) -> _Self:
         """Register the input schema and freeze the match-ratio lookup.
 
         Parameters
@@ -159,7 +164,7 @@ class MatchingGiftFeaturizer(TransformerMixin, BaseEstimator):
         }
         return self
 
-    def transform(self, X) -> np.ndarray:
+    def transform(self, X: Any) -> np.ndarray:
         """Emit matching-gift features for each row of ``X``.
 
         Parameters
@@ -203,7 +208,7 @@ class MatchingGiftFeaturizer(TransformerMixin, BaseEstimator):
             np.float64
         )
 
-    def get_feature_names_out(self, input_features=None) -> np.ndarray:
+    def get_feature_names_out(self, input_features: Any = None) -> np.ndarray:
         """Return the generated matching-gift feature names.
 
         Parameters
@@ -228,7 +233,7 @@ class MatchingGiftFeaturizer(TransformerMixin, BaseEstimator):
             dtype=object,
         )
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         return tags

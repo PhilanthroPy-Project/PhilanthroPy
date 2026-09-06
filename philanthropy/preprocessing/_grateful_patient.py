@@ -13,13 +13,17 @@ from __future__ import annotations
 
 import re
 import warnings
+from typing import Any, TypeVar
 
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
 
 from ._encounters import _apply_as_of_cutoff
+
+_Self = TypeVar("_Self", bound="GratefulPatientFeaturizer")
 
 # Illustrative default service-line capacity weights. These numbers have NO
 # published source: they encode the common practitioner expectation that
@@ -168,7 +172,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         capacity_weights: dict[str, float] | None = None,
         merge_key: str = "donor_id",
         discharge_col: str = "discharge_date",
-        as_of=None,
+        as_of: Any = None,
     ) -> None:
         self.encounter_df = encounter_df
         self.encounter_path = encounter_path
@@ -181,7 +185,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         self.discharge_col = discharge_col
         self.as_of = as_of
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict:
         """Drop the raw encounter table from pickles and joblib bundles.
 
         ``transform`` reads only ``encounter_summary_``, the per-donor aggregate
@@ -205,7 +209,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         state["encounter_df"] = None
         return state
 
-    def fit(self, X, y=None) -> "GratefulPatientFeaturizer":
+    def fit(self: _Self, X: Any, y: Any = None) -> _Self:
         """Build per-donor encounter summaries from encounter data.
 
         Parameters
@@ -351,7 +355,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
 
         return self
 
-    def transform(self, X, y=None) -> np.ndarray:
+    def transform(self, X: Any, y: Any = None) -> np.ndarray:
         """Merge clinical features into the donor feature matrix.
 
         Parameters
@@ -430,7 +434,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
 
         return result.to_numpy(dtype=np.float64)
 
-    def get_feature_names_out(self, input_features=None):
+    def get_feature_names_out(self, input_features: Any = None) -> np.ndarray:
         """Return the generated grateful-patient feature names.
 
         Parameters
@@ -460,7 +464,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
             dtype=object,
         )
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         return tags

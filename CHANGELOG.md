@@ -87,6 +87,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   wheel and turn this into a second working-tree test. Windows is included
   because the main matrix is Linux plus macOS.
 ### Fixed
+- `EncounterTransformer` now accepts parsed `datetime64` gift dates alongside
+  date strings, and reports unparseable values with the configured gift-date
+  column name instead of exposing NumPy's mixed-dtype promotion error. Closes
+  #163.
 - `CRMCleaner.transform` no longer silently corrupts complex amounts into
   wrong finite floats: cells holding actual `complex` values are masked to
   NaN with a `UserWarning` naming them, and a column where nothing parses
@@ -202,18 +206,18 @@ entry is mid-deprecation.
   feature tables.
 
 ### Typing
-- **mypy ratchet started.** `py.typed` ships in the wheel, so a user's type
+- **mypy ratchet finished.** `py.typed` ships in the wheel, so a user's type
   checker treats every unannotated function here as `Any`, which is worse than
   shipping no type information: it silently disables checking at the boundary
-  instead of admitting there is nothing to check. `philanthropy.datasets`,
-  `.inspection`, `.metrics`, `.utils` and `.visualisation` are now fully
-  annotated and listed under a `[[tool.mypy.overrides]]` block with
-  `disallow_untyped_defs = true`, so a new unannotated function in any of them
-  fails CI rather than enlarging the backlog. `cli` and `model_selection` are
-  now annotated and listed too (`split`'s generator return is
-  `Iterator[Tuple[ndarray, ndarray]]`, matching its `Yields` docstring
-  section). `experimental` (open PR), `models` and `preprocessing` remain,
-  tracked in #166.
+  instead of admitting there is nothing to check. `experimental`, `models` and
+  `preprocessing`, the last three subpackages, are now fully annotated: `fit`
+  returns a per-class `TypeVar` bound to the class rather than a string
+  literal, so a subclass's `fit` no longer reports its parent's type;
+  `__sklearn_tags__` returns sklearn's public `Tags` dataclass
+  (`scikit-learn>=1.6`, the declared floor). With every subpackage covered,
+  the `[[tool.mypy.overrides]]` block is gone and `disallow_untyped_defs =
+  true` is a top-level `[tool.mypy]` setting, so a newly-added unannotated
+  function anywhere in `philanthropy` fails CI. Closes #166.
 - `ensure_local_path` is now generic in its argument (`TypeVar`) rather than
   declared `-> str`. It returns its input unchanged, and both call sites pass
   something that may be a `Path`, so the old annotation was a small lie; the

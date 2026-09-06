@@ -14,10 +14,15 @@ decays from the floor outwards rather than peaking at the window midpoint. See
 
 from __future__ import annotations
 
+from typing import Any, TypeVar
+
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
+
+_Self = TypeVar("_Self", bound="DischargeToSolicitationWindowTransformer")
 
 
 class DischargeToSolicitationWindowTransformer(TransformerMixin, BaseEstimator):
@@ -79,7 +84,7 @@ class DischargeToSolicitationWindowTransformer(TransformerMixin, BaseEstimator):
         self.days_since_discharge_col = days_since_discharge_col
         self.window_shape = window_shape
 
-    def fit(self, X, y=None) -> "DischargeToSolicitationWindowTransformer":
+    def fit(self: _Self, X: Any, y: Any = None) -> _Self:
         """Fit the transformer (no-op, validates parameters).
 
         Parameters
@@ -106,7 +111,7 @@ class DischargeToSolicitationWindowTransformer(TransformerMixin, BaseEstimator):
         validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=True)
         return self
 
-    def transform(self, X, y=None) -> np.ndarray:
+    def transform(self, X: Any, y: Any = None) -> np.ndarray:
         """Transform X to two columns: in_window, window_position_score.
 
         Parameters
@@ -168,7 +173,7 @@ class DischargeToSolicitationWindowTransformer(TransformerMixin, BaseEstimator):
 
         return np.column_stack([in_window, window_score])
 
-    def get_feature_names_out(self, input_features=None):
+    def get_feature_names_out(self, input_features: Any = None) -> np.ndarray:
         """Get output feature names."""
         check_is_fitted(self)
         return np.array(
@@ -176,7 +181,7 @@ class DischargeToSolicitationWindowTransformer(TransformerMixin, BaseEstimator):
             dtype=object,
         )
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         tags.input_tags.string = True

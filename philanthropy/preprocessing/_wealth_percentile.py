@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from typing import Any, TypeVar
+
 import numpy as np
 import pandas as pd
 from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
+
+_Self = TypeVar("_Self", bound="WealthPercentileTransformer")
 
 
 class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
@@ -27,7 +32,7 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
         self.wealth_cols = wealth_cols
         self.output_suffix = output_suffix
 
-    def fit(self, X, y=None):
+    def fit(self: _Self, X: Any, y: Any = None) -> _Self:
         """Learn the training wealth distribution.
 
         Parameters
@@ -83,7 +88,7 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
 
         return self
 
-    def transform(self, X):
+    def transform(self, X: Any) -> np.ndarray:
         """Rank features against the fitted training distribution.
 
         Parameters
@@ -128,7 +133,7 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
         X_final = X_out.select_dtypes(include=[np.number])
         return X_final.to_numpy(dtype=np.float64)
 
-    def get_feature_names_out(self, input_features=None):
+    def get_feature_names_out(self, input_features: Any = None) -> np.ndarray:
         """Return input names followed by generated wealth-percentile names.
 
         Parameters
@@ -154,7 +159,7 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
                 out.append(f"{col}{self.output_suffix}")
         return np.array(out, dtype=object)
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         return tags

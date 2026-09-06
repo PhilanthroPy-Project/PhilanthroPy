@@ -10,7 +10,7 @@ score (0–100) for use by prospect-management officers and gift officers.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional, TypeVar
 
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
@@ -19,6 +19,9 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.utils import Tags
 from sklearn.utils.multiclass import unique_labels
 from sklearn.utils.validation import check_is_fitted, validate_data
+
+_SelfD = TypeVar("_SelfD", bound="DonorPropensityModel")
+_SelfM = TypeVar("_SelfM", bound="MajorGiftClassifier")
 
 
 class DonorPropensityModel(ClassifierMixin, BaseEstimator):
@@ -169,7 +172,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
         min_samples_split: int = 2,
         min_samples_leaf: int = 1,
         min_weight_fraction_leaf: float = 0.0,
-        class_weight=None,
+        class_weight: Any = None,
         random_state: Optional[int] = None,
     ) -> None:
         self.n_estimators = n_estimators
@@ -184,7 +187,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
     # Public API
     # ------------------------------------------------------------------
 
-    def fit(self, X, y):
+    def fit(self: _SelfD, X: Any, y: Any) -> _SelfD:
         """Fit the DonorPropensityModel to labelled donor data.
 
         Parameters
@@ -226,7 +229,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
 
         return self
 
-    def predict(self, X) -> np.ndarray:
+    def predict(self, X: Any) -> np.ndarray:
         """Predict binary major-donor labels for each prospect.
 
         Parameters
@@ -249,7 +252,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
         X = validate_data(self, X, reset=False)
         return self.estimator_.predict(X)
 
-    def predict_proba(self, X) -> np.ndarray:
+    def predict_proba(self, X: Any) -> np.ndarray:
         """Return class-probability estimates for each prospect.
 
         Parameters
@@ -365,12 +368,17 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         tags.classifier_tags.multi_class = True
         return tags
     
-    def __init__(self, max_iter=100, learning_rate=0.1, random_state=None):
+    def __init__(
+        self,
+        max_iter: int = 100,
+        learning_rate: float = 0.1,
+        random_state: Optional[int] = None,
+    ) -> None:
         self.max_iter = max_iter
         self.learning_rate = learning_rate
         self.random_state = random_state
 
-    def fit(self, X, y):
+    def fit(self: _SelfM, X: Any, y: Any) -> _SelfM:
         """Fit the classifier to labelled donor data.
 
         Parameters
@@ -405,7 +413,7 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         )
         return self
 
-    def predict(self, X):
+    def predict(self, X: Any) -> np.ndarray:
         """Predict binary major-donor labels.
 
         Parameters
@@ -427,7 +435,7 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self.estimator_.predict(X)
 
-    def predict_proba(self, X):
+    def predict_proba(self, X: Any) -> np.ndarray:
         """Return calibrated class probabilities.
 
         Parameters
@@ -450,7 +458,7 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self.estimator_.predict_proba(X)
 
-    def predict_affinity_score(self, X):
+    def predict_affinity_score(self, X: Any) -> np.ndarray:
         """Map the calibrated major-donor probability to a 0-100 score.
 
         Parameters

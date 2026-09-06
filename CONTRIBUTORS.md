@@ -56,6 +56,10 @@ contribution. Code, docs, tests, and review all count.
   schema mismatches fail with actionable diagnostics and preserved automatic
   and partial-match behavior (closes
   [#156](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/156)).
+- [@be-student](https://github.com/be-student): aligned the missing service-line
+  fallback with its `general` category and added regression coverage for
+  missing service-line and physician columns (closes
+  [#151](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/151)).
 
 ## Getting listed
 

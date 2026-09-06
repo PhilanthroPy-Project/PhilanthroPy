@@ -133,6 +133,32 @@ class TestGratefulPatientFeaturizer:
             "Without drg_weight_col, total_drg_weight must be 0.0 after fillna"
         )
 
+    def test_missing_service_line_col_falls_back_to_general(
+        self, enc_df, X_donors
+    ):
+        enc = enc_df.drop(columns=["service_line"])
+        gpf = GratefulPatientFeaturizer(encounter_df=enc).fit(X_donors)
+
+        result = gpf.transform(X_donors)
+        feature_names = list(gpf.get_feature_names_out())
+        distinct_idx = feature_names.index("distinct_service_lines")
+
+        assert result.shape == (len(X_donors), len(feature_names))
+        assert np.isfinite(result).all()
+        np.testing.assert_array_equal(result[:4, distinct_idx], 1.0)
+
+    def test_missing_physician_col_yields_zero_distinct_physicians(
+        self, enc_df, X_donors
+    ):
+        enc = enc_df.drop(columns=["attending_physician_id"])
+        gpf = GratefulPatientFeaturizer(encounter_df=enc).fit(X_donors)
+
+        result = gpf.transform(X_donors)
+        feature_names = list(gpf.get_feature_names_out())
+        physician_idx = feature_names.index("distinct_physicians")
+
+        np.testing.assert_array_equal(result[:4, physician_idx], 0.0)
+
     def test_drg_weight_col_sums_correctly(self, X_donors):
         """With drg_weight_col present, total_drg_weight must sum DRG weights per donor."""
         enc = pd.DataFrame({

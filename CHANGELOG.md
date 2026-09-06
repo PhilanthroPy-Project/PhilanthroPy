@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- `GratefulPatientFeaturizer` now reports one fallback `general` service line
+  per known donor when the encounter table omits the service-line column.
+  Missing physician columns continue to report zero distinct physicians, and
+  both optional-column paths now have regression coverage. Closes #151.
+
 ### Changed
 - `WealthPercentileTransformer.fit` now raises an actionable `ValueError` when
   an explicit `wealth_cols` list matches no training column; partial matches

@@ -273,6 +273,36 @@ This is the library author's own related work on the same problem space, using a
 different dataset and its own models. **It is not an independent evaluation or a
 benchmark of PhilanthroPy.** To cite the software itself, see [`CITATION.cff`](CITATION.cff).
 
+### Prior art
+
+Open-source fundraising analytics started in R, and this package is downstream of
+that work rather than the first of its kind.
+
+- **[`michaelpawlus/pg_donors`](https://github.com/michaelpawlus/pg_donors)** (R,
+  2015) is exploratory analysis plus a `caret` classifier for planned-giving
+  prospects, imputing missing median household income to the column median before
+  fitting. `PlannedGivingIntentScorer` is its descendant: the same problem, the
+  same imputation idea, moved into an estimator whose fill values are computed in
+  `fit` and frozen before `transform` (`WealthScreeningImputer`) so the same script
+  cannot leak the scoring batch's median back into training.
+- **[`michaelpawlus/fundraising_analytics`](https://github.com/michaelpawlus/fundraising_analytics)**
+  (R, 2016) collects the sector's recurring jobs as standalone scripts: RFM
+  scoring, an annual-giving propensity model, class-imbalance correction on
+  planned-giving prospects, IRS 990 merges, portfolio management. `RFMTransformer`,
+  `DonorPropensityModel`, and `MovesManagementClassifier` cover the same ground as
+  pipeline-safe estimators.
+- **[`crazybilly/fundRaising`](https://github.com/crazybilly/fundRaising)** (R,
+  2021) is a packaged utility layer for advancement shops: fiscal-year conversion
+  (`fy`, `fy_quarters`, `fydaynum`), lapsed-donor flags, giving-level cuts, and
+  consecutive-giving runs. `FiscalYearTransformer` and `LapsePredictor` are the
+  scikit-learn-shaped equivalents.
+
+The gap this package fills is not the modelling, which those repositories already
+did. It is packaging the sector's steps as `check_estimator`-compliant, composable
+estimators with an explicit leakage contract, in the language the rest of the
+machine-learning stack is written in. See [State of the field](paper.md#state-of-the-field)
+for the comparison against current Python libraries.
+
 ---
 
 ## Generative AI disclosure

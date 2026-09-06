@@ -12,6 +12,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   both optional-column paths now have regression coverage. Closes #151.
 
 ### Added
+- `README.md` gets a `### Prior art` section under Research, crediting the R
+  repositories this package is downstream of: `michaelpawlus/pg_donors` (2015),
+  `michaelpawlus/fundraising_analytics` (2016), and `crazybilly/fundRaising`
+  (2021). `PlannedGivingIntentScorer` is named as the descendant of `pg_donors`,
+  and `RFMTransformer`, `DonorPropensityModel`, `MovesManagementClassifier`,
+  `FiscalYearTransformer`, and `LapsePredictor` are matched to the R scripts and
+  functions that did the same job first. The omission read as a state-of-the-field
+  gap: `paper.md` compares against Python libraries only, and nothing anywhere in
+  the project acknowledged the R prior art.
 - `CONTRIBUTING.md` gets a "Claiming an issue" rule: comment on an issue before
   opening a PR, and wait for a maintainer to assign it. Issues #175 and #176
   were two people independently fixing the same four-line bug the same

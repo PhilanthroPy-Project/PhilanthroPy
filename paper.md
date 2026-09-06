@@ -186,23 +186,23 @@ on the standard scientific Python stack [@scikit-learn; @numpy; @pandas].
 
 # AI usage disclosure
 
-Generative AI assistance (Anthropic Claude, used through Claude Code in an
-agentic workflow rather than line completion alone) was used during development
-of this package across implementation, tests, documentation, and the drafting of
-this paper.
+The design of this package is the author's, and the AI-assisted work was bounded
+by constraints the author set in advance. The freeze-at-fit contract, the
+dependency rule, the estimator conventions, the stability tiers, and the
+compliance posture all predate any generated code, and generated code that
+violated them was rejected rather than merged. The author made every core design
+decision, and reviewed, edited, and validated all AI-assisted output, including
+every claim and citation in this paper.
 
-The design constraints are the author's and predate any generated code: the
-freeze-at-fit contract, the dependency rule, the estimator conventions, the
-stability tiers, and the compliance posture. Generated code that violated them
-was rejected rather than merged. No numeric split between authored and
-AI-assisted output is offered, because the author has not measured one and
-declines to estimate it; the review gate is stated instead. Nothing lands
-without the full gate green: flake8, mypy, the docstring examples, the test
-suite against the coverage floors above, an OS and Python-version matrix, a
-dependency-floor install, a packaging-metadata check, and the conformance
-battery. The author reviewed, edited, and validated all AI-assisted output,
-including every claim and citation in this paper, and made the core design
-decisions.
+Within those constraints, generative AI assistance (Anthropic Claude, used
+through Claude Code in an agentic workflow rather than line completion alone)
+was used during development across implementation, tests, documentation, and the
+drafting of this paper. No numeric split between authored and AI-assisted output
+is offered, because the author has not measured one and declines to estimate it;
+the review gate is stated instead. Nothing lands without the full gate green:
+flake8, mypy, the docstring examples, the test suite against the coverage floors
+above, an OS and Python-version matrix, a dependency-floor install, a
+packaging-metadata check, and the conformance battery.
 
 # Acknowledgements
 

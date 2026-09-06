@@ -6,11 +6,13 @@ in the nonprofit sector.
 
 Generative AI disclosure
 ------------------------
-AI assistance (Claude Code) was used during development of this package.
-The scope is package-wide rather than specific to any one module, so the
-disclosure lives here rather than being stamped on every module. See the
-"Generative AI disclosure" section of README.md for how the tools were
-used and what human review was performed.
+The design of this package is the author's, who made every core design
+decision and reviewed, edited, and validated all AI-assisted output.
+Within constraints set in advance, AI assistance (Claude Code) was used
+during development. The scope is package-wide rather than specific to any
+one module, so the disclosure lives here rather than being stamped on
+every module. See the "Generative AI disclosure" section of README.md for
+how the tools were used and what human review was performed.
 """
 
 from importlib.metadata import PackageNotFoundError, version as _version

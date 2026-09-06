@@ -21,6 +21,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   own body rather than depending on a reader following a link.
 
 ### Changed
+- Generative AI disclosure reordered in `paper.md`, `README.md`, and
+  `philanthropy/__init__.py` to lead with human design authority and human
+  review, then state the scope of the assistance within those constraints. The
+  facts are unchanged: the scope remains package-wide, no numeric split is
+  estimated, and the review gate is still what the disclosure rests on. Only the
+  order and emphasis moved, so the disclosure stays consistent with `AGENTS.md`
+  and the public commit history.
 - `WealthPercentileTransformer.fit` now raises an actionable `ValueError` when
   an explicit `wealth_cols` list matches no training column; partial matches
   and automatic detection remain unchanged.

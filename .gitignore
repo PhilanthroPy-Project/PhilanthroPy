@@ -38,5 +38,14 @@ site/
 
 # Local working notes (not published)
 plan.md
+metrics.log
 .outreach-todo.md
+.outreach/
 .claude/CLAUDE.local.md
+scripts/announce/
+
+# Figures rendered by scripts/render_leakage_chart.py
+leakage_chart.png
+leakage_chart.svg
+leakage_chart_numbers.json
+leakage_chart_scores.npz

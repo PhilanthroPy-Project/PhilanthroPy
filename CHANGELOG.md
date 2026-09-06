@@ -11,6 +11,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   Missing physician columns continue to report zero distinct physicians, and
   both optional-column paths now have regression coverage. Closes #151.
 
+### Added
+- `CONTRIBUTING.md` gets a "Claiming an issue" rule: comment on an issue before
+  opening a PR, and wait for a maintainer to assign it. Issues #175 and #176
+  were two people independently fixing the same four-line bug the same
+  evening; that was a process failure on this project's side, not a mistake
+  by either contributor. The issue-draft template now states the same rule
+  inline, so every newly filed `good first issue` carries the reminder in its
+  own body rather than depending on a reader following a link.
+
 ### Changed
 - `WealthPercentileTransformer.fit` now raises an actionable `ValueError` when
   an explicit `wealth_cols` list matches no training column; partial matches

@@ -49,6 +49,12 @@ contribution. Code, docs, tests, and review all count.
   unit-test coverage for `WealthPercentileTransformer`'s all-missing and
   partially-missing column branches in `WealthPercentileTransformer` (closes
   [#169](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/169)).
+- [@HeaTTap](https://github.com/HeaTTap): independently identified and fixed the
+  dead `hasattr(X, "columns")` branch in `WealthPercentileTransformer.fit`
+  ([#175](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/175)), later
+  subsumed by [#179](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/179),
+  which carried the same fix (closes
+  [#168](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/168)).
 - [@be-student](https://github.com/be-student): made `EncounterTransformer`
   accept parsed gift dates and report invalid dates with a column-specific
   error (closes [#163](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/163)).

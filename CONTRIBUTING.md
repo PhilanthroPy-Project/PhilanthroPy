@@ -11,6 +11,14 @@ done. A first PR does not need to be big; docs fixes and missing tests are
 genuinely wanted. Comment on the issue to claim it, and ask there if anything in
 this guide does not work; a question is a valid contribution too.
 
+### Claiming an issue
+
+Comment on the issue before you open a pull request, and wait for a maintainer
+to assign it to you; we assign within 24 hours. This is not bureaucracy:
+issues #175 and #176 were two people solving the same four-line problem on the
+same evening, and one of them wasted their time. If an issue already has an
+assignee, pick another one; the `good first issue` label always has open ones.
+
 ## Setup
 
 Fork the repository on GitHub first; you will not have push access to

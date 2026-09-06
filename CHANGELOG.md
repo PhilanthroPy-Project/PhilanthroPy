@@ -12,6 +12,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   both optional-column paths now have regression coverage. Closes #151.
 
 ### Added
+- `scripts/render_leakage_chart.py`, the figure companion to the two leakage
+  experiments. `leakage_experiment.py` and `real_data_leakage_experiment.py`
+  each print five-seed means; this script re-runs the identical
+  cross-validation and keeps the per-fold scores, so the shape of the
+  walk-forward backtest is visible rather than one number per condition. It
+  writes a two-panel figure (synthetic and KDD Cup 1998, as-of against
+  whole-history features, seed spread shaded) plus the numbers as JSON, and
+  reproduces the published figures: 0.625 against 0.750 on the synthetic panel,
+  0.482 against 0.858 on the real one. `--cached` re-plots from a saved score
+  file so styling changes do not refit the real panel, and `--out` chooses the
+  output directory. The rendered files are gitignored rather than committed.
 - `README.md` gets a `### Prior art` section under Research, crediting the R
   repositories this package is downstream of: `michaelpawlus/pg_donors` (2015),
   `michaelpawlus/fundraising_analytics` (2016), and `crazybilly/fundRaising`

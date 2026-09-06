@@ -48,7 +48,18 @@ contribution. Code, docs, tests, and review all count.
 - **Lars** ([@Larslllllll](https://github.com/Larslllllll)): added the missing
   unit-test coverage for `WealthPercentileTransformer`'s all-missing and
   partially-missing column branches in `WealthPercentileTransformer` (closes
-  [#169](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/169)).
+  [#169](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/169)), and
+  identified the dead `hasattr(X, "columns")` branch in
+  `WealthPercentileTransformer.fit`
+  ([#176](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/176), closes
+  [#168](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/168)).
+- [@HeaTTap](https://github.com/HeaTTap): independently identified and fixed the
+  same dead `hasattr(X, "columns")` branch in `WealthPercentileTransformer.fit`
+  ([#175](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/175), closes
+  [#168](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/168)). Two
+  people fixing the same four-line problem on the same evening was the
+  project's process failure, not either contributor's; see "Claiming an issue"
+  in `CONTRIBUTING.md`.
 
 ## Getting listed
 

@@ -410,6 +410,33 @@ class TestEncounterTransformer:
         assert "patient_mrn" not in out.columns
         assert "full_name" not in out.columns
 
+    def test_accepts_parsed_datetime64_gift_date(self):
+        """A gift_date column already parsed to datetime64 must not raise.
+
+        Any real loader (pd.read_csv(parse_dates=...), a SQL read,
+        make_donor_panel) hands back exactly this column mix: datetime64
+        alongside int/float. Issue #163.
+        """
+        enc = pd.DataFrame(
+            {"donor_id": [1, 2], "discharge_date": ["2023-05-10", "2022-11-01"]}
+        )
+        gifts = pd.DataFrame(
+            {
+                "donor_id": [1, 2],
+                "gift_date": pd.to_datetime(["2023-08-15", "2023-03-20"]),
+                "gift_amount": [5000.0, 500.0],
+            }
+        )
+        t = EncounterTransformer(
+            encounter_df=enc,
+            discharge_col="discharge_date",
+            gift_date_col="gift_date",
+            merge_key="donor_id",
+        ).set_output(transform="pandas")
+        out = t.fit_transform(gifts)
+        assert out.loc[0, "days_since_last_discharge"] == 97.0
+        assert out.loc[1, "days_since_last_discharge"] == 139.0
+
     def test_all_nan_discharge_warns(self, gift_df_with_ids):
         enc = pd.DataFrame(
             {"donor_id": [101], "discharge_date": [None]}
@@ -790,3 +817,25 @@ class TestWealthPercentileTransformer:
         assert not pd.isna(out.loc[4, "net_worth_pct_rank"])
         # Other column passes through unchanged
         assert out["other"].tolist() == [1.0, 2.0, 3.0, 4.0, 5.0]
+
+    def test_unmatched_wealth_cols_raises(self):
+        # A wealth_cols name that matches nothing in X is a typo or a schema
+        # mismatch, not an intentional no-op: silently training without the
+        # wealth signal the caller asked for is the wrong default. Issue #156.
+        df = pd.DataFrame({"net_worth": [1.0, 2.0, 3.0], "other": [1.0, 2.0, 3.0]})
+        t = WealthPercentileTransformer(wealth_cols=["estimated_networth"])
+        with pytest.raises(ValueError, match="estimated_networth"):
+            t.fit(df)
+
+    def test_feature_names_match_for_frame_and_array_input(self):
+        # Fit one transformer on a DataFrame and another on df.to_numpy(), then
+        # assert both produce the documented get_feature_names_out() shape:
+        # the DataFrame-fitted one keeps real column names, the array-fitted
+        # one falls back to x0..xn. Pins the behaviour the deleted
+        # hasattr(X, "columns") branch appeared to provide, so removing it
+        # (issue #168) is provably safe rather than merely plausible.
+        df = pd.DataFrame({"net_worth": [1.0, 2.0, 3.0], "other": [1.0, 2.0, 3.0]})
+        a = WealthPercentileTransformer().fit(df)
+        b = WealthPercentileTransformer().fit(df.to_numpy())
+        assert list(a.get_feature_names_out()) == ["net_worth", "other", "net_worth_pct_rank"]
+        assert list(b.get_feature_names_out()) == ["x0", "x1"]

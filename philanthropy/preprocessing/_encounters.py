@@ -91,6 +91,22 @@ def _apply_as_of_cutoff(
     return enc[keep]
 
 
+def _avoid_dtype_promotion(X: Any) -> Any:
+    """Cast a DataFrame with a parsed datetime column to ``object`` dtype.
+
+    ``validate_data`` converts ``X`` to a single-dtype array, and numpy cannot
+    promote ``datetime64`` together with ``int``/``float`` into one dtype. A
+    caller's own loader (``pd.read_csv(parse_dates=...)``, a SQL read,
+    ``philanthropy.datasets.make_donor_panel``) hands back exactly this
+    column mix, so ``gift_date_col`` must not need pre-formatting to strings.
+    """
+    if isinstance(X, pd.DataFrame) and any(
+        pd.api.types.is_datetime64_any_dtype(dt) for dt in X.dtypes
+    ):
+        return X.astype(object)
+    return X
+
+
 def _warn_if_unbounded(
     enc: pd.DataFrame, discharge_col: str, gift_dates: Any, class_name: str
 ) -> None:
@@ -422,7 +438,9 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
             if isinstance(X, pd.DataFrame) and self.gift_date_col in X.columns
             else None
         )
-        X = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=True)
+        X = validate_data(
+            self, _avoid_dtype_promotion(X), dtype=None, ensure_all_finite="allow-nan", reset=True
+        )
         self.n_features_in_ = X.shape[1]
 
         # --- Build encounter summary (fit-time only, no leakage from X) ---
@@ -504,7 +522,9 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
             n_cols = np.shape(X)[1] if len(np.shape(X)) > 1 else 1
             input_cols = [f"x{i}" for i in range(n_cols)]
 
-        X = validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=False)
+        X = validate_data(
+            self, _avoid_dtype_promotion(X), dtype=None, ensure_all_finite="allow-nan", reset=False
+        )
         X_out = pd.DataFrame(X, columns=input_cols)
         
         self._validate_X(X_out)

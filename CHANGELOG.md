@@ -5,6 +5,30 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- `WealthPercentileTransformer.fit`'s dead `hasattr(X, "columns")` branch is
+  removed: `validate_data` already returns a NumPy array and already sets
+  `feature_names_in_` for DataFrame input, so the branch never ran. Reported
+  as #168 and independently fixed by two duplicate PRs on the same evening,
+  #175 (@HeaTTap) and #176 (@Larslllllll); this change lands that fix and
+  credits both. See "Claiming an issue" in `CONTRIBUTING.md` for the process
+  fix that should prevent the next one.
+- `WealthPercentileTransformer(wealth_cols=[...])` now raises `ValueError`
+  instead of silently doing nothing when none of the named columns exist in
+  the training frame. A caller who names specific columns and gets none of
+  them is one typo away from training a model silently missing its wealth
+  signal. Closes #156.
+- `EncounterTransformer` no longer rejects a `gift_date` column already
+  parsed to `datetime64`, which previously raised
+  `numpy.exceptions.DTypePromotionError` deep inside `validate_data` (numpy
+  cannot promote `datetime64` and `float64` into one array dtype). A
+  DataFrame mixing a datetime64 column with numeric ones is now cast to
+  `object` dtype first. Any real loader
+  (`pd.read_csv(..., parse_dates=[...])`, a SQL read, this package's own
+  `make_donor_panel`) hands back exactly this column mix, so the previous
+  behavior rejected the common case and accepted only pre-formatted date
+  strings. Closes #163.
+
 ### Changed
 - README coverage badge now links to `pyproject.toml` and reads "≥92% floor"
   rather than a bare "≥92%". It was a static shields.io string with no tie to

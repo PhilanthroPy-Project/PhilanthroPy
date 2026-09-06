@@ -62,10 +62,11 @@ make riskcov
 
 ### First time here?
 
-Read [CONTRIBUTING.md](../../CONTRIBUTING.md) and [AGENTS.md](../../AGENTS.md).
-Docs-only fix? Use GitHub's web editor and open the PR from there, no local setup
-needed. Add a `## [Unreleased]` CHANGELOG entry and yourself to `CONTRIBUTORS.md` in
-the same PR.
+**Comment here to claim this issue before opening a PR**, and wait for a maintainer
+to assign it to you; we assign within 24 hours. Read [CONTRIBUTING.md](../../CONTRIBUTING.md)
+and [AGENTS.md](../../AGENTS.md). Docs-only fix? Use GitHub's web editor and open the
+PR from there, no local setup needed. Add a `## [Unreleased]` CHANGELOG entry and
+yourself to `CONTRIBUTORS.md` in the same PR.
 ```
 
 ## Keeping the feed stocked

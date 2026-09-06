@@ -40,6 +40,12 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
             Fitted transformer. Freezes ``feature_names_in_``,
             ``imputed_cols_``, and ``percentile_lookup_``.
 
+        Raises
+        ------
+        ValueError
+            If ``wealth_cols`` is set but none of the named columns are
+            present in ``X``.
+
         Notes
         -----
         ``percentile_lookup_`` stores the sorted training values per wealth
@@ -47,11 +53,11 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
         training distribution, not against the batch being transformed.
         """
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=True)
-        
-        if hasattr(X, "columns"):
-             self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
-        elif not hasattr(self, "feature_names_in_"):
-             self.feature_names_in_ = np.array([f"x{i}" for i in range(X.shape[1])], dtype=object)
+
+        # validate_data has already set feature_names_in_ when the input was a
+        # DataFrame; only the array-input path needs a fallback name here.
+        if not hasattr(self, "feature_names_in_"):
+            self.feature_names_in_ = np.array([f"x{i}" for i in range(X.shape[1])], dtype=object)
 
         # Use feature_names_in_ to resolve columns
         if self.wealth_cols is not None:
@@ -70,8 +76,14 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
             self.percentile_lookup_[col] = np.sort(valid_vals)
 
         if len(self.imputed_cols_) == 0 and self.wealth_cols is not None:
-             # If we expected columns but found none, we should probably warn or raise
-             pass
+            raise ValueError(
+                f"wealth_cols={self.wealth_cols!r} matched none of the columns "
+                f"seen at fit time ({list(self.feature_names_in_)}). Naming "
+                "columns that do not exist is a mistake, not a preference "
+                "for skipping them silently: fix the name, or omit "
+                "wealth_cols to fall back to the built-in net_worth / "
+                "real_estate / stock / capacity heuristic."
+            )
 
         return self
 

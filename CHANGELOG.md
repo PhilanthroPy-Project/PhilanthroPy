@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Changed
+- `WealthPercentileTransformer.fit` now raises an actionable `ValueError` when
+  an explicit `wealth_cols` list matches no training column; partial matches
+  and automatic detection remain unchanged.
 - README coverage badge now links to `pyproject.toml` and reads "≥92% floor"
   rather than a bare "≥92%". It was a static shields.io string with no tie to
   the enforced number, so it would have silently lied had `fail_under` ever

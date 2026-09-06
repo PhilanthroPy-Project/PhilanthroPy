@@ -52,6 +52,10 @@ contribution. Code, docs, tests, and review all count.
 - [@be-student](https://github.com/be-student): made `EncounterTransformer`
   accept parsed gift dates and report invalid dates with a column-specific
   error (closes [#163](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/163)).
+- [@be-student](https://github.com/be-student): made explicit wealth-column
+  schema mismatches fail with actionable diagnostics and preserved automatic
+  and partial-match behavior (closes
+  [#156](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/156)).
 
 ## Getting listed
 

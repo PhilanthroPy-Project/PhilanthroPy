@@ -12,8 +12,16 @@ _Self = TypeVar("_Self", bound="WealthPercentileTransformer")
 
 
 class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
-    """
-    Computes wealth percentile ranks.
+    """Compute wealth percentile ranks.
+
+    Parameters
+    ----------
+    wealth_cols : list of str or None, default=None
+        Explicit wealth columns to rank. If none of the requested columns are
+        present during :meth:`fit`, a ``ValueError`` is raised. ``None`` keeps
+        automatic name-based detection, where finding no wealth columns is valid.
+    output_suffix : str, default="_pct_rank"
+        Suffix appended to generated percentile columns.
     """
 
     def __init__(
@@ -40,6 +48,12 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
             Fitted transformer. Freezes ``feature_names_in_``,
             ``imputed_cols_``, and ``percentile_lookup_``.
 
+        Raises
+        ------
+        ValueError
+            If ``wealth_cols`` was provided and none of those columns exist in
+            the training data.
+
         Notes
         -----
         ``percentile_lookup_`` stores the sorted training values per wealth
@@ -48,14 +62,17 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
         """
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=True)
         
-        if hasattr(X, "columns"):
-             self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
-        elif not hasattr(self, "feature_names_in_"):
-             self.feature_names_in_ = np.array([f"x{i}" for i in range(X.shape[1])], dtype=object)
+        if not hasattr(self, "feature_names_in_"):
+            self.feature_names_in_ = np.array([f"x{i}" for i in range(X.shape[1])], dtype=object)
 
         # Use feature_names_in_ to resolve columns
         if self.wealth_cols is not None:
             self.imputed_cols_ = [c for c in self.wealth_cols if c in self.feature_names_in_]
+            if not self.imputed_cols_:
+                raise ValueError(
+                    "none of the requested wealth_cols are present; "
+                    f"requested={self.wealth_cols!r}, available={list(self.feature_names_in_)!r}"
+                )
         else:
             targets = ("net_worth", "real_estate", "stock", "capacity")
             self.imputed_cols_ = [c for c in self.feature_names_in_ if any(t in str(c) for t in targets)]
@@ -68,10 +85,6 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
             s = pd.to_numeric(pd.Series(X[:, col_idx]), errors="coerce")
             valid_vals = s.dropna().to_numpy()
             self.percentile_lookup_[col] = np.sort(valid_vals)
-
-        if len(self.imputed_cols_) == 0 and self.wealth_cols is not None:
-             # If we expected columns but found none, we should probably warn or raise
-             pass
 
         return self
 

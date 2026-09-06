@@ -274,7 +274,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
                 "general", index=grouped.groups.keys()
             )
             summary_parts["distinct_service_lines"] = pd.Series(
-                0, dtype=int, index=grouped.groups.keys()
+                1, dtype=int, index=grouped.groups.keys()
             )
 
         if self.physician_col in raw_enc.columns:

@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- `GratefulPatientFeaturizer` now reports one fallback `general` service line
+  per known donor when the encounter table omits the service-line column.
+  Missing physician columns continue to report zero distinct physicians, and
+  both optional-column paths now have regression coverage. Closes #151.
+
 ### Changed
 - README coverage badge now links to `pyproject.toml` and reads "≥92% floor"
   rather than a bare "≥92%". It was a static shields.io string with no tie to

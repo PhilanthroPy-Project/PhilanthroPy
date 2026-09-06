@@ -49,6 +49,10 @@ contribution. Code, docs, tests, and review all count.
   unit-test coverage for `WealthPercentileTransformer`'s all-missing and
   partially-missing column branches in `WealthPercentileTransformer` (closes
   [#169](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/169)).
+- [@be-student](https://github.com/be-student): aligned the missing service-line
+  fallback with its `general` category and added regression coverage for
+  missing service-line and physician columns (closes
+  [#151](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/151)).
 
 ## Getting listed
 

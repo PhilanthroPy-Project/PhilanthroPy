@@ -790,3 +790,27 @@ class TestWealthPercentileTransformer:
         assert not pd.isna(out.loc[4, "net_worth_pct_rank"])
         # Other column passes through unchanged
         assert out["other"].tolist() == [1.0, 2.0, 3.0, 4.0, 5.0]
+
+    def test_wealth_percentile_feature_names_match_for_frame_and_array_input(self):
+        # Fit one transformer on a DataFrame and another on df.to_numpy(),
+        # then assert both produce the documented get_feature_names_out() shape:
+        # - DataFrame-fitted keeps real column names
+        # - array-fitted falls back to x0 .. xn
+        # This pins the behaviour the deleted hasattr(X, "columns") branch provided,
+        # so the deletion is provably safe rather than merely plausible.
+        df = pd.DataFrame({
+            "net_worth": [1.0, 2.0, 3.0],
+            "other": [1.0, 2.0, 3.0],
+        })
+        t_frame = WealthPercentileTransformer().set_output(transform="pandas")
+        t_array = WealthPercentileTransformer().set_output(transform="pandas")
+        
+        t_frame.fit(df)
+        t_array.fit(df.to_numpy())
+        
+        # DataFrame-fitted transformer keeps real column names
+        assert list(t_frame.get_feature_names_out()) == ["net_worth", "other", "net_worth_pct_rank"]
+        
+        # Array-fitted transformer falls back to x0, x1
+        assert list(t_array.get_feature_names_out()) == ["x0", "x1"]
+

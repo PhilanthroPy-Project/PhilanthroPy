@@ -43,9 +43,9 @@ class WealthPercentileTransformer(TransformerMixin, BaseEstimator):
         """
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=True)
         
-        if hasattr(X, "columns"):
-             self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
-        elif not hasattr(self, "feature_names_in_"):
+        # validate_data has already set feature_names_in_ when input was a DataFrame,
+        # so we only need to handle the array-input path here.
+        if not hasattr(self, "feature_names_in_"):
              self.feature_names_in_ = np.array([f"x{i}" for i in range(X.shape[1])], dtype=object)
 
         # Use feature_names_in_ to resolve columns

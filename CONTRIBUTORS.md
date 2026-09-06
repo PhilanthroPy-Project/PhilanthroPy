@@ -45,6 +45,10 @@ contribution. Code, docs, tests, and review all count.
   single-class fallback coverage for
   `PlannedGivingIntentScorer.predict_intent_score`
   ([#149](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/149)).
+- **Lars** ([@Larslllllll](https://github.com/Larslllllll)): added the missing
+  unit-test coverage for `WealthPercentileTransformer`'s all-missing and
+  partially-missing column branches in `WealthPercentileTransformer` (closes
+  [#169](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/169)).
 
 ## Getting listed
 

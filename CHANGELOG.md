@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added
+- Tests for `EncounterTransformer` non-DataFrame `encounter_df` TypeError and
+  `_validate_X` early-return for array input. Closes #152.
+
 ### Fixed
 - `GratefulPatientFeaturizer` now reports one fallback `general` service line
   per known donor when the encounter table omits the service-line column.

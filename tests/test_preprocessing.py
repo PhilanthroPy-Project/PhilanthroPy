@@ -453,6 +453,19 @@ class TestEncounterTransformer:
             t.fit(gift_df_with_ids)
             assert any(isinstance(warning.category, type(UserWarning)) for warning in w)
 
+    def test_encounter_transformer_rejects_non_dataframe_encounter_df(self, gift_df_with_ids):
+        """List-of-dicts encounter_df must raise TypeError from _validate_encounter_df."""
+        t = EncounterTransformer(
+            encounter_df=[{"donor_id": 1, "discharge_date": "2022-01-01"}]
+        )
+        with pytest.raises(TypeError, match="must be a pd.DataFrame"):
+            t.fit(gift_df_with_ids)
+
+    def test_encounter_transformer_validate_x_passes_arrays_through(self, encounter_df):
+        """Array X goes through _validate_X early-return; public fit succeeds."""
+        t = EncounterTransformer(encounter_df=encounter_df)
+        assert t.fit(np.zeros((2, 3))) is t
+
 
 # --------------------------------------------------------------------------- #
 # EncounterRecencyTransformer: parameter validation and input shapes

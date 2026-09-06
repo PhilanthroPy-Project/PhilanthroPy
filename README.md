@@ -277,16 +277,18 @@ benchmark of PhilanthroPy.** To cite the software itself, see [`CITATION.cff`](C
 
 ## Generative AI disclosure
 
-AI assistance (Claude Code) was used during development of this package, across
-implementation, tests, and documentation, in an agentic workflow rather than
-line completion alone.
+**The design is the author's, and the AI-assisted work was bounded by
+constraints set in advance.** The leakage-safety contract (every fitted
+statistic is computed on training data inside `fit` and frozen before
+`transform`/`predict`), the dependency rule (scikit-learn, pandas, numpy,
+matplotlib, seaborn; no deep learning frameworks), the estimator conventions,
+and the stability tiers all predate any generated code. Generated code that
+violated them was rejected rather than merged. The author made every core design
+decision and reviewed, edited, and validated all AI-assisted output.
 
-**What was not generated.** The design constraints are the author's and predate
-any generated code: the leakage-safety contract (every fitted statistic is
-computed on training data inside `fit` and frozen before `transform`/`predict`),
-the dependency rule (scikit-learn, pandas, numpy, matplotlib, seaborn; no deep
-learning frameworks), the estimator conventions, and the stability tiers.
-Generated code that violated them was rejected rather than merged.
+**Scope of the assistance.** Within those constraints, AI assistance (Claude
+Code) was used during development of this package, across implementation, tests,
+and documentation, in an agentic workflow rather than line completion alone.
 
 **Human review.** Nothing lands without the full gate green. Locally, `make ci`
 runs flake8, mypy, the docstring examples, and the test suite against a 92%

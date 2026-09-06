@@ -36,6 +36,7 @@ True
 from __future__ import annotations
 
 import warnings
+from typing import Any, Iterator, Tuple
 
 import numpy as np
 from sklearn.model_selection import BaseCrossValidator
@@ -231,7 +232,9 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
             raise ValueError(f"gap_years must be >= 0, got {gap_years}.")
         return n_splits, gap_years
 
-    def split(self, X, y=None, groups=None):
+    def split(
+        self, X: Any, y: Any = None, groups: Any = None
+    ) -> Iterator[Tuple[np.ndarray, np.ndarray]]:
         """Generate (train_indices, test_indices) arrays.
 
         Parameters
@@ -389,7 +392,9 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
 
 
 
-    def get_n_splits(self, X=None, y=None, groups=None) -> int:
+    def get_n_splits(
+        self, X: Any = None, y: Any = None, groups: Any = None
+    ) -> int:
         """Return the number of splits this splitter will produce.
 
         Parameters
@@ -428,7 +433,7 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
 # Utility: resolve n_samples from various input types
 # ---------------------------------------------------------------------------
 
-def _missing_mask(values) -> np.ndarray:
+def _missing_mask(values: Any) -> np.ndarray:
     """True where a donor identifier is missing.
 
     ``np.isnan`` only works on float arrays, and donor ids are commonly object
@@ -442,7 +447,7 @@ def _missing_mask(values) -> np.ndarray:
     return np.array([v is None or v != v for v in arr.ravel()]).reshape(arr.shape)
 
 
-def _n_samples(X) -> int:
+def _n_samples(X: Any) -> int:
     """Return the number of samples from X, supporting ndarray and DataFrames."""
     if X is None:
         raise ValueError("X must not be None.")

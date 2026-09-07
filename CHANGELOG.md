@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Fixed
+- `CRMCleaner` and `FiscalYearTransformer` now use a shared `_validate_X` helper,
+  and the unreachable `np.iscomplexobj` guard is removed. Complex data inside
+  object arrays bypasses the guard and is properly handled downstream. Closes #155.
 - `GratefulPatientFeaturizer` now reports one fallback `general` service line
   per known donor when the encounter table omits the service-line column.
   Missing physician columns continue to report zero distinct physicians, and

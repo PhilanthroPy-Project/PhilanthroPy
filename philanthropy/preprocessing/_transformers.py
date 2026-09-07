@@ -169,7 +169,7 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         Raises
         ------
         ValueError
-            If ``fiscal_year_start`` is invalid or ``X`` contains complex data.
+            If ``fiscal_year_start`` is invalid or ``X`` fails validation (e.g. complex-dtype input).
         """
         validate_fiscal_year_start(self.fiscal_year_start)
         _validate_X(self, X, reset=True)
@@ -195,7 +195,7 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         sklearn.exceptions.NotFittedError
             If :meth:`fit` has not been called yet.
         ValueError
-            If ``X`` contains complex data.
+            If ``X`` fails validation (e.g. complex-dtype input).
         """
         check_is_fitted(self)
         X_arr = _validate_X(self, X, reset=False)
@@ -274,7 +274,7 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
         Raises
         ------
         ValueError
-            If ``fiscal_year_start`` is invalid or ``X`` contains complex data.
+            If ``fiscal_year_start`` is invalid or ``X`` fails validation (e.g. complex-dtype input).
         """
         validate_fiscal_year_start(self.fiscal_year_start)
         _validate_X(self, X, reset=True)
@@ -303,7 +303,7 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
         sklearn.exceptions.NotFittedError
             If :meth:`fit` has not been called yet.
         ValueError
-            If ``X`` contains complex data.
+            If ``X`` fails validation (e.g. complex-dtype input).
         """
         check_is_fitted(self)
         X_arr = _validate_X(self, X, reset=False)

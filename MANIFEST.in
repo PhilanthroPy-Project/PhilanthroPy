@@ -5,6 +5,7 @@ prune tests
 prune docs
 prune site
 prune scripts
+prune overrides
 prune .github
 prune .hypothesis
 

@@ -8,6 +8,19 @@ copyright: MIT licensed. Built by the PhilanthroPy contributors.
 
 theme:
   name: material
+  # The logo artwork exists twice on purpose, and the two copies must be kept in
+  # step by hand. Nothing checks that they agree.
+  #
+  #   overrides/.icons/philanthropy/heart-rise.svg  -> icon.logo, below.
+  #     Material inlines this into every page, so it uses `currentColor` and
+  #     follows the header, which flips between white and black with the palette.
+  #     Registering a custom icon namespace is the only reason `custom_dir`
+  #     exists here, and `custom_dir` has to be a sibling of docs/: anything
+  #     under docs/ is also copied verbatim into the built site.
+  #   docs/assets/logo.svg                          -> favicon, below.
+  #     A browser renders a favicon outside the page, where `currentColor` has
+  #     nothing to resolve against, so this copy bakes its colours in and
+  #     carries its own prefers-color-scheme rule.
   custom_dir: overrides
   favicon: assets/logo.svg
   font: false

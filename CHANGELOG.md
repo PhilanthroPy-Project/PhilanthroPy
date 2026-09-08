@@ -5,6 +5,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- Notebooks 02 and 03 install the published wheel instead of a `git+main`
+  snapshot. Both imported `datasets.make_donor_panel`, which 0.7.0 did not
+  ship, and fell back to a `try/except ImportError` that pip-installed from
+  `git+...@main`. That fallback could not work in-process: the failed
+  `from philanthropy.datasets import make_donor_panel` leaves the stale module
+  cached in `sys.modules`, so the re-import after a *successful* install raises
+  the same `ImportError`. It only worked where philanthropy was absent
+  entirely, which is fresh Colab, so anyone who followed the README's
+  `pip install philanthropy` and then opened a notebook locally got a hard
+  failure, and the "zero install, try it now" Colab badge ran an unreleased
+  snapshot rather than the archived release `paper.md` points at. Now a plain
+  `pip install -q "philanthropy[viz]>=0.7.1"`, which 0.7.1 satisfies from PyPI.
+  Notebook 01 keeps its `try/except` because a bare `import philanthropy`
+  succeeds against any release, so its guard never misfires.
+
 ## [0.7.1] - 2026-09-08
 
 ### Added

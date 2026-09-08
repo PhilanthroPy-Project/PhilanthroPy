@@ -454,7 +454,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
            institutional giving in the numerator and total estimated giving in
            the denominator, and this transformer is given neither. Read it as
            "how much of this donor's modelled wealth is estimated to be
-           philanthropic capacity". Until 0.8.0 the column was named
+           philanthropic capacity". Until 0.7.1 the column was named
            ``sow_score``, which claimed a quantity the formula does not
            compute; :meth:`get_legacy_feature_names_out` still spells it that
            way, under a `DeprecationWarning`, until 0.9.0 removes it.
@@ -667,7 +667,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         )
 
     def get_legacy_feature_names_out(self) -> np.ndarray:
-        """Return the pre-0.8.0 output names, ``sow_score`` first.
+        """Return the pre-0.7.1 output names, ``sow_score`` first.
 
         The formula behind column 0 is capacity utilisation, not share of
         wallet, so the column is now named ``capacity_utilisation_ratio``
@@ -689,7 +689,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         check_is_fitted(self)
         warnings.warn(
             "ShareOfWalletScorer output name 'sow_score' is deprecated since "
-            "0.8.0 and will be removed in 0.9.0; the column measures capacity "
+            "0.7.1 and will be removed in 0.9.0; the column measures capacity "
             "utilisation, not share of wallet. Use "
             "get_feature_names_out(), which reports "
             "'capacity_utilisation_ratio' first.",

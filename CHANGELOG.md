@@ -5,14 +5,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
-### Fixed
-- `CRMCleaner` and `FiscalYearTransformer` now use a shared `_validate_X` helper,
-  and the unreachable `np.iscomplexobj` guard is removed. Complex data inside
-  object arrays bypasses the guard and is properly handled downstream. Closes #155.
-- `GratefulPatientFeaturizer` now reports one fallback `general` service line
-  per known donor when the encounter table omits the service-line column.
-  Missing physician columns continue to report zero distinct physicians, and
-  both optional-column paths now have regression coverage. Closes #151.
+## [0.7.1] - 2026-09-08
 
 ### Added
 - `scripts/render_leakage_chart.py`, the figure companion to the two leakage
@@ -43,26 +36,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   inline, so every newly filed `good first issue` carries the reminder in its
   own body rather than depending on a reader following a link.
 
-### Changed
-- Generative AI disclosure reordered in `paper.md`, `README.md`, and
-  `philanthropy/__init__.py` to lead with human design authority and human
-  review, then state the scope of the assistance within those constraints. The
-  facts are unchanged: the scope remains package-wide, no numeric split is
-  estimated, and the review gate is still what the disclosure rests on. Only the
-  order and emphasis moved, so the disclosure stays consistent with `AGENTS.md`
-  and the public commit history.
-- `WealthPercentileTransformer.fit` now raises an actionable `ValueError` when
-  an explicit `wealth_cols` list matches no training column; partial matches
-  and automatic detection remain unchanged.
-- README coverage badge now links to `pyproject.toml` and reads "≥92% floor"
-  rather than a bare "≥92%". It was a static shields.io string with no tie to
-  the enforced number, so it would have silently lied had `fail_under` ever
-  moved. Not wiring a dynamic gist badge (`schneegans/dynamic-badges-action`):
-  that needs a personal-access-token secret this change doesn't have standing
-  to create, and Codecov/Coveralls are explicitly ruled out elsewhere in this
-  project's standing rules.
-
-### Added
 - Tests pinning the two untested branches of `WealthPercentileTransformer`:
   the all-missing column path (returns NaN ranks, keeps a stable output
   width, raises no warning) and the partially-missing column path (NaN
@@ -110,10 +83,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   working; `tests/test_examples.py`'s docstring now says notebooks are covered
   by `nbmake`, not by it.
 
-### Deprecated
-- `FiscalYearGroupedSplitter`'s default for `drop_repeat_donors` (currently `False`) is deprecated and will change to `True` in 0.8.0. Leaving it at its default now emits a `DeprecationWarning`. Pass `drop_repeat_donors=False` explicitly to silence the warning and retain current behavior. Closes #108, by @shubhrai23.
-
-### Added
 - `credit-guard` CI job: pull requests touching `philanthropy/` must also
   update this changelog, and the author must be credited in
   CONTRIBUTORS.md. Implemented as `scripts/check_credit.sh`, wired into
@@ -131,17 +100,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `philanthropy/` directory in the working directory cannot silently shadow the
   wheel and turn this into a second working-tree test. Windows is included
   because the main matrix is Linux plus macOS.
-### Fixed
-- `EncounterTransformer` now accepts parsed `datetime64` gift dates alongside
-  date strings, and reports unparseable values with the configured gift-date
-  column name instead of exposing NumPy's mixed-dtype promotion error. Closes
-  #163.
-- `CRMCleaner.transform` no longer silently corrupts complex amounts into
-  wrong finite floats: cells holding actual `complex` values are masked to
-  NaN with a `UserWarning` naming them, and a column where nothing parses
-  (all-complex included) still raises `could not parse` per the documented
-  contract. Closes #129.
-### Added
 - **`models.GiftIntervalCalibrator`**: distribution-free intervals on a dollar
   amount. Wraps an already-fitted regressor (`AskAmountRecommender`,
   `ShareOfWalletRegressor`, or any `predict`-per-row estimator) and calibrates on
@@ -184,6 +142,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   (#56)
 
 ### Changed
+- The `ShareOfWalletScorer` output rename describes itself as landing in 0.7.1
+  rather than 0.8.0. The docstring, the `get_legacy_feature_names_out` summary
+  line, its `DeprecationWarning` text, and the deprecations table in
+  `docs/reference/index.md` all named 0.8.0, which was the version this work was
+  staged for before the release was cut as a patch. The three future promises
+  are untouched and still say 0.8.0: `WealthScreeningImputerKNN(group_col_idx=...)`,
+  `philanthropy.utils.make_donor_dataset`, and the `FiscalYearGroupedSplitter`
+  `drop_repeat_donors` default flip. Removal of the legacy names accessor stays
+  at 0.9.0, which is more grace than the one-published-minor rule requires.
+- Generative AI disclosure reordered in `paper.md`, `README.md`, and
+  `philanthropy/__init__.py` to lead with human design authority and human
+  review, then state the scope of the assistance within those constraints. The
+  facts are unchanged: the scope remains package-wide, no numeric split is
+  estimated, and the review gate is still what the disclosure rests on. Only the
+  order and emphasis moved, so the disclosure stays consistent with `AGENTS.md`
+  and the public commit history.
+- `WealthPercentileTransformer.fit` now raises an actionable `ValueError` when
+  an explicit `wealth_cols` list matches no training column; partial matches
+  and automatic detection remain unchanged.
+- README coverage badge now links to `pyproject.toml` and reads "≥92% floor"
+  rather than a bare "≥92%". It was a static shields.io string with no tie to
+  the enforced number, so it would have silently lied had `fail_under` ever
+  moved. Not wiring a dynamic gist badge (`schneegans/dynamic-badges-action`):
+  that needs a personal-access-token secret this change doesn't have standing
+  to create, and Codecov/Coveralls are explicitly ruled out elsewhere in this
+  project's standing rules.
+
 - `ShareOfWalletScorer` output column 0 is renamed `sow_score` →
   `capacity_utilisation_ratio`. The formula was always capacity ÷ clipped
   modelled wealth: utilisation of estimated capacity, with no term for giving to
@@ -201,13 +186,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `test_predict_methods_are_callable_with_x_alone_and_return_one_value_per_row`
   now skips non-estimator symbols in `models.__all__` instead of raising
   `KeyError` on the first one.
+- `CRMCleaner` and `FiscalYearTransformer` now use a shared `_validate_X` helper,
+  and the unreachable `np.iscomplexobj` guard is removed. Complex data inside
+  object arrays bypasses the guard and is properly handled downstream. Closes #155.
 
 ### Deprecated
+- `FiscalYearGroupedSplitter`'s default for `drop_repeat_donors` (currently `False`) is deprecated and will change to `True` in 0.8.0. Leaving it at its default now emits a `DeprecationWarning`. Pass `drop_repeat_donors=False` explicitly to silence the warning and retain current behavior. Closes #108, by @shubhrai23.
+
 - `philanthropy.utils.make_donor_dataset` moves to
   [`philanthropy.datasets.make_donor_dataset`](philanthropy/datasets/) and the
   old location emits a `DeprecationWarning`; removed in 0.8.0. The gift-level
   generator now lives next to `generate_synthetic_donor_data`, which is the
   canonical datasets home. Closes #111.
+
+### Fixed
+- `GratefulPatientFeaturizer` now reports one fallback `general` service line
+  per known donor when the encounter table omits the service-line column.
+  Missing physician columns continue to report zero distinct physicians, and
+  both optional-column paths now have regression coverage. Closes #151.
+
+- `EncounterTransformer` now accepts parsed `datetime64` gift dates alongside
+  date strings, and reports unparseable values with the configured gift-date
+  column name instead of exposing NumPy's mixed-dtype promotion error. Closes
+  #163.
+- `CRMCleaner.transform` no longer silently corrupts complex amounts into
+  wrong finite floats: cells holding actual `complex` values are masked to
+  NaN with a `UserWarning` naming them, and a column where nothing parses
+  (all-complex included) still raises `could not parse` per the documented
+  contract. Closes #129.
 
 ## [1.0.0] - TBD
 

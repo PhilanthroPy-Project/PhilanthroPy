@@ -12,8 +12,8 @@ authors:
     given-names: "Shivam Ashokbhai"
     orcid: "https://orcid.org/0009-0000-5110-6540"
     email: shivamlalakiya151299@gmail.com
-version: 0.7.0
-date-released: "2026-08-21"
+version: 0.7.1
+date-released: "2026-09-08"
 license: MIT
 repository-code: "https://github.com/PhilanthroPy-Project/PhilanthroPy"
 url: "https://PhilanthroPy-Project.github.io/PhilanthroPy/"

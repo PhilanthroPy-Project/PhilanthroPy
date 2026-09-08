@@ -89,7 +89,7 @@ Every domain method returns a number on its own scale. None of them are calibrat
 ## Deprecations
 
 !!! info "This page is built from `main`, which is ahead of the release"
-    `pip install philanthropy` currently gives you **0.7.0**. The tier tables
+    `pip install philanthropy` currently gives you **0.7.1**. The tier tables
     above describe the API as it stands on `main`; the deprecations below are
     live in the version you actually have installed.
 
@@ -145,7 +145,7 @@ barely registers.
 If you need per-group behaviour, split the frame by group and fit one imputer per
 part. That is explicit, and it costs nothing that the parameter was buying.
 
-### Live on `main` (0.8.0), removed in 0.9.0
+### Live in 0.7.1, removed in 0.9.0
 
 | Deprecated | Use instead |
 |---|---|

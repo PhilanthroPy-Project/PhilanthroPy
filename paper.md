@@ -171,9 +171,11 @@ reproducible leakage experiment whose result is reported above and now
 replicated on real donor data (KDD Cup 1998 [@kddcup1998]) rather than only on
 a synthetic generator, with its script output and environment archived
 separately on Zenodo with its own DOI [@kddcup1998replicationzenodo], a
-benchmark page that states its own synthetic-data limitations and the
-Bayes-optimal ceiling of its generator, an archived release on Zenodo, and
-eleven merged pull requests from four contributors external to the project.
+preprint reporting both experiments together, archived on Zenodo with its own
+DOI [@leakagepreprint2026], a benchmark page that states its own synthetic-data
+limitations and the Bayes-optimal ceiling of its generator, an archived release
+on Zenodo, and eleven merged pull requests from four contributors external to
+the project.
 The author's prior conference paper on predictive donor analytics
 [@lalakiya2025] is related work by the same author on
 different data, not an independent evaluation of this software.

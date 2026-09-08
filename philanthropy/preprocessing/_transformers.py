@@ -218,7 +218,7 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         ----------
         input_features : array-like of str or None, default=None
             Ignored. The output names are the input column names recorded by
-            :meth:`fit`.
+            :meth:`fit`, or ``x0``, ``x1``, ... when fitted on an unnamed array.
 
         Returns
         -------
@@ -231,7 +231,10 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
             If the transformer has not been fitted.
         """
         check_is_fitted(self)
-        names = list(self.feature_names_in_)
+        if hasattr(self, "feature_names_in_"):
+            names = list(self.feature_names_in_)
+        else:
+            names = [f"x{i}" for i in range(self.n_features_in_)]
         return np.array(names, dtype=object)
 
     def __sklearn_tags__(self) -> Tags:

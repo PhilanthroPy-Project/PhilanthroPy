@@ -11,7 +11,12 @@ Introspection only: no fixtures, no data files. It asserts four things:
    callable with X alone, and returns a 1-D ndarray of ``len(X)``.
 3. Every ``preprocessing.__all__`` class defines its own
    ``get_feature_names_out(self, input_features=None)`` whose length equals
-   ``transform(X).shape[1]``.
+   ``transform(X).shape[1]``, in three call shapes: no argument after a
+   DataFrame fit, ``input_features=`` after a DataFrame fit (the call
+   ``ColumnTransformer`` and ``Pipeline.get_feature_names_out`` make), and no
+   argument after an unnamed-array fit. Transformers that cannot fit on an
+   unnamed array at all are listed in ``_EXEMPT_ARRAY_FIT``, separately from
+   ``_EXEMPT``, because they still have to honour the other two shapes.
 4. ``philanthropy.__all__`` covers every non-underscore subpackage directory, so
    a new subpackage cannot ship unreachable.
 
@@ -64,6 +69,24 @@ _EXEMPT = {
         "cls(**kwargs) and fitted on one array pair; and "
         "predict_gift_interval returns a GiftInterval carrying two bounds plus "
         "the attained level, not a single value per row."
+    ),
+}
+
+# Exemptions for the unnamed-array fit only. Deliberately separate from
+# _EXEMPT: a transformer that looks its columns up by name still has to honour
+# every other contract, and folding these into _EXEMPT would silently drop it
+# from the width and input_features checks too. Same discipline applies, one
+# written reason each, and test_every_exemption_carries_a_reason covers both.
+_EXEMPT_ARRAY_FIT = {
+    "EncounterTransformer": (
+        "Merges an encounter table onto X by name and raises a written "
+        "ValueError naming `merge_key` when the column is absent. An unnamed "
+        "array has no donor_id to merge on, so there is nothing to fit."
+    ),
+    "MatchingGiftFeaturizer": (
+        "Rejects a non-DataFrame X outright with `TypeError: X must be a "
+        "pandas DataFrame`: it reads the employer column by name and there is "
+        "no positional equivalent."
     ),
 }
 
@@ -299,6 +322,48 @@ def test_feature_names_out_width_matches_transform(name):
     )
 
 
+@pytest.mark.parametrize("name", sorted(preprocessing.__all__))
+def test_feature_names_out_accepts_input_features(name):
+    if name in _EXEMPT:
+        pytest.skip(_EXEMPT[name])
+
+    est = _transformer_instance(name)
+    X = _transformer_input(name)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        out = est.fit_transform(X)
+        names = est.get_feature_names_out(input_features=list(X.columns))
+
+    width = out.shape[1]
+    assert len(names) == width, (
+        f"{name}.get_feature_names_out(input_features=...) has {len(names)} "
+        f"names but transform produced {width} columns. ColumnTransformer and "
+        f"Pipeline both pass input_features down explicitly, so this is the "
+        f"call shape a real pipeline makes."
+    )
+
+
+@pytest.mark.parametrize("name", sorted(preprocessing.__all__))
+def test_feature_names_out_width_after_array_fit(name):
+    if name in _EXEMPT:
+        pytest.skip(_EXEMPT[name])
+    if name in _EXEMPT_ARRAY_FIT:
+        pytest.skip(_EXEMPT_ARRAY_FIT[name])
+
+    est = _transformer_instance(name)
+    X = _transformer_input(name).to_numpy()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        out = est.fit_transform(X)
+        names = est.get_feature_names_out()
+
+    width = out.shape[1]
+    assert len(names) == width, (
+        f"{name} fitted on an unnamed array: get_feature_names_out() has "
+        f"{len(names)} names but transform produced {width} columns"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Exemption hygiene
 # ---------------------------------------------------------------------------
@@ -309,9 +374,31 @@ def test_no_exemption_is_stale():
     assert not unknown, f"_EXEMPT names symbols that are no longer public: {unknown}"
 
 
+def test_no_array_fit_exemption_is_stale():
+    unknown = sorted(set(_EXEMPT_ARRAY_FIT) - set(preprocessing.__all__))
+    assert not unknown, (
+        f"_EXEMPT_ARRAY_FIT names symbols that are no longer public "
+        f"transformers: {unknown}"
+    )
+
+
+def test_no_exemption_is_listed_twice():
+    both = sorted(set(_EXEMPT) & set(_EXEMPT_ARRAY_FIT))
+    assert not both, (
+        f"{both} are in both _EXEMPT and _EXEMPT_ARRAY_FIT. _EXEMPT already "
+        f"skips every check, so the array-fit entry is dead weight that will "
+        f"outlive the reason written next to it."
+    )
+
+
 def test_every_exemption_carries_a_reason():
-    for name, reason in _EXEMPT.items():
-        assert len(reason) > 40, f"{name}'s exemption reason is not an explanation"
+    for table, name, reason in (
+        [("_EXEMPT", n, r) for n, r in _EXEMPT.items()]
+        + [("_EXEMPT_ARRAY_FIT", n, r) for n, r in _EXEMPT_ARRAY_FIT.items()]
+    ):
+        assert len(reason) > 40, (
+            f"{name}'s {table} reason is not an explanation"
+        )
 
 
 # ---------------------------------------------------------------------------

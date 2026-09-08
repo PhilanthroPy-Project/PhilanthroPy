@@ -5,6 +5,32 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- `CRMCleaner.get_feature_names_out` raised `AttributeError: 'CRMCleaner' object
+  has no attribute 'feature_names_in_'` when the transformer had been fitted on
+  an unnamed array. `check_is_fitted` passed, because `n_features_in_` was set,
+  and the next line then read an attribute that scikit-learn only assigns when
+  the input carried column names. It now falls back to `x0`, `x1`, ... for an
+  array fit, matching what `WealthScreeningImputer` and `WealthScreeningImputerKNN`
+  already did. Closes #157.
+
+### Added
+- `tests/test_public_api_contract.py` gains two contracts over every public
+  transformer, covering the two `get_feature_names_out` call shapes the suite
+  never exercised. It previously only ever called `get_feature_names_out()` with
+  no argument on a DataFrame-fitted transformer.
+  `test_feature_names_out_accepts_input_features` passes the real column names
+  through, which is the call `ColumnTransformer` and `Pipeline.get_feature_names_out`
+  actually make, and `test_feature_names_out_width_after_array_fit` fits on an
+  unnamed array. The second one is what caught the `CRMCleaner` defect above.
+  Transformers that genuinely cannot fit on an unnamed array are listed in a new
+  `_EXEMPT_ARRAY_FIT` table with a written reason each: `EncounterTransformer`
+  merges on a named `donor_id`, and `MatchingGiftFeaturizer` rejects a
+  non-DataFrame outright. That table is kept separate from `_EXEMPT` on purpose,
+  because folding these two into `_EXEMPT` would also have dropped them from the
+  width and `input_features` checks they do pass. Three hygiene tests police it:
+  no stale entry, no name in both tables, and a reason on every entry in both.
+
 ## [0.7.1] - 2026-09-08
 
 ### Added

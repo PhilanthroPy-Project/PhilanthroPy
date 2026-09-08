@@ -15,6 +15,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   both optional-column paths now have regression coverage. Closes #151.
 
 ### Added
+- `scripts/render_leakage_chart.py`, the figure companion to the two leakage
+  experiments. `leakage_experiment.py` and `real_data_leakage_experiment.py`
+  each print five-seed means; this script re-runs the identical
+  cross-validation and keeps the per-fold scores, so the shape of the
+  walk-forward backtest is visible rather than one number per condition. It
+  writes a two-panel figure (synthetic and KDD Cup 1998, as-of against
+  whole-history features, seed spread shaded) plus the numbers as JSON, and
+  reproduces the published figures: 0.625 against 0.750 on the synthetic panel,
+  0.482 against 0.858 on the real one. `--cached` re-plots from a saved score
+  file so styling changes do not refit the real panel, and `--out` chooses the
+  output directory. The rendered files are gitignored rather than committed.
+- `README.md` gets a `### Prior art` section under Research, crediting the R
+  repositories this package is downstream of: `michaelpawlus/pg_donors` (2015),
+  `michaelpawlus/fundraising_analytics` (2016), and `crazybilly/fundRaising`
+  (2021). `PlannedGivingIntentScorer` is named as the descendant of `pg_donors`,
+  and `RFMTransformer`, `DonorPropensityModel`, `MovesManagementClassifier`,
+  `FiscalYearTransformer`, and `LapsePredictor` are matched to the R scripts and
+  functions that did the same job first. The omission read as a state-of-the-field
+  gap: `paper.md` compares against Python libraries only, and nothing anywhere in
+  the project acknowledged the R prior art.
 - `CONTRIBUTING.md` gets a "Claiming an issue" rule: comment on an issue before
   opening a PR, and wait for a maintainer to assign it. Issues #175 and #176
   were two people independently fixing the same four-line bug the same

@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Fixed
+- `EncounterRecencyTransformer` no longer catches timezone conversion errors
+  and retries with `tz_localize` after parsing with `utc=True`. The retry was
+  unreachable for valid timezone inputs and replaced the useful
+  `UnknownTimeZoneError` for invalid timezone names with a misleading
+  "Already tz-aware" error. Closes #201.
 - `CRMCleaner.get_feature_names_out` raised `AttributeError: 'CRMCleaner' object
   has no attribute 'feature_names_in_'` when the transformer had been fitted on
   an unnamed array. `check_is_fitted` passed, because `n_features_in_` was set,

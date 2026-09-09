@@ -193,11 +193,8 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         """Parse a date series to datetime64[ns], optionally localising timezone."""
         parsed = pd.to_datetime(series, errors="coerce", utc=(self.timezone is not None))
         if self.timezone is not None:
-            # Convert to the target timezone; if already tz-aware, convert.
-            try:
-                parsed = parsed.dt.tz_convert(self.timezone)
-            except Exception:
-                parsed = parsed.dt.tz_localize(self.timezone)
+            # utc=True above already makes parsed dates tz-aware.
+            parsed = parsed.dt.tz_convert(self.timezone)
         return parsed
 
     def _fiscal_year(self, dt: pd.Timestamp) -> int:

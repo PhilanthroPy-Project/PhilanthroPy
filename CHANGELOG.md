@@ -9,7 +9,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `paper.md`'s Research impact statement now cites the leakage preprint,
   archived on Zenodo as DOI `10.5281/zenodo.22665386`, alongside the real-data
   replication archive it already cited. `paper.bib` gains the matching
-  `leakagepreprint2026` entry. Part of #127.
+  `leakagepreprint2026` entry. The same statement's external-contribution
+  count was stale and understated: it now reads thirty-five merged pull
+  requests from eleven contributors external to the project, measured from the
+  merged-PR list rather than recalled. Part of #127.
 
 ### Fixed
 - `EncounterRecencyTransformer` no longer catches timezone conversion errors

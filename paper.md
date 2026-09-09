@@ -174,8 +174,8 @@ separately on Zenodo with its own DOI [@kddcup1998replicationzenodo], a
 preprint reporting both experiments together, archived on Zenodo with its own
 DOI [@leakagepreprint2026], a benchmark page that states its own synthetic-data
 limitations and the Bayes-optimal ceiling of its generator, an archived release
-on Zenodo, and eleven merged pull requests from four contributors external to
-the project.
+on Zenodo, and thirty-five merged pull requests from eleven contributors
+external to the project.
 The author's prior conference paper on predictive donor analytics
 [@lalakiya2025] is related work by the same author on
 different data, not an independent evaluation of this software.

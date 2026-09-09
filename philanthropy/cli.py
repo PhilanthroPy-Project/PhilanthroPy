@@ -2,12 +2,18 @@
 philanthropy.cli
 ================
 A CSV-in / CSV-out command line for analysts who aren't primarily Python
-engineers. Three subcommands:
+engineers. Four subcommands:
 
-    philanthropy train    --data gifts.csv --target is_major_donor \\
+    philanthropy features --source raisers_edge --data gifts.csv --out features.csv
+    philanthropy train    --data features.csv --target is_major_donor \\
                           --features total_gift_amount,years_active --out model.joblib
     philanthropy score    --model model.joblib --data prospects.csv --out scores.csv
     philanthropy validate --model model.joblib --data holdout.csv --target is_major_donor
+
+`features` rolls a raw CRM gift export up into the donor-level table the models
+consume, so the path from an export to a scored CSV needs no Python. It does not
+invent a label: `train` still needs a `--target` column, and constructing one
+from your own definition of a major donor stays your job.
 
 `train` saves a self-describing bundle (the fitted model, the feature list, and
 the scikit-learn / philanthropy versions used); `score` and `validate` reuse the
@@ -18,12 +24,25 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
 import pandas as pd
 
 from . import __version__
+
+# Gift-export readers `features` can front. Each name maps to a
+# (reader, aggregator) pair in _cmd_features.
+_FEATURE_SOURCES = ("civicrm", "raisers_edge")
+
+# The donor-level columns `features` emits, in order. Named here so
+# `philanthropy features --help` answers "what do I pass to --features?"
+# without a guess; tests/test_cli.py checks it against the real frame.
+_FEATURE_COLUMNS = (
+    "contact_id, constituent_email, first_name, last_name, total_gift_amount, "
+    "gift_count, largest_gift_amount, first_gift_date, last_gift_date, "
+    "years_active, recency_days, distinct_financial_types"
+)
 
 _MODEL_CHOICES = (
     "DonorPropensityModel",
@@ -175,6 +194,42 @@ def _cmd_validate(args: argparse.Namespace) -> None:
     print(f"roc_auc   {roc_auc_score(y, y_proba):.3f}")
 
 
+def _cmd_features(args: argparse.Namespace) -> None:
+    from . import ingest
+    from .utils._validation import ensure_local_path
+
+    read: Callable[..., pd.DataFrame]
+    to_features: Callable[..., pd.DataFrame]
+    if args.source == "raisers_edge":
+        read = ingest.read_raisers_edge_gifts
+        to_features = ingest.raisers_edge_gifts_to_features
+    else:
+        read = ingest.read_civicrm_contributions
+        to_features = ingest.civicrm_contributions_to_features
+
+    ensure_local_path(args.data, "data")
+    try:
+        gifts = read(args.data)
+    except FileNotFoundError:
+        raise SystemExit(f"Data file not found: {args.data}")
+    try:
+        features = to_features(gifts)
+    except KeyError as exc:
+        # The aggregators name the missing export fields; that message is the
+        # whole answer, so surface it instead of a traceback.
+        raise SystemExit(str(exc.args[0] if exc.args else exc))
+
+    # reset_index first: contact_id is the index, and _neutralise_csv_injection
+    # only walks columns, so an index left in place would skip the escaping and
+    # then be written to the CSV anyway by to_csv(index=True).
+    out = _neutralise_csv_injection(features.reset_index())
+    if args.out:
+        out.to_csv(args.out, index=False)
+        print(f"Wrote {len(out)} donor rows to {args.out}")
+    else:
+        out.to_csv(sys.stdout, index=False)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="philanthropy",
@@ -184,6 +239,29 @@ def _build_parser() -> argparse.ArgumentParser:
         "--version", action="version", version=f"philanthropy {__version__}"
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    features = sub.add_parser(
+        "features",
+        help="Roll a CRM gift export up into the donor-level feature table.",
+        description=(
+            "Aggregate a raw CRM gift export into the one-row-per-donor table "
+            "the models consume, then feed that to `train` and `score`. "
+            "Emitted columns, in order: " + _FEATURE_COLUMNS + ". Commitment "
+            "rows (pledges, recurring gift templates) are dropped for "
+            "raisers_edge, and test-mode and non-Completed rows for civicrm, "
+            "so a committed dollar is not counted twice. No label is produced: "
+            "`train --target` needs a column you define yourself."
+        ),
+    )
+    features.add_argument(
+        "--source", required=True, choices=_FEATURE_SOURCES,
+        help="which CRM the export came from",
+    )
+    features.add_argument(
+        "--data", required=True, help="gift export CSV, or a directory of them"
+    )
+    features.add_argument("--out", default=None, help="output CSV path (default: stdout)")
+    features.set_defaults(func=_cmd_features)
 
     train = sub.add_parser("train", help="Train a model from a labelled CSV and save it.")
     train.add_argument("--data", required=True, help="path to a labelled CSV")

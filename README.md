@@ -151,15 +151,20 @@ scores <- model$predict_affinity_score(X)   # 0-100 affinity scores
 
 ### No Python? Use the CLI
 
-`pip install philanthropy` also puts a `philanthropy` command on your PATH. CSV in, scored CSV out, no Python file to write.
+`pip install philanthropy` also puts a `philanthropy` command on your PATH. Gift export in, scored CSV out, no Python file to write.
 
 ```bash
-philanthropy train --data gifts.csv --target is_major_donor \
-  --features total_gift_amount,years_active,event_attendance_count \
+# roll a raw Blackbaud Raiser's Edge (or CiviCRM) gift export up to one row per donor
+philanthropy features --source raisers_edge --data gifts.csv --out features.csv
+
+philanthropy train --data features.csv --target is_major_donor \
+  --features total_gift_amount,years_active,recency_days \
   --out model.joblib
 
-philanthropy score --data prospects.csv --model model.joblib --out scored.csv
+philanthropy score --data features.csv --model model.joblib --out scored.csv
 ```
+
+`features` knows that a Raiser's Edge pledge and the payments against it are separate gift records, so it does not count a committed dollar twice. It does not invent a label, though: `train --target` needs a column you define yourself, from your own definition of a major donor.
 
 `philanthropy validate` reports precision/recall/F1/ROC-AUC on a labelled CSV; point it at a holdout year, not the year you trained on. Full walkthrough: **[Use the CLI](docs/how-to/use_the_cli.md)**.
 

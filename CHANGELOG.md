@@ -6,6 +6,35 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `philanthropy.ingest.raisers_edge_gifts_to_features` and
+  `read_raisers_edge_gifts`: an on-ramp from a Blackbaud Raiser's Edge gift
+  export to the donor-level feature table, alongside the existing CiviCRM and
+  UniSchema bridges. Headers are normalised from any of the three spellings the
+  product uses (desktop Export labels, the RE7 database columns, the RE NXT SKY
+  API field names) onto the canonical `contact_id` / `receive_date` /
+  `total_amount`, then the roll-up is delegated to the CiviCRM aggregator.
+  The domain knowledge it adds is the commitment-versus-payment filter: in
+  Raiser's Edge a pledge and the payments made against it are separate gift
+  records, and a recurring gift row is a template rather than money received,
+  so summing the amount column counts every committed dollar twice. The
+  commitment rows and the ledger corrections are dropped by default, matched
+  case-, space- and punctuation-insensitively so one spelling covers both the
+  desktop and NXT vocabularies, with the desktop's abbreviated matching-gift
+  types (`MG Pledge`, `MG Write Off`) named separately because they are not
+  the long forms with the spaces taken out. The excluded set is the documented
+  `exclude_gift_types` parameter, defaulting to the new
+  `DEFAULT_EXCLUDED_GIFT_TYPES`, because Raiser's Edge exports are
+  user-configured. An export with no gift-type column warns rather than
+  silently double-counting. Closes #213.
+- `philanthropy features --source {raisers_edge,civicrm} --data gifts.csv --out
+  features.csv`, a fourth CLI subcommand. This is what makes the advertised
+  no-Python path true end to end: previously `train` required `--features`
+  columns such as `total_gift_amount` that nothing in the CLI could build, so
+  "CSV in, scored CSV out" only held for someone who had already written the
+  Python that produced them. The subcommand's `--help` lists the columns it
+  emits, and the output runs through the same formula-injection neutralisation
+  as `score` because a feature table echoes donor names and emails. It does not
+  produce a label: `train --target` still needs a column the analyst defines.
 - `EncounterRecencyTransformer` gains an `as_of` parameter, the last dated
   transformer without one. Encounters dated after it are blanked to `NaT`
   before the features are computed, so a clinical encounter that had not

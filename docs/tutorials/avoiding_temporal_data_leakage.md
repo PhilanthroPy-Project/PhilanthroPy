@@ -1,5 +1,5 @@
 ---
-description: "How temporal leakage inflates donor model backtests and how as-of feature timing prevents it, measured at +0.376 ROC-AUC on real campaign data."
+description: "How temporal leakage inflates donor model backtests, and how as-of feature timing in PhilanthroPy's transformers and models prevents it."
 ---
 
 # Avoiding temporal data leakage in fundraising models

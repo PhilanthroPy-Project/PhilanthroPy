@@ -1,3 +1,7 @@
+---
+description: "Replicated on 95,412 real donors: whole-history features inflate walk-forward ROC-AUC from 0.482 to 0.858, roughly three times the synthetic effect."
+---
+
 # Real-Data Replication: KDD Cup 1998
 
 Everything else this project measures is synthetic. This page is not.

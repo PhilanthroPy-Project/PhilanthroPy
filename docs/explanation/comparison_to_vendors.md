@@ -1,3 +1,7 @@
+---
+description: "How an open-source donor scoring library compares with commercial wealth-screening vendors, including when a vendor is the better call."
+---
+
 # PhilanthroPy vs. Commercial Vendors
 
 Most advancement shops already pay for a wealth-screening or predictive-modeling

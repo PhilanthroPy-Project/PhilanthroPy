@@ -1,3 +1,7 @@
+---
+description: "Impute missing wealth-screening fields without leaking test data: WealthScreeningImputer freezes per-column training medians in fit."
+---
+
 # Handle missing wealth data
 
 Third-party wealth vendors rarely match every record in a database. This guide shows you how to fill the gaps without leaking information from your test set into training.

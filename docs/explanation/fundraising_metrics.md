@@ -1,3 +1,7 @@
+---
+description: "Lifetime value, efficiency and ROI metrics for fundraising analytics, and how PhilanthroPy computes each one."
+---
+
 # Fundraising metrics
 
 Accuracy and R-Squared measure a model. They don't measure whether fundraising worked. PhilanthroPy provides metrics that speak the language of development officers and CFOs.

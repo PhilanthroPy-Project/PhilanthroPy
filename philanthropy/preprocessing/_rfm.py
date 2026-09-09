@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import Any, TypeVar
 
 import numpy as np
@@ -7,6 +8,8 @@ import pandas as pd
 from sklearn.base import TransformerMixin, BaseEstimator
 from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted
+
+from ._encounters import _apply_as_of_cutoff
 
 _Self = TypeVar("_Self", bound="RFMTransformer")
 
@@ -33,6 +36,15 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
     agg_func : str or callable, default='sum'
         The aggregation function to calculate the monetary value. 
         Typical values are 'sum' (cumulative) or 'mean' (average).
+    as_of : str, datetime-like or None, default=None
+        Scoring-date cutoff. Gifts dated after ``as_of`` are dropped before any
+        roll-up, so ``frequency`` and ``monetary`` describe only what had
+        happened by that date. Left at ``None`` the whole gift table is
+        aggregated, which inflates the roll-up with gifts that postdate the
+        decision being modelled: the classic case is a new-donor model whose
+        cumulative-giving feature is really the outcome. ``None`` warns rather
+        than silently aggregating the future whenever the table runs past the
+        frozen reference date.
     include_tenure : bool, default=False
         Emit a fifth column, ``tenure``: days from the donor's *first* gift to
         the frozen reference date. Recency-frequency-monetary alone cannot feed
@@ -46,10 +58,12 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         reference_date: Any = None,
         agg_func: Any = 'sum',
         include_tenure: bool = False,
+        as_of: Any = None,
     ) -> None:
         self.reference_date = reference_date
         self.agg_func = agg_func
         self.include_tenure = include_tenure
+        self.as_of = as_of
 
     def fit(self: _Self, X: Any, y: Any = None) -> _Self:
         """
@@ -69,13 +83,15 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         # Freeze the recency reference date from TRAINING data (leakage-safety
         # contract: fitted statistics are computed in fit and frozen before
         # transform). Mirrors EncounterRecencyTransformer.reference_date_.
+        # Cut in fit as well as transform, so an unparseable as_of is caught
+        # where every other parameter is validated, and so an unset
+        # reference_date falls on the last gift the as_of window allows rather
+        # than the last gift on file.
+        X_cut = self._cut(X)
         if self.reference_date is not None:
             self.reference_date_ = pd.to_datetime(self.reference_date)
         else:
-            X_df = X if hasattr(X, "columns") else pd.DataFrame(
-                X, columns=self.feature_names_in_
-            )
-            self.reference_date_ = pd.to_datetime(X_df["gift_date"]).max()
+            self.reference_date_ = X_cut["gift_date"].max()
         return self
 
     def transform(self, X: Any) -> pd.DataFrame:
@@ -88,8 +104,8 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         # Manual validation
         self._validate_input(X)
         
-        X_df = X.copy() if hasattr(X, "columns") else pd.DataFrame(X, columns=self.feature_names_in_)
-        X_df['gift_date'] = pd.to_datetime(X_df['gift_date'])
+        X_df = self._cut(X)
+        self._warn_if_unbounded(X_df)
 
         # Use the reference date frozen in fit, never the transform batch's
         # max, which would make recency depend on which rows share the batch.
@@ -123,6 +139,40 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
 
         return rfm_df
         
+    def _cut(self, X: Any) -> pd.DataFrame:
+        """Copy ``X``, parse ``gift_date``, and drop gifts after ``as_of``."""
+        X_df = X.copy() if hasattr(X, "columns") else pd.DataFrame(
+            X, columns=self.feature_names_in_
+        )
+        X_df['gift_date'] = pd.to_datetime(X_df['gift_date'])
+        return _apply_as_of_cutoff(
+            X_df, 'gift_date', self.as_of, "RFMTransformer", row_noun="gift"
+        )
+
+    def _warn_if_unbounded(self, X_df: pd.DataFrame) -> None:
+        """Warn when ``as_of`` is unset and gifts postdate the reference date.
+
+        Those gifts inflate ``frequency`` and ``monetary`` with money that had
+        not been given yet on the scoring date, and drive ``recency`` negative.
+        No cross-validation splitter catches it, because the leak is inside a
+        single donor's roll-up rather than across folds.
+        """
+        if self.as_of is not None or not len(X_df):
+            return
+        n_future = int((X_df['gift_date'] > self.reference_date_).sum())
+        if n_future:
+            warnings.warn(
+                f"RFMTransformer(as_of=None) is aggregating {n_future} gift "
+                f"row(s) dated after the frozen reference date "
+                f"({self.reference_date_.date()}), so frequency and monetary "
+                "include gifts that postdate the decision they describe and "
+                "recency goes negative. Set as_of to the end of your training "
+                "window, or restrict the gift table before fit. See "
+                "docs/tutorials/avoiding_temporal_data_leakage.md.",
+                UserWarning,
+                stacklevel=2,
+            )
+
     def _validate_input(self, X: Any) -> None:
         cols = X.columns if hasattr(X, "columns") else self.feature_names_in_
         required_cols = {"donor_id", "gift_date", "gift_amount"}

@@ -175,3 +175,47 @@ def test_frequency_per_donor(sample_transactions):
     assert rfm[rfm['donor_id'] == 1]['frequency'].iloc[0] == 2
     assert rfm[rfm['donor_id'] == 2]['frequency'].iloc[0] == 3
     assert rfm[rfm['donor_id'] == 3]['frequency'].iloc[0] == 1
+
+
+# ---------------------------------------------------------------------------
+# as_of cutoff: Pelletier's new-donor case
+# ---------------------------------------------------------------------------
+
+_LATE_GIFT = pd.DataFrame({
+    'donor_id': [1, 1, 1],
+    'gift_date': ['2020-01-01', '2021-01-01', '2025-01-01'],
+    'gift_amount': [100.0, 100.0, 50000.0],
+})
+
+
+def test_as_of_drops_gifts_after_the_scoring_date():
+    t = RFMTransformer(reference_date='2022-01-01', as_of='2022-01-01')
+    row = t.fit_transform(_LATE_GIFT).iloc[0]
+    assert row['frequency'] == 2
+    assert row['monetary'] == 200.0
+    assert row['recency'] == 365
+
+
+def test_as_of_none_warns_when_gifts_postdate_the_reference_date():
+    t = RFMTransformer(reference_date='2022-01-01')
+    with pytest.warns(UserWarning, match="aggregating 1 gift row"):
+        row = t.fit_transform(_LATE_GIFT).iloc[0]
+    # Unchanged behaviour, only louder: the future gift is still aggregated.
+    assert row['monetary'] == 50200.0
+    assert row['recency'] < 0
+
+
+def test_as_of_bounds_an_unset_reference_date():
+    t = RFMTransformer(as_of='2022-01-01').fit(_LATE_GIFT)
+    assert t.reference_date_ == pd.Timestamp('2021-01-01')
+
+
+def test_as_of_rejects_an_unparseable_date():
+    with pytest.raises(ValueError, match="RFMTransformer"):
+        RFMTransformer(as_of='not-a-date').fit(_LATE_GIFT)
+
+
+def test_as_of_warns_when_it_excludes_every_gift():
+    t = RFMTransformer(reference_date='2022-01-01', as_of='1999-01-01')
+    with pytest.warns(UserWarning, match="excluded every gift row"):
+        t.fit(_LATE_GIFT)

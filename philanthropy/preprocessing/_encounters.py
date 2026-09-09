@@ -60,13 +60,18 @@ _Self = TypeVar("_Self", bound="EncounterTransformer")
 
 
 def _apply_as_of_cutoff(
-    enc: pd.DataFrame, discharge_col: str, as_of: Any, class_name: str
+    enc: pd.DataFrame,
+    discharge_col: str,
+    as_of: Any,
+    class_name: str,
+    row_noun: str = "encounter",
 ) -> pd.DataFrame:
-    """Drop encounter rows discharged after ``as_of``.
+    """Drop rows dated after ``as_of``.
 
-    Returns ``enc`` unchanged when ``as_of`` is ``None``. Rows whose discharge
-    date did not parse are kept, so each caller keeps its own rule for those and
-    the cutoff cannot silently change it.
+    Returns ``enc`` unchanged when ``as_of`` is ``None``. Rows whose date did
+    not parse are kept, so each caller keeps its own rule for those and the
+    cutoff cannot silently change it. ``row_noun`` names the rows in the
+    warning text; the gift-side callers pass ``"gift"``.
     """
     if as_of is None:
         return enc
@@ -83,9 +88,10 @@ def _apply_as_of_cutoff(
     keep = enc[discharge_col].isna() | (enc[discharge_col] <= cutoff)
     if not keep.any() and len(enc):
         warnings.warn(
-            f"{class_name}(as_of={cutoff.date()}) excluded every encounter row, "
-            "so the summary is empty and every donor scores as having no "
-            "encounters. Check that as_of is later than your encounter history.",
+            f"{class_name}(as_of={cutoff.date()}) excluded every {row_noun} "
+            f"row, so the summary is empty and every donor scores as having no "
+            f"{row_noun}s. Check that as_of is later than your {row_noun} "
+            "history.",
             UserWarning,
         )
     return enc[keep]

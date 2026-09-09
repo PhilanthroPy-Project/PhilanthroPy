@@ -1,4 +1,8 @@
-# Building Your First Model
+---
+description: "Build a donor propensity model in Python with scikit-learn: load donor data, fit DonorPropensityModel, and produce affinity scores a gift officer can act on."
+---
+
+# Building Your First Donor Propensity Model in Python
 
 Build a working machine learning pipeline with PhilanthroPy and scikit-learn. You start with raw donor data and finish with affinity scores a gift officer can act on.
 

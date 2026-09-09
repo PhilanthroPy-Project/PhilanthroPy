@@ -6,6 +6,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Changed
+- Seven high-intent documentation pages now carry a per-page `description` in
+  YAML front matter, so a search result or social card shows that page's own
+  summary rather than the site-wide `site_description`. The first-model
+  tutorial is retitled "Building Your First Donor Propensity Model in Python";
+  the previous "Building Your First Model" named neither the domain nor the
+  language, and MkDocs derives the nav label from the first heading, so the
+  entry was equally opaque there. Every description is quoted: an unquoted YAML
+  scalar containing a colon and a space parses as a nested mapping, which
+  silently drops the `<meta name="description">` tag and renders the front
+  matter as visible page text instead.
 - `paper.md`'s Research impact statement now cites the leakage preprint,
   archived on Zenodo as DOI `10.5281/zenodo.22665386`, alongside the real-data
   replication archive it already cited. `paper.bib` gains the matching

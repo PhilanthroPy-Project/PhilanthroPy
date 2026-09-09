@@ -1,3 +1,7 @@
+---
+description: "How temporal leakage inflates donor model backtests and how as-of feature timing prevents it, measured at +0.376 ROC-AUC on real campaign data."
+---
+
 # Avoiding temporal data leakage in fundraising models
 
 Predicting major gifts or donor retention carries one common trap: **temporal data leakage**, using information from the future to predict an outcome in the past. PhilanthroPy's transformers and models are leakage-safe by design.

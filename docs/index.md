@@ -1,3 +1,7 @@
+---
+description: "scikit-learn estimators for nonprofit and hospital fundraising analytics: donor propensity, lapse risk, wealth-screening imputation, leakage-safe by design."
+---
+
 <div class="ap-hero" markdown>
 <span class="ap-hero__eyebrow">Open source · scikit-learn native</span>
 

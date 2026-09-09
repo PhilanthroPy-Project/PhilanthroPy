@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added
+- `RFMTransformer` gains an `as_of` parameter. Gifts dated after it are dropped
+  before the roll-up, so `frequency` and `monetary` describe only what had
+  happened by the scoring date. The gift-side roll-up was the one feature
+  builder that did not enforce the cutoff the clinical-encounter builders
+  already did: with `reference_date` set and a gift table running past it,
+  `monetary` silently summed gifts from after the date being scored and
+  `recency` went negative. Left at the default `None` the behaviour is
+  unchanged, but it now warns instead of aggregating the future silently.
+  Closes #208.
+
 ### Changed
 - `paper.md`'s Research impact statement now cites the leakage preprint,
   archived on Zenodo as DOI `10.5281/zenodo.22665386`, alongside the real-data
@@ -13,6 +24,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   count was stale and understated: it now reads thirty-five merged pull
   requests from eleven contributors external to the project, measured from the
   merged-PR list rather than recalled. Part of #127.
+- The leakage tutorial's opening example is now a real one, contributed and
+  attributed with permission: Marianne Pelletier's new-donor model built on a
+  lifetime-giving-greater-than-zero variable, where the feature was the
+  outcome. It replaces the synthetic `total_lifetime_giving` sketch and gains a
+  runnable `as_of` walkthrough of the same failure. Closes #209.
 
 ### Fixed
 - `EncounterRecencyTransformer` no longer catches timezone conversion errors

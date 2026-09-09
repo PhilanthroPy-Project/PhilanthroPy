@@ -6,7 +6,40 @@ This tutorial shows how temporal leakage happens and how PhilanthroPy prevents i
 
 ## The problem: naive aggregation
 
-Say you build a feature `total_lifetime_giving` and attach it to historical snapshots of each donor. If you use the final, present-day `total_lifetime_giving` value to predict whether a donor gave a major gift three years ago, you have trained the model on the future.
+Marianne Pelletier of Staupell Analytics Group describes the sharpest version of it, from her own modelling work:
+
+> I once modeled new donors with the 100% correlated variable of their having a greater than 0 lifetime giving total!
+
+The feature was the outcome. Validation looked perfect and the field did not, because a prospective new donor's lifetime giving is 0 as of the scoring date: cut to that date the feature goes constant rather than perfect. Her prescription is the rule this library enforces, roll-up variables that count up to the day before the event. She puts it as modelling baseball, where you build the stats that were true the day before the game and model on those. (Quoted with her permission.)
+
+The same trap catches any feature built by aggregating a source table that runs past the outcome: a `total_lifetime_giving` attached to historical donor snapshots, a wealth-capacity field refreshed to today's value, a clinical encounter that had not happened yet.
+
+## The cutoff: `as_of`
+
+The three roll-up transformers, `RFMTransformer`, `EncounterTransformer` and `GratefulPatientFeaturizer`, take an `as_of` date and drop every source row dated after it *before* any roll-up is computed. `RFMTransformer` rolls a gift log up to one row per donor, so it is where Pelletier's case lands:
+
+```python
+import pandas as pd
+from philanthropy.preprocessing import RFMTransformer
+
+gifts = pd.DataFrame({
+    'donor_id': [1, 1, 1],
+    'gift_date': ['2020-01-01', '2021-01-01', '2025-01-01'],
+    'gift_amount': [100.0, 100.0, 50_000.0],
+})
+
+# Scoring as of 2022: the 2025 gift had not been given yet.
+rfm = RFMTransformer(reference_date='2022-01-01', as_of='2022-01-01')
+print(rfm.fit_transform(gifts))
+#    donor_id  recency  frequency  monetary
+# 0         1      365          2      200.0
+```
+
+`as_of` is inclusive, so to get Pelletier's day-before rule exactly, pass the day before the outcome you are predicting: `as_of=D` still rolls a gift made on `D` into `monetary`.
+
+Leave `as_of` unset while the gift table runs past the reference date and the transformer warns rather than quietly aggregating the future. Without the cutoff the same donor rolls up to `frequency=3`, `monetary=50200.0` and a *negative* recency of -1096 days: the model is being told about a gift from three years after the date it is scoring.
+
+`EncounterTransformer` and `GratefulPatientFeaturizer` take the same `as_of` argument for clinical encounter tables. Transformers that read a dated table without rolling it up, such as `EncounterRecencyTransformer`, have no cutoff: restrict their input yourself.
 
 ## The solution: fit-time snapshots
 
@@ -53,3 +86,4 @@ features_test = transformer.transform(donor_df_test)
 1. **Split first**: Split your data into training and test sets *before* passing them to a pipeline.
 2. **Use pipelines**: Wrap your transformers inside a `sklearn.pipeline.Pipeline`.
 3. **Use temporal splits**: For time-series data like fundraising, reach for `FiscalYearGroupedSplitter` (see the CV documentation) so test folds fall strictly after training folds in time.
+4. **Set `as_of`**: Pass the end of your training window to `RFMTransformer`, `EncounterTransformer` and `GratefulPatientFeaturizer`. Cross-validation cannot catch a leak that happens inside one donor's roll-up.

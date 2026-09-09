@@ -20,7 +20,7 @@ The same trap catches any feature built by aggregating a source table that runs 
 
 ## The cutoff: `as_of`
 
-The three roll-up transformers, `RFMTransformer`, `EncounterTransformer` and `GratefulPatientFeaturizer`, take an `as_of` date and drop every source row dated after it *before* any roll-up is computed. `RFMTransformer` rolls a gift log up to one row per donor, so it is where Pelletier's case lands:
+Every transformer that reads a dated source table takes an `as_of` date and removes the rows dated after it *before* any feature is computed. `RFMTransformer` rolls a gift log up to one row per donor, so it is where Pelletier's case lands:
 
 ```python
 import pandas as pd
@@ -43,7 +43,7 @@ print(rfm.fit_transform(gifts))
 
 Leave `as_of` unset while the gift table runs past the reference date and the transformer warns rather than quietly aggregating the future. Without the cutoff the same donor rolls up to `frequency=3`, `monetary=50200.0` and a *negative* recency of -1096 days: the model is being told about a gift from three years after the date it is scoring.
 
-`EncounterTransformer` and `GratefulPatientFeaturizer` take the same `as_of` argument for clinical encounter tables. Transformers that read a dated table without rolling it up, such as `EncounterRecencyTransformer`, have no cutoff: restrict their input yourself.
+`EncounterTransformer` and `GratefulPatientFeaturizer` take the same `as_of` argument for clinical encounter tables. `EncounterRecencyTransformer` takes it too, with one difference: it emits one row per input row, so dropping rows would break it inside a `Pipeline`. It blanks post-cutoff encounters to `NaT` instead, and they come out as a missing encounter rather than a future one.
 
 ## The solution: fit-time snapshots
 
@@ -90,4 +90,4 @@ features_test = transformer.transform(donor_df_test)
 1. **Split first**: Split your data into training and test sets *before* passing them to a pipeline.
 2. **Use pipelines**: Wrap your transformers inside a `sklearn.pipeline.Pipeline`.
 3. **Use temporal splits**: For time-series data like fundraising, reach for `FiscalYearGroupedSplitter` (see the CV documentation) so test folds fall strictly after training folds in time.
-4. **Set `as_of`**: Pass the end of your training window to `RFMTransformer`, `EncounterTransformer` and `GratefulPatientFeaturizer`. Cross-validation cannot catch a leak that happens inside one donor's roll-up.
+4. **Set `as_of`**: Pass the end of your training window to every transformer that reads a dated table: `RFMTransformer`, `EncounterTransformer`, `GratefulPatientFeaturizer`, `EncounterRecencyTransformer`. Cross-validation cannot catch a leak that happens inside one donor's own features.

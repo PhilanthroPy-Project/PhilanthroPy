@@ -6,6 +6,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `EncounterRecencyTransformer` gains an `as_of` parameter, the last dated
+  transformer without one. Encounters dated after it are blanked to `NaT`
+  before the features are computed, so a clinical encounter that had not
+  happened yet on the scoring date reads as a missing encounter instead of
+  producing a negative `days_since_last_encounter`. It blanks rather than
+  drops because the transformer emits one row per input row, and dropping
+  would break it inside a `Pipeline`. Left at the default `None` nothing is
+  blanked, but a post-reference-date encounter now warns instead of passing
+  silently. Closes #210.
 - `RFMTransformer` gains an `as_of` parameter. Gifts dated after it are dropped
   before the roll-up, so `frequency` and `monetary` describe only what had
   happened by the scoring date. The gift-side roll-up was the one feature

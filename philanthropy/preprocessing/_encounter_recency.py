@@ -47,6 +47,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
 
+from ._encounters import _parse_as_of
 from ..utils._validation import validate_fiscal_year_start
 
 _Self = TypeVar("_Self", bound="EncounterRecencyTransformer")
@@ -63,8 +64,10 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         Integer days between ``reference_date`` and the encounter date.
         ``NaN`` for missing/unparseable dates.  Always non-negative when
         ``reference_date >= encounter_date``; negative values indicate
-        future dates (rare in production) and are left as-is to allow models
-        to detect data-quality anomalies.
+        dates after the reference date, i.e. an encounter that had not
+        happened yet at the point being scored.  They are still emitted, so a
+        model can detect the data-quality anomaly, but they now warn: set
+        ``as_of`` to blank them instead.
 
     ``encounter_in_last_90d``
         Float64 0.0 / 1.0 flag: 1.0 if ``days_since_last_encounter <= 90``.
@@ -93,6 +96,17 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         clinical encounter in the training fold).  Setting an explicit
         reference date is recommended for production scoring runs to ensure
         consistency between training and inference time.
+    as_of : str, datetime-like, or None, default=None
+        Scoring-date cutoff.  Encounters dated after ``as_of`` are blanked to
+        ``NaT`` before the features are computed, so they read as missing
+        rather than as an encounter from the future: ``NaN`` days since,
+        ``0.0`` for the 90-day flag, ``NaN`` fiscal year.  The row count is
+        unchanged, so the transformer stays usable inside a
+        :class:`~sklearn.pipeline.Pipeline`.  The cutoff is inclusive, so an
+        encounter *on* ``as_of`` is kept; to roll up strictly to the day
+        before an outcome, pass that day.  Left at ``None`` nothing is
+        blanked, but a post-reference-date encounter warns instead of
+        silently producing a negative recency.
     timezone : str or None, default=None
         Optional timezone name (e.g., ``"America/Chicago"``).  When
         provided, timezone-naive datetimes in ``X`` are localised to this
@@ -157,12 +171,14 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         fiscal_year_start: int = 7,
         reference_date: Any = None,
         timezone: Optional[str] = None,
+        as_of: Any = None,
     ) -> None:
         # scikit-learn rule: __init__ ONLY assigns; no validation, no side-effects.
         self.date_col = date_col
         self.fiscal_year_start = fiscal_year_start
         self.reference_date = reference_date
         self.timezone = timezone
+        self.as_of = as_of
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -197,6 +213,22 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
             parsed = parsed.dt.tz_convert(self.timezone)
         return parsed
 
+    def _as_of_for(self, dates: pd.Series) -> Optional[pd.Timestamp]:
+        """Return ``as_of`` parsed and aligned to ``dates``' timezone, or None.
+
+        The dates carry a timezone whenever ``timezone`` is set, and the raw
+        ``as_of`` a caller passes almost never does, so the two have to be put
+        on the same clock before they can be compared at all.
+        """
+        if self.as_of is None:
+            return None
+        cutoff = _parse_as_of(self.as_of, "EncounterRecencyTransformer")
+        if dates.dt.tz is not None and cutoff.tzinfo is None:
+            return cutoff.tz_localize(self.timezone or "UTC")
+        if dates.dt.tz is None and cutoff.tzinfo is not None:
+            return cutoff.tz_convert("UTC").tz_localize(None)
+        return cutoff
+
     def _fiscal_year(self, dt: pd.Timestamp) -> int:
         """Return the fiscal year for a single Timestamp."""
         fys = int(self.fiscal_year_start)
@@ -220,6 +252,27 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
             ref_ts = ref
         else:
             ref_ts = ref
+
+        cutoff = self._as_of_for(dates)
+        if cutoff is not None:
+            # Blank rather than drop: this transformer is row-wise, so losing
+            # rows would break its use inside a Pipeline. A blanked encounter
+            # reads as missing, which every feature below already handles.
+            dates = dates.mask(dates > cutoff)
+        else:
+            n_future = int((dates > ref_ts).sum())
+            if n_future:
+                warnings.warn(
+                    f"EncounterRecencyTransformer(as_of=None) is scoring "
+                    f"{n_future} encounter(s) dated after the frozen reference "
+                    f"date ({ref_ts.date()}), so days_since_last_encounter "
+                    "goes negative for encounters that had not happened yet. "
+                    "Set as_of to the end of your scoring window to blank "
+                    "them, or restrict the input before transform. See "
+                    "docs/tutorials/avoiding_temporal_data_leakage.md.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
         try:
             delta_days = (ref_ts - dates).dt.days.astype("float64")
@@ -283,6 +336,10 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         self : EncounterRecencyTransformer
         """
         self._validate_fiscal_year_start()
+        if self.as_of is not None:
+            # Fail here rather than at transform, where every other parameter
+            # has already been checked.
+            _parse_as_of(self.as_of, "EncounterRecencyTransformer")
 
         # Register the input schema via validate_data; allow NaN and string types.
         validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=True)
@@ -298,6 +355,12 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
                 for col in cols:
                     if col in X.columns:
                         parsed = self._parse_dates(X[col])
+                        cutoff = self._as_of_for(parsed)
+                        if cutoff is not None:
+                            # Otherwise an out-of-window training row would
+                            # freeze the reference date past as_of and make
+                            # every real encounter read as years stale.
+                            parsed = parsed[parsed <= cutoff]
                         mx = parsed.max()
                         if not pd.isna(mx):
                             max_dates.append(mx)

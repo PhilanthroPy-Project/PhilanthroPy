@@ -59,6 +59,25 @@ _Self = TypeVar("_Self", bound="EncounterTransformer")
 # ---------------------------------------------------------------------------
 
 
+def _parse_as_of(as_of: Any, class_name: str) -> pd.Timestamp:
+    """Parse an ``as_of`` argument to a Timestamp, with one error text.
+
+    Shared by every transformer that takes ``as_of`` so the message does not
+    drift between the row-dropping callers and the row-preserving ones.
+    """
+    try:
+        cutoff = pd.Timestamp(as_of)
+    except (ValueError, TypeError) as exc:
+        raise ValueError(
+            f"{class_name}(as_of=...) must be a parseable date, got {as_of!r}."
+        ) from exc
+    if pd.isna(cutoff):
+        raise ValueError(
+            f"{class_name}(as_of=...) must be a parseable date, got {as_of!r}."
+        )
+    return cutoff
+
+
 def _apply_as_of_cutoff(
     enc: pd.DataFrame,
     discharge_col: str,
@@ -75,16 +94,7 @@ def _apply_as_of_cutoff(
     """
     if as_of is None:
         return enc
-    try:
-        cutoff = pd.Timestamp(as_of)
-    except (ValueError, TypeError) as exc:
-        raise ValueError(
-            f"{class_name}(as_of=...) must be a parseable date, got {as_of!r}."
-        ) from exc
-    if pd.isna(cutoff):
-        raise ValueError(
-            f"{class_name}(as_of=...) must be a parseable date, got {as_of!r}."
-        )
+    cutoff = _parse_as_of(as_of, class_name)
     keep = enc[discharge_col].isna() | (enc[discharge_col] <= cutoff)
     if not keep.any() and len(enc):
         warnings.warn(

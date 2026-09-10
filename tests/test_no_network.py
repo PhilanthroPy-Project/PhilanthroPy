@@ -135,6 +135,13 @@ def test_cli_data_path_rejects_remote_scheme(no_network):
         _read_csv("gs://bucket/prospects.csv")
 
 
+def test_windows_drive_letter_path_is_local():
+    from philanthropy.utils._validation import ensure_local_path
+
+    for path in (r"C:\data\gifts.csv", r"z:\data\gifts.csv"):
+        assert ensure_local_path(path) == path
+
+
 def test_local_paths_still_load_under_the_guard(no_network, tmp_path):
     from philanthropy.cli import _read_csv
 

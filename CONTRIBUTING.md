@@ -32,6 +32,12 @@ git switch -c my-change         # never work on main
 pip install -e ".[dev]"          # editable install so the working tree is what's tested
 sh scripts/install_hooks.sh      # pre-push hook: runs the suite before every push
 ```
+> **Windows contributors:** `make` is not available in PowerShell by default,
+> so `make ci` and `make riskcov` below will not run as written. See
+> [Testing on Windows](#testing-on-windows) for the equivalent commands.
+> `sh scripts/install_hooks.sh` also requires Git Bash; the installed
+> pre-push hook does **not** fire when pushing from plain PowerShell, only
+> from a POSIX-compatible shell (confirmed by testing).
 
 Install editable: a non-editable copy in site-packages will shadow your edits
 under pytest and silently run stale code.
@@ -116,6 +122,34 @@ Before committing a new test file, always verify:
 python -m pytest <new_test_file.py> --collect-only -q
 # Must show: X tests collected, 0 errors
 ```
+## Testing on Windows
+
+`make` and `sh` are not available in PowerShell by default. Run the
+equivalent commands directly instead of `make ci` / `make riskcov`:
+
+```powershell
+python -m flake8 philanthropy tests examples
+python -m mypy philanthropy
+python -m pytest philanthropy --doctest-modules -q --no-cov
+python -m coverage run -m pytest tests/ -q
+python -m coverage report --fail-under=92
+```
+
+For the risk-tier coverage floor, see the `RISK_TIER`/`RISK_FLOOR` values
+in the `Makefile` and run:
+
+```powershell
+python -m coverage report --include='<RISK_TIER from Makefile>' --fail-under=<RISK_FLOOR from Makefile>
+```
+
+If `pytest --cov=...` (via `pytest-cov`) raises
+`ImportError: cannot load module more than once per process` on numpy
+import, use `coverage run -m pytest` followed by `coverage report` instead
+— same result, different import path.
+
+The `sh scripts/install_hooks.sh` pre-push hook requires Git Bash to
+install, and does not fire when pushing from plain PowerShell. Run it via
+Git Bash, or run the commands above manually before every push.
 
 ## Versioning & deprecation
 

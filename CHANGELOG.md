@@ -48,7 +48,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   lifetime-giving-greater-than-zero variable, where the feature was the
   outcome. It replaces the synthetic `total_lifetime_giving` sketch and gains a
   runnable `as_of` walkthrough of the same failure. Closes #209.
-
+- `CONTRIBUTING.md` and `docs/how-to/develop_and_test.md` now document the
+  Windows-specific gaps in the local test/CI gate: `make ci`/`make riskcov`
+  require `make`, which is not available in PowerShell by default, and
+  `sh scripts/install_hooks.sh` requires Git Bash. Testing confirmed the
+  installed pre-push hook does not fire when pushing from plain PowerShell.
+  Closes #195.
+  
 ### Fixed
 - `EncounterRecencyTransformer` no longer catches timezone conversion errors
   and retries with `tz_localize` after parsing with `utc=True`. The retry was

@@ -11,6 +11,10 @@ Install the development dependencies:
 ```bash
 pip install -e ".[dev]"
 ```
+> **Windows:** the commands below (`pytest ...`) work as written. If
+> `pytest tests/ --cov=philanthropy` raises `ImportError: cannot load
+> module more than once per process`, run `coverage run -m pytest tests/`
+> followed by `coverage report` instead.
 
 ## Running Tests Locally
 

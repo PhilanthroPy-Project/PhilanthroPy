@@ -143,3 +143,127 @@ def test_cli_missing_feature_column_lists_available(tmp_path):
     with pytest.raises(SystemExit, match=r"not found in .*Available:"):
         main(["train", "--data", str(data), "--target", "is_major_donor",
               "--features", "nope_col", "--out", str(tmp_path / "m.joblib")])
+
+
+# --------------------------------------------------------------------------- #
+# `features`: gift export in, donor-level feature table out
+# --------------------------------------------------------------------------- #
+_RE_HEADER = "Constituent ID,Gift Date,Gift Amount,Gift Type,Fund,Email\n"
+
+
+def _make_gift_export(tmp_path, name="gifts.csv", n_donors=60):
+    rows = [_RE_HEADER]
+    for i in range(n_donors):
+        rows.append(f"{i},2025-01-10,{1000 + i * 10}.00,Pledge,Annual Fund,d{i}@amc.edu\n")
+        rows.append(f"{i},2025-02-10,{100 + i}.00,Pay-Cash,Annual Fund,d{i}@amc.edu\n")
+        rows.append(f"{i},2025-03-10,{50 + i}.00,Pay-Cash,Annual Fund,d{i}@amc.edu\n")
+    path = tmp_path / name
+    path.write_text("".join(rows))
+    return path
+
+
+def test_cli_features_raisers_edge_drops_the_pledge_rows(tmp_path, capsys):
+    data = _make_gift_export(tmp_path, n_donors=3)
+    out_path = tmp_path / "features.csv"
+    main(["features", "--source", "raisers_edge", "--data", str(data),
+          "--out", str(out_path)])
+    feats = pd.read_csv(out_path)
+    assert len(feats) == 3
+    # Donor 0: 100 + 50 in payments, and not the 1000 pledge on top.
+    row = feats.loc[feats["contact_id"] == 0].iloc[0]
+    assert row["total_gift_amount"] == 150.0
+    assert row["gift_count"] == 2
+    assert "Wrote 3 donor rows" in capsys.readouterr().out
+
+
+def test_cli_features_writes_contact_id_as_a_column(tmp_path):
+    data = _make_gift_export(tmp_path, n_donors=2)
+    out_path = tmp_path / "features.csv"
+    main(["features", "--source", "raisers_edge", "--data", str(data),
+          "--out", str(out_path)])
+    assert list(pd.read_csv(out_path).columns)[0] == "contact_id"
+
+
+def test_cli_features_writes_to_stdout_by_default(tmp_path, capsys):
+    data = _make_gift_export(tmp_path, n_donors=2)
+    main(["features", "--source", "raisers_edge", "--data", str(data)])
+    out = capsys.readouterr().out
+    assert out.startswith("contact_id,")
+    assert len(out.strip().splitlines()) == 3
+
+
+def test_cli_features_civicrm_source(tmp_path):
+    path = tmp_path / "contributions.csv"
+    path.write_text(
+        "Contact ID,Contribution Date,Total Amount,Contribution Status\n"
+        "101,2025-01-15,250.00,Completed\n"
+        "101,2025-02-15,99.00,Failed\n"
+    )
+    out_path = tmp_path / "features.csv"
+    main(["features", "--source", "civicrm", "--data", str(path),
+          "--out", str(out_path)])
+    feats = pd.read_csv(out_path)
+    assert feats.iloc[0]["total_gift_amount"] == 250.0
+
+
+def test_cli_features_neutralises_csv_injection(tmp_path):
+    path = tmp_path / "gifts.csv"
+    path.write_text(_RE_HEADER + "1,2025-01-10,100.00,Cash,Annual Fund,=cmd|calc\n")
+    out_path = tmp_path / "features.csv"
+    main(["features", "--source", "raisers_edge", "--data", str(path),
+          "--out", str(out_path)])
+    assert "'=cmd|calc" in out_path.read_text()
+
+
+def test_cli_features_missing_export_field_exits_with_the_field_names(tmp_path, capsys):
+    path = tmp_path / "gifts.csv"
+    path.write_text("Constituent ID,Gift Type\n1,Cash\n")
+    with pytest.raises(SystemExit) as excinfo:
+        main(["features", "--source", "raisers_edge", "--data", str(path)])
+    assert "Gift Date" in str(excinfo.value)
+
+
+def test_cli_features_missing_data_file_exits(tmp_path):
+    with pytest.raises(SystemExit):
+        main(["features", "--source", "raisers_edge",
+              "--data", str(tmp_path / "nope.csv")])
+
+
+def test_cli_features_help_lists_the_columns_it_actually_emits(tmp_path):
+    """The help text is what tells an analyst what to pass to `train
+    --features`, so it must not drift from the real frame."""
+    from philanthropy.cli import _FEATURE_COLUMNS
+
+    data = _make_gift_export(tmp_path, n_donors=2)
+    out_path = tmp_path / "features.csv"
+    main(["features", "--source", "raisers_edge", "--data", str(data),
+          "--out", str(out_path)])
+    emitted = list(pd.read_csv(out_path).columns)
+    assert [c.strip() for c in _FEATURE_COLUMNS.split(",")] == emitted
+
+
+def test_cli_features_then_train_then_score(tmp_path, capsys):
+    """The path the CLI advertises, end to end: a raw Raiser's Edge gift export
+    in, a scored CSV out, no Python. The label is still the analyst's: `train`
+    needs a --target column that no gift export contains."""
+    data = _make_gift_export(tmp_path, n_donors=80)
+    feature_path = tmp_path / "features.csv"
+    main(["features", "--source", "raisers_edge", "--data", str(data),
+          "--out", str(feature_path)])
+
+    labelled = pd.read_csv(feature_path)
+    labelled["is_major_donor"] = (labelled["total_gift_amount"] > 200).astype(int)
+    labelled_path = tmp_path / "labelled.csv"
+    labelled.to_csv(labelled_path, index=False)
+
+    model_path = tmp_path / "m.joblib"
+    main(["train", "--data", str(labelled_path), "--target", "is_major_donor",
+          "--features", "total_gift_amount,gift_count,recency_days",
+          "--out", str(model_path)])
+
+    scores_path = tmp_path / "scores.csv"
+    main(["score", "--model", str(model_path), "--data", str(feature_path),
+          "--out", str(scores_path)])
+    scored = pd.read_csv(scores_path)
+    assert "score" in scored.columns
+    assert len(scored) == 80

@@ -58,19 +58,22 @@ def test_action_priority_summary_counts_every_donor(stage_Xy):
     assert set(summary) <= set(_STAGES)
 
 
-def test_fit_with_dataframe_sets_feature_names_in():
-    X = pd.DataFrame(
-        np.random.default_rng(0).random((30, 5)),
-        columns=["age", "income", "donations", "engagement", "years_active"],
-    )
-    y = np.asarray(_STAGES * 10)
+def test_dataframe_fit_records_feature_names(stage_Xy):
+    X_arr, y = stage_Xy
+    columns = ["age", "income", "donations", "engagement", "years_active"]
+    X = pd.DataFrame(X_arr, columns=columns)
 
     clf = MovesManagementClassifier(max_iter=10, random_state=0).fit(X, y)
 
-    np.testing.assert_array_equal(
-        clf.feature_names_in_,
-        np.array(
-            ["age", "income", "donations", "engagement", "years_active"],
-            dtype=object,
-        ),
-    )
+    assert list(clf.feature_names_in_) == columns
+    assert clf.n_features_in_ == len(columns)
+    labels = clf.predict(X)
+    assert len(labels) == len(X)
+
+
+def test_array_fit_records_no_feature_names(stage_Xy):
+    X, y = stage_Xy
+    clf = MovesManagementClassifier(max_iter=10, random_state=0).fit(X, y)
+
+    assert not hasattr(clf, "feature_names_in_")
+    assert clf.n_features_in_ == X.shape[1]

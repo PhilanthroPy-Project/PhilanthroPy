@@ -36,7 +36,7 @@ from __future__ import annotations
 import re
 import warnings
 from pathlib import Path
-from typing import Iterable, Mapping, Optional, Sequence, Union
+from typing import Callable, Iterable, Mapping, Optional, Sequence, Union
 
 import pandas as pd
 
@@ -338,10 +338,12 @@ def _canonical(header: str) -> str:
     return _HEADER_ALIASES.get(key, key)
 
 
-def _normalise_headers(df: pd.DataFrame) -> pd.DataFrame:
+def _normalise_headers(
+    df: pd.DataFrame, canonical: Callable[[str], str] = _canonical
+) -> pd.DataFrame:
     if df.empty and df.columns.empty:
         return df
-    out = df.rename(columns={c: _canonical(c) for c in df.columns})
+    out = df.rename(columns={c: canonical(c) for c in df.columns})
     # A wide export can carry the same field twice ("Amount" and "Total
     # Amount"), which would collapse to two identically named columns and make
     # df["total_amount"] a DataFrame. Keep the first.

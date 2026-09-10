@@ -10,6 +10,9 @@ contribution. Code, docs, tests, and review all count.
 
 ## Contributors
 
+- **Leyn.cx** ([@laichouchi](https://github.com/laichouchi)): fixed Windows
+  drive-letter paths being rejected as URI schemes (closes #217).
+
 - **Chris Chen** ([@fuleinist](https://github.com/fuleinist)): replaced a
   tautological doctest in `FiscalYearGroupedSplitter` with one that can actually
   fail, and added the missing no-leakage test for the default `gap_years=0`

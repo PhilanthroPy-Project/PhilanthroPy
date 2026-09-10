@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Tests for `MovesManagementClassifier` now fit a named DataFrame and an
+  array so `feature_names_in_` is both recorded and absent on the paths
+  sklearn specifies. Closes #200.
 - `philanthropy.ingest.raisers_edge_gifts_to_features` and
   `read_raisers_edge_gifts`: an on-ramp from a Blackbaud Raiser's Edge gift
   export to the donor-level feature table, alongside the existing CiviCRM and

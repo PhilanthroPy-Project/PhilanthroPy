@@ -71,6 +71,11 @@ contribution. Code, docs, tests, and review all count.
   the useful invalid-timezone error (closes
   [#201](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/201)).
 
+- **Harsh Raj Singhania** ([@HarshRajSinghania](https://github.com/HarshRajSinghania)):
+  added DataFrame and array-fit tests so `MovesManagementClassifier.feature_names_in_`
+  is exercised rather than only assigned (closes
+  [#200](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/200)).
+
 ## Getting listed
 
 Add yourself here in the same pull request as your change: one line, your name

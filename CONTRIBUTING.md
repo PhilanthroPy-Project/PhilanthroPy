@@ -131,9 +131,15 @@ equivalent commands directly instead of `make ci` / `make riskcov`:
 python -m flake8 philanthropy tests examples
 python -m mypy philanthropy
 python -m pytest philanthropy --doctest-modules -q --no-cov
+python -m pytest tests/ --collect-only -q
 python -m coverage run -m pytest tests/ -q
-python -m coverage report --fail-under=92
+python -m coverage report
 ```
+
+`coverage report` reads the overall floor from `[tool.coverage.report]` in
+`pyproject.toml`, so the bare command enforces exactly what CI does. Do not
+pass `--fail-under` here: the number is defined once and copying it into a
+second place is how the two drift apart.
 
 For the risk-tier coverage floor, see the `RISK_TIER`/`RISK_FLOOR` values
 in the `Makefile` and run:
@@ -144,8 +150,8 @@ python -m coverage report --include='<RISK_TIER from Makefile>' --fail-under=<RI
 
 If `pytest --cov=...` (via `pytest-cov`) raises
 `ImportError: cannot load module more than once per process` on numpy
-import, use `coverage run -m pytest` followed by `coverage report` instead
-— same result, different import path.
+import, use `coverage run -m pytest` followed by `coverage report` instead.
+Same result, different import path.
 
 The `sh scripts/install_hooks.sh` pre-push hook requires Git Bash to
 install, and does not fire when pushing from plain PowerShell. Run it via

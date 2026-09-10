@@ -29,8 +29,8 @@ contribution. Code, docs, tests, and review all count.
   timestamps empty-frame path and the `distinct_source_systems` default when
   `sourceSystem` is absent.
 - [@AsavariCharati](https://github.com/AsavariCharati): documented the Windows-specific
-  gaps in the local test/CI gate — `make`/`sh` unavailable by default, and the
-  pre-push hook not firing from plain PowerShell — in `CONTRIBUTING.md` and
+  gaps in the local test/CI gate (`make`/`sh` unavailable by default, and the
+  pre-push hook not firing from plain PowerShell) in `CONTRIBUTING.md` and
   `docs/how-to/develop_and_test.md` (closes
   [#195](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/195)).
 - [@shubhrai23](https://github.com/shubhrai23): added missing docstrings to

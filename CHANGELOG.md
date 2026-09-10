@@ -54,7 +54,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `sh scripts/install_hooks.sh` requires Git Bash. Testing confirmed the
   installed pre-push hook does not fire when pushing from plain PowerShell.
   Closes #195.
-  
+
 ### Fixed
 - `EncounterRecencyTransformer` no longer catches timezone conversion errors
   and retries with `tz_localize` after parsing with `utc=True`. The retry was

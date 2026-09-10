@@ -88,6 +88,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   Closes #195.
 
 ### Fixed
+- `ensure_local_path` now accepts absolute Windows drive-letter paths such as
+  `C:\\data\\gifts.csv` without weakening rejection of network URLs. Closes #217.
 - `EncounterRecencyTransformer` no longer catches timezone conversion errors
   and retries with `tz_localize` after parsing with `utc=True`. The retry was
   unreachable for valid timezone inputs and replaced the useful

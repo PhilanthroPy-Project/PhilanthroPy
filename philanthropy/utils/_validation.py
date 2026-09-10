@@ -72,6 +72,11 @@ def ensure_local_path(path: _PathT, param_name: str = "path") -> _PathT:
     from urllib.parse import urlparse
 
     scheme = urlparse(str(path)).scheme
+    # urlparse treats the drive letter in an absolute Windows path such as
+    # C:\\data\\gifts.csv as a one-character URI scheme. It is still a local
+    # path, even when this check runs on a non-Windows host.
+    if len(scheme) == 1 and scheme.isalpha():
+        scheme = ""
     if scheme not in _LOCAL_SCHEMES:
         raise ValueError(
             f"`{param_name}` must be a local file path (no network reads), "

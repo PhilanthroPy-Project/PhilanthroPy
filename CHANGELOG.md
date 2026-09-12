@@ -102,6 +102,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   the input carried column names. It now falls back to `x0`, `x1`, ... for an
   array fit, matching what `WealthScreeningImputer` and `WealthScreeningImputerKNN`
   already did. Closes #157.
+- Added regression coverage for `PlannedGivingSignalTransformer` when transforming a NumPy array after fitting on a DataFrame.
 
 ### Added
 - `tests/test_public_api_contract.py` gains two contracts over every public

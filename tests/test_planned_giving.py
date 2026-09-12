@@ -39,6 +39,22 @@ class TestPlannedGivingSignalTransformer:
         result = t.transform(X)
         assert result.shape == (3, 4)
 
+
+    def test_transform_accepts_array_after_dataframe_fit(self):
+        """DataFrame fit must support NumPy-array transform."""
+        t = PlannedGivingSignalTransformer()
+        X = _make_df(
+            donor_age=[70.0, 60.0, 80.0],
+            years_active=[15.0, 5.0, 12.0],
+            planned_gift_inclination=[0.8, 0.3, 0.5],
+        )
+
+        t.fit(X)
+        expected = t.transform(X)
+        result = t.transform(X.to_numpy())
+
+        np.testing.assert_allclose(result, expected)
+
     def test_legacy_age_flag_threshold_boundary(self):
         """age=64 → 0, age=65 → 1 (default threshold=65)."""
         t = PlannedGivingSignalTransformer(age_threshold=65)

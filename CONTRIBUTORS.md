@@ -83,6 +83,9 @@ contribution. Code, docs, tests, and review all count.
   added DataFrame and array-fit tests so `MovesManagementClassifier.feature_names_in_`
   is exercised rather than only assigned (closes
   [#200](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/200)).
+- [@Dikshant2965](https://github.com/Dikshant2965): added regression coverage for
+  `PlannedGivingSignalTransformer` when transforming a NumPy array after fitting
+  on a DataFrame (closes #154).
 
 ## Getting listed
 

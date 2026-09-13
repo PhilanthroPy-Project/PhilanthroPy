@@ -56,6 +56,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `recency` went negative. Left at the default `None` the behaviour is
   unchanged, but it now warns instead of aggregating the future silently.
   Closes #208.
+- Added complete NumPy-formatted docstrings to `RFMTransformer.fit` and 
+  `RFMTransformer.transform` methods, including detailed `Parameters`, 
+  `Returns`, and `Raises` sections that now properly render in the 
+  mkdocstrings-generated API reference.
 
 ### Changed
 - Seven high-intent documentation pages now carry a per-page `description` in

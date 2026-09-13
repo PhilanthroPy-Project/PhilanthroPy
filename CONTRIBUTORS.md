@@ -87,6 +87,10 @@ contribution. Code, docs, tests, and review all count.
   `PlannedGivingSignalTransformer` when transforming a NumPy array after fitting
   on a DataFrame (closes #154).
 
+  **Olayimika** ([@jimoholayinka01] https://github.com/Jimoholayinka01 )
+  Added docstrings to `RFMTransformer.fit` and `RFMTransformer.transform` in
+  philanthropy/preprocessing/_rfm.py with detailed Parameters, Returns, and Raises
+
 ## Getting listed
 
 Add yourself here in the same pull request as your change: one line, your name

@@ -66,8 +66,35 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         self.as_of = as_of
 
     def fit(self: _Self, X: Any, y: Any = None) -> _Self:
-        """
-        Fits the transformer. This simply validates the input and returns self.
+        """Fit the transformer by validating input and freezing the reference date.
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Transaction log with required columns ``donor_id``, ``gift_date``, and
+            ``gift_amount``.
+        y : ignored
+            Present for scikit-learn API compatibility.
+        Returns
+        -------
+        self : RFMTransformer
+            Fitted transformer with the following attributes frozen:
+
+            * ``feature_names_in_`` : ndarray of str
+                Column names from ``X``.
+            * ``n_features_in_`` : int
+                Number of features in ``X``.
+            * ``reference_date_`` : datetime
+                The reference date for recency calculation. If ``reference_date``
+                was provided in the constructor, it is used directly. Otherwise,
+                it is computed as the maximum ``gift_date`` in ``X`` (after any
+                ``as_of`` cutoff is applied) and frozen to ensure consistent
+                recency calculations across :meth:`transform` calls on different
+                batches.
+        Raises
+        ------
+        ValueError
+            If ``X`` is missing any of the required columns ``donor_id``,
+            ``gift_date``, or ``gift_amount``.
         """
         # Manual validation to avoid name/length strictness during fit
         if hasattr(X, "columns"):
@@ -95,8 +122,40 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X: Any) -> pd.DataFrame:
-        """
-        Transforms the transaction logs into RFM features.
+        """Transform transaction logs into Recency, Frequency, and Monetary features.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Transaction log with required columns ``donor_id``, ``gift_date``, and
+            ``gift_amount``. Rows are gift-level; output is donor-level.
+        Returns
+        -------
+        rfm_df : pd.DataFrame of shape (n_donors, 4 or 5)
+            Donor-level RFM features:
+            * ``donor_id`` : object
+                Unique donor identifier.
+            * ``recency`` : int64
+                Days since each donor's most recent gift, relative to the frozen
+                ``reference_date_``.
+            * ``frequency`` : int64
+                Total number of gifts per donor in the (possibly ``as_of``-filtered)
+                transaction log.
+            * ``monetary`` : float64
+                Aggregated gift amount per donor (sum, mean, or other function
+                specified by ``agg_func``).
+            * ``tenure`` : int64
+                *Optional, present only if ``include_tenure=True``.*
+                Days from each donor's first gift to the frozen ``reference_date_``.
+        Raises
+        ------
+        sklearn.exceptions.NotFittedError
+            If :meth:`fit` has not been called.
+        TypeError
+            If ``X`` is not a pandas DataFrame.
+        ValueError
+            If ``X`` is missing any of the required columns ``donor_id``,
+            ``gift_date``, or ``gift_amount``.
         """
         check_is_fitted(self)
         if not hasattr(X, "columns") and not isinstance(X, pd.DataFrame):

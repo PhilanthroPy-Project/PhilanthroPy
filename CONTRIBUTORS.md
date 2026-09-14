@@ -10,6 +10,10 @@ contribution. Code, docs, tests, and review all count.
 
 ## Contributors
 
+- **Harsh Raj Singhania** ([@HarshRajSinghania](https://github.com/HarshRajSinghania)):
+  added a regression test so an invalid timezone on
+  `EncounterRecencyTransformer` raises `KeyError` naming the zone (closes
+  [#204](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/204)).
 - **Leyn.cx** ([@laichouchi](https://github.com/laichouchi)): fixed Windows
   drive-letter paths being rejected as URI schemes (closes #217).
 

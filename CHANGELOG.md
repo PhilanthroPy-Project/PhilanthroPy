@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Regression test that an invalid `timezone=` on
+  `EncounterRecencyTransformer` raises `KeyError` naming the zone, not
+  `TypeError("Already tz-aware")`. Closes #204.
 - Tests for `MovesManagementClassifier` now fit a named DataFrame and an
   array so `feature_names_in_` is both recorded and absent on the paths
   sklearn specifies. Closes #200.

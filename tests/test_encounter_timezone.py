@@ -5,6 +5,8 @@ hide the transformer's own `timezone=` handling.
 
 import os
 
+import pytest
+
 import numpy as np
 import pandas as pd
 
@@ -73,3 +75,18 @@ def test_naive_dates_with_a_tz_aware_reference_date():
 
     assert out.shape == (2, 3)
     np.testing.assert_allclose(out[:, 0], [364.0, 213.0])
+
+def test_invalid_timezone_raises_keyerror_naming_the_zone():
+    """Invalid timezone names must surface as a lookup error, not TypeError.
+
+    pandas 2 (pytz) and pandas 3 (zoneinfo) raise different concrete types,
+    but both subclass KeyError and include the zone name. The pre-#202
+    fallback turned this into TypeError('Already tz-aware').
+    """
+    X = pd.DataFrame({"last_encounter_date": ["2023-01-01", "2023-06-01"]})
+    t = EncounterRecencyTransformer(
+        reference_date="2023-12-31", timezone="Not/AZone"
+    )
+    with pytest.raises(KeyError, match="Not/AZone") as excinfo:
+        t.fit_transform(X)
+    assert "Already tz-aware" not in str(excinfo.value)

@@ -7,6 +7,7 @@ import os
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from philanthropy.preprocessing import EncounterRecencyTransformer
 
@@ -73,3 +74,16 @@ def test_naive_dates_with_a_tz_aware_reference_date():
 
     assert out.shape == (2, 3)
     np.testing.assert_allclose(out[:, 0], [364.0, 213.0])
+
+
+def test_invalid_timezone_raises_lookup_error_naming_offending_zone():
+    X = pd.DataFrame({"last_encounter_date": ["2023-01-01", "2023-06-01"]})
+    t = EncounterRecencyTransformer(
+        reference_date="2023-12-31", timezone="Not/AZone"
+    )
+
+    with pytest.raises(KeyError, match="Not/AZone") as exc_info:
+        t.fit_transform(X)
+
+    assert "Already tz-aware" not in str(exc_info.value)
+

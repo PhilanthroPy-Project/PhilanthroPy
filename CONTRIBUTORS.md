@@ -86,6 +86,11 @@ contribution. Code, docs, tests, and review all count.
 - [@Dikshant2965](https://github.com/Dikshant2965): added regression coverage for
   `PlannedGivingSignalTransformer` when transforming a NumPy array after fitting
   on a DataFrame (closes #154).
+- [@Kaap10](https://github.com/Kaap10): added test coverage in
+  `tests/test_encounter_timezone.py` guarding that
+  `EncounterRecencyTransformer` raises a `KeyError` naming the invalid timezone
+  and does not emit the misleading "Already tz-aware" error (closes
+  [#204](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/204)).
 
 ## Getting listed
 

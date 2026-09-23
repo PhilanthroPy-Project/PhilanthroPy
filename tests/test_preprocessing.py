@@ -453,6 +453,24 @@ class TestEncounterTransformer:
             t.fit(gift_df_with_ids)
             assert any(isinstance(warning.category, type(UserWarning)) for warning in w)
 
+    def test_encounter_transformer_rejects_non_dataframe_encounter_df(self):
+        bad_enc = [{"donor_id": 1, "discharge_date": "2022-01-01"}]
+        t = EncounterTransformer(encounter_df=bad_enc)
+        X = pd.DataFrame(
+            {"donor_id": [1], "gift_date": ["2023-01-01"], "gift_amount": [100.0]}
+        )
+        with pytest.raises(TypeError, match="must be a pd.DataFrame"):
+            t.fit(X)
+
+    def test_encounter_transformer_validate_x_passes_arrays_through(self):
+        enc = pd.DataFrame(
+            {"donor_id": [1], "discharge_date": ["2022-01-01"]}
+        )
+        X = np.array([[1, 500.0]])
+        t = EncounterTransformer(encounter_df=enc)
+        t.fit(X)
+        assert t.n_features_in_ == 2
+
 
 # --------------------------------------------------------------------------- #
 # EncounterRecencyTransformer: parameter validation and input shapes

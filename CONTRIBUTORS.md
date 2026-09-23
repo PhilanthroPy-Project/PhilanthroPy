@@ -91,6 +91,11 @@ contribution. Code, docs, tests, and review all count.
   `EncounterRecencyTransformer` raises a `KeyError` naming the invalid timezone
   and does not emit the misleading "Already tz-aware" error (closes
   [#204](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/204)).
+- **Vardhman Gupta** ([@Kaap10](https://github.com/Kaap10)): removed the dead
+  `philanthropy/preprocessing/_solicitation_window.py` module, preserving the
+  deprecated `SolicitationWindowTransformer` alias via the subpackage's PEP 562
+  `__getattr__` (closes
+  [#153](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/153)).
 
   **Olayimika** ([@jimoholayinka01] https://github.com/Jimoholayinka01 )
   Added docstrings to `RFMTransformer.fit` and `RFMTransformer.transform` in

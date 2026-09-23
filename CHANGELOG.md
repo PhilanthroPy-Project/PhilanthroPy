@@ -94,6 +94,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   installed pre-push hook does not fire when pushing from plain PowerShell.
   Closes #195.
 
+### Removed
+- Deleted `philanthropy/preprocessing/_solicitation_window.py`, a dead module
+  nothing imported. The deprecated `SolicitationWindowTransformer` alias it held
+  was already served by the subpackage's PEP 562 module-level `__getattr__`, so
+  importing it still warns and still resolves to
+  `DischargeToSolicitationWindowTransformer`. Closes #153.
+
 ### Fixed
 - `ensure_local_path` now accepts absolute Windows drive-letter paths such as
   `C:\\data\\gifts.csv` without weakening rejection of network URLs. Closes #217.

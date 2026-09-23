@@ -37,8 +37,14 @@ __all__ = [
 ]
 
 
+# Deprecated aliases, resolved lazily by the module-level ``__getattr__`` below
+# (PEP 562). Two public names for one transformer would inflate the API surface
+# without adding capability. Each alias resolves to the same class object rather
+# than a subclass, so ``isinstance`` and ``clone`` behave exactly as before;
+# the deprecation warning is emitted on attribute access. The aliases go away
+# in 1.0.0.
 _DEPRECATED_ALIASES = {
-    # alias -> (canonical name, module attribute)
+    # alias -> (canonical name)
     "SolicitationWindowTransformer": "DischargeToSolicitationWindowTransformer",
 }
 

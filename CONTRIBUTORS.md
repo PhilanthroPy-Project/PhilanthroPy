@@ -97,6 +97,10 @@ contribution. Code, docs, tests, and review all count.
   `__getattr__` (closes
   [#153](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/153)).
 
+  **Olayimika** ([@jimoholayinka01] https://github.com/Jimoholayinka01 )
+  Added docstrings to `RFMTransformer.fit` and `RFMTransformer.transform` in
+  philanthropy/preprocessing/_rfm.py with detailed Parameters, Returns, and Raises
+
 ## Getting listed
 
 Add yourself here in the same pull request as your change: one line, your name

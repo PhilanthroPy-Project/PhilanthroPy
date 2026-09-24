@@ -5,6 +5,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-24
+
+The first release with a Raiser's Edge on-ramp and `as_of` scoring cutoffs on the
+gift and encounter roll-ups. Everything under Breaking shipped in 0.7.0 and 0.7.1
+emitting a `DeprecationWarning` naming this version.
+
+### Breaking
+- `FiscalYearGroupedSplitter(drop_repeat_donors=...)` now
+  defaults to `True`, as the `DeprecationWarning` in 0.7.0 and 0.7.1 said it
+  would. Each test fold drops donors already seen in its training rows, which
+  is the safe default for a static per-donor label. It needs `groups` as
+  `(n_samples, 2)` (fiscal year, donor id); code that passes fiscal years alone
+  now raises a `ValueError` that names both fixes. Pass
+  `drop_repeat_donors=False` for a time-varying target to keep the 0.7.x
+  behaviour. The two leakage experiment scripts now pass it explicitly.
+- Removed `philanthropy.utils.make_donor_dataset`, deprecated since
+  0.7.0. Import it from `philanthropy.datasets`.
+- Removed `WealthScreeningImputerKNN(group_col_idx=...)` and its
+  `group_imputers_` attribute, deprecated since 0.7.0. Per-group and global KNN
+  fits were measured bit-identical, so the parameter bought nothing; passing it
+  is now a `TypeError`. `tests/test_knn_group_stratification.py` goes with it.
+
 ### Added
 - `examples/notebooks/04_kdd98_end_to_end.ipynb` and the tutorial page
   "End to End on Real Donor Data": the whole library path on the 95,412 real
@@ -72,15 +94,39 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `Returns`, and `Raises` sections that now properly render in the 
   mkdocstrings-generated API reference.
 
+- Added regression coverage for `PlannedGivingSignalTransformer` when transforming a NumPy array after fitting on a DataFrame.
+
+- `tests/test_public_api_contract.py` gains two contracts over every public
+  transformer, covering the two `get_feature_names_out` call shapes the suite
+  never exercised. It previously only ever called `get_feature_names_out()` with
+  no argument on a DataFrame-fitted transformer.
+  `test_feature_names_out_accepts_input_features` passes the real column names
+  through, which is the call `ColumnTransformer` and `Pipeline.get_feature_names_out`
+  actually make, and `test_feature_names_out_width_after_array_fit` fits on an
+  unnamed array. The second one is what caught the `CRMCleaner` defect above.
+  Transformers that genuinely cannot fit on an unnamed array are listed in a new
+  `_EXEMPT_ARRAY_FIT` table with a written reason each: `EncounterTransformer`
+  merges on a named `donor_id`, and `MatchingGiftFeaturizer` rejects a
+  non-DataFrame outright. That table is kept separate from `_EXEMPT` on purpose,
+  because folding these two into `_EXEMPT` would also have dropped them from the
+  width and `input_features` checks they do pass. Three hygiene tests police it:
+  no stale entry, no name in both tables, and a reason on every entry in both.
+- Notebooks 02 and 03 install the published wheel instead of a `git+main`
+  snapshot. Both imported `datasets.make_donor_panel`, which 0.7.0 did not
+  ship, and fell back to a `try/except ImportError` that pip-installed from
+  `git+...@main`. That fallback could not work in-process: the failed
+  `from philanthropy.datasets import make_donor_panel` leaves the stale module
+  cached in `sys.modules`, so the re-import after a *successful* install raises
+  the same `ImportError`. It only worked where philanthropy was absent
+  entirely, which is fresh Colab, so anyone who followed the README's
+  `pip install philanthropy` and then opened a notebook locally got a hard
+  failure, and the "zero install, try it now" Colab badge ran an unreleased
+  snapshot rather than the archived release `paper.md` points at. Now a plain
+  `pip install -q "philanthropy[viz]>=0.7.1"`, which 0.7.1 satisfies from PyPI.
+  Notebook 01 keeps its `try/except` because a bare `import philanthropy`
+  succeeds against any release, so its guard never misfires.
+
 ### Changed
-- **Breaking:** `FiscalYearGroupedSplitter(drop_repeat_donors=...)` now
-  defaults to `True`, as the `DeprecationWarning` in 0.7.0 and 0.7.1 said it
-  would. Each test fold drops donors already seen in its training rows, which
-  is the safe default for a static per-donor label. It needs `groups` as
-  `(n_samples, 2)` (fiscal year, donor id); code that passes fiscal years alone
-  now raises a `ValueError` that names both fixes. Pass
-  `drop_repeat_donors=False` for a time-varying target to keep the 0.7.x
-  behaviour. The two leakage experiment scripts now pass it explicitly.
 - The docs homepage hero no longer uses an all-caps eyebrow label or a
   gradient-clipped headline; it's now a two-column layout with the headline
   beside a real ranked-donor ledger table showing what
@@ -129,12 +175,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   Closes #195.
 
 ### Removed
-- **Breaking:** `philanthropy.utils.make_donor_dataset`, deprecated since
-  0.7.0. Import it from `philanthropy.datasets`.
-- **Breaking:** `WealthScreeningImputerKNN(group_col_idx=...)` and its
-  `group_imputers_` attribute, deprecated since 0.7.0. Per-group and global KNN
-  fits were measured bit-identical, so the parameter bought nothing; passing it
-  is now a `TypeError`. `tests/test_knn_group_stratification.py` goes with it.
 - Deleted `philanthropy/preprocessing/_solicitation_window.py`, a dead module
   nothing imported. The deprecated `SolicitationWindowTransformer` alias it held
   was already served by the subpackage's PEP 562 module-level `__getattr__`, so
@@ -156,38 +196,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   the input carried column names. It now falls back to `x0`, `x1`, ... for an
   array fit, matching what `WealthScreeningImputer` and `WealthScreeningImputerKNN`
   already did. Closes #157.
-- Added regression coverage for `PlannedGivingSignalTransformer` when transforming a NumPy array after fitting on a DataFrame.
-
-### Added
-- `tests/test_public_api_contract.py` gains two contracts over every public
-  transformer, covering the two `get_feature_names_out` call shapes the suite
-  never exercised. It previously only ever called `get_feature_names_out()` with
-  no argument on a DataFrame-fitted transformer.
-  `test_feature_names_out_accepts_input_features` passes the real column names
-  through, which is the call `ColumnTransformer` and `Pipeline.get_feature_names_out`
-  actually make, and `test_feature_names_out_width_after_array_fit` fits on an
-  unnamed array. The second one is what caught the `CRMCleaner` defect above.
-  Transformers that genuinely cannot fit on an unnamed array are listed in a new
-  `_EXEMPT_ARRAY_FIT` table with a written reason each: `EncounterTransformer`
-  merges on a named `donor_id`, and `MatchingGiftFeaturizer` rejects a
-  non-DataFrame outright. That table is kept separate from `_EXEMPT` on purpose,
-  because folding these two into `_EXEMPT` would also have dropped them from the
-  width and `input_features` checks they do pass. Three hygiene tests police it:
-  no stale entry, no name in both tables, and a reason on every entry in both.
-- Notebooks 02 and 03 install the published wheel instead of a `git+main`
-  snapshot. Both imported `datasets.make_donor_panel`, which 0.7.0 did not
-  ship, and fell back to a `try/except ImportError` that pip-installed from
-  `git+...@main`. That fallback could not work in-process: the failed
-  `from philanthropy.datasets import make_donor_panel` leaves the stale module
-  cached in `sys.modules`, so the re-import after a *successful* install raises
-  the same `ImportError`. It only worked where philanthropy was absent
-  entirely, which is fresh Colab, so anyone who followed the README's
-  `pip install philanthropy` and then opened a notebook locally got a hard
-  failure, and the "zero install, try it now" Colab badge ran an unreleased
-  snapshot rather than the archived release `paper.md` points at. Now a plain
-  `pip install -q "philanthropy[viz]>=0.7.1"`, which 0.7.1 satisfies from PyPI.
-  Notebook 01 keeps its `try/except` because a bare `import philanthropy`
-  succeeds against any release, so its guard never misfires.
 
 ## [0.7.1] - 2026-09-08
 

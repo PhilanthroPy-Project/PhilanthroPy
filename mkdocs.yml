@@ -109,6 +109,7 @@ nav:
     - tutorials/building_your_first_model.md
     - tutorials/avoiding_temporal_data_leakage.md
     - tutorials/building_a_grateful_patient_pipeline.md
+    - tutorials/end_to_end_on_real_donor_data.md
   - How-To Guides:
     - how-to/index.md
     - how-to/use_the_cli.md

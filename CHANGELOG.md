@@ -6,6 +6,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `examples/notebooks/04_kdd98_end_to_end.ipynb` and the tutorial page
+  "End to End on Real Donor Data": the whole library path on the 95,412 real
+  donors of KDD Cup 1998, from a wide export to a cleaned gift log, a Raiser's
+  Edge export with a pledge row, as-of RFM features, a lapse-model leakage
+  backtest, a response model with permutation importance, a gift-size model
+  with a calibrated interval and ask ladder, the mailing decision against the
+  $0.68 piece cost, a disparity check, and a saved model bundle. It runs in CI
+  with the other notebooks, and the downloaded archive is cached there.
 - Added test coverage in `tests/test_encounter_timezone.py` guarding that
   `EncounterRecencyTransformer` raises a `KeyError` naming the invalid timezone
   and does not emit the misleading "Already tz-aware" error. Closes #204.

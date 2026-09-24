@@ -5,6 +5,7 @@ Tutorials teach PhilanthroPy one step at a time. Each lesson is learning-oriente
 * [Building Your First Model](building_your_first_model.md)
 * [Avoiding Temporal Data Leakage](avoiding_temporal_data_leakage.md)
 * [Building a Grateful Patient Pipeline](building_a_grateful_patient_pipeline.md)
+* [End to End on Real Donor Data](end_to_end_on_real_donor_data.md)
 
 ## Which estimator do I need?
 

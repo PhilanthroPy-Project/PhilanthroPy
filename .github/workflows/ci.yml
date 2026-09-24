@@ -47,6 +47,14 @@ jobs:
       # One leg is enough: these exercise the public API against the working
       # tree, not the OS. --no-cov because pytest-cov's fail_under gate is for
       # philanthropy/ itself, not notebook cells.
+      # Notebook 04 fetches the KDD Cup 1998 archive (~35 MB) from UCI. Cache
+      # it so a slow or unavailable mirror does not fail every push; the key
+      # is the loader, which pins the file's checksum.
+      - name: Cache KDD Cup 1998 archive
+        uses: actions/cache@v6
+        with:
+          path: ~/philanthropy_data
+          key: kdd98-${{ hashFiles('philanthropy/datasets/_kdd98.py') }}
       - name: Execute example notebooks
         run: python -m pytest --nbmake examples/notebooks -q --no-cov
 

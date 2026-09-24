@@ -1,9 +1,12 @@
 ---
 description: "scikit-learn estimators for nonprofit and hospital fundraising analytics: donor propensity, lapse risk, wealth-screening imputation, leakage-safe by design."
+hide:
+  - toc
 ---
 
 <div class="ap-hero" markdown>
-<span class="ap-hero__eyebrow">Open source · scikit-learn native</span>
+
+<div class="ap-hero__copy" markdown>
 
 # Predictive donor analytics, done right. { .ap-hero__title }
 
@@ -12,6 +15,29 @@ description: "scikit-learn estimators for nonprofit and hospital fundraising ana
 <div class="ap-cta" markdown>
 [Get started](tutorials/index.md){ .md-button }
 [View on GitHub](https://github.com/PhilanthroPy-Project/PhilanthroPy){ .md-button .md-button--secondary }
+</div>
+
+</div>
+
+<div class="ap-hero__ledger">
+<table class="ap-ledger">
+<caption>Sample ranked output</caption>
+<colgroup>
+<col style="width: 16%"><col style="width: 34%"><col style="width: 25%"><col style="width: 25%">
+</colgroup>
+<thead>
+<tr><th scope="col">#</th><th scope="col">Donor</th><th scope="col">Cap.</th><th scope="col">Score</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>D. Alvarez</td><td>$2.1M</td><td>98</td></tr>
+<tr><td>2</td><td>R. Chen</td><td>$340K</td><td>96</td></tr>
+<tr><td>3</td><td>M. Osei</td><td>$1.4M</td><td>93</td></tr>
+<tr><td>4</td><td>K. Novak</td><td>$610K</td><td>89</td></tr>
+<tr><td>5</td><td>S. Ibarra</td><td>$95K</td><td>85</td></tr>
+<tr><td>6</td><td>T. Marsh</td><td>$2.8M</td><td>81</td></tr>
+</tbody>
+</table>
+<p class="ap-hero__caption">Six of the <a href="#a-ranked-call-list-scored-honestly">500 held-out donors scored below</a>, ranked by <code>predict_affinity_score</code>.</p>
 </div>
 
 </div>
@@ -158,32 +184,37 @@ PhilanthroPy exists to change that: a rigorous, open-source, **scikit-learn-comp
 
 A comprehensive suite of tools, easy to understand and use:
 
-<div class="grid cards" markdown>
+<div class="ap-ledger-list" markdown>
 
-- :material-database-refresh: **Messy data cleaning**
+<div class="ap-ledger-row" markdown>
+**Messy data cleaning.** Standardises raw CRM exports (Salesforce NPSP, Raiser's Edge), fixing dates and currency amounts without crashing.
 
-    ---
-    Standardises raw CRM exports (Salesforce NPSP, Raiser's Edge), fixing dates and currency amounts without crashing. *Uses `CRMCleaner`.*
+`CRMCleaner`
+</div>
 
-- :material-calendar-range: **Fiscal-calendar awareness**
+<div class="ap-ledger-row" markdown>
+**Fiscal-calendar awareness.** Nonprofits run on fiscal years (e.g. July–June). PhilanthroPy understands these boundaries natively, preventing future data from leaking into historical models.
 
-    ---
-    Nonprofits run on fiscal years (e.g. July–June). PhilanthroPy understands these boundaries natively, preventing future data from leaking into historical models. *Uses `FiscalYearTransformer`.*
+`FiscalYearTransformer`
+</div>
 
-- :material-currency-usd: **Smart wealth imputation**
+<div class="ap-ledger-row" markdown>
+**Smart wealth imputation.** Third-party wealth vendors rarely match every record. This estimates missing wealth capacity (like real-estate value) from similar donors using K-nearest neighbours.
 
-    ---
-    Third-party wealth vendors rarely match every record. This estimates missing wealth capacity (like real-estate value) from similar donors using K-nearest neighbours. *Uses `WealthScreeningImputerKNN`.*
+`WealthScreeningImputerKNN`
+</div>
 
-- :material-hospital-building: **Grateful-patient featurization**
+<div class="ap-ledger-row" markdown>
+**Grateful-patient featurization.** For academic medical centers, translates clinical-encounter histories into major-gift signals while decoupling them from explicit patient identifiers (PHI). This reduces compliance risk but is **not** formal HIPAA de-identification. See [Compliance Considerations](explanation/compliance_considerations.md).
 
-    ---
-    For academic medical centers, translates clinical-encounter histories into major-gift signals while decoupling them from explicit patient identifiers (PHI). This reduces compliance risk but is **not** formal HIPAA de-identification. See [Compliance Considerations](explanation/compliance_considerations.md). *Uses `GratefulPatientFeaturizer`.*
+`GratefulPatientFeaturizer`
+</div>
 
-- :material-chart-bell-curve-cumulative: **Propensity & share of wallet**
+<div class="ap-ledger-row" markdown>
+**Propensity & share of wallet.** Estimators for capacity utilisation (what share of a donor's modelled wealth is estimated philanthropic capacity, **not** what share of their giving you receive) and the next best engagement step for a gift officer.
 
-    ---
-    Estimators for capacity utilisation (what share of a donor's modelled wealth is estimated philanthropic capacity, **not** what share of their giving you receive) and the next best engagement step for a gift officer. *Uses `ShareOfWalletScorer`.*
+`ShareOfWalletScorer`
+</div>
 
 </div>
 
@@ -192,26 +223,30 @@ A comprehensive suite of tools, easy to understand and use:
 
 ## Explore the docs
 
-<div class="grid cards" markdown>
+<div class="ap-ledger-list ap-ledger-list--nav" markdown>
 
-- **[Tutorials](tutorials/index.md)**
+<div class="ap-ledger-row" markdown>
+[**Tutorials**](tutorials/index.md)
 
-    ---
-    Step-by-step, learning-oriented lessons for beginners.
+Step-by-step, learning-oriented lessons for beginners.
+</div>
 
-- **[How-To Guides](how-to/index.md)**
+<div class="ap-ledger-row" markdown>
+[**How-To Guides**](how-to/index.md)
 
-    ---
-    Goal-oriented recipes for specific tasks.
+Goal-oriented recipes for specific tasks.
+</div>
 
-- **[Explanation](explanation/index.md)**
+<div class="ap-ledger-row" markdown>
+[**Explanation**](explanation/index.md)
 
-    ---
-    Understanding-oriented concepts and architecture.
+Understanding-oriented concepts and architecture.
+</div>
 
-- **[API Reference](reference/index.md)**
+<div class="ap-ledger-row" markdown>
+[**API Reference**](reference/index.md)
 
-    ---
-    Information-oriented API docs.
+Information-oriented API docs.
+</div>
 
 </div>

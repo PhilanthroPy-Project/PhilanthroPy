@@ -65,6 +65,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   mkdocstrings-generated API reference.
 
 ### Changed
+- The docs homepage hero no longer uses an all-caps eyebrow label or a
+  gradient-clipped headline; it's now a two-column layout with the headline
+  beside a real ranked-donor ledger table showing what
+  `predict_affinity_score` returns. The "Key features" and "Explore the
+  docs" sections moved from identical shadowed card grids to hairline
+  ledger rows, with estimator class names right-aligned in mono for the
+  feature list. The homepage also hides its table of contents so the hero
+  gets the same content width as every other page.
 - `AGENTS.md` brought back in line with the repository. The layout now lists
   `ingest/`, `inspection/` and `cli.py`; the dependency section names joblib
   as a runtime dependency and matplotlib/seaborn as the optional `viz` extra

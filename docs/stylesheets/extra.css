@@ -54,7 +54,6 @@
   --ap-hairline-2: rgba(243, 239, 230, 0.22);
   --ap-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 34px rgba(0, 0, 0, 0.4);
   --ap-shadow-hover: 0 2px 6px rgba(0, 0, 0, 0.5), 0 30px 80px rgba(0, 0, 0, 0.55);
-  --ap-display-fade: rgba(243, 239, 230, 0.55);
   --ap-bg-translucent: rgba(13, 12, 10, 0.82);
   --ap-chart-band: rgba(243, 239, 230, 0.035);
 
@@ -91,7 +90,6 @@
   --ap-hairline-2: rgba(23, 21, 15, 0.22);
   --ap-shadow: 0 1px 2px rgba(23, 21, 15, 0.05), 0 12px 30px rgba(23, 21, 15, 0.06);
   --ap-shadow-hover: 0 2px 6px rgba(23, 21, 15, 0.07), 0 24px 60px rgba(23, 21, 15, 0.1);
-  --ap-display-fade: rgba(23, 21, 15, 0.55);
   --ap-bg-translucent: rgba(250, 247, 242, 0.82);
   --ap-chart-band: rgba(23, 21, 15, 0.035);
 
@@ -271,54 +269,82 @@ body {
   font-size: 0.84em;
 }
 
-/* ---- Hero (homepage) ---------------------------------------------------- */
+/* ---- Hero (homepage): headline beside a live ranked-donor ledger --------
+   The opening move is the thing the library actually produces, a ranked
+   call list, not an abstract headline graphic. The homepage hides its ToC
+   (see index.md front matter), which gives this row the same content width
+   every other page gets, just without the sidebar eating into it. */
 .ap-hero {
-  text-align: center;
-  padding: 3.4rem 1rem 1.4rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: center;
+  gap: 2.5rem;
+  padding: 3.4rem 1rem 2.6rem;
   margin: 0 auto;
-  max-width: 47rem;
-}
-.ap-hero__eyebrow {
-  display: inline-block;
-  font-family: var(--ap-font-mono);
-  font-size: 0.66rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: var(--ap-track-eyebrow);
-  color: var(--ap-accent);
-  margin-bottom: 1rem;
+  max-width: 61rem;
 }
 .md-typeset .ap-hero__title {
   font-family: var(--ap-font-serif);
-  font-size: 3.4rem;
-  line-height: 1.04;
+  font-size: clamp(2.3rem, 1.2rem + 3vw, 3.1rem);
+  line-height: 1.06;
   letter-spacing: var(--ap-track-tighter);
   font-weight: 500;
-  margin: 0 0 0.45rem;
-  background: linear-gradient(180deg, var(--ap-ink) 32%, var(--ap-display-fade));
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
+  color: var(--ap-ink);
+  margin: 0 0 0.55rem;
 }
 .ap-hero__sub {
-  font-size: 1.2rem;
-  line-height: 1.45;
+  font-size: 1.1rem;
+  line-height: 1.5;
   color: var(--ap-ink-2);
   font-weight: 400;
   letter-spacing: var(--ap-track-normal);
-  margin: 0 auto 1.8rem;
-  max-width: 35rem;
+  margin: 0 0 1.8rem;
+  max-width: 30rem;
 }
-.ap-cta { display: flex; gap: 0.7rem; justify-content: center; flex-wrap: wrap; }
+.ap-cta { display: flex; gap: 0.7rem; flex-wrap: wrap; }
 
-/* Gradient-clipped text has no colour in forced-colors mode: opt out. */
-@media (forced-colors: active) {
-  .md-typeset .ap-hero__title {
-    background: none;
-    color: CanvasText;
-    -webkit-text-fill-color: CanvasText;
-  }
+/* The sample ledger: what predict_affinity_score actually returns, ranked. */
+.ap-hero__ledger { min-width: 0; }
+.md-typeset .ap-ledger {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  border: 1px solid var(--ap-hairline);
+  border-radius: var(--ap-r-md);
+  overflow: hidden;
+  background: var(--ap-surface);
+  font-family: var(--ap-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.74rem;
+}
+.md-typeset .ap-ledger caption {
+  caption-side: top;
+  text-align: left;
+  padding: 0.7rem 0.85rem 0;
+  font-size: 0.68rem;
+  color: var(--ap-ink-3);
+}
+.md-typeset .ap-ledger :is(th, td) {
+  padding: 0.45em 0.55em;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--ap-hairline);
+}
+.md-typeset .ap-ledger th { color: var(--ap-ink-3); font-weight: 500; }
+.md-typeset .ap-ledger tbody tr:last-child :is(th, td) { border-bottom: none; }
+.md-typeset .ap-ledger :is(th, td):last-child { text-align: right; }
+.md-typeset .ap-ledger tbody tr:first-child td:last-child { color: var(--ap-accent); font-weight: 600; }
+.md-typeset .ap-hero__caption {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--ap-ink-2);
+  margin: 0.7rem 0 0;
+}
+
+@media screen and (max-width: 59.9375em) {
+  .ap-hero { grid-template-columns: 1fr; gap: 2rem; }
 }
 
 /* ---- Buttons: pills ----------------------------------------------------- */
@@ -446,28 +472,36 @@ body {
   .ap-figure g[data-row] rect { transition: none; }
 }
 
-/* ---- Grid cards --------------------------------------------------------- */
-.md-typeset .grid.cards > ul > li {
-  border-radius: var(--ap-r-md);
-  background: var(--ap-surface);
-  border: 1px solid var(--ap-hairline);
-  box-shadow: var(--ap-shadow);
-  padding: 1.4rem;
-  transition: transform var(--ap-dur) var(--ap-ease),
-    box-shadow var(--ap-dur) var(--ap-ease),
-    border-color var(--ap-dur) var(--ap-ease);
+/* ---- Ledger lists: feature rows and doc-section rows --------------------
+   The same register logic as the hero sample: a hairline between entries,
+   not a card per entry, because these are lines in a list, not independent
+   objects competing for attention. */
+.md-typeset .ap-ledger-list { border-top: 1px solid var(--ap-hairline); margin: 1.6rem 0; }
+.md-typeset .ap-ledger-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 1.1rem 0.25rem;
+  border-bottom: 1px solid var(--ap-hairline);
+  transition: background-color var(--ap-dur) var(--ap-ease);
 }
-.md-typeset .grid.cards > ul > li:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--ap-shadow-hover);
-  border-color: var(--ap-hairline-2);
+.md-typeset .ap-ledger-row:hover { background-color: var(--ap-surface); }
+.md-typeset .ap-ledger-row > p:first-child { margin: 0; flex: 1; min-width: 0; }
+.md-typeset .ap-ledger-row > p:last-child {
+  margin: 0;
+  flex: none;
+  font-size: 0.78rem;
+  color: var(--ap-ink-3);
 }
-.md-typeset .grid.cards > ul > li > hr {
-  margin: 0.9em 0;
-  border: 0;
-  border-top: 1px solid var(--ap-hairline);
+.md-typeset .ap-ledger-row code { background: transparent; padding: 0; color: var(--ap-ink-2); }
+.md-typeset .ap-ledger-list--nav .ap-ledger-row { display: block; }
+.md-typeset .ap-ledger-list--nav .ap-ledger-row > p:first-child { font-weight: 500; margin-bottom: 0.25rem; }
+.md-typeset .ap-ledger-list--nav .ap-ledger-row > p:last-child { color: var(--ap-ink-2); font-size: 0.85rem; }
+
+@media screen and (max-width: 29.9375em) {
+  .md-typeset .ap-ledger-row { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
 }
-.md-typeset .grid.cards .twemoji svg { fill: var(--ap-accent); }
 
 /* ---- Admonitions, tables, footer ---------------------------------------- */
 .md-typeset .admonition,
@@ -509,18 +543,16 @@ body {
 /* ---- Motion respect ----------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .md-typeset .grid.cards > ul > li,
+  .md-typeset .ap-ledger-row,
   .md-typeset .md-button,
   .md-typeset a,
   .md-nav__link,
   .md-tabs__link { transition: none; }
-  .md-typeset .grid.cards > ul > li:hover { transform: none; }
 }
 
 /* ---- Mobile ------------------------------------------------------------- */
 @media screen and (max-width: 44.9375em) {
   .ap-hero { padding-top: 2.2rem; }
-  .md-typeset .ap-hero__title { font-size: 2.3rem; }
   .ap-hero__sub { font-size: 1.02rem; }
   .md-typeset h1 { font-size: 2rem; }
   .md-typeset h2 { font-size: 1.5rem; }

@@ -12,18 +12,11 @@ import warnings
 import numpy as np
 import pytest
 
-from philanthropy import preprocessing, utils
-from philanthropy.preprocessing import ShareOfWalletScorer, WealthScreeningImputerKNN
+from philanthropy import preprocessing
+from philanthropy.preprocessing import ShareOfWalletScorer
 
 # (id, removed_in, callable that should emit exactly one DeprecationWarning)
 DEPRECATIONS = [
-    (
-        "WealthScreeningImputerKNN.group_col_idx",
-        "0.8.0",
-        lambda: WealthScreeningImputerKNN(
-            strategy="knn", n_neighbors=3, add_indicator=False, group_col_idx=1
-        ).fit(_two_group_X()),
-    ),
     (
         "ShareOfWalletScorer.get_legacy_feature_names_out",
         "0.9.0",
@@ -32,21 +25,11 @@ DEPRECATIONS = [
         .get_legacy_feature_names_out(),
     ),
     (
-        "utils.make_donor_dataset",
-        "0.8.0",
-        lambda: utils.make_donor_dataset(n_donors=5, random_state=0),
-    ),
-    (
         "preprocessing.SolicitationWindowTransformer",
         "1.0.0",
         # Attribute access, not instantiation: the alias resolves through the
         # subpackage's PEP 562 __getattr__ so it stays the canonical class.
         lambda: preprocessing.SolicitationWindowTransformer,
-    ),
-    (
-        "FiscalYearGroupedSplitter.drop_repeat_donors",
-        "0.8.0",
-        lambda: __import__("philanthropy.model_selection").model_selection.FiscalYearGroupedSplitter(),
     ),
 ]
 
@@ -81,13 +64,11 @@ def test_shim_still_works(dep_id, removed_in, trigger):
         trigger()
 
 
-def test_no_warning_when_the_deprecated_parameter_is_untouched():
+def test_no_warning_when_the_deprecated_path_is_untouched():
     # The other half of the contract: callers who never used it see nothing.
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        WealthScreeningImputerKNN(
-            strategy="knn", n_neighbors=3, add_indicator=False
-        ).fit(_two_group_X())
+        ShareOfWalletScorer().fit(_two_group_X()).get_feature_names_out()
     assert not [w for w in caught if issubclass(w.category, DeprecationWarning)]
 
 

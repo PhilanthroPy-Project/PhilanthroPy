@@ -2,12 +2,10 @@
 tests/test_utils.py
 """
 
-import warnings
-
 import pandas as pd
 import pytest
 
-from philanthropy.utils import make_donor_dataset
+from philanthropy.datasets import make_donor_dataset
 
 
 def test_make_donor_dataset_shape():
@@ -34,20 +32,10 @@ def test_make_donor_dataset_major_gift_flag():
     assert (flagged["gift_amount"] >= 500.0).all()
 
 
-def test_make_donor_dataset_from_utils_still_works_and_warns():
-    with pytest.warns(DeprecationWarning, match="removed in 0.8.0"):
-        from philanthropy.utils import make_donor_dataset
+def test_make_donor_dataset_alias_removed_from_utils():
+    # Deprecated in 0.7.0, removed in 0.8.0: the only import path is datasets.
+    import philanthropy.utils
 
-        df = make_donor_dataset(n_donors=5, random_state=0)
-    assert df["donor_id"].nunique() == 5
-
-
-def test_make_donor_dataset_shim_emits_exactly_one_warning():
-    import importlib
-
-    with warnings.catch_warnings(record=True) as record:
-        warnings.simplefilter("always")
-        mod = importlib.import_module("philanthropy.utils")
-        mod.make_donor_dataset(n_donors=5, random_state=0)
-    dep = [w for w in record if issubclass(w.category, DeprecationWarning)]
-    assert len(dep) == 1
+    assert "make_donor_dataset" not in philanthropy.utils.__all__
+    with pytest.raises(ImportError):
+        from philanthropy.utils import make_donor_dataset  # noqa: F401

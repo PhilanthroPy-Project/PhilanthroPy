@@ -127,11 +127,16 @@ freeze them: `metrics.scoring` → `metrics._scoring`,
 subpackage (`from philanthropy.metrics import ...`), as the documented examples
 always have, and nothing breaks.
 
-### Live in 0.7.0, removed in 0.8.0
+### Removed or changed in 0.8.0
 
-| Deprecated | Use instead |
+If you are upgrading from 0.7.x, these went after two published releases of
+`DeprecationWarning`:
+
+| Removed or changed | Use instead |
 |---|---|
+| `philanthropy.utils.make_donor_dataset` | `philanthropy.datasets.make_donor_dataset` |
 | `WealthScreeningImputerKNN(group_col_idx=...)` | nothing; see below |
+| `FiscalYearGroupedSplitter(drop_repeat_donors=...)` default is now `True` | pass donor ids, or `drop_repeat_donors=False` for a time-varying target |
 
 `group_col_idx` has no replacement because there is nothing to replace. It was
 documented for a long time as stratifying KNN imputation per group "improving
@@ -141,10 +146,19 @@ pools and on five Python versions in CI, per-group and global KNN imputation
 produce **bit-identical** output (`50263.48615163204` both ways). A donor's
 nearest neighbours by feature distance almost always share their group already,
 and `KNNImputer` weights distance by column magnitude, so a 0/1 group flag
-barely registers.
+barely registers. Passing it is now a `TypeError`.
 
 If you need per-group behaviour, split the frame by group and fit one imputer per
 part. That is explicit, and it costs nothing that the parameter was buying.
+
+`FiscalYearGroupedSplitter` now drops, from each test fold, donors already seen
+in that fold's training rows. That is the safe choice for a static per-donor
+label such as `is_major_donor`, which a model can otherwise memorise from the
+donor's earlier years. It needs `groups` as `(n_samples, 2)`: fiscal year, then
+donor id. Code that passes fiscal years alone now raises a `ValueError` naming
+both fixes. For a time-varying target such as "gave next year", where the same
+donor correctly appears in both folds, pass `drop_repeat_donors=False`, which
+gives exactly the 0.7.x behaviour.
 
 ### Live in 0.7.1, removed in 0.9.0
 

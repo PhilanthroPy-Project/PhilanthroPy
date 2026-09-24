@@ -87,44 +87,6 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
         Append a binary ``<col>__was_missing`` column for each imputed
         wealth column.  Strongly recommended: absence of vendor records
         itself carries predictive signal.
-    group_col_idx : int or None, default=None
-        .. deprecated:: 0.7.0
-            Passing ``group_col_idx`` emits a ``DeprecationWarning`` and the
-            parameter is removed in 0.8.0. It still works meanwhile; there is no
-            replacement, because there is nothing to replace.
-
-            The reason is measurement, not tidiness. Across several synthetic
-            two-group pools, and on five Python versions in CI, the grouped and
-            global fits produce **bit-identical** output: 50263.48615163204 both
-            ways. That is not a near miss. A donor's nearest neighbours by
-            feature distance almost always share their group already, so
-            restricting the fit to the group changes nothing, and
-            :class:`~sklearn.impute.KNNImputer` weights distance by column
-            magnitude, so a 0/1 group flag contributes almost nothing on its own.
-            The parameter costs a per-group imputer, three fallback paths and a
-            documented contract, and buys no measurable accuracy. If you need
-            per-group behaviour, split the frame by group and fit one imputer per
-            part, which is explicit and costs nothing here.
-
-        Column index of a group variable (for example a zip code encoded as an
-        int) to stratify KNN imputation. When set and ``strategy="knn"``, a
-        separate :class:`~sklearn.impute.KNNImputer` is fitted per group, so a
-        donor's missing wealth is filled from neighbours inside their own group
-        rather than from the whole database. Ignored for the other strategies,
-        which are columnwise statistics with no notion of a neighbourhood.
-
-        Two fallbacks, both frozen at :meth:`fit` time so nothing is learned at
-        transform time:
-
-        * A group with fewer than ``n_neighbors + 1`` training rows gets no
-          imputer of its own, because KNN over too few neighbours is worse than
-          the global fit. Its rows use the global imputer.
-        * A group value **not seen during fit**, or a row whose group value is
-          missing, also uses the global imputer. This is the leakage-safe
-          choice: the alternative is fitting on the data being transformed.
-
-        The global imputer is always fitted, so the output is never ``NaN``
-        regardless of grouping.
 
     Attributes
     ----------
@@ -132,11 +94,6 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
         Wealth columns that were actually present in ``X`` at fit time.
     fill_values_ : dict of {str: float}
         Fill statistics (only populated for non-KNN strategies).
-    group_imputers_ : dict of {float: tuple}
-        Maps each group value that qualified for its own imputer to
-        ``(fitted KNNImputer, boolean mask of columns entirely missing within
-        that group)``. Empty when ``group_col_idx`` is ``None`` or ``strategy``
-        is not ``"knn"``.
     knn_imputer_ : KNNImputer or None
         The fitted :class:`~sklearn.impute.KNNImputer` instance
         (only populated for ``strategy="knn"``).
@@ -169,13 +126,11 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
         strategy: Literal["median", "mean", "zero", "knn"] = "knn",
         n_neighbors: int = 5,
         add_indicator: bool = True,
-        group_col_idx: Optional[int] = None,
     ) -> None:
         self.wealth_cols = wealth_cols
         self.strategy = strategy
         self.n_neighbors = n_neighbors
         self.add_indicator = add_indicator
-        self.group_col_idx = group_col_idx
 
     def _resolve_cols(self, input_cols: list[str]) -> list[str]:
         if self.wealth_cols is not None:
@@ -195,19 +150,6 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
         -------
         self : WealthScreeningImputerKNN
         """
-        if self.group_col_idx is not None:
-            warnings.warn(
-                "WealthScreeningImputerKNN(group_col_idx=...) is deprecated "
-                "since 0.7.0 and will be removed in 0.8.0. It has no "
-                "replacement: measured across several synthetic pools and five "
-                "Python versions in CI, per-group and global KNN imputation "
-                "produce bit-identical output, so the parameter buys no "
-                "accuracy. Split the frame by group and fit one imputer per part "
-                "if you need that behaviour.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
         if self.strategy not in self._VALID_STRATEGIES:
             raise ValueError(
                 f"`strategy` must be one of {sorted(self._VALID_STRATEGIES)}, "
@@ -248,8 +190,6 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
 
         if self.strategy == "knn":
             # Fit KNNImputer on ALL columns (preserves inter-column structure).
-            # Always fitted, even when grouping: it is the fallback for small and
-            # unseen groups, and it is what guarantees the output has no NaN.
             self.knn_imputer_: Optional[KNNImputer] = KNNImputer(
                 n_neighbors=self.n_neighbors,
                 weights="distance",
@@ -257,42 +197,8 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
             )
             self.knn_imputer_.fit(X_arr)
             self.fill_values_: dict[str, float] = {}
-            self.group_imputers_: dict = {}
-            if self.group_col_idx is not None:
-                gidx = int(self.group_col_idx)
-                if not -X_arr.shape[1] <= gidx < X_arr.shape[1]:
-                    raise ValueError(
-                        f"`group_col_idx` {gidx} is out of range for X with "
-                        f"{X_arr.shape[1]} columns."
-                    )
-                groups = X_arr[:, gidx]
-                # A group needs more rows than neighbours for KNN to mean
-                # anything; smaller groups deliberately get no imputer and fall
-                # back to the global one.
-                min_rows = self.n_neighbors + 1
-                for value in np.unique(groups[~np.isnan(groups)]):
-                    rows = groups == value
-                    if int(rows.sum()) < min_rows:
-                        continue
-                    sub_imputer = KNNImputer(
-                        n_neighbors=self.n_neighbors,
-                        weights="distance",
-                        keep_empty_features=True,
-                    )
-                    sub_imputer.fit(X_arr[rows])
-                    # Columns entirely missing WITHIN this group. KNNImputer with
-                    # keep_empty_features=True fills those with a hard 0.0, not
-                    # NaN, so a NaN check at transform time cannot see them. For a
-                    # wealth column, 0.0 reads as "no capacity", which is a
-                    # materially wrong answer rather than a missing one. Record
-                    # them so transform defers to the global imputer instead.
-                    self.group_imputers_[float(value)] = (
-                        sub_imputer,
-                        np.isnan(X_arr[rows]).all(axis=0),
-                    )
         else:
             self.knn_imputer_ = None
-            self.group_imputers_ = {}
             fills: dict[str, float] = {}
             for col in self.imputed_cols_:
                 idx = col_indices[col]
@@ -353,23 +259,7 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
                     indicators.append(np.isnan(X_arr[:, idx]).astype(np.float64).reshape(-1, 1))
 
         if self.strategy == "knn" and self.knn_imputer_ is not None:
-            # Global result first: this is the fallback for small groups, unseen
-            # groups and missing group labels, and it guarantees no NaN survives.
             X_out = self.knn_imputer_.transform(X_arr)
-            group_imputers = getattr(self, "group_imputers_", {})
-            if group_imputers and self.group_col_idx is not None:
-                groups = X_arr[:, int(self.group_col_idx)]
-                for value, (sub_imputer, empty_cols) in group_imputers.items():
-                    rows = groups == value
-                    if not rows.any():
-                        continue
-                    X_group = sub_imputer.transform(X_arr[rows])
-                    # Prefer the group-local value, except where it cannot be
-                    # trusted: a NaN it failed to fill, or a column entirely
-                    # missing inside this group, where KNNImputer returns a hard
-                    # 0.0 that would read as real data.
-                    reject = np.isnan(X_group) | empty_cols[None, :]
-                    X_out[rows] = np.where(reject, X_out[rows], X_group)
         else:
             X_out = X_arr.copy()
             for col in self.imputed_cols_:

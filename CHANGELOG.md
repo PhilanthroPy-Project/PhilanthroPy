@@ -73,6 +73,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   mkdocstrings-generated API reference.
 
 ### Changed
+- **Breaking:** `FiscalYearGroupedSplitter(drop_repeat_donors=...)` now
+  defaults to `True`, as the `DeprecationWarning` in 0.7.0 and 0.7.1 said it
+  would. Each test fold drops donors already seen in its training rows, which
+  is the safe default for a static per-donor label. It needs `groups` as
+  `(n_samples, 2)` (fiscal year, donor id); code that passes fiscal years alone
+  now raises a `ValueError` that names both fixes. Pass
+  `drop_repeat_donors=False` for a time-varying target to keep the 0.7.x
+  behaviour. The two leakage experiment scripts now pass it explicitly.
 - The docs homepage hero no longer uses an all-caps eyebrow label or a
   gradient-clipped headline; it's now a two-column layout with the headline
   beside a real ranked-donor ledger table showing what
@@ -121,6 +129,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   Closes #195.
 
 ### Removed
+- **Breaking:** `philanthropy.utils.make_donor_dataset`, deprecated since
+  0.7.0. Import it from `philanthropy.datasets`.
+- **Breaking:** `WealthScreeningImputerKNN(group_col_idx=...)` and its
+  `group_imputers_` attribute, deprecated since 0.7.0. Per-group and global KNN
+  fits were measured bit-identical, so the parameter bought nothing; passing it
+  is now a `TypeError`. `tests/test_knn_group_stratification.py` goes with it.
 - Deleted `philanthropy/preprocessing/_solicitation_window.py`, a dead module
   nothing imported. The deprecated `SolicitationWindowTransformer` alias it held
   was already served by the subpackage's PEP 562 module-level `__getattr__`, so

@@ -116,8 +116,8 @@ def main():
         as_of, whole = _panel(seed)
         truth.append(_true_future(as_of))
         random_cv.append(_cv(as_of, StratifiedKFold(5, shuffle=True, random_state=0), False))
-        walk_cv.append(_cv(as_of, FiscalYearGroupedSplitter(n_splits=3), True))
-        whole_cv.append(_cv(whole, FiscalYearGroupedSplitter(n_splits=3), True))
+        walk_cv.append(_cv(as_of, FiscalYearGroupedSplitter(n_splits=3, drop_repeat_donors=False), True))
+        whole_cv.append(_cv(whole, FiscalYearGroupedSplitter(n_splits=3, drop_repeat_donors=False), True))
 
     print(f"Donor-year panel: {N_DONORS} donors x {len(YEARS) - 1} panel years, "
           f"label = gave in the following year.")

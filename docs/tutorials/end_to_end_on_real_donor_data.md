@@ -47,9 +47,6 @@ From one run (`random_state=0`, 30% of donors held out):
 - **Disparity:** selection rates of 0.62 (F) and 0.66 (M), a ratio of 0.94,
   above the usual 0.8 flag.
 
-The Raiser's Edge reader in step 3 is newer than the 0.7.1 release; until the
-next release, install from GitHub (the first cell shows how).
-
 !!! note "Dataset terms"
     Under the KDD Cup 1998 terms, teaching material must not name the
     organisation that supplied the data. Cite it only as "KDD Cup 1998".

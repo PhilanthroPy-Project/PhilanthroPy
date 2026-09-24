@@ -90,7 +90,7 @@ Every domain method returns a number on its own scale. None of them are calibrat
 ## Deprecations
 
 !!! info "This page is built from `main`, which is ahead of the release"
-    `pip install philanthropy` currently gives you **0.7.1**. The tier tables
+    `pip install philanthropy` currently gives you **0.8.0**. The tier tables
     above describe the API as it stands on `main`; the deprecations below are
     live in the version you actually have installed.
 

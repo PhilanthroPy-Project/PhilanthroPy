@@ -5,7 +5,8 @@ fundraising analytics. Every estimator is pipeline-safe, leakage-safe, and
 passes `sklearn.utils.estimator_checks.check_estimator`.
 
 ## Layout
-- `philanthropy/{datasets,preprocessing,models,metrics,model_selection,experimental,visualisation,utils}/`
+- `philanthropy/{datasets,ingest,inspection,preprocessing,models,metrics,model_selection,experimental,visualisation,utils}/`,
+  plus `philanthropy/cli.py` (the `philanthropy` console script).
 - Public classes live in private modules (`_wealth.py`, `_forecast.py`, …) and
   are re-exported from each subpackage's `__init__.py` (and its `__all__`).
 - `tests/` holds one file per component. Flat layout (no `src/`); MkDocs in `docs/`.
@@ -13,7 +14,8 @@ passes `sklearn.utils.estimator_checks.check_estimator`.
 ## Estimator conventions (mirror existing classes, e.g. `_lapse.py`, `_wallet.py`)
 - Subclass the sklearn mixin **and** `BaseEstimator`: `ClassifierMixin`,
   `RegressorMixin`, or `TransformerMixin`.
-- `__init__` stores raw params ONLY: no validation, no logic. Include
+- `__init__` only stores raw params, with no validation or logic, because
+  sklearn's `get_params` / `clone` read them back as passed. Include
   `random_state` wherever there is randomness.
 - Validate in `fit` via `validate_data(self, X, y, ...)`; set `n_features_in_`
   plus any `trailing_underscore_` fitted attrs; `fit` returns `self`.
@@ -38,16 +40,18 @@ per-column medians (see `FinancialForecastModel`). `HistGradientBoosting*`
 handles NaN natively (see `ShareOfWalletRegressor`, `MajorGiftClassifier`).
 
 ## Dependencies
-scikit-learn, pandas, numpy, matplotlib, seaborn, and **nothing else**. Do NOT add
-TensorFlow / Keras / statsmodels / torch; approximate heavier methods with the
-stack above (e.g. the hybrid LSTM-ARIMA forecaster uses LinearRegression +
+Runtime dependencies are scikit-learn, pandas, numpy, and joblib; matplotlib and
+seaborn are the optional `viz` extra (see `pyproject.toml`). Don't add others,
+TensorFlow / Keras / statsmodels / torch included; approximate heavier methods
+with this stack (e.g. the hybrid LSTM-ARIMA forecaster uses LinearRegression +
 MLPRegressor).
 
-## Workflow (from CONTRIBUTING.md, follow exactly)
-1. Implement the class. 2. Export it in the subpackage `__init__.py`.
-3. Verify the import: `python -c "from philanthropy.models import X"`.
-4. Write the tests. 5. Run `make ci` (collection → full suite → coverage ≥ 92%).
-Never `git push --no-verify`; the coverage gate is 92% and must stay green.
+## Adding a new class (order from CONTRIBUTING.md)
+Tests import from the subpackage, so a test written before the export exists
+fails collection and stops `make ci`. That is why the order is:
+1. Implement the class. 2. Export it in the subpackage `__init__.py` and `__all__`.
+3. Verify the import: `python -c "from philanthropy.<subpackage> import X"`.
+4. Write the tests. 5. Run `make ci`.
 
 ## Local dev gotcha
 Install editable so the working tree is what's tested:
@@ -63,38 +67,35 @@ make riskcov                        # the risk-tier floor CI also enforces
 ```
 `make ci` reads its coverage floor from `pyproject.toml`; `make riskcov` is the
 separate, higher floor over the risk-tier subtree. CI runs both
-(`.github/workflows/ci.yml`). Do not hardcode either number anywhere else;
-that drift is what issues #21 and #22 exist to fix.
+(`.github/workflows/ci.yml`). Do not hardcode either number anywhere else,
+because copies drift from the source.
 
 ## Branching: no direct commits to main
 Every change, including maintainer- and agent-authored ones, goes on a feature
 branch and through a pull request. Never commit or push straight to `main`.
 
 ### Merging
-This section used to end "never merge your own PR; open it and leave the merge
-to review." With `.github/CODEOWNERS` set to `* @shivamlalakiya` and no second
-account holding merge rights, that rule cannot hold: taken literally, nothing
-ever merges. It was also visibly not being followed, and a rule the repository
-breaks is worth less than a narrower one it keeps.
+`.github/CODEOWNERS` is `* @shivamlalakiya` and nobody else holds merge
+rights, so a rule requiring someone else's merge would mean nothing merges.
+The bar instead:
 
-What is actually required:
-
-- Open a PR for every change. No exceptions.
-- CI must be green before merge. Never `git push --no-verify`.
+- Open a PR for every change.
+- CI must be green before merge.
 - If a second reviewer is available, wait for them.
 - If not, the maintainer may merge their own PR once CI is green.
-- **Agents may merge under the same bar as the maintainer above, plus a
-  review:** all required CI checks green (verify yourself, not from a stale
-  or partial check list), no second reviewer available, AND the agent has
-  actually read the PR's diff and judged it good. Green CI alone is not
-  sufficient; a PR whose content looks wrong, incomplete, or out of scope
-  stays open even if every check passes.
+- Agents may merge under the same bar plus a review: all required CI checks
+  green (checked directly, not from a stale or partial check list), no second
+  reviewer available, and the agent has read the PR's diff and judged it
+  good. Green CI alone is not enough; a PR whose content looks wrong,
+  incomplete, or out of scope stays open even if every check passes.
 
-This describes the constraint, it does not endorse it. The fix is a second
-person with merge rights, tracked in issue #82; once that exists, the stricter
-"leave the merge to review" rule should come back.
+This is a single-maintainer workaround, not the preferred rule. Once a second
+person has merge rights, go back to leaving every merge to review.
 
 ## Every PR must also
 - Add an entry under `## [Unreleased]` in CHANGELOG.md.
-- Add yourself to CONTRIBUTORS.md (same PR).
-- Never `git push --no-verify`.
+- Add the PR's human author to CONTRIBUTORS.md if they are not already listed
+  and want to be (the PR template makes it optional). Agents don't list
+  themselves.
+- Never `git push --no-verify`: the pre-push hook is the local copy of the
+  test gate.

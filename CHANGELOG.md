@@ -65,6 +65,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   mkdocstrings-generated API reference.
 
 ### Changed
+- `AGENTS.md` brought back in line with the repository. The layout now lists
+  `ingest/`, `inspection/` and `cli.py`; the dependency section names joblib
+  as a runtime dependency and matplotlib/seaborn as the optional `viz` extra
+  instead of claiming five runtime packages; the new-class workflow no longer
+  hardcodes the 92% floor (which its own gate section forbids) or describes
+  `make ci` as something it isn't, and says why the order matters. References
+  to closed issues #21, #22 and #82 are gone, the merge section states the
+  current single-maintainer rule without the history, `--no-verify` is banned
+  once instead of three times, and the CONTRIBUTORS.md step now names the PR's
+  human author and matches the PR template's opt-out.
 - Seven high-intent documentation pages now carry a per-page `description` in
   YAML front matter, so a search result or social card shows that page's own
   summary rather than the site-wide `site_description`. The first-model

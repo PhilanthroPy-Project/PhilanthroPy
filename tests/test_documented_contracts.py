@@ -44,37 +44,13 @@ def test_fiscal_year_transformer_all_nan_when_date_col_absent():
     assert np.isnan(out).all()
 
 
-@pytest.mark.filterwarnings(
-    "ignore:WealthScreeningImputerKNN\\(group_col_idx:DeprecationWarning"
-)
-def test_group_col_idx_is_wired_up_not_ignored():
-    # This test previously asserted the opposite, locking in "group_col_idx is
-    # stored and never read" from when the docstring said "ignored".
-    #
-    # It deliberately does NOT assert that grouping changes the imputed values.
-    # Measured across several synthetic setups, that difference is small and not
-    # reliably reproducible: a donor's nearest neighbours by feature distance
-    # usually share their group already, so the grouped and global fits often
-    # agree exactly. What is reliable, and what this locks in, is that the
-    # parameter is honoured rather than discarded.
-    rng = np.random.default_rng(0)
-    n = 40
-    X = np.column_stack([
-        np.r_[rng.normal(5e4, 2e3, n), rng.normal(5e6, 2e5, n)],
-        np.r_[np.zeros(n), np.ones(n)],
-    ])
-    X[0, 0] = np.nan
-    X[n, 0] = np.nan
-
-    kwargs = dict(strategy="knn", n_neighbors=5, add_indicator=False)
-    model = WealthScreeningImputerKNN(group_col_idx=1, **kwargs).fit(X)
-
-    # A per-group imputer exists for each qualifying group, which is the thing
-    # that was previously absent entirely.
-    assert set(model.group_imputers_) == {0.0, 1.0}
-    out = model.transform(X)
-    assert not np.isnan(out).any()
-    assert out[0, 0] < 1e5 and out[n, 0] > 1e6
+def test_group_col_idx_is_removed():
+    # Deprecated in 0.7.0 and removed in 0.8.0: per-group and global KNN fits
+    # were measured bit-identical, so the parameter bought nothing. Passing it
+    # is now the usual unexpected-keyword TypeError, not a silent no-op.
+    with pytest.raises(TypeError, match="group_col_idx"):
+        WealthScreeningImputerKNN(group_col_idx=1)
+    assert "group_col_idx" not in WealthScreeningImputerKNN().get_params()
 
 
 def test_days_since_last_discharge_is_float_and_carries_nan():

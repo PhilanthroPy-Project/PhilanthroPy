@@ -109,11 +109,10 @@ def test_not_enough_fiscal_years_names_the_shortfall():
 
 
 def test_repr_and_get_n_splits_reflect_the_groups():
-    with pytest.warns(DeprecationWarning):
-        splitter = FiscalYearGroupedSplitter(n_splits=2, gap_years=1)
+    splitter = FiscalYearGroupedSplitter(n_splits=2, gap_years=1)
     assert repr(splitter) == (
         "FiscalYearGroupedSplitter(n_splits=2, gap_years=1, "
-        "drop_repeat_donors='warn')"
+        "drop_repeat_donors=True)"
     )
     assert splitter.get_n_splits(groups=_FY_GROUPS) == 2
 
@@ -182,13 +181,12 @@ def _repeat_donor_panel():
     return np.zeros((len(fy), 2)), fy, donor
 
 
-def test_default_leaves_repeat_donors_in_both_folds():
-    # Documented and correct for a time-varying target; this pins the default so
-    # the new flag cannot quietly become the default later.
+def test_false_leaves_repeat_donors_in_both_folds():
+    # Documented and correct for a time-varying target.
     X, fy, donor = _repeat_donor_panel()
-    with pytest.warns(DeprecationWarning):
-        for train, test in FiscalYearGroupedSplitter(n_splits=2).split(X, groups=fy):
-            assert set(donor[train]) & set(donor[test]) == {1, 2, 3}
+    splitter = FiscalYearGroupedSplitter(n_splits=2, drop_repeat_donors=False)
+    for train, test in splitter.split(X, groups=fy):
+        assert set(donor[train]) & set(donor[test]) == {1, 2, 3}
 
 
 def test_drop_repeat_donors_removes_the_overlap():
@@ -231,38 +229,35 @@ def test_drop_repeat_donors_raises_rather_than_silently_dropping_a_fold():
         list(splitter.split(np.zeros((4, 2)), groups=groups))
 
 
-def test_default_drop_repeat_donors_emits_deprecation_warning():
-    with pytest.warns(DeprecationWarning, match="default of False"):
-        FiscalYearGroupedSplitter()
-
-
-def test_explicit_drop_repeat_donors_false_silences_warning():
+def test_drop_repeat_donors_is_on_by_default():
+    # Default flipped from False to True in 0.8.0, after two releases of
+    # DeprecationWarning. BaseCrossValidator has no get_params, so read the attr.
     import warnings
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter('always')
-        FiscalYearGroupedSplitter(drop_repeat_donors=False)
-        assert not any(issubclass(x.category, DeprecationWarning) for x in w)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        splitter = FiscalYearGroupedSplitter()
+    assert splitter.drop_repeat_donors is True
 
 
-def test_drop_repeat_donors_is_off_by_default():
-    # BaseCrossValidator, not BaseEstimator, so there is no get_params here.
-    with pytest.warns(DeprecationWarning):
-        assert FiscalYearGroupedSplitter().drop_repeat_donors == "warn"
+def test_default_with_fiscal_years_alone_says_how_to_opt_out():
+    # The migration path for code written against the old default: the error
+    # names both fixes rather than only the shape.
+    X, fy, _ = _repeat_donor_panel()
+    with pytest.raises(ValueError, match="drop_repeat_donors=False"):
+        list(FiscalYearGroupedSplitter(n_splits=2).split(X, groups=fy))
 
 
 def test_repr_distinguishes_splitters_that_behave_differently():
     # This test used to assert the opposite, that drop_repeat_donors was absent
     # from __repr__. That pinned a defect: two splitters that split differently
     # printed identically, which is exactly what a repr exists to prevent.
-    with pytest.warns(DeprecationWarning):
-        assert "drop_repeat_donors='warn'" in repr(FiscalYearGroupedSplitter())
-    assert "drop_repeat_donors=True" in repr(
-        FiscalYearGroupedSplitter(drop_repeat_donors=True)
+    assert "drop_repeat_donors=True" in repr(FiscalYearGroupedSplitter())
+    assert "drop_repeat_donors=False" in repr(
+        FiscalYearGroupedSplitter(drop_repeat_donors=False)
     )
-    with pytest.warns(DeprecationWarning):
-        assert repr(FiscalYearGroupedSplitter()) != repr(
-            FiscalYearGroupedSplitter(drop_repeat_donors=True)
-        )
+    assert repr(FiscalYearGroupedSplitter()) != repr(
+        FiscalYearGroupedSplitter(drop_repeat_donors=False)
+    )
 
 
 def test_missing_donor_id_is_treated_as_already_seen():

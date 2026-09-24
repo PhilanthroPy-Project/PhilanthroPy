@@ -147,8 +147,8 @@ def main():
         random_cv.append(
             _cv(as_of, StratifiedKFold(5, shuffle=True, random_state=seed), False, seed)
         )
-        walk_cv.append(_cv(as_of, FiscalYearGroupedSplitter(n_splits=3), True, seed))
-        whole_cv.append(_cv(whole, FiscalYearGroupedSplitter(n_splits=3), True, seed))
+        walk_cv.append(_cv(as_of, FiscalYearGroupedSplitter(n_splits=3, drop_repeat_donors=False), True, seed))
+        whole_cv.append(_cv(whole, FiscalYearGroupedSplitter(n_splits=3, drop_repeat_donors=False), True, seed))
 
     print(f"KDD Cup 1998 donor-period panel: {as_of['donor'].nunique()} donors x "
           f"{n_periods} promotion periods, label = gave at the following period "

@@ -72,26 +72,26 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
         the fiscal year immediately before the test year is withheld from
         training (useful when gift officers use current-year pipeline
         intelligence that would not have been available historically).
-    drop_repeat_donors : bool, default=False
-        .. deprecated:: 0.7.0
-            Leaving ``drop_repeat_donors`` at its default emits a
-            ``DeprecationWarning``. The default changes to ``True`` in 0.8.0.
-            Pass ``drop_repeat_donors=False`` explicitly to silence this warning
-            and keep the current behaviour.
+    drop_repeat_donors : bool, default=True
+        .. versionchanged:: 0.8.0
+            The default changed from ``False`` to ``True``, after 0.7.0 and
+            0.7.1 warned about it. Code that relied on the old default and
+            passes one-dimensional ``groups`` now raises a ``ValueError``
+            asking for either donor ids or ``drop_repeat_donors=False``.
 
         Whether to remove from each test fold any donor who already appears in
         that fold's training rows.
 
-        Leave this ``False`` for a **time-varying** target such as "did this
-        donor give in FY22?". There, a donor appearing in both folds is correct:
-        the training rows precede the test rows in time, which is the point of
-        walk-forward evaluation.
-
-        Set it ``True`` for a **static per-donor** label such as
+        Keep it ``True`` for a **static per-donor** label such as
         ``is_major_donor``, where the same answer is attached to every one of
         that donor's rows, so the model can memorise it from the donor's earlier
         years. That is the leakage described under "What this does not prevent"
-        below.
+        below, and the reason this is the default.
+
+        Set it ``False`` for a **time-varying** target such as "did this donor
+        give in FY22?". There, a donor appearing in both folds is correct: the
+        training rows precede the test rows in time, which is the point of
+        walk-forward evaluation.
 
         When ``True``, ``groups`` must be two-dimensional with shape
         ``(n_samples, 2)``: column 0 the fiscal year, column 1 the donor
@@ -166,8 +166,8 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
     the same answer is attached to every one of that donor's rows and the model
     can memorise it from the training years.
 
-    For that case, set ``drop_repeat_donors=True`` and pass ``groups`` as
-    ``(n_samples, 2)`` with the donor identifier in column 1. Each test fold then
+    For that case, keep the default ``drop_repeat_donors=True`` and pass
+    ``groups`` as ``(n_samples, 2)`` with the donor identifier in column 1. Each test fold then
     excludes donors already present in its training rows. Aggregating to one row
     per donor and using a grouped holdout remains the cleaner option when the
     label has no time dimension at all.
@@ -185,22 +185,12 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
         self,
         n_splits: int = 5,
         gap_years: int = 0,
-        drop_repeat_donors: bool | str = "warn",
+        drop_repeat_donors: bool = True,
     ) -> None:
         # MUST call super().__init__() for BaseCrossValidator compat.
         self.n_splits = n_splits
         self.gap_years = gap_years
         self.drop_repeat_donors = drop_repeat_donors
-        
-        if self.drop_repeat_donors == "warn":
-            warnings.warn(
-                "The FiscalYearGroupedSplitter(drop_repeat_donors=...) default "
-                "of False is deprecated and allows repeat donors across train "
-                "and test folds. This default will change to True in 0.8.0. Pass "
-                "drop_repeat_donors=False explicitly to silence this warning.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
     # ------------------------------------------------------------------
     # Required abstract-method implementations
@@ -270,7 +260,7 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
             If ``drop_repeat_donors=True`` empties a test fold entirely.
         """
         requested_splits, gap_years = self._validate_params()
-        drop_repeat = False if self.drop_repeat_donors == "warn" else bool(self.drop_repeat_donors)
+        drop_repeat = bool(self.drop_repeat_donors)
 
         if groups is None:
             raise ValueError(
@@ -284,9 +274,12 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
         if drop_repeat:
             if groups_arr.ndim != 2 or groups_arr.shape[1] != 2:
                 raise ValueError(
-                    "drop_repeat_donors=True requires `groups` with shape "
-                    "(n_samples, 2): column 0 the fiscal year, column 1 the "
-                    f"donor identifier. Got shape {groups_arr.shape}."
+                    "drop_repeat_donors=True (the default since 0.8.0) requires "
+                    "`groups` with shape (n_samples, 2): column 0 the fiscal "
+                    "year, column 1 the donor identifier. Got shape "
+                    f"{groups_arr.shape}. For a time-varying target such as "
+                    "'gave next year', where a donor belongs in both folds, "
+                    "pass drop_repeat_donors=False with fiscal years alone."
                 )
             donor_ids = groups_arr[:, 1]
             groups_arr = groups_arr[:, 0]
@@ -407,7 +400,7 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
         n_splits, gap_years = self._validate_params()
         if groups is not None:
             groups = np.asarray(groups)
-            drop_repeat = False if self.drop_repeat_donors == "warn" else bool(self.drop_repeat_donors)
+            drop_repeat = bool(self.drop_repeat_donors)
             if drop_repeat and groups.ndim == 2 and groups.shape[1] == 2:
                 groups = groups[:, 0]
             unique_fy = np.unique(groups)

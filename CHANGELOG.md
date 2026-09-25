@@ -36,6 +36,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   Everything but `target` is computed from data through the end of T; the
   output's `fiscal_year` and donor-id columns feed directly into
   `FiscalYearGroupedSplitter`.
+- `examples/notebooks/05_leadership_upgrade.ipynb`: a leadership annual-giving
+  upgrade model, `build_upgrade_snapshots` plus a synthetic activity log into
+  `MajorGiftClassifier`, validated with a fiscal-year walk-forward split and
+  compared against a naive "gave $500+ last FY" rule on top-N upgrade rate.
 
 ## [0.8.0] - 2026-09-24
 

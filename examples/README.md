@@ -26,6 +26,7 @@ notebook before it breaks a reader's copy-paste):
 | [`01_quickstart_propensity.ipynb`](notebooks/01_quickstart_propensity.ipynb) | The README quickstart, plus a call list, a distribution plot, and permutation importance. |
 | [`02_temporal_leakage.ipynb`](notebooks/02_temporal_leakage.ipynb) | Builds the same features two ways, as-of each year versus over the whole export, and measures the inflation. This is the library's central argument. |
 | [`03_grateful_patient_pipeline.ipynb`](notebooks/03_grateful_patient_pipeline.ipynb) | The academic-medical-center path: encounters, an `as_of` cutoff, service-line weighting, the solicitation window, routed through a `ColumnTransformer`. |
+| [`05_leadership_upgrade.ipynb`](notebooks/05_leadership_upgrade.ipynb) | Ranks mid-level donors by odds of a leadership-gift upgrade next fiscal year, validated with a walk-forward split and compared against a naive "gave $500+ last FY" rule. |
 
 `examples/quickstart.ipynb` is a redirect to `01_quickstart_propensity.ipynb`, kept for one release
 so old links do not break.

@@ -303,3 +303,186 @@ def test_cli_features_then_train_then_score(tmp_path, capsys):
     scored = pd.read_csv(scores_path)
     assert "score" in scored.columns
     assert len(scored) == 80
+
+
+# --------------------------------------------------------------------------- #
+# `features --activity` / `--as-of`
+# --------------------------------------------------------------------------- #
+def test_cli_features_activity_flag_adds_engagement_columns(tmp_path):
+    data = _make_gift_export(tmp_path, n_donors=3)
+    activity_path = tmp_path / "activities.csv"
+    activity_path.write_text("contact_id,activity_date\n0,2025-01-01\n1,2025-02-01\n")
+    out_path = tmp_path / "features.csv"
+    main(["features", "--source", "raisers_edge", "--data", str(data),
+          "--activity", f"event={activity_path}", "--out", str(out_path)])
+    feats = pd.read_csv(out_path)
+    assert "event_count_12m" in feats.columns
+    row = feats.loc[feats["contact_id"] == 0].iloc[0]
+    assert row["event_count_12m"] == 1
+
+
+def test_cli_features_activity_as_of_cutoff(tmp_path):
+    data = _make_gift_export(tmp_path, n_donors=2)
+    activity_path = tmp_path / "activities.csv"
+    activity_path.write_text("contact_id,activity_date\n0,2025-06-01\n")
+    out_path = tmp_path / "features.csv"
+    main(["features", "--source", "raisers_edge", "--data", str(data),
+          "--activity", f"event={activity_path}", "--as-of", "2025-01-01",
+          "--out", str(out_path)])
+    feats = pd.read_csv(out_path)
+    # The activity is after --as-of: cut before anything is counted, so the
+    # event type has no rows left anywhere and contributes no columns.
+    assert "event_count_12m" not in feats.columns
+
+
+def test_cli_features_activity_bad_spec_exits(tmp_path):
+    data = _make_gift_export(tmp_path, n_donors=2)
+    with pytest.raises(SystemExit, match="--activity must be TYPE=PATH"):
+        main(["features", "--source", "raisers_edge", "--data", str(data),
+              "--activity", "no-equals-sign"])
+
+
+# --------------------------------------------------------------------------- #
+# `train --task upgrade`
+# --------------------------------------------------------------------------- #
+_UPGRADE_YEARS = ["2020-08-01", "2021-08-01", "2022-08-01", "2023-08-01", "2024-08-01"]
+_UPGRADE_ARCHETYPES = {
+    "flat_high": [900, 900, 900, 900, 900],
+    "early_riser": [600, 1050, 1200, 1400, 1600],
+    "late_riser": [300, 500, 700, 1100, 1300],
+    "flat_low": [400, 400, 400, 400, 400],
+}
+
+
+def _make_upgrade_gift_export(tmp_path, name="upgrade_gifts.csv", n_per_group=20):
+    rows = ["Constituent ID,Gift Date,Gift Amount\n"]
+    for archetype, amounts in _UPGRADE_ARCHETYPES.items():
+        for i in range(n_per_group):
+            donor_id = f"{archetype}_{i}"
+            for year, amount in zip(_UPGRADE_YEARS, amounts):
+                rows.append(f"{donor_id},{year},{amount}.00\n")
+    path = tmp_path / name
+    path.write_text("".join(rows))
+    return path
+
+
+def test_cli_train_task_upgrade_writes_scored_csv_and_prints_report(tmp_path, capsys):
+    data = _make_upgrade_gift_export(tmp_path)
+    out_path = tmp_path / "scored.csv"
+    main(["train", "--task", "upgrade", "--source", "raisers_edge",
+          "--data", str(data), "--out", str(out_path), "--random-state", "0"])
+
+    scored = pd.read_csv(out_path)
+    assert len(scored) == 40  # flat_high + flat_low, still band-qualifying
+    assert list(scored.columns) == [
+        "donor_id", "fiscal_year", "affinity_score", "rank", "decile",
+        "top_reasons", "suggested_ask",
+    ]
+    out = capsys.readouterr().out
+    assert "Wrote 40 scored rows" in out
+    assert "n_training_rows" in out
+
+
+def test_cli_train_task_upgrade_requires_source(tmp_path):
+    data = _make_upgrade_gift_export(tmp_path)
+    with pytest.raises(SystemExit, match="requires --source"):
+        main(["train", "--task", "upgrade", "--data", str(data),
+              "--out", str(tmp_path / "scored.csv")])
+
+
+def test_cli_train_task_upgrade_npsp_source(tmp_path):
+    rows = ["Account ID,Close Date,Amount,Stage\n"]
+    for archetype, amounts in _UPGRADE_ARCHETYPES.items():
+        for i in range(10):
+            donor_id = f"{archetype}_{i}"
+            for year, amount in zip(_UPGRADE_YEARS, amounts):
+                rows.append(f"{donor_id},{year},{amount}.00,Closed Won\n")
+    data = tmp_path / "opportunities.csv"
+    data.write_text("".join(rows))
+
+    out_path = tmp_path / "scored.csv"
+    main(["train", "--task", "upgrade", "--source", "npsp", "--data", str(data),
+          "--out", str(out_path), "--random-state", "0"])
+    scored = pd.read_csv(out_path)
+    assert len(scored) == 20  # flat_high + flat_low, 10 each
+
+
+def test_cli_train_task_upgrade_with_donors_csv(tmp_path):
+    data = _make_upgrade_gift_export(tmp_path)
+    donors_path = tmp_path / "donors.csv"
+    donor_ids = [f"{a}_{i}" for a in _UPGRADE_ARCHETYPES for i in range(20)]
+    lines = ["donor_id,wealth_rating\n"] + [f"{d},A\n" for d in donor_ids]
+    donors_path.write_text("".join(lines))
+
+    out_path = tmp_path / "scored.csv"
+    main(["train", "--task", "upgrade", "--source", "raisers_edge",
+          "--data", str(data), "--donors", str(donors_path),
+          "--out", str(out_path), "--random-state", "0"])
+    assert len(pd.read_csv(out_path)) == 40
+
+
+def test_cli_train_task_upgrade_donors_csv_requires_donor_id_column(tmp_path):
+    data = _make_upgrade_gift_export(tmp_path)
+    donors_path = tmp_path / "donors.csv"
+    donors_path.write_text("not_donor_id,wealth_rating\n1,A\n")
+    with pytest.raises(SystemExit, match="donor_id"):
+        main(["train", "--task", "upgrade", "--source", "raisers_edge",
+              "--data", str(data), "--donors", str(donors_path),
+              "--out", str(tmp_path / "scored.csv")])
+
+
+def test_cli_train_plain_task_unaffected_by_new_flags(tmp_path):
+    """--task defaults to 'plain' and every existing train behaviour is
+    untouched: this is the same call test_cli_train_score_validate makes."""
+    data = _make_csv(tmp_path, "train.csv")
+    model_path = tmp_path / "m.joblib"
+    main(["train", "--data", str(data), "--target", "is_major_donor",
+          "--features", FEATURES, "--out", str(model_path)])
+    assert model_path.exists()
+
+
+def test_python_and_cli_upgrade_paths_produce_identical_scores(tmp_path):
+    """The brief's acceptance test: score_upgrade_prospects called directly
+    on the parsed raw export must match `train --task upgrade`'s CLI output
+    for the same three CSVs, to floating-point tolerance."""
+    from philanthropy.cli import _read_activities, _read_raw_gifts
+    from philanthropy.models import score_upgrade_prospects
+
+    data = _make_upgrade_gift_export(tmp_path)
+    activity_path = tmp_path / "activities.csv"
+    donor_ids = [f"{a}_{i}" for a in _UPGRADE_ARCHETYPES for i in range(20)]
+    activity_path.write_text(
+        "contact_id,activity_date\n"
+        + "\n".join(f"{d},2024-08-01" for d in donor_ids[:10])
+        + "\n"
+    )
+    donors_path = tmp_path / "donors.csv"
+    donors_path.write_text(
+        "donor_id,wealth_rating\n" + "\n".join(f"{d},A" for d in donor_ids) + "\n"
+    )
+
+    gifts = _read_raw_gifts("raisers_edge", str(data))
+    activities = _read_activities([f"event={activity_path}"])
+    donors = pd.read_csv(donors_path).set_index("donor_id")
+    direct_scores, direct_report = score_upgrade_prospects(
+        gifts, activities=activities, donors=donors, random_state=0
+    )
+
+    scored_path = tmp_path / "scored.csv"
+    main([
+        "train", "--task", "upgrade", "--source", "raisers_edge",
+        "--data", str(data), "--activity", f"event={activity_path}",
+        "--donors", str(donors_path), "--out", str(scored_path),
+        "--random-state", "0",
+    ])
+    cli_scores = pd.read_csv(scored_path).set_index("donor_id").sort_index()
+    direct_sorted = direct_scores.sort_index()
+
+    assert list(cli_scores.index) == list(direct_sorted.index)
+    pd.testing.assert_series_equal(
+        cli_scores["affinity_score"].astype(float),
+        direct_sorted["affinity_score"].astype(float),
+        check_names=False, check_exact=False,
+    )
+    assert list(cli_scores["rank"]) == list(direct_sorted["rank"])
+    assert list(cli_scores["decile"]) == list(direct_sorted["decile"])

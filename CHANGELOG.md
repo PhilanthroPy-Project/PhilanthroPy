@@ -53,6 +53,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `philanthropy train --task upgrade`; `philanthropy features` gained
   repeated `--activity TYPE=PATH` and `--as-of` flags to fold engagement
   data into the feature table the same way.
+- `examples/notebooks/05_leadership_upgrade.ipynb`: a leadership annual-giving
+  upgrade model, `build_upgrade_snapshots` plus a synthetic activity log into
+  `MajorGiftClassifier`, validated with a fiscal-year walk-forward split and
+  compared against a naive "gave $500+ last FY" rule on top-N upgrade rate.
 
 ## [0.8.0] - 2026-09-24
 

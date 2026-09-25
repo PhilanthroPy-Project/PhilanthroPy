@@ -29,6 +29,7 @@ from typing import Any, Dict, Iterable, Mapping, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from sklearn.metrics import average_precision_score, roc_auc_score
 
 from philanthropy.ingest import build_upgrade_snapshots
 from philanthropy.ingest._upgrade_snapshots import (
@@ -44,9 +45,14 @@ from ._propensity import MajorGiftClassifier
 
 __all__ = ["score_upgrade_prospects"]
 
-_TOP_N = 10
 _TOP_REASONS = 3
 _LOW_DATA_ROWS = 500
+# CalibratedClassifierCV (inside MajorGiftClassifier) defaults to a 5-fold
+# cross-validation internally, which needs at least this many historical
+# rows to split at all; fewer crashes deep inside sklearn ("Cannot have
+# number of splits n_splits=5 greater than the number of samples") instead of
+# failing with a message that points at the actual cause.
+_MIN_TRAINING_ROWS = 5
 
 
 def score_upgrade_prospects(
@@ -58,6 +64,8 @@ def score_upgrade_prospects(
     band: Tuple[float, float] = (100.0, 999.0),
     fiscal_year_start: int = 7,
     as_of: Optional[Union[str, pd.Timestamp]] = None,
+    top_n: Optional[int] = None,
+    baseline_giving_threshold: Optional[float] = None,
     random_state: Optional[int] = None,
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """Fit an upgrade model on history, then score today's band-qualifying donors.
@@ -101,6 +109,18 @@ def score_upgrade_prospects(
         the historical training rows or the current scored row. Defaults to
         the latest gift date in ``gifts``, the same leakage-free default
         every other ``reference_date``-style parameter in this package uses.
+    top_n : int, optional
+        How many of the held-out validation fold's highest-scored donors
+        count as "the top" for ``model_upgrade_rate_top_n`` and the "top N
+        by FY total" baseline. Defaults to roughly 10% of the validation
+        fold (at least 1), rather than a fixed count: a fixed ``top_n`` reads
+        as a near-perfect rate on a small fold and an uninformative one on a
+        large real-world validation year (e.g. reporting 1.0 on a fixed
+        top-10 against a 64,178-row fold whose true top-1% lift was 2.24x).
+        Clipped to the fold size if larger.
+    baseline_giving_threshold : float, optional
+        The FY T giving level the "gave >= X last FY" naive baseline uses.
+        Defaults to ``threshold / 2``.
     random_state : int, optional
         Seed forwarded to the classifier fits and to the permutation
         importance call, for reproducible scores and reasons.
@@ -110,7 +130,8 @@ def score_upgrade_prospects(
     scores : pandas.DataFrame
         One row per currently band-qualifying donor, indexed by ``donor_id``,
         sorted by ``affinity_score`` descending. Columns: ``fiscal_year`` (the
-        current, possibly still-open FY); ``affinity_score`` (0-100, see
+        current, possibly still-open FY, reported for reference only --
+        it is not a model feature, see Notes); ``affinity_score`` (0-100, see
         :meth:`~philanthropy.models.MajorGiftClassifier.predict_affinity_score`);
         ``rank`` (1 = highest score); ``decile`` (1 = top 10% by rank, 10 =
         bottom); ``top_reasons`` (a tuple of up to 3 ``(feature_name,
@@ -123,18 +144,45 @@ def score_upgrade_prospects(
         ``500`` training rows); ``activity_id_match_warnings`` (list of str,
         captured from ``activities_to_features``'s own low-match-rate
         warning, not recomputed here); ``validated`` (whether a walk-forward
-        held-out fold existed at all), and, when it did,
-        ``validation_fiscal_year``, ``n_validation_rows``, ``top_n``,
-        ``model_upgrade_rate_top_n``, ``baseline_upgrade_rate_top_n``
-        (the naive "highest FY total" rule, same ``top_n``),
-        ``overall_upgrade_rate``, and ``lift_over_baseline`` (the two rates'
-        ratio; ``None`` if the baseline rate is 0).
+        held-out fold existed at all), and, when it did:
+
+        - ``validation_fiscal_year``, ``n_validation_rows``: which FY the
+          held-out fold is, and how many rows it has.
+        - ``top_n``: how many of the fold's highest-scored donors count as
+          "the top", see the ``top_n`` parameter.
+        - ``model_upgrade_rate_top_n``: the actual upgrade rate among the
+          model's own top ``top_n`` donors by predicted score.
+        - ``baseline_topn_fy_total_upgrade_rate`` / ``lift_topn_fy_total``:
+          the naive "top N by FY total" rule's upgrade rate over the same
+          ``top_n``, and the model rate's ratio to it (``None`` if the
+          baseline rate is 0).
+        - ``baseline_giving_threshold``, ``baseline_gave_threshold_upgrade_rate``
+          / ``lift_over_gave_threshold``: the naive "gave >= X last FY" rule
+          (``X`` is ``baseline_giving_threshold``), its upgrade rate among
+          donors who cleared it, and the model rate's ratio to it (``None``
+          if nobody in the fold cleared it, or the resulting rate is 0).
+        - ``overall_upgrade_rate``: the fold's overall positive rate.
+        - ``deciles``: a list of 10 dicts, one per predicted-score decile (1
+          = highest-scored 10% of the fold, 10 = lowest), each with
+          ``decile``, ``n`` (rows in that decile), ``actual_rate`` (observed
+          upgrade rate) and ``mean_predicted`` (mean predicted probability).
+          A finer-grained, fixed-``top_n``-independent view of the same
+          ranking; see the ``top_n`` parameter for why a single fixed count
+          is misleading on its own.
+        - ``roc_auc``, ``average_precision``: from :mod:`sklearn.metrics`
+          on the held-out fold; ``None`` if the fold has only one class.
 
     Raises
     ------
     ValueError
-        If ``band[0] > band[1]``, or if there is not one historical
-        ``(donor, fiscal year)`` row to train on as of ``as_of``.
+        If ``band[0] > band[1]``; if there is not one historical
+        ``(donor, fiscal year)`` row to train on as of ``as_of``; if there
+        are fewer than 5 historical rows (too few for
+        :class:`~philanthropy.models.MajorGiftClassifier`'s internal 5-fold
+        calibration to split at all); or if a walk-forward training fold, or
+        the full historical training set when a current donor still needs
+        scoring, has only one target class (nothing to learn or nothing to
+        score: no donor in it ever upgraded, or every one did).
     KeyError
         If ``gifts`` is missing ``donor_id``, ``gift_date`` or
         ``gift_amount``.
@@ -147,7 +195,13 @@ def score_upgrade_prospects(
     ``donors`` column (e.g. a wealth-rating letter grade) is still joined and
     returned for reference but dropped before fitting, the simplest rule
     that needs no per-column encoding policy for a feature nobody asked this
-    function to build. A current-row feature column absent from history (or
+    function to build. ``fiscal_year`` is excluded from the model features
+    even though it is numeric: it is not a donor-specific signal, and the
+    current row's fiscal year always sits outside the range the model was
+    trained on (every historical row is a strictly earlier FY), so it can
+    only ever generalise as noise or, worse, an ordering artefact. It is
+    still returned as an output column and left out of ``top_reasons`` for
+    the same reason. A current-row feature column absent from history (or
     vice versa), e.g. an activity type that only shows up in one window, is
     reindexed to 0.0 rather than dropped, matching
     ``activities_to_features``'s own "no rows of that type -> 0" rule.
@@ -273,7 +327,8 @@ def score_upgrade_prospects(
 
     feature_cols = [
         c for c in historical_snap.columns
-        if c != "target" and pd.api.types.is_numeric_dtype(historical_snap[c])
+        if c not in ("target", "fiscal_year")
+        and pd.api.types.is_numeric_dtype(historical_snap[c])
     ]
     X = historical_snap[feature_cols].to_numpy(dtype="float64")
     y = historical_snap["target"].to_numpy()
@@ -290,6 +345,16 @@ def score_upgrade_prospects(
         )
         warnings.warn(low_data_message, UserWarning, stacklevel=2)
 
+    # Too few historical rows crashes deep inside CalibratedClassifierCV
+    # (every downstream fit needs at least this many rows to split), with a
+    # confusing error if left unchecked.
+    _check_min_rows(len(historical_snap), as_of_ts)
+
+    gave_threshold = (
+        float(baseline_giving_threshold)
+        if baseline_giving_threshold is not None else threshold / 2.0
+    )
+
     report: Dict[str, Any] = {
         "n_training_rows": int(len(historical_snap)),
         "n_training_fiscal_years": n_unique_fys,
@@ -303,9 +368,15 @@ def score_upgrade_prospects(
         "n_validation_rows": 0,
         "top_n": None,
         "model_upgrade_rate_top_n": None,
-        "baseline_upgrade_rate_top_n": None,
+        "baseline_topn_fy_total_upgrade_rate": None,
+        "lift_topn_fy_total": None,
+        "baseline_giving_threshold": gave_threshold,
+        "baseline_gave_threshold_upgrade_rate": None,
+        "lift_over_gave_threshold": None,
         "overall_upgrade_rate": None,
-        "lift_over_baseline": None,
+        "deciles": None,
+        "roc_auc": None,
+        "average_precision": None,
     }
 
     if n_unique_fys >= 2:
@@ -316,27 +387,53 @@ def score_upgrade_prospects(
         eval_model = MajorGiftClassifier(random_state=random_state).fit(
             X[train_idx], y[train_idx]
         )
+        # A single-class training fold fits fine but its predict_proba comes
+        # back with one column, not two: guard the call site rather than let
+        # the [:, 1] below raise a confusing IndexError.
+        _check_two_classes(eval_model.classes_, as_of_ts, "The walk-forward training fold")
         y_test = y[test_idx]
         proba_test = eval_model.predict_proba(X[test_idx])[:, 1]
         fy_total_test = historical_snap["fy_total"].to_numpy()[test_idx]
 
-        top_n = min(_TOP_N, len(test_idx))
-        model_top_n = np.argsort(-proba_test)[:top_n]
-        baseline_top_n = np.argsort(-fy_total_test)[:top_n]
+        n_val = len(test_idx)
+        resolved_top_n = top_n if top_n is not None else max(1, round(0.1 * n_val))
+        top_n_eff = min(resolved_top_n, n_val)
+        model_top_n = np.argsort(-proba_test)[:top_n_eff]
+        baseline_top_n = np.argsort(-fy_total_test)[:top_n_eff]
         baseline_rate = float(y_test[baseline_top_n].mean())
+        model_rate = float(y_test[model_top_n].mean())
+
+        gave_threshold_mask = fy_total_test >= gave_threshold
+        n_gave_threshold = int(gave_threshold_mask.sum())
+        gave_threshold_rate = (
+            float(y_test[gave_threshold_mask].mean()) if n_gave_threshold > 0 else None
+        )
+
+        multiclass_fold = np.unique(y_test).size >= 2
+        roc_auc = float(roc_auc_score(y_test, proba_test)) if multiclass_fold else None
+        average_precision = (
+            float(average_precision_score(y_test, proba_test)) if multiclass_fold else None
+        )
 
         report.update({
             "validated": True,
             "validation_fiscal_year": int(fys[test_idx][0]),
-            "n_validation_rows": int(len(test_idx)),
-            "top_n": int(top_n),
-            "model_upgrade_rate_top_n": float(y_test[model_top_n].mean()),
-            "baseline_upgrade_rate_top_n": baseline_rate,
-            "overall_upgrade_rate": float(y_test.mean()),
-            "lift_over_baseline": (
-                float(y_test[model_top_n].mean() / baseline_rate)
-                if baseline_rate > 0 else None
+            "n_validation_rows": int(n_val),
+            "top_n": int(top_n_eff),
+            "model_upgrade_rate_top_n": model_rate,
+            "baseline_topn_fy_total_upgrade_rate": baseline_rate,
+            "lift_topn_fy_total": (
+                float(model_rate / baseline_rate) if baseline_rate > 0 else None
             ),
+            "baseline_gave_threshold_upgrade_rate": gave_threshold_rate,
+            "lift_over_gave_threshold": (
+                float(model_rate / gave_threshold_rate)
+                if gave_threshold_rate else None
+            ),
+            "overall_upgrade_rate": float(y_test.mean()),
+            "deciles": _decile_report(proba_test, y_test),
+            "roc_auc": roc_auc,
+            "average_precision": average_precision,
         })
         importance_df = donor_feature_importance(
             eval_model, X[test_idx], y[test_idx], feature_names=feature_cols,
@@ -362,6 +459,10 @@ def score_upgrade_prospects(
     if current_snap is None or current_snap.empty:
         scores = _empty_scores_frame()
     else:
+        # Same single-class guard as the walk-forward fold above: only
+        # needed here (not unconditionally), since with no current row to
+        # score there is nothing that would call predict_proba at all.
+        _check_two_classes(model.classes_, as_of_ts, "The historical training set")
         X_current = current_snap.reindex(columns=feature_cols, fill_value=0.0)
         affinity = model.predict_affinity_score(X_current.to_numpy(dtype="float64"))
         reasons = _top_reasons(X_current, importance_df)
@@ -389,6 +490,62 @@ def score_upgrade_prospects(
 # --------------------------------------------------------------------------- #
 # Internals
 # --------------------------------------------------------------------------- #
+def _check_min_rows(n_rows: int, as_of_ts: pd.Timestamp) -> None:
+    """Raise a clear ``ValueError`` instead of letting a too-small training
+    set crash inside ``MajorGiftClassifier``'s internal
+    ``CalibratedClassifierCV(cv=5)``. See ``score_upgrade_prospects``'s
+    ``Raises`` section."""
+    if n_rows < _MIN_TRAINING_ROWS:
+        raise ValueError(
+            f"Only {n_rows} historical donor-year row(s) as of "
+            f"{as_of_ts.date()} (need at least {_MIN_TRAINING_ROWS}): "
+            "MajorGiftClassifier calibrates its probabilities with an "
+            "internal 5-fold cross-validation, which needs at least that "
+            "many rows to split at all. Gather more historical data, or "
+            "widen `band`/lower `threshold` to enlarge the candidate "
+            "population."
+        )
+
+
+def _check_two_classes(classes: np.ndarray, as_of_ts: pd.Timestamp, scope: str) -> None:
+    """Raise a clear ``ValueError`` instead of letting a single-class fit
+    crash a caller's later ``predict_proba(...)[:, 1]`` (a single-class fit
+    succeeds, but its ``predict_proba`` only has one column). See
+    ``score_upgrade_prospects``'s ``Raises`` section."""
+    if classes.size < 2:
+        outcome = "an upgrade (target=1)" if classes[0] == 1 else "not an upgrade (target=0)"
+        raise ValueError(
+            f"{scope} has only one class as of {as_of_ts.date()}: every row "
+            f"is {outcome}. There is nothing to learn from a single-class "
+            "history; this can happen with too few fiscal years of data, "
+            "or a `threshold`/`band` that no historical donor ever crossed "
+            "(or that every one did)."
+        )
+
+
+def _decile_report(proba: np.ndarray, y_true: np.ndarray) -> list:
+    """Ten dicts, one per predicted-score decile of a held-out fold (1 =
+    highest-scored 10%, 10 = lowest), each with ``decile``, ``n``,
+    ``actual_rate`` and ``mean_predicted``. See ``score_upgrade_prospects``'s
+    ``Returns`` section."""
+    n = len(proba)
+    ranks = np.empty(n, dtype="int64")
+    ranks[np.argsort(-proba, kind="stable")] = np.arange(1, n + 1)
+    deciles = np.ceil(ranks / n * 10).clip(max=10).astype("int64")
+
+    rows = []
+    for d in range(1, 11):
+        mask = deciles == d
+        n_d = int(mask.sum())
+        rows.append({
+            "decile": d,
+            "n": n_d,
+            "actual_rate": float(y_true[mask].mean()) if n_d > 0 else None,
+            "mean_predicted": float(proba[mask].mean()) if n_d > 0 else None,
+        })
+    return rows
+
+
 def _top_reasons(
     X: pd.DataFrame, importance_df: pd.DataFrame, top_k: int = _TOP_REASONS
 ) -> list:

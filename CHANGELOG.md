@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added
+- `philanthropy.ingest.map_columns(df, mapping, *, required=...)`: renames a
+  user-supplied export's headers to canonical names and raises one
+  `ValueError` listing every still-missing required column, for callers
+  building a column-mapping UI over an arbitrary CRM export.
+
 ## [0.8.0] - 2026-09-24
 
 The first release with a Raiser's Edge on-ramp and `as_of` scoring cutoffs on the

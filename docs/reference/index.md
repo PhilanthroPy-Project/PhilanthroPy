@@ -59,6 +59,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `map_columns` | `ingest` | The one-error-per-missing-column message shape may still change. |
 | `activities_to_features` | `ingest` | The activity-type feature set (`_count_12m`, `_distinct`, ...) may grow as more source types are onboarded. |
 | `read_gifts`, `GIFT_SOURCES` | `ingest` | A thin preset registry over the CiviCRM, Raiser's Edge and NPSP bridges above; it inherits their tier and grows a new preset name as they do. |
+| `build_upgrade_snapshots` | `ingest` | The gift-derived feature set (trend, consecutive years given, ...) is a minimal starting recipe and is likely to be refined. |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Chart composition is presentation, not contract. |
 | `fetch_kdd98_donors` | `datasets` | Returns the raw upstream columns untyped; may gain as-of date parsing as the real-data leakage replication in #124 lands. |
 | `make_donor_panel` | `datasets` | The returned dict may gain keys (pledges, appeals, soft credits) as more of the library needs panel-shaped fixtures; existing keys and their columns will not change silently. |

@@ -25,6 +25,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `<type>_hours_12m` / `<type>_amount_12m` when those columns are present),
   cut at `as_of` so nothing dated after the cutoff is counted. A new activity
   type never needs new model code; it just yields its own columns.
+- `philanthropy.ingest.build_upgrade_snapshots(gifts, *, fiscal_years,
+  threshold=1000, band=(100, 999), fiscal_year_start=7, activities=None,
+  donors=None)`: builds a per-donor, per-fiscal-year training table for an
+  upgrade model, one row per donor whose fiscal-year-T giving lands in the
+  upgrade band, with gift-derived features (prior-year totals, trend,
+  largest gift, gift count, consecutive years given, months since last
+  gift), optional joined activity and donor-attribute columns, and a
+  `target` reading whether the donor crossed `threshold` in fiscal year T+1.
+  Everything but `target` is computed from data through the end of T; the
+  output's `fiscal_year` and donor-id columns feed directly into
+  `FiscalYearGroupedSplitter`.
 
 ## [0.8.0] - 2026-09-24
 

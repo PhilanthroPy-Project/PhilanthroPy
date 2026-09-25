@@ -30,6 +30,12 @@ missing after the rename.
 (event attendance, volunteer shifts, email clicks, ...) into per-donor,
 per-type engagement features, generalising the pattern above to an
 open-ended set of activity types discovered from the data itself.
+
+``build_upgrade_snapshots`` builds a per-donor, per-fiscal-year training
+table for an upgrade model: one row per (donor, fiscal year T) for every
+donor whose FY T giving falls in a mid-level band, features computed only
+from data through the end of T, and a target reading whether FY T+1 crossed
+a leadership threshold.
 """
 
 from ._activities import activities_to_features
@@ -52,11 +58,13 @@ from ._raisers_edge import (
     raisers_edge_gifts_to_features,
     read_raisers_edge_gifts,
 )
+from ._upgrade_snapshots import build_upgrade_snapshots
 
 __all__ = [
     "DEFAULT_EXCLUDED_GIFT_TYPES",
     "DEFAULT_EXCLUDED_STAGES",
     "activities_to_features",
+    "build_upgrade_snapshots",
     "civicrm_contributions_to_features",
     "constituent_events_to_features",
     "map_columns",

@@ -25,6 +25,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `<type>_hours_12m` / `<type>_amount_12m` when those columns are present),
   cut at `as_of` so nothing dated after the cutoff is counted. A new activity
   type never needs new model code; it just yields its own columns.
+- `philanthropy.ingest.read_gifts(path_or_df, *, source=...)`: reads (if given
+  a path) and aggregates a gift export in one call, looking up the CiviCRM,
+  Raiser's Edge or NPSP reader-and-aggregator pair by name from the new
+  `GIFT_SOURCES` registry, for a caller working with more than one CRM export
+  format. Keyword arguments other than `source` pass straight through to the
+  matched aggregator, so `exclude_stages`, `exclude_gift_types` and `statuses`
+  all still work.
 - `philanthropy.ingest.build_upgrade_snapshots(gifts, *, fiscal_years,
   threshold=1000, band=(100, 999), fiscal_year_start=7, activities=None,
   donors=None)`: builds a per-donor, per-fiscal-year training table for an

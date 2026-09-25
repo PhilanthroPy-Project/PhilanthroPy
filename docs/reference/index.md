@@ -58,6 +58,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `npsp_opportunities_to_features`, `read_npsp_opportunities`, `DEFAULT_EXCLUDED_STAGES` | `ingest` | Tracks NPSP Opportunity export labels and a per-org-configurable stage vocabulary; the excluded-stage default will grow as real exports arrive. |
 | `map_columns` | `ingest` | The one-error-per-missing-column message shape may still change. |
 | `activities_to_features` | `ingest` | The activity-type feature set (`_count_12m`, `_distinct`, ...) may grow as more source types are onboarded. |
+| `read_gifts`, `GIFT_SOURCES` | `ingest` | A thin preset registry over the CiviCRM, Raiser's Edge and NPSP bridges above; it inherits their tier and grows a new preset name as they do. |
 | `build_upgrade_snapshots` | `ingest` | The gift-derived feature set (trend, consecutive years given, ...) is a minimal starting recipe and is likely to be refined. |
 | `score_upgrade_prospects` | `models` | The top-reasons heuristic (z-score within the scored population weighted by global permutation importance) and the top-N/lift report shape are a starting recipe over `build_upgrade_snapshots`, likely to be refined; `suggested_ask` is left `NaN` pending a real ask-amount training signal. |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Chart composition is presentation, not contract. |

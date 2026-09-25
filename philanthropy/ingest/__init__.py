@@ -31,6 +31,10 @@ missing after the rename.
 per-type engagement features, generalising the pattern above to an
 open-ended set of activity types discovered from the data itself.
 
+``read_gifts(path_or_df, source=...)`` looks up the CiviCRM, Raiser's Edge or
+NPSP reader-and-aggregator pair by name, for a caller working with more than
+one CRM export format.
+
 ``build_upgrade_snapshots`` builds a per-donor, per-fiscal-year training
 table for an upgrade model: one row per (donor, fiscal year T) for every
 donor whose FY T giving falls in a mid-level band, features computed only
@@ -58,11 +62,13 @@ from ._raisers_edge import (
     raisers_edge_gifts_to_features,
     read_raisers_edge_gifts,
 )
+from ._read_gifts import GIFT_SOURCES, read_gifts
 from ._upgrade_snapshots import build_upgrade_snapshots
 
 __all__ = [
     "DEFAULT_EXCLUDED_GIFT_TYPES",
     "DEFAULT_EXCLUDED_STAGES",
+    "GIFT_SOURCES",
     "activities_to_features",
     "build_upgrade_snapshots",
     "civicrm_contributions_to_features",
@@ -72,6 +78,7 @@ __all__ = [
     "raisers_edge_gifts_to_features",
     "read_civicrm_contributions",
     "read_constituent_events",
+    "read_gifts",
     "read_npsp_opportunities",
     "read_raisers_edge_gifts",
 ]

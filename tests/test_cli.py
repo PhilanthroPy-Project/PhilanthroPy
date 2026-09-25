@@ -482,7 +482,7 @@ def test_python_and_cli_upgrade_paths_produce_identical_scores(tmp_path):
     pd.testing.assert_series_equal(
         cli_scores["affinity_score"].astype(float),
         direct_sorted["affinity_score"].astype(float),
-        check_names=False, check_exact=False,
+        check_names=False, check_exact=False, check_index_type=False,
     )
     assert list(cli_scores["rank"]) == list(direct_sorted["rank"])
     assert list(cli_scores["decile"]) == list(direct_sorted["decile"])

@@ -115,7 +115,7 @@ the threshold from your team's capacity, not from this table.
 
 > **Try it now, zero install:** [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/notebooks/01_quickstart_propensity.ipynb)
 >
-> **More notebooks:** [`02_temporal_leakage.ipynb`](examples/notebooks/02_temporal_leakage.ipynb) measures where the leakage this library exists to prevent actually comes from; [`03_grateful_patient_pipeline.ipynb`](examples/notebooks/03_grateful_patient_pipeline.ipynb) builds the academic-medical-center path end to end. All three run in CI on every push (`pytest --nbmake`).
+> **More notebooks:** [`02_temporal_leakage.ipynb`](examples/notebooks/02_temporal_leakage.ipynb) measures where the leakage this library exists to prevent actually comes from; [`03_grateful_patient_pipeline.ipynb`](examples/notebooks/03_grateful_patient_pipeline.ipynb) builds the academic-medical-center path end to end; [`04_kdd98_end_to_end.ipynb`](examples/notebooks/04_kdd98_end_to_end.ipynb) replicates the leakage measurement on a real donor file; [`05_leadership_upgrade.ipynb`](examples/notebooks/05_leadership_upgrade.ipynb) builds the mid-level-to-leadership upgrade model on synthetic multi-source data. All five run in CI on every push (`pytest --nbmake`).
 >
 > **Runnable scripts:** [`examples/quickstart.py`](examples/quickstart.py) and [`examples/unischema_to_scores.py`](examples/unischema_to_scores.py) run end to end and are smoke-tested in CI.
 
@@ -154,7 +154,7 @@ scores <- model$predict_affinity_score(X)   # 0-100 affinity scores
 `pip install philanthropy` also puts a `philanthropy` command on your PATH. Gift export in, scored CSV out, no Python file to write.
 
 ```bash
-# roll a raw Blackbaud Raiser's Edge (or CiviCRM) gift export up to one row per donor
+# roll a raw Blackbaud Raiser's Edge, Salesforce NPSP, or CiviCRM gift export up to one row per donor
 philanthropy features --source raisers_edge --data gifts.csv --out features.csv
 
 philanthropy train --data features.csv --target is_major_donor \
@@ -164,9 +164,30 @@ philanthropy train --data features.csv --target is_major_donor \
 philanthropy score --data features.csv --model model.joblib --out scored.csv
 ```
 
-`features` knows that a Raiser's Edge pledge and the payments against it are separate gift records, so it does not count a committed dollar twice. It does not invent a label, though: `train --target` needs a column you define yourself, from your own definition of a major donor.
+`features` knows that a Raiser's Edge pledge (or an NPSP Recurring Donation instalment) and the payments against it are separate gift records, so it does not count a committed dollar twice. It does not invent a label, though: `train --target` needs a column you define yourself, from your own definition of a major donor.
 
 `philanthropy validate` reports precision/recall/F1/ROC-AUC on a labelled CSV; point it at a holdout year, not the year you trained on. Full walkthrough: **[Use the CLI](docs/how-to/use_the_cli.md)**.
+
+#### Multiple files and a built-in upgrade model, still no Python
+
+`features` also folds in engagement data (event attendance, volunteer hours, ...) from any number of files, each tagged with its own type:
+
+```bash
+philanthropy features --source raisers_edge --data gifts.csv \
+  --activity event=events.csv --activity volunteer=shifts.csv \
+  --as-of 2025-06-30 --out features.csv
+```
+
+And `train --task upgrade` skips the "define your own label" step entirely for one specific, common question: which of your current $100–999 donors is likely to cross $1,000 next fiscal year? It reads the raw gift export directly, trains and validates on your fiscal-year history, and writes a scored, ranked CSV with a suggested next ask:
+
+```bash
+philanthropy train --task upgrade --source raisers_edge --data gifts.csv \
+  --activity event=events.csv --donors donors.csv \
+  --threshold 1000 --band 100 999 --fiscal-year-start 7 \
+  --out upgrade_scores.csv
+```
+
+The recipe behind it (`philanthropy.models.score_upgrade_prospects`) is walked through end to end, on synthetic data, in **[`05_leadership_upgrade.ipynb`](examples/notebooks/05_leadership_upgrade.ipynb)**.
 
 ### Your data never leaves your machine
 
@@ -188,7 +209,19 @@ The script had a prediction written into it before it ran, that real leakage wou
 
 **CiviCRM.** A contribution export (or an APIv4 `Contribution.get` result) → `read_civicrm_contributions()` → `civicrm_contributions_to_features()` → `predict_affinity_score()`. The bridge drops payment-processor test transactions and counts only `Completed` contributions, which is the difference between a lifetime-giving number you can brief a gift officer on and one inflated by refunds. Worked version: **[Ingest CiviCRM contributions](docs/how-to/ingest_civicrm_contributions.md)**.
 
+**Blackbaud Raiser's Edge / RE NXT.** `read_raisers_edge_gifts()` → `raisers_edge_gifts_to_features()`, dropping pledge and recurring-gift-template rows by default (`DEFAULT_EXCLUDED_GIFT_TYPES`) so a committed dollar is never summed as both the promise and the payment.
+
+**Salesforce NPSP.** `read_npsp_opportunities()` → `npsp_opportunities_to_features()`, with the same default protection against a Recurring Donation instalment counting twice (`DEFAULT_EXCLUDED_STAGES`), this time keyed off Opportunity stage instead of a separate gift record.
+
+All three gift bridges are also reachable through one function, `philanthropy.ingest.read_gifts(path_or_df, source="civicrm" | "raisers_edge" | "npsp")`, for code that needs to support more than one CRM without an `if/elif` per source.
+
 **UniSchema.** PhilanthroPy is also the modeling half of an ecosystem. [UniSchema](https://github.com/PhilanthroPy-Project/UniSchema) normalizes fragmented advancement webhooks (GiveCampus, Slate, NPSP, Cvent, …) into a single `ConstituentEvent` stream. Webhooks → UniSchema egress → `read_constituent_events()` → `constituent_events_to_features()` → `predict_affinity_score()`. Worked, runnable version with the full diagram: **[Ingest UniSchema events](docs/how-to/ingest_unischema_events.md)**.
+
+### Multiple files, one donor table, no glue code
+
+A no-code upload flow rarely gets one clean CRM export; it gets a gift file, an events file, a volunteer-hours file, each with its own headers. `philanthropy.ingest.map_columns()` renames whatever headers a user picked to the canonical names the bridges above expect, raising one error that lists every column still missing rather than failing on the first. `philanthropy.ingest.activities_to_features()` then folds any number of tagged activity files (event attendance, volunteer shifts, email clicks, ...) into one donor-level table, per-type, per-cutoff, so a new activity type never needs new model code.
+
+`philanthropy.ingest.build_upgrade_snapshots()` and `philanthropy.models.score_upgrade_prospects()` build directly on that: given a gift log (plus, optionally, an activity log and static donor attributes), they train and validate a `MajorGiftClassifier` on your own fiscal-year history and score which of today's mid-level donors is likely to upgrade next year, everything cut at an `as_of` date so nothing dated after it can leak in. See **[the CLI walkthrough](docs/how-to/use_the_cli.md)** for the no-Python version, or **[`05_leadership_upgrade.ipynb`](examples/notebooks/05_leadership_upgrade.ipynb)** for the Python one.
 
 ---
 
@@ -242,6 +275,13 @@ Full parameter documentation for every symbol below is rendered in the [API refe
 | `donor_feature_importance` | `inspection` | Permutation importance for any fitted estimator |
 | `constituent_events_to_features`, `read_constituent_events` | `ingest` | UniSchema bridge |
 | `civicrm_contributions_to_features`, `read_civicrm_contributions` | `ingest` | CiviCRM contribution-export bridge |
+| `raisers_edge_gifts_to_features`, `read_raisers_edge_gifts` | `ingest` | Blackbaud Raiser's Edge / RE NXT bridge; drops pledge and recurring-template rows by default |
+| `npsp_opportunities_to_features`, `read_npsp_opportunities` | `ingest` | Salesforce NPSP Opportunity bridge; drops unreceived Recurring Donation instalments by default |
+| `read_gifts` | `ingest` | One entry point over the CiviCRM / Raiser's Edge / NPSP presets (`GIFT_SOURCES`) |
+| `map_columns` | `ingest` | Renames a user-mapped header set to the canonical names the bridges expect |
+| `activities_to_features` | `ingest` | Long, multi-source activity log (events, volunteering, ...) → per-donor, per-type engagement features |
+| `build_upgrade_snapshots` | `ingest` | Per-donor, per-fiscal-year training table for a mid-level-to-leadership upgrade model |
+| `score_upgrade_prospects` | `models` | Trains, validates, and scores the upgrade model in one call; powers `train --task upgrade` |
 | `generate_synthetic_donor_data`, `load_ciob_fundraising` | `datasets` | Synthetic pool and a real CIOB series |
 | `make_donor_dataset`, `save_model`, `load_model` | `utils` | Labelled fixtures and pipeline persistence |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Matplotlib is imported lazily, per function |

@@ -16,6 +16,10 @@ Raiser's Edge: ``read_raisers_edge_gifts`` loads a Blackbaud gift export CSV;
 ``raisers_edge_gifts_to_features`` aggregates it, dropping the commitment rows
 (pledges, matching gift pledges, recurring gift templates) first so a pledged
 dollar is not counted both as the promise and as the payments against it.
+
+``map_columns`` renames a user-supplied export's headers to the canonical
+names a bridge above expects, raising one error listing every column still
+missing after the rename.
 """
 
 from ._civicrm import (
@@ -26,6 +30,7 @@ from ._constituent_events import (
     constituent_events_to_features,
     read_constituent_events,
 )
+from ._map_columns import map_columns
 from ._raisers_edge import (
     DEFAULT_EXCLUDED_GIFT_TYPES,
     raisers_edge_gifts_to_features,
@@ -36,6 +41,7 @@ __all__ = [
     "DEFAULT_EXCLUDED_GIFT_TYPES",
     "civicrm_contributions_to_features",
     "constituent_events_to_features",
+    "map_columns",
     "raisers_edge_gifts_to_features",
     "read_civicrm_contributions",
     "read_constituent_events",

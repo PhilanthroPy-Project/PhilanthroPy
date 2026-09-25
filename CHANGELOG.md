@@ -43,6 +43,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   Everything but `target` is computed from data through the end of T; the
   output's `fiscal_year` and donor-id columns feed directly into
   `FiscalYearGroupedSplitter`.
+- `philanthropy.models.score_upgrade_prospects(gifts, *, activities=None,
+  donors=None, threshold=1000.0, band=(100.0, 999.0), fiscal_year_start=7,
+  as_of=None, random_state=None)`: the fit-and-score entry point over
+  `build_upgrade_snapshots`. Trains a `MajorGiftClassifier` on every
+  fully-resolved historical fiscal year, validated with a walk-forward
+  `FiscalYearGroupedSplitter` fold, then scores today's band-qualifying
+  donors (cut at `as_of`, never at a future fiscal-year end) with a model
+  refit on all history. Returns a `(scores, report)` pair: `scores` has
+  `affinity_score`, `rank`, `decile`, a per-donor `top_reasons` heuristic
+  built from global permutation importance, and a `suggested_ask` left
+  `NaN` (no ask-amount label exists yet to train one honestly); `report`
+  carries training-row counts, a low-data warning under ~500 rows, the
+  `activities_to_features` id-match warning, and a top-N upgrade-rate lift
+  over the naive "highest FY total" rule. Wired into the CLI as
+  `philanthropy train --task upgrade`; `philanthropy features` gained
+  repeated `--activity TYPE=PATH` and `--as-of` flags to fold engagement
+  data into the feature table the same way.
 - `examples/notebooks/05_leadership_upgrade.ipynb`: a leadership annual-giving
   upgrade model, `build_upgrade_snapshots` plus a synthetic activity log into
   `MajorGiftClassifier`, validated with a fiscal-year walk-forward split and

@@ -154,6 +154,64 @@ def build_upgrade_snapshots(
     if low > high:
         raise ValueError(f"band[0] ({low}) must be <= band[1] ({high}).")
 
+    df, pivot_sum, pivot_max, pivot_count = _prepare_gifts(gifts, fiscal_year_start)
+
+    donors_norm = None
+    if donors is not None:
+        donors_norm = donors.copy()
+        donors_norm.index = donors_norm.index.astype("string").str.strip()
+
+    snapshots = []
+    for fy_t in fiscal_years:
+        fy_t = int(fy_t)
+        totals_t = _column(pivot_sum, fy_t)
+        candidates = totals_t[(totals_t >= low) & (totals_t <= high) & (totals_t < threshold)]
+        if candidates.empty:
+            continue
+        donor_ids = candidates.index
+
+        snap = _snapshot_features_for_year(
+            df, pivot_sum, pivot_max, pivot_count, donor_ids, fy_t,
+            fiscal_year_start, activities, donors, donors_norm,
+        )
+
+        next_totals = _column(pivot_sum, fy_t + 1).reindex(donor_ids, fill_value=0.0)
+        snap["target"] = (next_totals >= threshold).astype("int64")
+
+        snapshots.append(snap)
+
+    if not snapshots:
+        return pd.DataFrame(index=pd.Index([], name="donor_id", dtype="object"))
+
+    out = pd.concat(snapshots)
+    out = out.reset_index().sort_values(["fiscal_year", "donor_id"], kind="stable")
+    return out.set_index("donor_id")
+
+
+# --------------------------------------------------------------------------- #
+# Internals
+#
+# ``_prepare_gifts`` and ``_snapshot_features_for_year`` are also imported
+# directly (via ``philanthropy.ingest._upgrade_snapshots``) by
+# ``philanthropy.models.score_upgrade_prospects``, which needs the same
+# donor/fiscal-year feature logic for an unlabelled "current" row that this
+# function's target computation (reading FY T+1) does not apply to.
+# --------------------------------------------------------------------------- #
+def _to_frame(gifts: Union[Iterable[Mapping], pd.DataFrame]) -> pd.DataFrame:
+    if isinstance(gifts, pd.DataFrame):
+        return gifts
+    return pd.DataFrame(list(gifts))
+
+
+def _prepare_gifts(
+    gifts: Union[Iterable[Mapping], pd.DataFrame], fiscal_year_start: int
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Normalise a raw gift log and pivot it donor x fiscal-year.
+
+    Returns ``(df, pivot_sum, pivot_max, pivot_count)``: ``df`` is the
+    cleaned, per-gift frame (with ``donor_id``, ``_date``, ``_amount`` and
+    ``_fy`` columns) and the three pivots aggregate ``_amount`` over it.
+    """
     df = _to_frame(gifts)
     missing = [col for col in _REQUIRED if col not in df.columns]
     if missing:
@@ -181,63 +239,56 @@ def build_upgrade_snapshots(
     pivot_sum = _pivot(df, "sum")
     pivot_max = _pivot(df, "max")
     pivot_count = _pivot(df, "count")
-
-    donors_norm = None
-    if donors is not None:
-        donors_norm = donors.copy()
-        donors_norm.index = donors_norm.index.astype("string").str.strip()
-
-    snapshots = []
-    for fy_t in fiscal_years:
-        fy_t = int(fy_t)
-        totals_t = _column(pivot_sum, fy_t)
-        candidates = totals_t[(totals_t >= low) & (totals_t <= high) & (totals_t < threshold)]
-        if candidates.empty:
-            continue
-        donor_ids = candidates.index
-
-        snap = pd.DataFrame(index=donor_ids)
-        snap.index.name = "donor_id"
-        snap["fiscal_year"] = fy_t
-        snap["fy_total"] = candidates
-        snap["fy_total_prior1"] = _column(pivot_sum, fy_t - 1).reindex(donor_ids, fill_value=0.0)
-        snap["fy_total_prior2"] = _column(pivot_sum, fy_t - 2).reindex(donor_ids, fill_value=0.0)
-        snap["fy_trend"] = snap["fy_total"] - snap["fy_total_prior1"]
-        snap["largest_gift"] = _column(pivot_max, fy_t).reindex(donor_ids, fill_value=0.0)
-        snap["gift_count"] = _column(pivot_count, fy_t).reindex(donor_ids, fill_value=0).astype("int64")
-        snap["consecutive_years_given"] = _consecutive_years_given(pivot_sum, donor_ids, fy_t)
-
-        fy_end = _fy_end(fy_t, fiscal_year_start)
-        last_gift = df[df["_fy"] <= fy_t].groupby("donor_id")["_date"].max().reindex(donor_ids)
-        snap["months_since_last_gift"] = ((fy_end - last_gift).dt.days / 30.0).round(2)
-
-        if activities is not None:
-            act_feats = activities_to_features(activities, as_of=fy_end, donors=donors)
-            snap = snap.join(act_feats, how="left")
-
-        if donors_norm is not None:
-            snap = snap.join(donors_norm, how="left")
-
-        next_totals = _column(pivot_sum, fy_t + 1).reindex(donor_ids, fill_value=0.0)
-        snap["target"] = (next_totals >= threshold).astype("int64")
-
-        snapshots.append(snap)
-
-    if not snapshots:
-        return pd.DataFrame(index=pd.Index([], name="donor_id", dtype="object"))
-
-    out = pd.concat(snapshots)
-    out = out.reset_index().sort_values(["fiscal_year", "donor_id"], kind="stable")
-    return out.set_index("donor_id")
+    return df, pivot_sum, pivot_max, pivot_count
 
 
-# --------------------------------------------------------------------------- #
-# Internals
-# --------------------------------------------------------------------------- #
-def _to_frame(gifts: Union[Iterable[Mapping], pd.DataFrame]) -> pd.DataFrame:
-    if isinstance(gifts, pd.DataFrame):
-        return gifts
-    return pd.DataFrame(list(gifts))
+def _snapshot_features_for_year(
+    df: pd.DataFrame,
+    pivot_sum: pd.DataFrame,
+    pivot_max: pd.DataFrame,
+    pivot_count: pd.DataFrame,
+    donor_ids: pd.Index,
+    fy_t: int,
+    fiscal_year_start: int,
+    activities: Optional[Union[Iterable[Mapping], pd.DataFrame]],
+    donors: Optional[pd.DataFrame],
+    donors_norm: Optional[pd.DataFrame],
+    as_of: Optional[pd.Timestamp] = None,
+) -> pd.DataFrame:
+    """Gift-derived (and, if given, activity/donor) feature columns for one
+    ``(donor_ids, fy_t)`` snapshot, everything ``build_upgrade_snapshots``
+    computes except ``target``.
+
+    ``as_of`` clips the recency cutoff (``months_since_last_gift`` and the
+    ``activities_to_features`` window) to a date inside a still-open fiscal
+    year, for scoring a "current", not-yet-resolved FY; it defaults to the
+    end of ``fy_t`` (``build_upgrade_snapshots``'s own, always-resolved case).
+    """
+    snap = pd.DataFrame(index=donor_ids)
+    snap.index.name = "donor_id"
+    snap["fiscal_year"] = fy_t
+    snap["fy_total"] = _column(pivot_sum, fy_t).reindex(donor_ids, fill_value=0.0)
+    snap["fy_total_prior1"] = _column(pivot_sum, fy_t - 1).reindex(donor_ids, fill_value=0.0)
+    snap["fy_total_prior2"] = _column(pivot_sum, fy_t - 2).reindex(donor_ids, fill_value=0.0)
+    snap["fy_trend"] = snap["fy_total"] - snap["fy_total_prior1"]
+    snap["largest_gift"] = _column(pivot_max, fy_t).reindex(donor_ids, fill_value=0.0)
+    snap["gift_count"] = _column(pivot_count, fy_t).reindex(donor_ids, fill_value=0).astype("int64")
+    snap["consecutive_years_given"] = _consecutive_years_given(pivot_sum, donor_ids, fy_t)
+
+    cutoff = _fy_end(fy_t, fiscal_year_start)
+    if as_of is not None and as_of < cutoff:
+        cutoff = as_of
+    last_gift = df[df["_fy"] <= fy_t].groupby("donor_id")["_date"].max().reindex(donor_ids)
+    snap["months_since_last_gift"] = ((cutoff - last_gift).dt.days / 30.0).round(2)
+
+    if activities is not None:
+        act_feats = activities_to_features(activities, as_of=cutoff, donors=donors)
+        snap = snap.join(act_feats, how="left")
+
+    if donors_norm is not None:
+        snap = snap.join(donors_norm, how="left")
+
+    return snap
 
 
 def _pivot(df: pd.DataFrame, aggfunc: str) -> pd.DataFrame:

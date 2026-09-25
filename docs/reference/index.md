@@ -60,6 +60,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `activities_to_features` | `ingest` | The activity-type feature set (`_count_12m`, `_distinct`, ...) may grow as more source types are onboarded. |
 | `read_gifts`, `GIFT_SOURCES` | `ingest` | A thin preset registry over the CiviCRM, Raiser's Edge and NPSP bridges above; it inherits their tier and grows a new preset name as they do. |
 | `build_upgrade_snapshots` | `ingest` | The gift-derived feature set (trend, consecutive years given, ...) is a minimal starting recipe and is likely to be refined. |
+| `score_upgrade_prospects` | `models` | The top-reasons heuristic (z-score within the scored population weighted by global permutation importance) and the top-N/lift report shape are a starting recipe over `build_upgrade_snapshots`, likely to be refined; `suggested_ask` is left `NaN` pending a real ask-amount training signal. |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Chart composition is presentation, not contract. |
 | `fetch_kdd98_donors` | `datasets` | Returns the raw upstream columns untyped; may gain as-of date parsing as the real-data leakage replication in #124 lands. |
 | `make_donor_panel` | `datasets` | The returned dict may gain keys (pledges, appeals, soft credits) as more of the library needs panel-shaped fixtures; existing keys and their columns will not change silently. |
@@ -89,6 +90,7 @@ Every domain method returns a number on its own scale. None of them are calibrat
 | `GratefulPatientFeaturizer.transform` | `(n, 4)` float | Unbounded counts and weighted sums, all ≥ 0 |
 | `AskAmountRecommender.ask_ladder` | `(n, 3)` float | **Dollars**, not a score: conservative / target / stretch |
 | `MovesManagementClassifier.action_priority` | `dict` | Not an array: `stage`, `confidence` (0–1), `portfolio_summary` |
+| `score_upgrade_prospects` | `DataFrame` | `affinity_score` 0–100 (from `MajorGiftClassifier`), plus `rank`, `decile`; `suggested_ask` is `NaN` (see the stability-tier note) |
 | `FinancialForecastModel.predict_revenue_forecast` | `(horizon,)` float | **Dollars per future period**, length is `horizon`, not `len(X)` |
 | `GiftIntervalCalibrator.predict_gift_interval` | `GiftInterval` | Not a score: two `(n,)` dollar bounds, plus the `attained_level` they certify, which is `r / (n + 1)` and not the requested `1 - alpha` |
 

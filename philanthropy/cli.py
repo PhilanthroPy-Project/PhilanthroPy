@@ -33,7 +33,7 @@ from . import __version__
 
 # Gift-export readers `features` can front. Each name maps to a
 # (reader, aggregator) pair in _cmd_features.
-_FEATURE_SOURCES = ("civicrm", "raisers_edge")
+_FEATURE_SOURCES = ("civicrm", "raisers_edge", "npsp")
 
 # The donor-level columns `features` emits, in order. Named here so
 # `philanthropy features --help` answers "what do I pass to --features?"
@@ -203,6 +203,9 @@ def _cmd_features(args: argparse.Namespace) -> None:
     if args.source == "raisers_edge":
         read = ingest.read_raisers_edge_gifts
         to_features = ingest.raisers_edge_gifts_to_features
+    elif args.source == "npsp":
+        read = ingest.read_npsp_opportunities
+        to_features = ingest.npsp_opportunities_to_features
     else:
         read = ingest.read_civicrm_contributions
         to_features = ingest.civicrm_contributions_to_features
@@ -248,9 +251,10 @@ def _build_parser() -> argparse.ArgumentParser:
             "the models consume, then feed that to `train` and `score`. "
             "Emitted columns, in order: " + _FEATURE_COLUMNS + ". Commitment "
             "rows (pledges, recurring gift templates) are dropped for "
-            "raisers_edge, and test-mode and non-Completed rows for civicrm, "
-            "so a committed dollar is not counted twice. No label is produced: "
-            "`train --target` needs a column you define yourself."
+            "raisers_edge, Pledged instalment rows for npsp, and test-mode "
+            "and non-Completed rows for civicrm, so a committed dollar is "
+            "not counted twice. No label is produced: `train --target` "
+            "needs a column you define yourself."
         ),
     )
     features.add_argument(

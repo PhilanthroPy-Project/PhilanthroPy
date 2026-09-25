@@ -192,6 +192,42 @@ def test_cli_features_writes_to_stdout_by_default(tmp_path, capsys):
     assert len(out.strip().splitlines()) == 3
 
 
+_NPSP_HEADER = "Account ID,Close Date,Amount,Stage\n"
+
+
+def _make_opportunity_export(tmp_path, name="opportunities.csv", n_donors=60):
+    rows = [_NPSP_HEADER]
+    for i in range(n_donors):
+        rows.append(f"{i},2025-01-10,{100 + i}.00,Pledged\n")
+        rows.append(f"{i},2025-01-10,{100 + i}.00,Closed Won\n")
+        rows.append(f"{i},2025-02-10,{50 + i}.00,Closed Won\n")
+    path = tmp_path / name
+    path.write_text("".join(rows))
+    return path
+
+
+def test_cli_features_npsp_drops_the_pledged_rows(tmp_path, capsys):
+    data = _make_opportunity_export(tmp_path, n_donors=3)
+    out_path = tmp_path / "features.csv"
+    main(["features", "--source", "npsp", "--data", str(data),
+          "--out", str(out_path)])
+    feats = pd.read_csv(out_path)
+    assert len(feats) == 3
+    # Donor 0: the two Closed Won rows (100 + 50), not the duplicate 100 pledge.
+    row = feats.loc[feats["contact_id"] == 0].iloc[0]
+    assert row["total_gift_amount"] == 150.0
+    assert row["gift_count"] == 2
+    assert "Wrote 3 donor rows" in capsys.readouterr().out
+
+
+def test_cli_features_npsp_missing_export_field_exits_with_the_field_names(tmp_path):
+    path = tmp_path / "opportunities.csv"
+    path.write_text("Account ID,Stage\n1,Closed Won\n")
+    with pytest.raises(SystemExit) as excinfo:
+        main(["features", "--source", "npsp", "--data", str(path)])
+    assert "Close Date" in str(excinfo.value)
+
+
 def test_cli_features_civicrm_source(tmp_path):
     path = tmp_path / "contributions.csv"
     path.write_text(

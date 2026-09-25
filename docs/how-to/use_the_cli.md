@@ -17,7 +17,7 @@ Four subcommands: `features`, `train`, `score`, `validate`.
 philanthropy features --source raisers_edge --data gifts.csv --out features.csv
 ```
 
-`--source` accepts `raisers_edge` (Blackbaud Raiser's Edge and RE NXT) or `civicrm`. `--data` takes a single CSV or a directory of them, walked recursively, which is the shape of a folder of monthly exports. Omit `--out` and the CSV goes to stdout.
+`--source` accepts `raisers_edge` (Blackbaud Raiser's Edge and RE NXT), `npsp` (Salesforce Nonprofit Success Pack), or `civicrm`. `--data` takes a single CSV or a directory of them, walked recursively, which is the shape of a folder of monthly exports. Omit `--out` and the CSV goes to stdout.
 
 The output has one row per donor and these columns:
 
@@ -27,7 +27,7 @@ Header spelling is normalised for you, so a desktop Export (`Constituent ID`, `G
 
 !!! warning "A pledge is not a payment, and `features` knows the difference"
 
-    In Raiser's Edge a pledge and the money paid against it are **separate gift records**, and a recurring gift row is a template rather than a sum ever received. Adding up the amount column double-counts every committed dollar. `features` drops the commitment rows (`Pledge`, `Matching Gift Pledge`, `Recurring Gift`) and the ledger corrections, and keeps the payments (`Pay-Cash`, `PledgePayment`, `RecurringGiftPayment`, ...). Export the **Gift Type** field or it cannot do this, and it will warn you. The excluded set is the `exclude_gift_types` parameter of `philanthropy.ingest.raisers_edge_gifts_to_features` if your site spells its types differently. For CiviCRM the equivalent traps are test-mode rows and non-`Completed` contributions, and they are dropped the same way.
+    In Raiser's Edge a pledge and the money paid against it are **separate gift records**, and a recurring gift row is a template rather than a sum ever received. Adding up the amount column double-counts every committed dollar. `features` drops the commitment rows (`Pledge`, `Matching Gift Pledge`, `Recurring Gift`) and the ledger corrections, and keeps the payments (`Pay-Cash`, `PledgePayment`, `RecurringGiftPayment`, ...). Export the **Gift Type** field or it cannot do this, and it will warn you. The excluded set is the `exclude_gift_types` parameter of `philanthropy.ingest.raisers_edge_gifts_to_features` if your site spells its types differently. NPSP writes the same split through Opportunity stage instead of a separate record: a Recurring Donation instalment is created `Pledged` and only moved to `Closed Won` (or a site's own `Posted`) once received, and depending on the org's instalment settings both rows can exist for the same money. `features` drops `Pledged` rows for `npsp`; override with the `exclude_stages` parameter of `philanthropy.ingest.npsp_opportunities_to_features` if your org's stages differ. For CiviCRM the equivalent traps are test-mode rows and non-`Completed` contributions, and they are dropped the same way.
 
 !!! note "`features` does not invent a label"
 

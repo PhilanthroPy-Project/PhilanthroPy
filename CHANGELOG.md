@@ -10,6 +10,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   user-supplied export's headers to canonical names and raises one
   `ValueError` listing every still-missing required column, for callers
   building a column-mapping UI over an arbitrary CRM export.
+- `philanthropy.ingest.read_npsp_opportunities` and
+  `npsp_opportunities_to_features`: a Salesforce Nonprofit Success Pack (NPSP)
+  Opportunity export bridge, alongside the existing CiviCRM and Raiser's Edge
+  ones. Drops `Pledged` Recurring Donation instalment rows by default
+  (`DEFAULT_EXCLUDED_STAGES`) so an instalment isn't counted both as the
+  pledge and again once it closes `Won`. Wired into the CLI as
+  `philanthropy features --source npsp`.
 - `philanthropy.ingest.activities_to_features(activities, *, as_of,
   donors=None)`: aggregates a long, multi-source activity log (event
   attendance, volunteer shifts, email clicks, ...) into per-donor,

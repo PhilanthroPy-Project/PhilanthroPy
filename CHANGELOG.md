@@ -64,6 +64,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   upgrade model, `build_upgrade_snapshots` plus a synthetic activity log into
   `MajorGiftClassifier`, validated with a fiscal-year walk-forward split and
   compared against a naive "gave $500+ last FY" rule on top-N upgrade rate.
+- `philanthropy validate` now reports average precision and a 10-row decile
+  table (n, positives, hit rate, lift over the base rate), plus a `--top-n`
+  hit-rate/capture line (count or percentage, default 10% of rows). The
+  existing precision/recall/F1 are now labelled "at threshold 0.5" so they
+  aren't mistaken for the whole picture on a rare, imbalanced target, where
+  they can look broken even when the model ranks donors well.
+
+### Fixed
+- `philanthropy train`, `philanthropy score` and `philanthropy validate` fit
+  and score on the named feature DataFrame instead of a bare array, so
+  `score` and `validate` no longer print an sklearn "X does not have valid
+  feature names" warning on every run. Saved model bundles are unaffected.
 
 ## [0.8.0] - 2026-09-24
 

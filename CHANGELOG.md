@@ -17,6 +17,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   (`DEFAULT_EXCLUDED_STAGES`) so an instalment isn't counted both as the
   pledge and again once it closes `Won`. Wired into the CLI as
   `philanthropy features --source npsp`.
+- `philanthropy.ingest.activities_to_features(activities, *, as_of,
+  donors=None)`: aggregates a long, multi-source activity log (event
+  attendance, volunteer shifts, email clicks, ...) into per-donor,
+  per-activity-type engagement features (`<type>_count_12m`,
+  `<type>_count_36m`, `<type>_days_since_last`, `<type>_distinct`, plus
+  `<type>_hours_12m` / `<type>_amount_12m` when those columns are present),
+  cut at `as_of` so nothing dated after the cutoff is counted. A new activity
+  type never needs new model code; it just yields its own columns.
 
 ## [0.8.0] - 2026-09-24
 

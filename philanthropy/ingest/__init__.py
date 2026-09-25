@@ -17,6 +17,11 @@ Raiser's Edge: ``read_raisers_edge_gifts`` loads a Blackbaud gift export CSV;
 (pledges, matching gift pledges, recurring gift templates) first so a pledged
 dollar is not counted both as the promise and as the payments against it.
 
+NPSP: ``read_npsp_opportunities`` loads a Salesforce Nonprofit Success Pack
+Opportunity export CSV; ``npsp_opportunities_to_features`` aggregates it,
+dropping ``Pledged`` instalment rows first so a Recurring Donation instalment
+is not counted both in its ``Pledged`` stage and again once it closes ``Won``.
+
 ``map_columns`` renames a user-supplied export's headers to the canonical
 names a bridge above expects, raising one error listing every column still
 missing after the rename.
@@ -31,6 +36,11 @@ from ._constituent_events import (
     read_constituent_events,
 )
 from ._map_columns import map_columns
+from ._npsp import (
+    DEFAULT_EXCLUDED_STAGES,
+    npsp_opportunities_to_features,
+    read_npsp_opportunities,
+)
 from ._raisers_edge import (
     DEFAULT_EXCLUDED_GIFT_TYPES,
     raisers_edge_gifts_to_features,
@@ -39,11 +49,14 @@ from ._raisers_edge import (
 
 __all__ = [
     "DEFAULT_EXCLUDED_GIFT_TYPES",
+    "DEFAULT_EXCLUDED_STAGES",
     "civicrm_contributions_to_features",
     "constituent_events_to_features",
     "map_columns",
+    "npsp_opportunities_to_features",
     "raisers_edge_gifts_to_features",
     "read_civicrm_contributions",
     "read_constituent_events",
+    "read_npsp_opportunities",
     "read_raisers_edge_gifts",
 ]

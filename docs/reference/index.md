@@ -55,6 +55,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `constituent_events_to_features`, `read_constituent_events` | `ingest` | Tracks the UniSchema `ConstituentEvent` schema, which is versioned upstream. |
 | `civicrm_contributions_to_features`, `read_civicrm_contributions` | `ingest` | Tracks CiviCRM's contribution export labels and APIv4 field names, which move with the CRM. |
 | `raisers_edge_gifts_to_features`, `read_raisers_edge_gifts`, `DEFAULT_EXCLUDED_GIFT_TYPES` | `ingest` | Tracks Raiser's Edge export labels and the RE NXT gift-type vocabulary; the excluded-type default will grow as real exports arrive. |
+| `npsp_opportunities_to_features`, `read_npsp_opportunities`, `DEFAULT_EXCLUDED_STAGES` | `ingest` | Tracks NPSP Opportunity export labels and a per-org-configurable stage vocabulary; the excluded-stage default will grow as real exports arrive. |
 | `map_columns` | `ingest` | The one-error-per-missing-column message shape may still change. |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Chart composition is presentation, not contract. |
 | `fetch_kdd98_donors` | `datasets` | Returns the raw upstream columns untyped; may gain as-of date parsing as the real-data leakage replication in #124 lands. |

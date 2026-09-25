@@ -56,6 +56,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `civicrm_contributions_to_features`, `read_civicrm_contributions` | `ingest` | Tracks CiviCRM's contribution export labels and APIv4 field names, which move with the CRM. |
 | `raisers_edge_gifts_to_features`, `read_raisers_edge_gifts`, `DEFAULT_EXCLUDED_GIFT_TYPES` | `ingest` | Tracks Raiser's Edge export labels and the RE NXT gift-type vocabulary; the excluded-type default will grow as real exports arrive. |
 | `map_columns` | `ingest` | The one-error-per-missing-column message shape may still change. |
+| `activities_to_features` | `ingest` | The activity-type feature set (`_count_12m`, `_distinct`, ...) may grow as more source types are onboarded. |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Chart composition is presentation, not contract. |
 | `fetch_kdd98_donors` | `datasets` | Returns the raw upstream columns untyped; may gain as-of date parsing as the real-data leakage replication in #124 lands. |
 | `make_donor_panel` | `datasets` | The returned dict may gain keys (pledges, appeals, soft credits) as more of the library needs panel-shaped fixtures; existing keys and their columns will not change silently. |

@@ -20,8 +20,14 @@ dollar is not counted both as the promise and as the payments against it.
 ``map_columns`` renames a user-supplied export's headers to the canonical
 names a bridge above expects, raising one error listing every column still
 missing after the rename.
+
+``activities_to_features`` aggregates a long, multi-source activity log
+(event attendance, volunteer shifts, email clicks, ...) into per-donor,
+per-type engagement features, generalising the pattern above to an
+open-ended set of activity types discovered from the data itself.
 """
 
+from ._activities import activities_to_features
 from ._civicrm import (
     civicrm_contributions_to_features,
     read_civicrm_contributions,
@@ -39,6 +45,7 @@ from ._raisers_edge import (
 
 __all__ = [
     "DEFAULT_EXCLUDED_GIFT_TYPES",
+    "activities_to_features",
     "civicrm_contributions_to_features",
     "constituent_events_to_features",
     "map_columns",

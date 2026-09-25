@@ -65,6 +65,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `MajorGiftClassifier`, validated with a fiscal-year walk-forward split and
   compared against a naive "gave $500+ last FY" rule on top-N upgrade rate.
 
+### Documentation
+- README and the docs homepage now cover the Raiser's Edge and NPSP gift
+  bridges, `read_gifts` as the one-call entry point over all three CRM
+  presets, the `map_columns` / `activities_to_features` multi-file no-code
+  upload path, and the CLI's `--activity`/`--as-of` and `train --task
+  upgrade` flags for the leadership-upgrade model, none of which had been
+  mentioned outside the API reference and the how-to guide.
+
 ## [0.8.0] - 2026-09-24
 
 The first release with a Raiser's Edge on-ramp and `as_of` scoring cutoffs on the

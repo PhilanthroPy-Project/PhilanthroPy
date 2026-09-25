@@ -13,6 +13,7 @@ from ._lapse import LapsePredictor
 from ._planned_giving import PlannedGivingIntentScorer
 from ._forecast import FinancialForecastModel
 from ._conformal_interval import GiftInterval, GiftIntervalCalibrator
+from ._upgrade import score_upgrade_prospects
 
 __all__ = [
     "AskAmountRecommender",
@@ -26,4 +27,5 @@ __all__ = [
     "PropensityScorer",
     "ShareOfWalletRegressor",
     "PlannedGivingIntentScorer",
+    "score_upgrade_prospects",
 ]

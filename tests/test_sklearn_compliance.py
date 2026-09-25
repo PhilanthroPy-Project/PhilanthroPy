@@ -229,7 +229,10 @@ def test_every_public_estimator_is_covered_by_the_battery_or_documented():
     for module, names in ((_models, _models.__all__), (_pp, _pp.__all__)):
         for name in names:
             cls = getattr(module, name)
-            if not issubclass(cls, BaseEstimator):
+            # A plain fit-and-score function (e.g. score_upgrade_prospects)
+            # is not a class at all, so issubclass() itself would raise;
+            # skip it the same way a non-estimator class is skipped below.
+            if not isinstance(cls, type) or not issubclass(cls, BaseEstimator):
                 continue
             if cls not in covered:
                 uncovered.append(f"{module.__name__}.{name}")

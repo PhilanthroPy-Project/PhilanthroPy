@@ -33,6 +33,15 @@ Header spelling is normalised for you, so a desktop Export (`Constituent ID`, `G
 
     `train` needs a `--target` column and a gift export contains no such column. Deciding who counts as a major donor, who lapsed, or who is a planned-giving prospect is yours to define; `features` gets you the predictors, not the answer key.
 
+### Fold in engagement data
+
+Repeat `--activity TYPE=PATH` to add `philanthropy.ingest.activities_to_features` columns (event attendance, volunteer hours, ...) alongside the gift features. Each file is tagged with its own type and concatenated into one activity log; `--as-of` sets the cutoff (default: the latest `activity_date` across every file given).
+
+```bash
+philanthropy features --source raisers_edge --data gifts.csv \
+  --activity event=events.csv --activity volunteer=shifts.csv \
+  --as-of 2025-06-30 --out features.csv
+```
 
 ## Train a model from a labelled CSV
 
@@ -48,6 +57,19 @@ philanthropy train \
 ```
 
 `--model` accepts `DonorPropensityModel` (the default), `MajorGiftClassifier`, `LapsePredictor`, or `PlannedGivingIntentScorer`. `--random-state` defaults to `0`, so a rerun on the same CSV gives the same model.
+
+### `--task upgrade`: train and score the leadership-upgrade model in one call
+
+`--task upgrade` is a different shape of `train`: `--data` is a **raw** gift export (not a pre-built features CSV), read via `--source` the same way `features` does, and it calls `philanthropy.models.score_upgrade_prospects` directly rather than fitting `--model` on `--features`/`--target`. That one call trains on every fully-resolved historical fiscal year and scores today's band-qualifying donors, so `--out` here is a **scored CSV**, not a saved model bundle, and a validation report prints to stdout the way `validate`'s metrics do.
+
+```bash
+philanthropy train --task upgrade --source raisers_edge --data gifts.csv \
+  --threshold 1000 --band 100 999 --fiscal-year-start 7 \
+  --activity event=events.csv --donors donors.csv \
+  --out upgrade_scores.csv --random-state 0
+```
+
+`--threshold`, `--band`, `--fiscal-year-start`, `--activity` and `--as-of` mirror `score_upgrade_prospects`'s own parameters; `--donors` is an optional CSV of static donor attributes with a `donor_id` column. See the function's docstring for the scored columns (`affinity_score`, `rank`, `decile`, `top_reasons`, `suggested_ask`) and the report fields printed after the CSV is written.
 
 ## Score a prospect list
 

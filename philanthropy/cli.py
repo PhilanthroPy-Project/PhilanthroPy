@@ -13,11 +13,18 @@ engineers. Four subcommands:
 `features` rolls a raw CRM gift export up into the donor-level table the models
 consume, so the path from an export to a scored CSV needs no Python. It does not
 invent a label: `train` still needs a `--target` column, and constructing one
-from your own definition of a major donor stays your job.
+from your own definition of a major donor stays your job. `features` also
+accepts repeated `--activity TYPE=PATH` flags to fold engagement data in
+alongside the gift features (see `activities_to_features`).
 
 `train` saves a self-describing bundle (the fitted model, the feature list, and
 the scikit-learn / philanthropy versions used); `score` and `validate` reuse the
 feature list stored in that bundle unless you override it with `--features`.
+`train --task upgrade` is a different shape entirely: it reads a raw gift
+export (not a pre-built features CSV) and calls
+`philanthropy.models.score_upgrade_prospects` directly, which trains on
+history and scores today's prospects in one call, so `--out` there is a
+scored CSV, not a saved model bundle.
 """
 
 from __future__ import annotations
@@ -87,6 +94,71 @@ def _split_features(features: Optional[str]) -> Optional[List[str]]:
     return [f.strip() for f in features.split(",") if f.strip()]
 
 
+def _read_activities(activity_specs: Sequence[str]) -> pd.DataFrame:
+    """Read every ``--activity TYPE=PATH`` flag into one long activity table.
+
+    Each file is tagged with its own ``TYPE`` (overwriting any
+    ``activity_type`` column it already has) before the files are
+    concatenated, so a donor's engagement across sources lands in one table
+    keyed like ``activities_to_features`` expects.
+    """
+    from .utils._validation import ensure_local_path
+
+    frames = []
+    for spec in activity_specs:
+        if "=" not in spec:
+            raise SystemExit(f"--activity must be TYPE=PATH, got {spec!r}.")
+        activity_type, path = spec.split("=", 1)
+        ensure_local_path(path, "activity")
+        try:
+            df = pd.read_csv(path)
+        except FileNotFoundError:
+            raise SystemExit(f"Data file not found: {path}")
+        df["activity_type"] = activity_type
+        frames.append(df)
+    return pd.concat(frames, ignore_index=True)
+
+
+def _read_raw_gifts(source: str, path: str) -> pd.DataFrame:
+    """Read a raw CRM gift export and normalise it to ``donor_id`` /
+    ``gift_date`` / ``gift_amount``, the shape ``score_upgrade_prospects``
+    (via ``build_upgrade_snapshots``) needs.
+
+    Reuses each source's own header-canonicalisation function (the same one
+    its ``*_to_features`` aggregator calls internally) rather than
+    re-deriving the CRM's column aliases here; renaming its three canonical
+    columns to the gift-log names is the only new logic.
+    """
+    from . import ingest
+    from .ingest._civicrm import _normalise_headers
+    from .utils._validation import ensure_local_path
+
+    ensure_local_path(path, "data")
+    try:
+        if source == "raisers_edge":
+            from .ingest._raisers_edge import _canonical_raisers_edge
+
+            raw = _normalise_headers(ingest.read_raisers_edge_gifts(path), _canonical_raisers_edge)
+        elif source == "npsp":
+            from .ingest._npsp import _canonical_npsp
+
+            raw = _normalise_headers(ingest.read_npsp_opportunities(path), _canonical_npsp)
+        else:
+            raw = ingest.read_civicrm_contributions(path)
+    except FileNotFoundError:
+        raise SystemExit(f"Data file not found: {path}")
+
+    missing = [c for c in ("contact_id", "receive_date", "total_amount") if c not in raw.columns]
+    if missing:
+        raise SystemExit(
+            f"Column(s) {missing} not found in {path} after normalisation. "
+            f"Available: {list(raw.columns)}."
+        )
+    return raw.rename(
+        columns={"contact_id": "donor_id", "receive_date": "gift_date", "total_amount": "gift_amount"}
+    )
+
+
 def _load_bundle(path: str) -> Dict[str, Any]:
     from .utils import load_model
 
@@ -132,11 +204,17 @@ def _neutralise_csv_injection(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _cmd_train(args: argparse.Namespace) -> None:
+    if args.task == "upgrade":
+        _cmd_train_upgrade(args)
+        return
+
     features = _split_features(args.features)
     # Falsy, not `is None`: "--features ' , '" parses to [] and used to reach
     # fit() with a zero-column matrix.
     if not features:
         raise SystemExit("train requires --features (comma-separated column names).")
+    if not args.target:
+        raise SystemExit("train requires --target.")
     df = _read_csv(args.data)
     _require_columns(df, features + [args.target], args.data)
 
@@ -147,6 +225,46 @@ def _cmd_train(args: argparse.Namespace) -> None:
 
     save_model(model, args.out, features=features, target=args.target)
     print(f"Trained {args.model} on {len(df)} rows; saved to {args.out}")
+
+
+def _cmd_train_upgrade(args: argparse.Namespace) -> None:
+    if not args.source:
+        raise SystemExit("train --task upgrade requires --source.")
+
+    from .models import score_upgrade_prospects
+
+    gifts = _read_raw_gifts(args.source, args.data)
+    activities = _read_activities(args.activity) if args.activity else None
+
+    donors = None
+    if args.donors:
+        donors = _read_csv(args.donors)
+        if "donor_id" not in donors.columns:
+            raise SystemExit(
+                f"--donors file must have a 'donor_id' column; got {list(donors.columns)}."
+            )
+        donors = donors.set_index("donor_id")
+
+    scores, report = score_upgrade_prospects(
+        gifts,
+        activities=activities,
+        donors=donors,
+        threshold=args.threshold,
+        band=tuple(args.band),
+        fiscal_year_start=args.fiscal_year_start,
+        as_of=args.as_of,
+        random_state=args.random_state,
+    )
+
+    out = _neutralise_csv_injection(scores.reset_index())
+    if args.out:
+        out.to_csv(args.out, index=False)
+        print(f"Wrote {len(out)} scored rows to {args.out}")
+    else:
+        out.to_csv(sys.stdout, index=False)
+
+    for key, value in report.items():
+        print(f"{key}: {value}")
 
 
 def _cmd_score(args: argparse.Namespace) -> None:
@@ -222,6 +340,13 @@ def _cmd_features(args: argparse.Namespace) -> None:
         # whole answer, so surface it instead of a traceback.
         raise SystemExit(str(exc.args[0] if exc.args else exc))
 
+    if args.activity:
+        activities = _read_activities(args.activity)
+        as_of = args.as_of or pd.to_datetime(activities["activity_date"], errors="coerce").max()
+        act_feats = ingest.activities_to_features(activities, as_of=as_of, donors=features)
+        # Both sides already key on contact_id: a plain left join, no rename.
+        features = features.join(act_feats, how="left")
+
     # reset_index first: contact_id is the index, and _neutralise_csv_injection
     # only walks columns, so an index left in place would skip the escaping and
     # then be written to the CSV anyway by to_csv(index=True).
@@ -264,16 +389,45 @@ def _build_parser() -> argparse.ArgumentParser:
     features.add_argument(
         "--data", required=True, help="gift export CSV, or a directory of them"
     )
+    features.add_argument(
+        "--activity", action="append", default=[], metavar="TYPE=PATH",
+        help="an activity log CSV tagged with its type, e.g. event=events.csv; "
+        "repeatable. Adds activities_to_features columns to the output.",
+    )
+    features.add_argument(
+        "--as-of", default=None, dest="as_of",
+        help="cutoff date for --activity features (default: the latest "
+        "activity_date in the combined activity log)",
+    )
     features.add_argument("--out", default=None, help="output CSV path (default: stdout)")
     features.set_defaults(func=_cmd_features)
 
     train = sub.add_parser("train", help="Train a model from a labelled CSV and save it.")
-    train.add_argument("--data", required=True, help="path to a labelled CSV")
-    train.add_argument("--target", required=True, help="name of the label column")
-    train.add_argument("--features", required=True, help="comma-separated feature columns")
+    train.add_argument("--task", choices=("plain", "upgrade"), default="plain",
+                        help="'plain': fit --model on --features/--target (default). "
+                        "'upgrade': read a raw gift export via --source and call "
+                        "score_upgrade_prospects, writing scored donors to --out.")
+    train.add_argument("--data", required=True, help="labelled CSV (plain) or raw gift export (upgrade)")
+    train.add_argument("--target", default=None, help="name of the label column (plain)")
+    train.add_argument("--features", default=None, help="comma-separated feature columns (plain)")
     train.add_argument("--model", default="DonorPropensityModel", choices=_MODEL_CHOICES)
-    train.add_argument("--out", required=True, help="output model bundle path (.joblib)")
+    train.add_argument("--out", required=True, help="output model bundle (plain) or scored CSV (upgrade)")
     train.add_argument("--random-state", type=int, default=0, dest="random_state")
+    train.add_argument("--source", default=None, choices=_FEATURE_SOURCES,
+                        help="which CRM the gift export came from (upgrade)")
+    train.add_argument("--threshold", type=float, default=1000.0,
+                        help="leadership-giving level an upgrade crosses into (upgrade)")
+    train.add_argument("--band", type=float, nargs=2, default=(100.0, 999.0),
+                        metavar=("LOW", "HIGH"),
+                        help="upgrade-candidate FY-total band (upgrade)")
+    train.add_argument("--fiscal-year-start", type=int, default=7, dest="fiscal_year_start",
+                        help="month (1-12) the fiscal year begins (upgrade)")
+    train.add_argument("--activity", action="append", default=[], metavar="TYPE=PATH",
+                        help="an activity log CSV tagged with its type; repeatable (upgrade)")
+    train.add_argument("--donors", default=None,
+                        help="optional donor-attributes CSV with a donor_id column (upgrade)")
+    train.add_argument("--as-of", default=None, dest="as_of",
+                        help="scoring cutoff (default: the latest gift date) (upgrade)")
     train.set_defaults(func=_cmd_train)
 
     score = sub.add_parser("score", help="Score a CSV with a saved model.")

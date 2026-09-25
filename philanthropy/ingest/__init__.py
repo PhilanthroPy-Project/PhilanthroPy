@@ -30,6 +30,10 @@ missing after the rename.
 (event attendance, volunteer shifts, email clicks, ...) into per-donor,
 per-type engagement features, generalising the pattern above to an
 open-ended set of activity types discovered from the data itself.
+
+``read_gifts(path_or_df, source=...)`` looks up the CiviCRM, Raiser's Edge or
+NPSP reader-and-aggregator pair by name, for a caller working with more than
+one CRM export format.
 """
 
 from ._activities import activities_to_features
@@ -52,10 +56,12 @@ from ._raisers_edge import (
     raisers_edge_gifts_to_features,
     read_raisers_edge_gifts,
 )
+from ._read_gifts import GIFT_SOURCES, read_gifts
 
 __all__ = [
     "DEFAULT_EXCLUDED_GIFT_TYPES",
     "DEFAULT_EXCLUDED_STAGES",
+    "GIFT_SOURCES",
     "activities_to_features",
     "civicrm_contributions_to_features",
     "constituent_events_to_features",
@@ -64,6 +70,7 @@ __all__ = [
     "raisers_edge_gifts_to_features",
     "read_civicrm_contributions",
     "read_constituent_events",
+    "read_gifts",
     "read_npsp_opportunities",
     "read_raisers_edge_gifts",
 ]

@@ -65,6 +65,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `MajorGiftClassifier`, validated with a fiscal-year walk-forward split and
   compared against a naive "gave $500+ last FY" rule on top-N upgrade rate.
 
+### Fixed
+- `philanthropy.ingest.map_columns` now raises a `ValueError` naming the
+  colliding source columns when a mapping sends two different source columns
+  to the same target name, instead of silently producing a duplicate-named
+  output column that could still pass a `required=` check.
+- `philanthropy.ingest._civicrm._to_amount` (shared by the CiviCRM, Raiser's
+  Edge and NPSP readers) now treats an accounting-style parenthesised amount
+  like `"($50.00)"` as negative instead of dropping the sign.
+
 ## [0.8.0] - 2026-09-24
 
 The first release with a Raiser's Edge on-ramp and `as_of` scoring cutoffs on the

@@ -352,6 +352,21 @@ emitting a `DeprecationWarning` naming this version.
   the input carried column names. It now falls back to `x0`, `x1`, ... for an
   array fit, matching what `WealthScreeningImputer` and `WealthScreeningImputerKNN`
   already did. Closes #157.
+- `MovesManagementClassifier` rejected NaN even though its
+  `HistGradientBoostingClassifier` backend handles missing values natively;
+  `fit`/`predict`/`predict_proba`/`action_priority` now pass NaN through.
+  Fitting on a single-class `y` used to silently produce a classifier whose
+  `predict_proba` returned only 1 column; it now raises a clear `ValueError`
+  at fit time. Also removed a dead, already-redundant `feature_names_in_`
+  assignment (`validate_data` sets it) and documented that
+  `action_priority`'s confidence is an uncalibrated max probability.
+- `PlannedGivingIntentScorer.fit` raised scikit-learn's raw "Requesting
+  2-fold cross-validation..." error when a class had fewer than 2 examples,
+  because calibration uses a fixed `cv=2`. It now raises a clear `ValueError`
+  before calibration runs. Also removed an unreachable branch in
+  `predict_intent_score` (`predict_proba` always returns 2 columns once
+  `fit` requires at least 2 classes) and documented that NaN features are
+  rejected.
 
 ## [0.7.1] - 2026-09-08
 

@@ -89,6 +89,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   probabilities from cross-validated folds.
 
 ### Fixed
+- `philanthropy.ingest.map_columns` now raises a `ValueError` naming the
+  colliding source columns when a mapping sends two different source columns
+  to the same target name, instead of silently producing a duplicate-named
+  output column that could still pass a `required=` check.
+- `philanthropy.ingest._civicrm._to_amount` (shared by the CiviCRM, Raiser's
+  Edge and NPSP readers) now treats an accounting-style parenthesised amount
+  like `"($50.00)"` as negative instead of dropping the sign.
 - `MajorGiftClassifier.predict_affinity_score` raised `IndexError` after a
   fit on single-class labels, because it indexed `predict_proba(X)[:, 1]`
   unconditionally. It now mirrors the single-class guard already used by

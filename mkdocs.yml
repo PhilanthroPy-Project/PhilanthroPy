@@ -124,6 +124,14 @@ nav:
     - how-to/estimate_appeal_uplift.md
     - how-to/save_and_load_models.md
     - how-to/develop_and_test.md
+  - Results:
+    - results/index.md
+    - results/upgrade.md
+    - results/response.md
+    - results/lapse.md
+    - results/ask.md
+    - results/planned_giving.md
+    - results/who_to_mail.md
   - Explanation:
     - explanation/index.md
     - explanation/fundraising_metrics.md

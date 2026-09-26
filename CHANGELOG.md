@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `scripts/benchmark_models_vs_baselines.py`: pairs every estimator with the simple domain rule it is meant to replace (rank by last year's total, predict last gift, mail everyone) and evaluates both on held-out, walk-forward splits: top-1%/5%/10% hit rate and lift, ROC-AUC, average precision and decile calibration for classifiers; MAE and within-25% for amount predictions; net revenue/ROI for cost-aware mail selection. Runs on the synthetic donor panel (five seeds, mean and min-max) by default; `--skip-kdd98` stays fully offline, `--fast` gives a one-seed smoke run, and `--out` writes the results table to JSON and CSV. Separate from the existing `scripts/benchmark_models.py` per-model accuracy table, which this does not replace or touch.
 - `philanthropy.ingest.map_columns(df, mapping, *, required=...)`: renames a
   user-supplied export's headers to canonical names and raises one
   `ValueError` listing every still-missing required column, for callers

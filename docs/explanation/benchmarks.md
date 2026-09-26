@@ -59,6 +59,13 @@ script:
 python scripts/benchmark_models.py
 ```
 
+Each model's accuracy above is measured alone. For whether a model actually
+earns its complexity over the simple rule it would replace (rank by last
+year's total, predict last gift, mail everyone), see
+`scripts/benchmark_models_vs_baselines.py`, a separate script pairing every
+estimator with its naive baseline on held-out, walk-forward splits of both
+the synthetic donor panel and KDD Cup 1998.
+
 For each of **five seeds** (42–46) the script builds a 4,000-row synthetic pool,
 takes a stratified 75/25 train/test split, and fits every applicable binary
 classifier in `philanthropy.models` on the documented feature set

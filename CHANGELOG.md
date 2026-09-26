@@ -6,6 +6,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- A "Try it" docs page (`docs/try.md`) that runs `score_upgrade_prospects`
+  on a user's gift CSV, or a synthetic sample, entirely in the browser via
+  Pyodide, so nothing is uploaded. The docs workflow now bundles a wheel of
+  the same commit into `site/wheels/` for the page to install.
 - `philanthropy.ingest.map_columns(df, mapping, *, required=...)`: renames a
   user-supplied export's headers to canonical names and raises one
   `ValueError` listing every still-missing required column, for callers

@@ -72,6 +72,9 @@ extra:
 extra_css:
   - stylesheets/extra.css
 
+extra_javascript:
+  - javascripts/try.js
+
 markdown_extensions:
   - admonition
   - attr_list
@@ -104,6 +107,7 @@ plugins:
 
 nav:
   - Home: index.md
+  - Try it: try.md
   - Tutorials:
     - tutorials/index.md
     - tutorials/building_your_first_model.md

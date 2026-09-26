@@ -34,6 +34,13 @@ jobs:
       run: |
         mkdocs build --strict
 
+    # docs/try.md installs this wheel into Pyodide, so the page always runs
+    # the same commit as the docs around it rather than the last PyPI release.
+    - name: Bundle a wheel for the in-browser demo
+      run: |
+        pip wheel --no-deps -w site/wheels .
+        basename site/wheels/*.whl > site/wheels/latest.txt
+
     - name: Upload Pages artifact
       uses: actions/upload-pages-artifact@v5
       with:

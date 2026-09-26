@@ -7,8 +7,10 @@ philanthropy.ingest._constituent_events.constituent_events_to_features does,
 generalised to an open-ended set of activity types: every type present in
 the (cutoff) data gets its own count_12m / count_36m / days_since_last /
 distinct block, a type with zero rows anywhere gets none of those columns at
-all, and a donor with zero rows of a present type gets zeros rather than
-nulls. as_of is the leakage boundary most tests below are built around.
+all, and a donor with zero rows of a present type gets zeros in count_12m /
+count_36m / distinct but NaN (not 0) in days_since_last, since 0 there would
+read as "did it today" instead of "never". as_of is the leakage boundary
+most tests below are built around.
 """
 
 import warnings
@@ -54,8 +56,21 @@ def test_donor_with_no_rows_of_a_type_gets_zero():
 
     assert feats.loc["2", "event_count_12m"] == 0
     assert feats.loc["2", "event_count_36m"] == 0
-    assert feats.loc["2", "event_days_since_last"] == 0
+    assert pd.isna(feats.loc["2", "event_days_since_last"])
     assert feats.loc["2", "event_distinct"] == 0
+
+
+def test_donor_with_no_rows_of_a_type_is_nan_not_zero_in_days_since_last():
+    # A donor who never did an activity of a given type has no "last time"
+    # to measure days_since_last from; 0 would misread as "did it today".
+    rows = [
+        _row("1", "2024-01-01", "event"),
+        _row("2", "2024-01-01", "volunteer"),
+    ]
+    feats = activities_to_features(rows, as_of="2024-12-31")
+
+    assert pd.isna(feats.loc["2", "event_days_since_last"])
+    assert feats["event_days_since_last"].dtype == "float64"
 
 
 def test_type_absent_from_whole_input_produces_no_columns():
@@ -100,6 +115,56 @@ def test_multiple_activity_types_each_get_their_own_columns():
     for prefix in ("event", "volunteer"):
         for suffix in ("count_12m", "count_36m", "days_since_last", "distinct"):
             assert f"{prefix}_{suffix}" in feats.columns
+
+
+def test_tz_aware_as_of_is_accepted():
+    # A tz-aware as_of (e.g. read back from a CRM export with a UTC offset)
+    # used to raise TypeError comparing tz-aware to tz-naive activity dates.
+    rows = [_row("1", "2024-01-01", "event")]
+
+    feats = activities_to_features(rows, as_of=pd.Timestamp("2024-12-31", tz="UTC"))
+
+    assert feats.loc["1", "event_count_36m"] == 1
+
+
+def test_tz_aware_as_of_agrees_with_naive_equivalent():
+    rows = [_row("1", "2024-01-01", "event")]
+
+    naive = activities_to_features(rows, as_of="2024-12-31")
+    tz_aware = activities_to_features(rows, as_of=pd.Timestamp("2024-12-31", tz="UTC"))
+
+    pd.testing.assert_frame_equal(naive, tz_aware)
+
+
+def test_float_contact_id_normalises_to_integer_string():
+    # pandas reads a numeric id column as float64 the moment any cell in it
+    # is blank; contact_id 123 then arrives as 123.0 and used to be stringified
+    # as "123.0", which can never match another donor's "123".
+    df = pd.DataFrame(
+        {
+            "contact_id": pd.Series([123.0, None, 456.0]),
+            "activity_date": ["2024-01-01", "2024-01-01", "2024-01-01"],
+            "activity_type": ["event", "event", "event"],
+        }
+    )
+
+    feats = activities_to_features(df, as_of="2024-12-31")
+
+    assert list(feats.index) == ["123", "456"]
+
+
+# --------------------------------------------------------------------------- #
+# Windows
+# --------------------------------------------------------------------------- #
+def test_window_boundary_day_is_excluded():
+    # Documented behaviour: a row exactly 12 (or 36) months before as_of is
+    # outside that window, not inside it (strict > against the cutoff).
+    rows = [_row("1", "2023-12-31", "event")]  # exactly 12 months before as_of
+
+    feats = activities_to_features(rows, as_of="2024-12-31")
+
+    assert feats.loc["1", "event_count_12m"] == 0
+    assert feats.loc["1", "event_count_36m"] == 1
 
 
 # --------------------------------------------------------------------------- #

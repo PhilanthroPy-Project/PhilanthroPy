@@ -1,0 +1,186 @@
+{
+  "response_synthetic": {
+    "top1pct": {
+      "model": 83.33333333333334,
+      "rule": 90.66666666666669,
+      "random": 44.18666666666667
+    },
+    "top5pct": {
+      "model": 79.86666666666666,
+      "rule": 83.33333333333333,
+      "random": 44.18666666666667
+    },
+    "top10pct": {
+      "model": 77.26666666666667,
+      "rule": 77.53333333333335,
+      "random": 44.18666666666667
+    },
+    "verdict": "loses"
+  },
+  "lapse_synthetic": {
+    "top1pct": {
+      "model": 77.33333333333331,
+      "rule": 62.66666666666667,
+      "random": 55.81333333333334
+    },
+    "top5pct": {
+      "model": 73.6,
+      "rule": 67.33333333333333,
+      "random": 55.81333333333334
+    },
+    "top10pct": {
+      "model": 72.46666666666665,
+      "rule": 68.13333333333334,
+      "random": 55.81333333333334
+    },
+    "verdict": "modest"
+  },
+  "ask_synthetic": {
+    "within25pct_model": 19.616502747914726,
+    "within25pct_last_gift": 10.406748314067423,
+    "verdict": "wins"
+  },
+  "upgrade_synthetic": {
+    "top1pct": {
+      "model": 36.0,
+      "rule": 20.727272727272727,
+      "random": 12.469678378527826
+    },
+    "top5pct": {
+      "model": 25.616331357571248,
+      "rule": 16.46156479040576,
+      "random": 12.469678378527826
+    },
+    "top10pct": {
+      "model": 23.72975556937821,
+      "rule": 17.54004181901756,
+      "random": 12.469678378527826
+    },
+    "verdict": "wins"
+  },
+  "planned_giving_synthetic": {
+    "n_test": 3000,
+    "model": {
+      "0.01": 0.8,
+      "0.05": 0.7946666666666667,
+      "0.1": 0.7486666666666666
+    },
+    "random": {
+      "0.01": 0.4418666666666667,
+      "0.05": 0.4418666666666667,
+      "0.1": 0.4418666666666667
+    }
+  },
+  "upgrade_worked_example": {
+    "validation_fiscal_year": 2022,
+    "n_validation_rows": 1089,
+    "top_n": 109,
+    "model_upgrade_rate_top_n": 0.1926605504587156,
+    "baseline_topn_fy_total_upgrade_rate": 0.12844036697247707,
+    "overall_upgrade_rate": 0.12029384756657484,
+    "deciles": [
+      {
+        "decile": 1,
+        "n": 108,
+        "actual_rate": 0.19444444444444445,
+        "mean_predicted": 0.18023017194654117
+      },
+      {
+        "decile": 2,
+        "n": 109,
+        "actual_rate": 0.11009174311926606,
+        "mean_predicted": 0.15718379916529487
+      },
+      {
+        "decile": 3,
+        "n": 109,
+        "actual_rate": 0.14678899082568808,
+        "mean_predicted": 0.14634772361494633
+      },
+      {
+        "decile": 4,
+        "n": 109,
+        "actual_rate": 0.11926605504587157,
+        "mean_predicted": 0.13953595179006095
+      },
+      {
+        "decile": 5,
+        "n": 109,
+        "actual_rate": 0.12844036697247707,
+        "mean_predicted": 0.13427069520377125
+      },
+      {
+        "decile": 6,
+        "n": 109,
+        "actual_rate": 0.045871559633027525,
+        "mean_predicted": 0.1290397525226347
+      },
+      {
+        "decile": 7,
+        "n": 109,
+        "actual_rate": 0.11009174311926606,
+        "mean_predicted": 0.12330523239616623
+      },
+      {
+        "decile": 8,
+        "n": 109,
+        "actual_rate": 0.12844036697247707,
+        "mean_predicted": 0.11765028935587177
+      },
+      {
+        "decile": 9,
+        "n": 109,
+        "actual_rate": 0.10091743119266056,
+        "mean_predicted": 0.11148766196263095
+      },
+      {
+        "decile": 10,
+        "n": 109,
+        "actual_rate": 0.11926605504587157,
+        "mean_predicted": 0.0991965712056734
+      }
+    ],
+    "n_scored": 981
+  },
+  "response_kdd98": {
+    "top1pct": {
+      "model": 8.041958041958042,
+      "rule": 6.293706293706294
+    },
+    "top5pct": {
+      "model": 10.272536687631026,
+      "rule": 6.149545772187281
+    },
+    "top10pct": {
+      "model": 8.560447239692524,
+      "rule": 5.83508036338225
+    },
+    "verdict": "wins"
+  },
+  "lapse_kdd98": {
+    "base_rate_pct": 94.92411855951033,
+    "top1pct": {
+      "model": 96.33123689727464,
+      "rule": 94.65408805031447
+    },
+    "top5pct": {
+      "model": 96.62544539928736,
+      "rule": 95.05344791448334
+    },
+    "top10pct": {
+      "model": 96.15344303532125,
+      "rule": 95.01100513573
+    }
+  },
+  "ask_kdd98": {
+    "within25pct_model": 59.600825877494835,
+    "within25pct_last_gift": 66.13902271163111,
+    "verdict": "loses"
+  },
+  "who_to_mail_kdd98": {
+    "net_revenue_model": 4381.860000000001,
+    "net_revenue_mail_everyone": 3149.0499999999993,
+    "verdict": "wins",
+    "note": "mail if E[gift]>$0.68; pieces=18588/28624"
+  }
+}

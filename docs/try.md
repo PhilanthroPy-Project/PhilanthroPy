@@ -65,11 +65,14 @@ The first run downloads about 30 MB (Python, pandas and scikit-learn). Your brow
 
 ```python
 import pandas as pd
+from philanthropy.datasets import make_donor_panel
 from philanthropy.models import score_upgrade_prospects
 
-gifts = pd.read_csv("gifts.csv")
-activities = pd.read_csv("activity.csv")  # optional
-scores, report = score_upgrade_prospects(gifts, activities=activities, random_state=0)
+# In practice: gifts = pd.read_csv("gifts.csv"), activities = pd.read_csv("activity.csv")
+gifts = make_donor_panel(n_donors=2000, n_years=6, random_state=0)["gifts"]
+scores, report = score_upgrade_prospects(gifts, random_state=0)  # activities= is optional
+
+assert "affinity_score" in scores.columns
 ```
 
 The CLI equivalent, and how to add event and volunteer data, are in [Use the CLI](how-to/use_the_cli.md).

@@ -14,7 +14,6 @@ from sklearn.exceptions import NotFittedError
 
 from philanthropy.preprocessing import PlannedGivingSignalTransformer
 from philanthropy.models import PlannedGivingIntentScorer
-from unittest.mock import patch
 
 # ---------------------------------------------------------------------------
 # Shared helper
@@ -231,34 +230,24 @@ class TestPlannedGivingSignalTransformer:
 
 class TestPlannedGivingIntentScorer:
 
-    def test_predict_intent_score_single_class_returns_zeros(self):
-        """Single-class probability output must return all zeros."""
+    def test_fit_raises_clear_error_when_a_class_has_too_few_examples(self):
+        """A class with < 2 examples must raise a clear ValueError, not
+        sklearn's raw cv=2 error."""
         rng = np.random.default_rng(0)
-        X = rng.random((20, 4))
+        X = rng.random((11, 4))
+        y = np.array([0] * 10 + [1])
 
-        # Fit with multi-class data because CalibratedClassifierCV
-        # requires at least two classes during fitting.
-        m = PlannedGivingIntentScorer(n_estimators=5, random_state=0).fit(
-            X,
-            np.array([
-                0, 0, 0, 0, 1, 1, 1, 1,
-                0, 0, 0, 0, 1, 1, 1, 1,
-                0, 0, 0, 1,
-            ]),
-        )
+        with pytest.raises(ValueError, match="at least 2 examples"):
+            PlannedGivingIntentScorer(n_estimators=5, random_state=0).fit(X, y)
 
-        # Simulate predict_proba() returning one column,
-        # which triggers the single-class fallback.
-        with patch.object(
-            m,
-            "predict_proba",
-            return_value=np.zeros((20, 1)),
-        ):
-            scores = m.predict_intent_score(X)
+    def test_fit_raises_clear_error_on_single_class(self):
+        """A single-class y must raise a clear ValueError."""
+        rng = np.random.default_rng(0)
+        X = rng.random((10, 4))
+        y = np.zeros(10)
 
-        assert scores.shape == (20,)
-        np.testing.assert_array_equal(scores, np.zeros(20))
-
+        with pytest.raises(ValueError, match="at least 2 classes"):
+            PlannedGivingIntentScorer(n_estimators=5, random_state=0).fit(X, y)
 
 
     def test_predict_intent_score_multi_class(self):

@@ -77,3 +77,28 @@ def test_array_fit_records_no_feature_names(stage_Xy):
 
     assert not hasattr(clf, "feature_names_in_")
     assert clf.n_features_in_ == X.shape[1]
+
+
+def test_fit_accepts_nan_features(stage_Xy):
+    """HistGradientBoostingClassifier handles NaN; fit/predict must not
+    reject it."""
+    X, y = stage_Xy
+    X = X.copy()
+    X[0, 0] = np.nan
+
+    clf = MovesManagementClassifier(max_iter=10, random_state=0).fit(X, y)
+    preds = clf.predict(X)
+    assert len(preds) == len(X)
+
+    proba = clf.predict_proba(X)
+    assert proba.shape == (30, 3)
+
+
+def test_fit_raises_clear_error_on_single_class(stage_Xy):
+    """A single-class y must raise a clear ValueError, not silently produce
+    a classifier whose predict_proba returns only 1 column."""
+    X, _ = stage_Xy
+    y = np.asarray(["IDENTIFY"] * 30)
+
+    with pytest.raises(ValueError, match="at least 2 classes"):
+        MovesManagementClassifier(max_iter=10, random_state=0).fit(X, y)

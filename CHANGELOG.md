@@ -83,6 +83,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   ~10% of the held-out fold), and the report adds `deciles`, `roc_auc`,
   `average_precision`, and two named baselines ("gave >= X last FY" and
   "top N by FY total") with their own rates and lifts.
+### Documentation
+- README and the docs homepage now cover the Raiser's Edge and NPSP gift
+  bridges, `read_gifts` as the one-call entry point over all three CRM
+  presets, the `map_columns` / `activities_to_features` multi-file no-code
+  upload path, and the CLI's `--activity`/`--as-of` and `train --task
+  upgrade` flags for the leadership-upgrade model, none of which had been
+  mentioned outside the API reference and the how-to guide.
+### Fixed
+- `activities_to_features`: `<type>_days_since_last` is now `NaN`, not 0, for
+  a donor with no activity of that type at all; 0 read as "did it today"
+  instead of "never". Counts and distinct still fill 0 for that case.
+- `activities_to_features` raised `TypeError` when `as_of` was tz-aware (e.g.
+  `pd.Timestamp("2024-12-31", tz="UTC")`); activity dates and `as_of` are now
+  both normalised to naive UTC before comparison.
+- `activities_to_features` stringified a float `contact_id` column (what
+  `pd.read_csv` produces once any id cell is blank) as `"123.0"`, which then
+  failed to join against the same donor's `"123"` from a column that never
+  had a blank. Integral floats are now normalised to their bare digits first.
 
 ## [0.8.0] - 2026-09-24
 

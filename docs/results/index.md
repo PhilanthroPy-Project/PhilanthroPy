@@ -8,10 +8,10 @@ these pages, see [Model Validation & Benchmarks](../explanation/benchmarks.md).
 | Model | Question it answers | Verdict |
 |---|---|---|
 | [$1K upgrade](upgrade.md) | Which mid-level donors are about to become $1,000+ donors? | Beats the simple rule |
-| [Response / major gift](response.md) | Who is most likely to give again next year? | Does not beat the simple rule; use the rule instead |
+| [Response](response.md) | Who is most likely to give again next year? | Does not beat the simple rule; use the rule instead |
 | [Lapse](lapse.md) | Which donors are about to stop giving? | About the same as the simple rule on our sample data; about the same as random on a real donor file |
 | [Suggested ask](ask.md) | How much should we ask a donor for? | Beats "ask what they gave last time" on our sample data; loses to it on a real donor file |
-| [Planned giving](planned_giving.md) | Which donors look like bequest prospects? | Beats random picking (no simple rule exists yet to compare against) |
+| [Planned giving](planned_giving.md) | Which donors look like bequest prospects? | Not yet tested on real bequest data |
 | [Who to mail](who_to_mail.md) | Is it worth mailing this donor at all? | Beats mailing everyone |
 
 ## How we tested each one

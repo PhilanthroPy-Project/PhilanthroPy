@@ -2,11 +2,11 @@
 
 We pretended it was 30 June 2021: the model only saw gifts up to that date,
 then we checked what mid-level donors actually did in fiscal year 2022 (1 July
-2021 to 30 June 2022) &mdash; specifically, which of them crossed $1,000 for
-the first time.
+2021 to 30 June 2022), specifically which of them crossed $1,000 for the
+first time.
 
 Of our top 10% of picks, 24 out of every 100 crossed $1,000. Ranking by this
-year's giving total alone found 17 out of every 100. Picking at random finds
+year's giving total alone found 18 out of every 100. Picking at random finds
 about 12 out of every 100.
 
 ![Model vs. rank-by-total vs. random, top 1/5/10% of picks](../assets/results/upgrade_topn.png)
@@ -24,7 +24,9 @@ found 14. Picking 109 of them at random would find about 13.
 
 The chart below breaks the same validation fold into ten equal-sized groups by
 model score (D1 = the 10% the model liked most, D10 = the 10% it liked least),
-so you can see the ranking is not just a top-vs-bottom effect:
+and it shows where the gain comes from: the model's top 10% clearly stands
+out, while the groups below it sit close to the overall rate of about 12 in
+100. Use the model to pick your top slice, not to rank the whole file:
 
 ![Upgrade rate by decile](../assets/results/upgrade_deciles.png)
 

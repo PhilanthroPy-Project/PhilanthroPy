@@ -1,4 +1,4 @@
-# Response / major gift
+# Response (will they give again?)
 
 We pretended it was 30 June 2022: the model only saw gifts up to that date,
 then we checked which donors actually gave again in fiscal year 2023 (1 July

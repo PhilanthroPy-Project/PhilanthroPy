@@ -13,8 +13,9 @@ random finds about 44 out of every 100.
 
 ![Model vs. random, top 1/5/10% of picks](../assets/results/planned_giving.png)
 
-**Beats random picking.** Treat this as "the score separates donors better
-than chance," not as a validated bequest-intent measurement.
+**Not yet tested on real bequest data.** The score separates repeat donors
+better than chance, but that is not the same as finding bequest prospects.
+Treat it as unproven until it is checked against known planned gifts.
 
 ## Which data
 

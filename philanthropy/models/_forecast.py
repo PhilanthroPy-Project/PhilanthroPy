@@ -1,7 +1,9 @@
 """
 philanthropy.models._forecast
 ==============================
-Hybrid LSTM-ARIMA revenue/giving forecaster for nonprofit advancement teams.
+Hybrid LSTM-ARIMA revenue/giving forecaster for nonprofit advancement teams
+(in practice: LinearRegression plus an MLPRegressor on the residuals, plus a
+hand-rolled AR(p) roll-forward; no actual LSTM or ARIMA implementation).
 
 Nonprofit and academic medical centre (AMC) advancement shops plan campaigns,
 staffing, and cash flow around *forward* estimates of giving revenue.  The

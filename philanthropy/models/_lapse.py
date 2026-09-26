@@ -13,6 +13,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.utils.validation import check_is_fitted, validate_data
 from sklearn.utils import Tags
+from sklearn.utils.multiclass import unique_labels
 
 _Self = TypeVar("_Self", bound="LapsePredictor")
 
@@ -67,7 +68,7 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         self : LapsePredictor
         """
         X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
-        self.classes_ = np.unique(y)
+        self.classes_ = unique_labels(y)
         self.n_features_in_ = X.shape[1]
 
         self.estimator_ = RandomForestClassifier(

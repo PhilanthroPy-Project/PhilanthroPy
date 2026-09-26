@@ -52,6 +52,23 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         [Fader, Hardie and Lee 2005]; ``tenure`` is that T. Defaults to False so
         the output shape does not change under existing callers, and will become
         the default in the next major release.
+
+    Notes
+    -----
+    Output ``recency``, ``frequency``, and ``monetary`` are raw counts and
+    sums, not scores or frozen bins: callers who want quintile-style RFM
+    scores bin these columns themselves downstream.
+
+    A gift with a NaN ``gift_amount`` is excluded from **both**
+    ``frequency`` and ``monetary``, not just ``monetary``: an unknown amount
+    means the gift's contribution to either column is unknown, so it is
+    dropped from the count as well as the sum, with a ``UserWarning`` naming
+    how many rows were dropped. This means ``frequency`` can be lower than
+    the donor's raw row count in the input.
+
+    ``X`` must be a ``pandas.DataFrame`` with named columns; a bare numpy
+    array has no ``donor_id`` / ``gift_date`` / ``gift_amount`` to key off of
+    and is rejected in :meth:`fit` with a ``TypeError``.
     """
     def __init__(
         self,
@@ -69,9 +86,10 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         """Fit the transformer by validating input and freezing the reference date.
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        X : pd.DataFrame of shape (n_samples, n_features)
             Transaction log with required columns ``donor_id``, ``gift_date``, and
-            ``gift_amount``.
+            ``gift_amount``. Must be a ``pandas.DataFrame`` with those columns
+            named; a bare numpy array has no way to name them and is rejected.
         y : ignored
             Present for scikit-learn API compatibility.
         Returns
@@ -92,19 +110,21 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
                 batches.
         Raises
         ------
+        TypeError
+            If ``X`` is not a pandas DataFrame.
         ValueError
             If ``X`` is missing any of the required columns ``donor_id``,
             ``gift_date``, or ``gift_amount``.
         """
-        # Manual validation to avoid name/length strictness during fit
-        if hasattr(X, "columns"):
-            self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
-            self.n_features_in_ = len(self.feature_names_in_)
-        else:
-            X_arr = np.asarray(X)
-            self.n_features_in_ = X_arr.shape[1]
-            self.feature_names_in_ = np.array([f"x{i}" for i in range(self.n_features_in_)], dtype=object)
-        
+        if not hasattr(X, "columns"):
+            raise TypeError(
+                "RFMTransformer requires a pandas DataFrame with named "
+                "columns (donor_id, gift_date, gift_amount); a numpy array "
+                "has no column names to validate against."
+            )
+        self.feature_names_in_ = np.array(X.columns.tolist(), dtype=object)
+        self.n_features_in_ = len(self.feature_names_in_)
+
         self._validate_input(X)
 
         # Freeze the recency reference date from TRAINING data (leakage-safety
@@ -126,24 +146,30 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        X : pd.DataFrame of shape (n_samples, n_features)
             Transaction log with required columns ``donor_id``, ``gift_date``, and
-            ``gift_amount``. Rows are gift-level; output is donor-level.
+            ``gift_amount``. Rows are gift-level; output is donor-level. Must be
+            a ``pandas.DataFrame`` with those columns named; a bare numpy array
+            is rejected.
         Returns
         -------
         rfm_df : pd.DataFrame of shape (n_donors, 4 or 5)
-            Donor-level RFM features:
+            Donor-level RFM features, as raw values (not scores or bins):
             * ``donor_id`` : object
                 Unique donor identifier.
             * ``recency`` : int64
                 Days since each donor's most recent gift, relative to the frozen
                 ``reference_date_``.
             * ``frequency`` : int64
-                Total number of gifts per donor in the (possibly ``as_of``-filtered)
-                transaction log.
+                Total number of gifts per donor with a known ``gift_amount``, in
+                the (possibly ``as_of``-filtered) transaction log. Gifts with a
+                NaN ``gift_amount`` are excluded from both ``frequency`` and
+                ``monetary``, with a warning, so the two counts describe the
+                same set of gifts.
             * ``monetary`` : float64
                 Aggregated gift amount per donor (sum, mean, or other function
-                specified by ``agg_func``).
+                specified by ``agg_func``), over gifts with a known
+                ``gift_amount``.
             * ``tenure`` : int64
                 *Optional, present only if ``include_tenure=True``.*
                 Days from each donor's first gift to the frozen ``reference_date_``.
@@ -158,11 +184,15 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
             ``gift_date``, or ``gift_amount``.
         """
         check_is_fitted(self)
-        if not hasattr(X, "columns") and not isinstance(X, pd.DataFrame):
-             raise TypeError("X must be a pandas DataFrame")
+        if not hasattr(X, "columns"):
+            raise TypeError(
+                "RFMTransformer requires a pandas DataFrame with named "
+                "columns (donor_id, gift_date, gift_amount); a numpy array "
+                "has no column names to validate against."
+            )
         # Manual validation
         self._validate_input(X)
-        
+
         X_df = self._cut(X)
         self._warn_if_unbounded(X_df)
 
@@ -171,17 +201,38 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         ref_date = self.reference_date_
 
         grouped = X_df.groupby('donor_id')
-        
+
         # Recency: Days since the last gift relative to reference_date
         last_gift = grouped['gift_date'].max()
         recency = (ref_date - last_gift).dt.days
-        
-        # Frequency: Total number of gifts
-        frequency = grouped['gift_date'].count()
-        
-        # Monetary: Average or cumulative gift amount depending on agg_func
-        monetary = grouped['gift_amount'].agg(self.agg_func)
-        
+
+        # Frequency and monetary must describe the same gifts: a gift with an
+        # unknown amount doesn't count toward either, so it isn't silently
+        # counted in frequency while being dropped from monetary.
+        has_amount = X_df['gift_amount'].notna()
+        n_missing_amount = int((~has_amount).sum())
+        if n_missing_amount:
+            warnings.warn(
+                f"RFMTransformer is excluding {n_missing_amount} gift row(s) "
+                "with a NaN gift_amount from both frequency and monetary, so "
+                "the two features describe the same set of gifts.",
+                UserWarning,
+                stacklevel=2,
+            )
+        grouped_valid = X_df[has_amount].groupby('donor_id')
+
+        # Frequency: number of gifts with a known amount
+        frequency = grouped_valid['gift_date'].count().reindex(
+            recency.index, fill_value=0
+        )
+
+        # Monetary: aggregated gift amount depending on agg_func, over gifts
+        # with a known amount. A donor with no such gifts has no defined
+        # aggregate, so it stays NaN rather than being coerced to 0.
+        monetary = grouped_valid['gift_amount'].agg(self.agg_func).reindex(
+            recency.index
+        )
+
         rfm_df = pd.DataFrame({
             'donor_id': recency.index,
             'recency': recency.values,
@@ -200,9 +251,7 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         
     def _cut(self, X: Any) -> pd.DataFrame:
         """Copy ``X``, parse ``gift_date``, and drop gifts after ``as_of``."""
-        X_df = X.copy() if hasattr(X, "columns") else pd.DataFrame(
-            X, columns=self.feature_names_in_
-        )
+        X_df = X.copy()
         X_df['gift_date'] = pd.to_datetime(X_df['gift_date'])
         return _apply_as_of_cutoff(
             X_df, 'gift_date', self.as_of, "RFMTransformer", row_noun="gift"
@@ -233,9 +282,8 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
             )
 
     def _validate_input(self, X: Any) -> None:
-        cols = X.columns if hasattr(X, "columns") else self.feature_names_in_
         required_cols = {"donor_id", "gift_date", "gift_amount"}
-        if not required_cols.issubset(cols):
+        if not required_cols.issubset(X.columns):
             raise ValueError(f"X must contain columns: {required_cols}")
 
     def get_feature_names_out(self, input_features: Any = None) -> np.ndarray:

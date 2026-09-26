@@ -48,6 +48,47 @@ def test_cli_uses_bundle_features_and_target(tmp_path, capsys):
     assert "precision" in capsys.readouterr().out
 
 
+def test_cli_validate_reports_ranking_metrics(tmp_path, capsys):
+    data = _make_csv(tmp_path, "d.csv")
+    model_path = tmp_path / "m.joblib"
+    main(["train", "--data", str(data), "--target", "is_major_donor",
+          "--features", FEATURES, "--out", str(model_path)])
+
+    main(["validate", "--model", str(model_path), "--data", str(data)])
+    out = capsys.readouterr().out
+    assert "at threshold 0.5" in out
+    assert "average_precision" in out
+    assert "base_rate" in out
+    # one decile line per decile, numbered 1 through 10
+    for decile in range(1, 11):
+        assert f"\n{decile:>6}  " in out
+    assert "top 30 of 300" in out  # default --top-n is 10% of rows
+
+
+def test_cli_validate_top_n_accepts_count_and_percentage(tmp_path, capsys):
+    data = _make_csv(tmp_path, "d.csv")
+    model_path = tmp_path / "m.joblib"
+    main(["train", "--data", str(data), "--target", "is_major_donor",
+          "--features", FEATURES, "--out", str(model_path)])
+
+    main(["validate", "--model", str(model_path), "--data", str(data), "--top-n", "25"])
+    assert "top 25 of 300" in capsys.readouterr().out
+
+    main(["validate", "--model", str(model_path), "--data", str(data), "--top-n", "20%"])
+    assert "top 60 of 300" in capsys.readouterr().out
+
+
+def test_cli_train_score_validate_do_not_warn_on_feature_names(tmp_path, recwarn):
+    data = _make_csv(tmp_path, "d.csv")
+    model_path = tmp_path / "m.joblib"
+    main(["train", "--data", str(data), "--target", "is_major_donor",
+          "--features", FEATURES, "--out", str(model_path)])
+    main(["score", "--model", str(model_path), "--data", str(data),
+          "--out", str(tmp_path / "scores.csv")])
+    main(["validate", "--model", str(model_path), "--data", str(data)])
+    assert not any("feature names" in str(w.message) for w in recwarn.list)
+
+
 def test_cli_missing_target_column_errors(tmp_path):
     data = _make_csv(tmp_path, "d.csv")
     model_path = tmp_path / "m.joblib"
@@ -477,12 +518,14 @@ def test_python_and_cli_upgrade_paths_produce_identical_scores(tmp_path):
     ])
     cli_scores = pd.read_csv(scored_path).set_index("donor_id").sort_index()
     direct_sorted = direct_scores.sort_index()
+    cli_scores.index = cli_scores.index.astype(str)
+    direct_sorted.index = direct_sorted.index.astype(str)
 
     assert list(cli_scores.index) == list(direct_sorted.index)
     pd.testing.assert_series_equal(
         cli_scores["affinity_score"].astype(float),
         direct_sorted["affinity_score"].astype(float),
-        check_names=False, check_exact=False, check_index_type=False,
+        check_names=False, check_exact=False,
     )
     assert list(cli_scores["rank"]) == list(direct_sorted["rank"])
     assert list(cli_scores["decile"]) == list(direct_sorted["decile"])

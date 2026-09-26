@@ -89,12 +89,48 @@ The output is the input CSV plus one `score` column: `predict_affinity_score` wh
 
 ## Report holdout metrics
 
-`validate` prints precision, recall, F1 and ROC-AUC. The target comes from the bundle unless you override it.
+`validate` reports both a threshold-0.5 view (precision, recall, F1) and a
+ranking view (ROC-AUC, average precision, a 10-row decile table, and a top-N
+hit rate), because a rare outcome can look broken at 0.5 while still ranking
+donors usefully. The target comes from the bundle unless you override it.
+`--top-n` takes a row count or a percentage, e.g. `--top-n 50` or `--top-n
+10%`; it defaults to the top 10% of rows.
 
 ```bash
 philanthropy validate --model model.joblib --data holdout.csv
 philanthropy validate --model model.joblib --data holdout.csv --target is_major_donor
+philanthropy validate --model model.joblib --data holdout.csv --top-n 100
 ```
+
+On a holdout where only 12.4% of donors are major donors, this looks like:
+
+```
+precision (at threshold 0.5) 1.000
+recall    (at threshold 0.5) 1.000
+f1        (at threshold 0.5) 1.000
+roc_auc                      1.000
+average_precision            1.000
+base_rate                    0.124
+
+decile  n     positives  hit_rate  lift
+     1  146   146        1.000     8.05x
+     2  146   35         0.240     1.93x
+     3  146   0          0.000     0.00x
+     4  146   0          0.000     0.00x
+     5  146   0          0.000     0.00x
+     6  146   0          0.000     0.00x
+     7  146   0          0.000     0.00x
+     8  145   0          0.000     0.00x
+     9  145   0          0.000     0.00x
+    10  145   0          0.000     0.00x
+
+top 146 of 1457: hit_rate 1.000, captures 0.807 of all positives
+```
+
+The decile table sorts donors by predicted probability, splits them into 10
+equal-sized groups, and reports the positive rate and lift over the base rate
+in each; `top N` restates the same thing for whatever cutoff you'd actually
+mail to.
 
 ## End to end, in Python
 

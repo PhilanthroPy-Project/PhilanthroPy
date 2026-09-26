@@ -33,6 +33,8 @@ from typing import Iterable, Mapping, Optional, Union
 
 import pandas as pd
 
+from philanthropy.ingest._civicrm import _resolve_reference_date, _to_datetime
+
 __all__ = ["activities_to_features"]
 
 _REQUIRED = ("contact_id", "activity_date", "activity_type")
@@ -57,7 +59,9 @@ def activities_to_features(
         The cutoff. Rows with ``activity_date`` after ``as_of`` are dropped
         before any feature is computed; every window and recency figure is
         measured back from this date, not from "now" or from the batch's own
-        latest date.
+        latest date. A tz-aware timestamp (e.g. ``pd.Timestamp("2024-12-31",
+        tz="UTC")``) is converted to naive UTC, the same treatment
+        ``activity_date`` gets, so the two are always comparable.
     donors : DataFrame, Series, or iterable, optional
         The donor population this activity log is being matched against (its
         index if a DataFrame, its values otherwise). Used only to report the
@@ -72,15 +76,20 @@ def activities_to_features(
         One row per donor with at least one activity at or before ``as_of``,
         indexed by ``contact_id``. For each activity type present in that
         (cutoff) data, four columns: ``<type>_count_12m``, ``<type>_count_36m``
-        (counts in the trailing 12 / 36 months before ``as_of``),
+        (counts in the trailing 12 / 36 months before ``as_of``, exclusive of
+        the boundary itself: a row exactly 12 months before ``as_of`` falls
+        outside ``<type>_count_12m``, matching the "trailing 12 *full*
+        months" reading rather than "12 months or less ago"),
         ``<type>_days_since_last`` (days from the type's most recent activity
-        to ``as_of``), and ``<type>_distinct`` (lifetime count of distinct
-        activity dates of that type, unwindowed). Plus ``<type>_hours_12m`` /
-        ``<type>_amount_12m`` (trailing-12-month sums) when the input carries
-        an ``hours`` / ``amount`` column at all. A donor with no rows of a
-        given type gets 0 in that type's columns; a type with no rows anywhere
-        in the (cutoff) data contributes no columns at all. Rows are sorted by
-        ``contact_id`` for determinism.
+        to ``as_of``; ``NaN`` for a donor with no activity of that type at
+        all, not 0 -- 0 would read as "did it today"), and ``<type>_distinct``
+        (lifetime count of distinct activity dates of that type, unwindowed).
+        Plus ``<type>_hours_12m`` / ``<type>_amount_12m`` (trailing-12-month
+        sums) when the input carries an ``hours`` / ``amount`` column at all.
+        A donor with no rows of a given type gets 0 in that type's count and
+        distinct columns (but ``NaN`` in ``days_since_last``, see above); a
+        type with no rows anywhere in the (cutoff) data contributes no
+        columns at all. Rows are sorted by ``contact_id`` for determinism.
 
     Raises
     ------
@@ -118,7 +127,6 @@ def activities_to_features(
     1
     """
     df = _to_frame(activities)
-    as_of_ts = pd.Timestamp(as_of)
 
     if df.empty:
         return pd.DataFrame(index=pd.Index([], name="contact_id", dtype="object"))
@@ -132,9 +140,14 @@ def activities_to_features(
         )
 
     df = df.copy()
-    df["_contact_id"] = df["contact_id"].astype("string").str.strip()
-    df["_ts"] = pd.to_datetime(df["activity_date"], errors="coerce")
+    df["_contact_id"] = _normalise_contact_id(df["contact_id"]).str.strip()
+    df["_ts"] = _to_datetime(df["activity_date"])
     df["_type"] = df["activity_type"].astype("string").str.strip()
+    # as_of is required, so this never falls back to the batch's own latest
+    # date; it only normalises as_of (naive or tz-aware) to naive UTC, the
+    # same treatment activity_date already got via _to_datetime, so the two
+    # sides of every comparison below share a tz-awareness.
+    as_of_ts = _resolve_reference_date(as_of, df["_ts"])
 
     # A row we can't place in time or attribute to a donor and a type
     # contributes to nothing; drop it rather than let a NaT or blank type
@@ -178,8 +191,11 @@ def activities_to_features(
         out[prefix + "count_12m"] = recent_12m.size().reindex(donor_ids, fill_value=0)
         out[prefix + "count_36m"] = recent_36m.size().reindex(donor_ids, fill_value=0)
         last_activity = grouped["_ts"].max().reindex(donor_ids)
-        days_since_last = (as_of_ts - last_activity).dt.days
-        out[prefix + "days_since_last"] = days_since_last.fillna(0).astype("int64")
+        # A donor with no rows of this type has no "last time" to measure
+        # from; leave this NaN (rather than 0, which reads as "did it
+        # today") -- the whole point of a per-type column is telling the two
+        # cases apart.
+        out[prefix + "days_since_last"] = (as_of_ts - last_activity).dt.days
         out[prefix + "distinct"] = (
             grouped["_ts"].nunique().reindex(donor_ids, fill_value=0)
         )
@@ -192,8 +208,12 @@ def activities_to_features(
             out[prefix + "amount_12m"] = amount_12m.reindex(donor_ids, fill_value=0.0)
 
     for col in out.columns:
-        if col.endswith(("_count_12m", "_count_36m", "_days_since_last", "_distinct")):
+        if col.endswith(("_count_12m", "_count_36m", "_distinct")):
             out[col] = out[col].astype("int64")
+        elif col.endswith("_days_since_last"):
+            # float64, not int64: a donor with no rows of this type is NaN
+            # here (see above), and int64 has no way to hold that.
+            out[col] = out[col].astype("float64")
         else:
             out[col] = out[col].astype("float64")
 
@@ -207,6 +227,25 @@ def _to_frame(activities: Union[Iterable[Mapping], pd.DataFrame]) -> pd.DataFram
     if isinstance(activities, pd.DataFrame):
         return activities
     return pd.DataFrame(list(activities))
+
+
+def _normalise_contact_id(series: pd.Series) -> pd.Series:
+    """Coerce a contact_id column to string, without a spurious ".0".
+
+    ``pd.read_csv`` reads an id column as float64 the moment any cell in it
+    is blank (NaN forces the whole column off int64), so "123" round-trips as
+    123.0 and, left to plain ``.astype("string")``, becomes the string
+    "123.0" -- which then fails to join against the same donor's "123" from
+    a column that never had a blank. Format an integral float back to its
+    bare digits first; a genuinely fractional id (not a real CRM id, but not
+    this function's problem either) is left alone.
+    """
+    if not pd.api.types.is_float_dtype(series):
+        return series.astype("string")
+    as_int_str = series.map(
+        lambda v: str(int(v)) if pd.notna(v) and float(v).is_integer() else v
+    )
+    return as_int_str.astype("string")
 
 
 def _donor_id_index(donors: Union[pd.DataFrame, pd.Series, Iterable]) -> pd.Index:

@@ -221,7 +221,7 @@ def _cmd_train(args: argparse.Namespace) -> None:
     from .utils import save_model
 
     model = _resolve_model(args.model)(random_state=args.random_state)
-    model.fit(df[features].to_numpy(), df[args.target].to_numpy())
+    model.fit(df[features], df[args.target].to_numpy())
 
     save_model(model, args.out, features=features, target=args.target)
     print(f"Trained {args.model} on {len(df)} rows; saved to {args.out}")
@@ -274,7 +274,7 @@ def _cmd_score(args: argparse.Namespace) -> None:
     _require_columns(df, features, args.data)
 
     out = df.copy()
-    out["score"] = _score_array(bundle["model"], df[features].to_numpy())
+    out["score"] = _score_array(bundle["model"], df[features])
     out = _neutralise_csv_injection(out)
     if args.out:
         out.to_csv(args.out, index=False)
@@ -283,8 +283,17 @@ def _cmd_score(args: argparse.Namespace) -> None:
         out.to_csv(sys.stdout, index=False)
 
 
+def _parse_top_n(top_n: str, n_rows: int) -> int:
+    top_n = top_n.strip()
+    if top_n.endswith("%"):
+        pct = float(top_n[:-1])
+        return max(1, round(n_rows * pct / 100))
+    return max(1, int(top_n))
+
+
 def _cmd_validate(args: argparse.Namespace) -> None:
     from sklearn.metrics import (
+        average_precision_score,
         f1_score,
         precision_score,
         recall_score,
@@ -302,14 +311,40 @@ def _cmd_validate(args: argparse.Namespace) -> None:
     _require_columns(df, list(features) + [target], args.data)
 
     model = bundle["model"]
-    X = df[features].to_numpy()
+    X = df[features]
     y = df[target].to_numpy()
     y_pred = model.predict(X)
     y_proba = model.predict_proba(X)[:, 1]
-    print(f"precision {precision_score(y, y_pred, zero_division=0):.3f}")
-    print(f"recall    {recall_score(y, y_pred, zero_division=0):.3f}")
-    print(f"f1        {f1_score(y, y_pred, zero_division=0):.3f}")
-    print(f"roc_auc   {roc_auc_score(y, y_proba):.3f}")
+
+    n_rows = len(y)
+    base_rate = y.mean()
+    top_n = _parse_top_n(args.top_n, n_rows)
+
+    print(f"precision (at threshold 0.5) {precision_score(y, y_pred, zero_division=0):.3f}")
+    print(f"recall    (at threshold 0.5) {recall_score(y, y_pred, zero_division=0):.3f}")
+    print(f"f1        (at threshold 0.5) {f1_score(y, y_pred, zero_division=0):.3f}")
+    print(f"roc_auc                      {roc_auc_score(y, y_proba):.3f}")
+    print(f"average_precision            {average_precision_score(y, y_proba):.3f}")
+    print(f"base_rate                    {base_rate:.3f}")
+
+    order = np.argsort(-y_proba)
+    y_sorted = y[order]
+
+    print()
+    print("decile  n     positives  hit_rate  lift")
+    for decile, chunk in enumerate(np.array_split(y_sorted, 10), start=1):
+        n = len(chunk)
+        positives = int(chunk.sum())
+        hit_rate = positives / n if n else 0.0
+        lift = hit_rate / base_rate if base_rate else 0.0
+        print(f"{decile:>6}  {n:<5} {positives:<10} {hit_rate:.3f}     {lift:.2f}x")
+
+    top_chunk = y_sorted[:top_n]
+    top_hit_rate = top_chunk.mean() if top_n else 0.0
+    total_positives = y_sorted.sum()
+    captured_share = top_chunk.sum() / total_positives if total_positives else 0.0
+    print()
+    print(f"top {top_n} of {n_rows}: hit_rate {top_hit_rate:.3f}, captures {captured_share:.3f} of all positives")
 
 
 def _cmd_features(args: argparse.Namespace) -> None:
@@ -443,7 +478,8 @@ def _build_parser() -> argparse.ArgumentParser:
     score.set_defaults(func=_cmd_score)
 
     validate = sub.add_parser(
-        "validate", help="Report precision/recall/F1/ROC-AUC on a labelled CSV."
+        "validate",
+        help="Report threshold, ranking, and decile metrics on a labelled CSV.",
     )
     validate.add_argument(
         "--model",
@@ -454,6 +490,11 @@ def _build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--data", required=True, help="path to a labelled CSV")
     validate.add_argument("--target", default=None, help="label column (else bundle's)")
     validate.add_argument("--features", default=None, help="override the bundle's features")
+    validate.add_argument(
+        "--top-n", default="10%", dest="top_n",
+        help="rows to report hit-rate/capture for, as a count or a percentage "
+        "like '10%%' (default: 10%% of rows)",
+    )
     validate.set_defaults(func=_cmd_validate)
 
     return parser

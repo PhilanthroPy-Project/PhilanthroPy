@@ -477,12 +477,14 @@ def test_python_and_cli_upgrade_paths_produce_identical_scores(tmp_path):
     ])
     cli_scores = pd.read_csv(scored_path).set_index("donor_id").sort_index()
     direct_sorted = direct_scores.sort_index()
+    cli_scores.index = cli_scores.index.astype(str)
+    direct_sorted.index = direct_sorted.index.astype(str)
 
     assert list(cli_scores.index) == list(direct_sorted.index)
     pd.testing.assert_series_equal(
         cli_scores["affinity_score"].astype(float),
         direct_sorted["affinity_score"].astype(float),
-        check_names=False, check_exact=False, check_index_type=False,
+        check_names=False, check_exact=False,
     )
     assert list(cli_scores["rank"]) == list(direct_sorted["rank"])
     assert list(cli_scores["decile"]) == list(direct_sorted["decile"])

@@ -45,18 +45,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `FiscalYearGroupedSplitter`.
 - `philanthropy.models.score_upgrade_prospects(gifts, *, activities=None,
   donors=None, threshold=1000.0, band=(100.0, 999.0), fiscal_year_start=7,
-  as_of=None, random_state=None)`: the fit-and-score entry point over
-  `build_upgrade_snapshots`. Trains a `MajorGiftClassifier` on every
-  fully-resolved historical fiscal year, validated with a walk-forward
-  `FiscalYearGroupedSplitter` fold, then scores today's band-qualifying
-  donors (cut at `as_of`, never at a future fiscal-year end) with a model
-  refit on all history. Returns a `(scores, report)` pair: `scores` has
-  `affinity_score`, `rank`, `decile`, a per-donor `top_reasons` heuristic
-  built from global permutation importance, and a `suggested_ask` left
-  `NaN` (no ask-amount label exists yet to train one honestly); `report`
-  carries training-row counts, a low-data warning under ~500 rows, the
-  `activities_to_features` id-match warning, and a top-N upgrade-rate lift
-  over the naive "highest FY total" rule. Wired into the CLI as
+  as_of=None, top_n=None, baseline_giving_threshold=None, random_state=None)`:
+  the fit-and-score entry point over `build_upgrade_snapshots`. Trains a
+  `MajorGiftClassifier` on every fully-resolved historical fiscal year
+  (excluding `fiscal_year` itself from the feature set), validated with a
+  walk-forward `FiscalYearGroupedSplitter` fold, then scores today's
+  band-qualifying donors (cut at `as_of`, never at a future fiscal-year end)
+  with a model refit on all history. Returns a `(scores, report)` pair:
+  `scores` has `affinity_score`, `rank`, `decile`, a per-donor `top_reasons`
+  heuristic built from global permutation importance, and a `suggested_ask`
+  left `NaN` (no ask-amount label exists yet to train one honestly);
+  `report` carries training-row counts, a low-data warning under ~500 rows,
+  the `activities_to_features` id-match warning, a per-decile breakdown of
+  the held-out fold (`deciles`), `roc_auc`/`average_precision`, and two
+  named-baseline upgrade rates and lifts ("gave >= X last FY" and "top N by
+  FY total", `top_n` defaulting to ~10% of the fold). Wired into the CLI as
   `philanthropy train --task upgrade`; `philanthropy features` gained
   repeated `--activity TYPE=PATH` and `--as-of` flags to fold engagement
   data into the feature table the same way.
@@ -82,6 +85,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   with no calibration step and is measurably over-confident; the wording now
   matches the accurate note already on `predict_affinity_score`.
 
+### Fixed
+- `score_upgrade_prospects` no longer crashes on a single-class historical
+  target (no donor ever upgraded, or every one did) or on a training set too
+  small for its internal 5-fold calibrated classifier; both now raise a
+  clear `ValueError` instead of an opaque one from deep inside
+  `CalibratedClassifierCV`.
+- `score_upgrade_prospects` dropped `fiscal_year` from the model's own
+  feature columns (it isn't donor-specific, and the scored row's year always
+  sits outside the training range); it's still returned as an output column.
+- `score_upgrade_prospects`'s validation report no longer uses a fixed
+  top-10 count, which read as a 1.0 lift on a large real validation year
+  whose true top-1% lift was 2.24x. `top_n` is now a parameter (default
+  ~10% of the held-out fold), and the report adds `deciles`, `roc_auc`,
+  `average_precision`, and two named baselines ("gave >= X last FY" and
+  "top N by FY total") with their own rates and lifts.
 ### Documentation
 - README and the docs homepage now cover the Raiser's Edge and NPSP gift
   bridges, `read_gifts` as the one-call entry point over all three CRM

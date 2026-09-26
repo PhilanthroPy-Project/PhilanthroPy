@@ -88,8 +88,11 @@ def test_report_keys_present():
         "n_training_rows", "n_training_fiscal_years", "low_data_warning",
         "low_data_message", "activity_id_match_warnings", "current_fiscal_year",
         "n_scored", "validated", "validation_fiscal_year", "n_validation_rows",
-        "top_n", "model_upgrade_rate_top_n", "baseline_upgrade_rate_top_n",
-        "overall_upgrade_rate", "lift_over_baseline",
+        "top_n", "model_upgrade_rate_top_n",
+        "baseline_topn_fy_total_upgrade_rate", "lift_topn_fy_total",
+        "baseline_giving_threshold", "baseline_gave_threshold_upgrade_rate",
+        "lift_over_gave_threshold", "overall_upgrade_rate", "deciles",
+        "roc_auc", "average_precision",
     ):
         assert key in report
 
@@ -269,3 +272,112 @@ def test_as_of_defaults_to_latest_gift_date():
     explicit, _ = score_upgrade_prospects(gifts, as_of="2024-08-01", random_state=0)
     default, _ = score_upgrade_prospects(gifts, random_state=0)
     pd.testing.assert_frame_equal(explicit.sort_index(), default.sort_index())
+
+
+# --------------------------------------------------------------------------- #
+# F5: no upgraders / all upgraders in history (previously an IndexError deep
+# inside predict_proba)
+# --------------------------------------------------------------------------- #
+def test_single_class_history_raises_clear_value_error():
+    # Every donor stays flat below the band ceiling for every year: target is
+    # 0 for every historical row, so there is nothing to learn.
+    years = ["2020-08-01", "2021-08-01", "2022-08-01", "2023-08-01", "2024-08-01"]
+    rows = [
+        {"donor_id": f"flat_low_{i}", "gift_date": year, "gift_amount": 400}
+        for i in range(20)
+        for year in years
+    ]
+    gifts = pd.DataFrame(rows)
+    with pytest.raises(ValueError, match="only one class"):
+        score_upgrade_prospects(gifts, random_state=0)
+
+
+# --------------------------------------------------------------------------- #
+# F5: tiny training sets (previously an sklearn ValueError from deep inside
+# CalibratedClassifierCV instead of a clear, documented one)
+# --------------------------------------------------------------------------- #
+def test_tiny_training_set_raises_clear_value_error():
+    years = ["2020-08-01", "2021-08-01", "2022-08-01"]
+    rows = [
+        {"donor_id": "a", "gift_date": years[0], "gift_amount": 400},
+        {"donor_id": "a", "gift_date": years[1], "gift_amount": 1200},
+        {"donor_id": "a", "gift_date": years[2], "gift_amount": 400},
+        {"donor_id": "b", "gift_date": years[0], "gift_amount": 400},
+        {"donor_id": "b", "gift_date": years[1], "gift_amount": 400},
+        {"donor_id": "b", "gift_date": years[2], "gift_amount": 400},
+    ]
+    gifts = pd.DataFrame(rows)
+    with pytest.raises(ValueError, match="5-fold cross-validation"):
+        score_upgrade_prospects(gifts, random_state=0)
+
+
+# --------------------------------------------------------------------------- #
+# F5: fiscal_year is not donor-specific and sits outside the training range
+# at scoring time, so it must not be a model feature (still an output column)
+# --------------------------------------------------------------------------- #
+def test_fiscal_year_excluded_from_top_reasons():
+    scores, _ = score_upgrade_prospects(_archetype_gifts(), random_state=0)
+    for reasons in scores["top_reasons"]:
+        assert all(feature != "fiscal_year" for feature, _ in reasons)
+
+
+# --------------------------------------------------------------------------- #
+# F5: top_n defaults to ~10% of the validation fold, not a fixed count, and
+# the report carries deciles, roc_auc, average_precision and two baselines
+# --------------------------------------------------------------------------- #
+def test_default_top_n_is_roughly_ten_percent_of_validation_fold():
+    _, report = score_upgrade_prospects(_archetype_gifts(), random_state=0)
+    n_val = report["n_validation_rows"]
+    assert report["top_n"] == max(1, round(0.1 * n_val))
+
+
+def test_top_n_parameter_overrides_default():
+    _, report = score_upgrade_prospects(_archetype_gifts(), top_n=3, random_state=0)
+    assert report["top_n"] == 3
+
+
+def test_larger_validation_fold_does_not_use_a_fixed_top_n():
+    # With more rows per archetype, ~10% of the fold should exceed the old
+    # hardcoded top_n of 10, proving it now scales with fold size.
+    _, report = score_upgrade_prospects(_archetype_gifts(n_per_group=200), random_state=0)
+    assert report["top_n"] > 10
+
+
+def test_deciles_report_shape_and_coverage():
+    _, report = score_upgrade_prospects(_archetype_gifts(), random_state=0)
+    deciles = report["deciles"]
+    assert len(deciles) == 10
+    assert [d["decile"] for d in deciles] == list(range(1, 11))
+    assert sum(d["n"] for d in deciles) == report["n_validation_rows"]
+    for d in deciles:
+        if d["n"] > 0:
+            assert 0.0 <= d["actual_rate"] <= 1.0
+            assert 0.0 <= d["mean_predicted"] <= 1.0
+
+
+def test_roc_auc_and_average_precision_bounded():
+    _, report = score_upgrade_prospects(_archetype_gifts(), random_state=0)
+    assert report["roc_auc"] is None or 0.0 <= report["roc_auc"] <= 1.0
+    assert report["average_precision"] is None or 0.0 <= report["average_precision"] <= 1.0
+
+
+def test_baseline_giving_threshold_defaults_to_half_threshold():
+    _, report = score_upgrade_prospects(_archetype_gifts(), threshold=1000.0, random_state=0)
+    assert report["baseline_giving_threshold"] == 500.0
+
+
+def test_baseline_giving_threshold_parameter_overrides_default():
+    _, report = score_upgrade_prospects(
+        _archetype_gifts(), baseline_giving_threshold=300.0, random_state=0
+    )
+    assert report["baseline_giving_threshold"] == 300.0
+
+
+def test_two_named_baselines_and_lifts_reported():
+    _, report = score_upgrade_prospects(_archetype_gifts(), random_state=0)
+    for rate_key in (
+        "baseline_topn_fy_total_upgrade_rate", "baseline_gave_threshold_upgrade_rate",
+    ):
+        assert report[rate_key] is None or 0.0 <= report[rate_key] <= 1.0
+    for lift_key in ("lift_topn_fy_total", "lift_over_gave_threshold"):
+        assert report[lift_key] is None or report[lift_key] >= 0.0

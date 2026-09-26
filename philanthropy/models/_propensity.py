@@ -17,6 +17,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.utils import Tags
+from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.utils.multiclass import unique_labels
 from sklearn.utils.validation import check_is_fitted, validate_data
 
@@ -35,8 +36,10 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
 
     * **Binary predictions** (``predict``): 0 for standard donors, 1 for
       major-gift prospects above the team's threshold.
-    * **Probability estimates** (``predict_proba``): calibrated class
-      probabilities in the standard sklearn two-column format.
+    * **Probability estimates** (``predict_proba``): class probabilities in
+      the standard sklearn two-column format. These come straight from the
+      underlying ``RandomForestClassifier`` and are not calibrated; see
+      :meth:`predict_affinity_score` for details.
     * **Affinity scores** (``predict_affinity_score``): the positive-class
       probability mapped to a 0–100 integer scale, enabling gift officers to
       quickly rank prospects in wealth-screening reports or CRM dashboards
@@ -125,8 +128,9 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
     1. They handle the diverse mix of numerical and ordinal features common
        in CRM exports (recency in days, monetary amounts spanning four orders
        of magnitude, event counts) without feature scaling.
-    2. Their ensemble nature provides well-calibrated probability estimates
-       suitable for affinity scoring.
+    2. Their ensemble nature provides stable, rank-ordered probability
+       estimates suitable for affinity scoring (though not calibrated
+       probabilities; see the note under :meth:`predict_affinity_score`).
     3. Feature importances are easily explained to non-technical gift
        officers and development committees.
 
@@ -361,6 +365,28 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
     
     This uses HistGradientBoostingClassifier to handle missing data natively, and wraps
     it in a CalibratedClassifierCV so the output probabilities are true calibrated probabilities.
+
+    Parameters
+    ----------
+    max_iter : int, default=100
+        Maximum number of boosting iterations for the underlying
+        :class:`HistGradientBoostingClassifier`.
+    learning_rate : float, default=0.1
+        Shrinkage applied to each boosting iteration.
+    class_weight : dict, "balanced" or None, default=None
+        Weight scheme for the two classes. Useful when the major-gift class
+        is rare (e.g. a 2-3% base rate), where ``predict`` can otherwise
+        favour the majority class almost exclusively. Applied as
+        ``sample_weight`` during fitting rather than passed to the
+        underlying :class:`HistGradientBoostingClassifier`'s own
+        ``class_weight``, because :class:`CalibratedClassifierCV` recalibrates
+        probabilities from cross-validated folds and would otherwise wash out
+        (or even invert) a class-weighted base estimator's decision boundary.
+        When ``class_weight`` is set, the calibrated probabilities reflect
+        the reweighted class balance rather than the true one, so treat them
+        as a ranking signal rather than literal chances of a major gift.
+    random_state : int or None, default=None
+        Seed for reproducibility.
     """
     def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
@@ -372,10 +398,12 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         self,
         max_iter: int = 100,
         learning_rate: float = 0.1,
+        class_weight: Any = None,
         random_state: Optional[int] = None,
     ) -> None:
         self.max_iter = max_iter
         self.learning_rate = learning_rate
+        self.class_weight = class_weight
         self.random_state = random_state
 
     def fit(self: _SelfM, X: Any, y: Any) -> _SelfM:
@@ -398,14 +426,26 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
         self.classes_ = unique_labels(y)
         self.n_features_in_ = X.shape[1]
-        
+
         base_estimator = HistGradientBoostingClassifier(
             max_iter=self.max_iter,
             learning_rate=self.learning_rate,
             random_state=self.random_state
         )
         self.estimator_ = CalibratedClassifierCV(base_estimator)
-        self.estimator_.fit(X, y)
+        # class_weight is applied as sample_weight rather than passed to the
+        # base estimator's own class_weight param: CalibratedClassifierCV
+        # recalibrates probabilities from cross-validated folds, which
+        # otherwise washes out (and can even invert) a class-weighted base
+        # estimator's decision boundary. Feeding the same weights as
+        # sample_weight into fit keeps the calibration step consistent with
+        # the requested class balance.
+        sample_weight = (
+            compute_sample_weight(self.class_weight, y)
+            if self.class_weight is not None
+            else None
+        )
+        self.estimator_.fit(X, y, sample_weight=sample_weight)
         # Mean boosting iterations across the calibration folds. Reporting a
         # hardcoded 1 here just to satisfy check_estimator would be masking.
         self.n_iter_ = int(
@@ -477,5 +517,16 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         sklearn.exceptions.NotFittedError
             If :meth:`fit` has not been called yet.
         """
-        proba_positive = self.predict_proba(X)[:, 1]
+        proba = self.predict_proba(X)
+        if proba.shape[1] == 2:
+            proba_positive = proba[:, 1]
+        elif proba.shape[1] == 1:
+            # Single class case (e.g. fit on all-0 or all-1 labels): classes_
+            # has one entry, and predict_proba mirrors it with one column.
+            if self.classes_[0] == 1:
+                proba_positive = np.ones(proba.shape[0])
+            else:
+                proba_positive = np.zeros(proba.shape[0])
+        else:
+            proba_positive = proba[:, 1]  # Multiclass: class 1 by convention
         return np.round(proba_positive * 100.0, 2)

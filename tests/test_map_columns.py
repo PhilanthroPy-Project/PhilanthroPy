@@ -62,3 +62,10 @@ def test_does_not_mutate_input_dataframe():
     map_columns(df, {"CnID": "contact_id"})
 
     assert list(df.columns) == ["CnID"]
+
+
+def test_raises_on_collision_naming_the_colliding_sources():
+    df = pd.DataFrame({"A": [1], "B": [2]})
+
+    with pytest.raises(ValueError, match="A.*B|B.*A"):
+        map_columns(df, {"A": "x", "B": "x"}, required=["x"])

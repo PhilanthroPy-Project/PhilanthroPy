@@ -70,7 +70,21 @@ def map_columns(
         ...
     ValueError: missing required column(s) after mapping: amount
     """
-    renamed = df.rename(columns=dict(mapping))
+    mapping = dict(mapping)
+    targets: "dict[str, list[str]]" = {}
+    for source, target in mapping.items():
+        if source in df.columns:
+            targets.setdefault(target, []).append(source)
+    collisions = {target: sources for target, sources in targets.items() if len(sources) > 1}
+    if collisions:
+        detail = "; ".join(
+            f"{target!r} <- {sources}" for target, sources in collisions.items()
+        )
+        raise ValueError(
+            "mapping assigns multiple source columns to the same target: " + detail
+        )
+
+    renamed = df.rename(columns=mapping)
     missing = [col for col in required if col not in renamed.columns]
     if missing:
         raise ValueError(

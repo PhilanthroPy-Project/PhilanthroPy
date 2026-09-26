@@ -359,7 +359,12 @@ def _to_amount(series: pd.Series) -> pd.Series:
     """
     if pd.api.types.is_numeric_dtype(series):
         return pd.to_numeric(series, errors="coerce")
-    cleaned = series.astype("string").str.replace(r"[^\d.\-]", "", regex=True)
+    # Accounting notation wraps a negative in parens, e.g. "($50.00)"; turn it
+    # into a leading minus sign before stripping everything else, or it reads
+    # as a plain positive.
+    text = series.astype("string").str.strip()
+    text = text.str.replace(r"^\((.*)\)$", r"-\1", regex=True)
+    cleaned = text.str.replace(r"[^\d.\-]", "", regex=True)
     return pd.to_numeric(cleaned, errors="coerce")
 
 

@@ -561,3 +561,23 @@ def test_features_feed_donor_propensity_model():
     scores = model.predict_affinity_score(feats[cols].to_numpy())
     assert scores.shape == (len(feats),)
     assert np.isfinite(scores).all()
+
+
+# --------------------------------------------------------------------------- #
+# _to_amount (shared by CiviCRM, Raiser's Edge and NPSP readers)
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("($50.00)", -50.0),
+        ("(50)", -50.0),
+        ("-25.50", -25.50),
+        ("$1,000.00", 1000.0),
+    ],
+)
+def test_to_amount_parses_signed_and_formatted_values(raw, expected):
+    from philanthropy.ingest._civicrm import _to_amount
+
+    out = _to_amount(pd.Series([raw]))
+
+    assert out.iloc[0] == pytest.approx(expected)

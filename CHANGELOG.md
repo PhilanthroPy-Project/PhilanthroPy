@@ -65,6 +65,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `MajorGiftClassifier`, validated with a fiscal-year walk-forward split and
   compared against a naive "gave $500+ last FY" rule on top-N upgrade rate.
 
+### Fixed
+- `RFMTransformer` counted a gift with a NaN `gift_amount` toward `frequency`
+  while silently dropping it from `monetary`, so the two columns described
+  different sets of gifts. **Behaviour change:** a gift with no amount is now
+  excluded from `frequency` as well as from `monetary`, with a `UserWarning`
+  naming how many rows were dropped, so a donor's gift count can drop if some
+  of their gifts have no recorded amount.
+- `RFMTransformer.fit`/`transform` no longer pretend to accept a bare numpy
+  array: the documented `x0..xn` column-naming path was dead code, since
+  `_validate_input` always required `donor_id`/`gift_date`/`gift_amount` by
+  name and so always raised on array input anyway. A numpy array now gets a
+  clear `TypeError` up front instead of failing deeper in `_cut`/
+  `_validate_input`. The docstring also now says outputs are raw R/F/M
+  values, not scores or frozen bins.
+- `LapsePredictor.classes_` is now built with `sklearn.utils.multiclass.
+  unique_labels`, matching the other classifiers, instead of a bare
+  `np.unique(y)`.
+- `FinancialForecastModel`'s module docstring now names its actual backend
+  (`LinearRegression` + `MLPRegressor` on the residuals + a hand-rolled
+  AR(p) roll-forward) up front, alongside the "Hybrid LSTM-ARIMA" title,
+  instead of only in the class docstring further down.
+
 ## [0.8.0] - 2026-09-24
 
 The first release with a Raiser's Edge on-ramp and `as_of` scoring cutoffs on the

@@ -73,10 +73,32 @@ def test_rfm_transformer_validation():
     with pytest.raises(ValueError, match="X must contain columns:"):
         transformer.fit(data)
 
-    with pytest.raises(TypeError, match="X must be a pandas DataFrame"):
+    with pytest.raises(TypeError, match="requires a pandas DataFrame"):
         transformer.transform([1, 2, 3])
 
 
-def test_rfm_transformer_ndarray_input_raises_missing_columns():
-    with pytest.raises(ValueError, match="donor_id"):
+def test_rfm_transformer_ndarray_input_rejected():
+    # numpy input has no donor_id / gift_date / gift_amount to key off of;
+    # RFMTransformer requires a DataFrame with named columns instead of
+    # silently falling back to x0..xn placeholder names.
+    with pytest.raises(TypeError, match="requires a pandas DataFrame"):
         RFMTransformer().fit(np.ones((3, 3)))
+
+
+def test_rfm_transformer_nan_amount_excluded_from_frequency_and_monetary():
+    # A gift with an unknown amount should not count toward frequency while
+    # being silently dropped from monetary: the two features must describe
+    # the same set of gifts.
+    data = pd.DataFrame({
+        'donor_id': [1, 1],
+        'gift_date': ['2023-01-01', '2023-06-01'],
+        'gift_amount': [100, np.nan],
+    })
+
+    transformer = RFMTransformer()
+    with pytest.warns(UserWarning, match="excluding 1 gift row"):
+        rfm = transformer.fit_transform(data)
+
+    d1 = rfm[rfm['donor_id'] == 1].iloc[0]
+    assert d1['frequency'] == 1
+    assert d1['monetary'] == 100

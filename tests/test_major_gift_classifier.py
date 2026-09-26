@@ -190,3 +190,44 @@ def test_estimator_attribute_after_fit(mg_Xy):
     clf = MajorGiftClassifier(max_iter=20, random_state=0)
     clf.fit(X, y)
     assert hasattr(clf, "estimator_")
+
+
+def test_predict_affinity_score_single_class(mg_Xy):
+    """A single-class fit must not raise IndexError from predict_proba[:, 1]."""
+    X, _ = mg_Xy
+    y_zeros = np.zeros(len(X), dtype=int)
+    clf = MajorGiftClassifier(max_iter=20, random_state=0)
+    clf.fit(X, y_zeros)
+    scores = clf.predict_affinity_score(X)
+    assert scores.shape == (len(X),)
+    assert np.all(scores == 0.0)
+
+    y_ones = np.ones(len(X), dtype=int)
+    clf_ones = MajorGiftClassifier(max_iter=20, random_state=0)
+    clf_ones.fit(X, y_ones)
+    scores_ones = clf_ones.predict_affinity_score(X)
+    assert np.all(scores_ones == 100.0)
+
+
+def test_class_weight_param_stored_verbatim():
+    clf = MajorGiftClassifier(class_weight="balanced")
+    assert clf.class_weight == "balanced"
+
+
+def test_class_weight_shifts_predictions_toward_upweighted_class():
+    """class_weight must actually influence predict(), not just sit unused
+    on self. Uses an extreme weight (mirrors sklearn's own
+    check_class_weight_classifiers) so the effect is deterministic rather
+    than a coin flip on noisy real-world data."""
+    from sklearn.datasets import make_blobs
+    from sklearn.model_selection import train_test_split
+
+    X, y = make_blobs(centers=2, random_state=0, cluster_std=20)
+    X_train, X_test, y_train, _ = train_test_split(X, y, test_size=0.5, random_state=0)
+
+    clf = MajorGiftClassifier(
+        max_iter=1000, random_state=0, class_weight={0: 1000, 1: 0.0001}
+    )
+    clf.fit(X_train, y_train)
+    preds = clf.predict(X_test)
+    assert np.mean(preds == 0) > 0.87

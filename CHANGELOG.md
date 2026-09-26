@@ -64,6 +64,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   upgrade model, `build_upgrade_snapshots` plus a synthetic activity log into
   `MajorGiftClassifier`, validated with a fiscal-year walk-forward split and
   compared against a naive "gave $500+ last FY" rule on top-N upgrade rate.
+- `MajorGiftClassifier(class_weight=...)`: a new parameter for rebalancing
+  rare major-gift labels (e.g. a 2-3% base rate), where `predict()` would
+  otherwise favour the majority class almost exclusively. Applied as
+  `sample_weight` during fitting, since handing the weight to the underlying
+  `HistGradientBoostingClassifier` directly gets washed out (and can even
+  invert the decision boundary) once `CalibratedClassifierCV` recalibrates
+  probabilities from cross-validated folds.
+
+### Fixed
+- `MajorGiftClassifier.predict_affinity_score` raised `IndexError` after a
+  fit on single-class labels, because it indexed `predict_proba(X)[:, 1]`
+  unconditionally. It now mirrors the single-class guard already used by
+  `DonorPropensityModel.decision_function`.
+- `DonorPropensityModel`'s docstrings described its `predict_proba` output as
+  "calibrated" / "well-calibrated". It wraps a bare `RandomForestClassifier`
+  with no calibration step and is measurably over-confident; the wording now
+  matches the accurate note already on `predict_affinity_score`.
 
 ### Documentation
 - README and the docs homepage now cover the Raiser's Edge and NPSP gift

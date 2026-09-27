@@ -241,6 +241,7 @@ def _make_opportunity_export(tmp_path, name="opportunities.csv", n_donors=60):
     for i in range(n_donors):
         rows.append(f"{i},2025-01-10,{100 + i}.00,Pledged\n")
         rows.append(f"{i},2025-01-10,{100 + i}.00,Closed Won\n")
+        rows.append(f"{i},2025-01-11,{500 + i}.00,Closed Lost\n")
         rows.append(f"{i},2025-02-10,{50 + i}.00,Closed Won\n")
     path = tmp_path / name
     path.write_text("".join(rows))
@@ -254,7 +255,7 @@ def test_cli_features_npsp_drops_the_pledged_rows(tmp_path, capsys):
           "--out", str(out_path)])
     feats = pd.read_csv(out_path)
     assert len(feats) == 3
-    # Donor 0: the two Closed Won rows (100 + 50), not the duplicate 100 pledge.
+    # Donor 0: the two Closed Won rows (100 + 50), not the pledge or Closed Lost.
     row = feats.loc[feats["contact_id"] == 0].iloc[0]
     assert row["total_gift_amount"] == 150.0
     assert row["gift_count"] == 2

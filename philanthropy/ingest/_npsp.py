@@ -18,29 +18,36 @@ accepted here and normalised onto the canonical ``contact_id`` /
 ``receive_date`` / ``total_amount`` names.
 
 :func:`read_npsp_opportunities` loads the CSV(s);
-:func:`npsp_opportunities_to_features` drops the ``Pledged`` rows and hands the
-remaining rows to :func:`~philanthropy.ingest.civicrm_contributions_to_features`,
+:func:`npsp_opportunities_to_features` keeps only the closed/won rows and
+hands them to :func:`~philanthropy.ingest.civicrm_contributions_to_features`,
 which already knows how to roll a gift log up into the one-row-per-donor frame
 the estimators consume.
 
 **The trap this exists to prevent is the same commitment-versus-payment split
 Raiser's Edge writes as separate gift records, expressed instead through
-Opportunity stage.** NPSP's Recurring Donations feature creates one
+Opportunity stage.** An Opportunity's ``StageName`` is one of an org-defined
+sales process's stages, and only some of them mean the money actually
+arrived. NPSP's Recurring Donations feature, for instance, creates one
 Opportunity per instalment; the upcoming instalment is created with
 ``StageName`` ``Pledged`` (the "we expect this money" stage NPSP selects
 automatically), and is only moved to a closed/won stage such as ``Closed Won``
-or a site's own ``Posted`` once the gift is actually received. Depending on
-the org's "Installment Opportunity Auto-Creation" setting, the ``Pledged``
-Opportunity for an instalment and the ``Closed Won`` Opportunity recording its
-receipt can both exist, on the same close date, for the same amount, so
-summing every Opportunity's ``Amount`` naively counts that instalment twice:
-once as the promise, again as the money. ``Pledged`` is excluded by default;
-closed/won rows (``Closed Won``, ``Posted``, ...) are kept, because those are
-the money.
+once the gift is actually received. Every sales process also carries open
+pipeline stages (``Prospecting``, ``Qualification``, ...) that are
+cultivation work, not gifts, and a ``Closed Lost`` stage for an Opportunity
+that never closed. Summing every Opportunity's ``Amount`` regardless of stage
+therefore both double-counts a ``Pledged`` instalment already recorded again
+as ``Closed Won``, and counts pipeline that was never given at all.
 
-NPSP's stage vocabulary is org-configured (custom sales processes can rename
-or add stages), so the excluded set is a documented default parameter rather
-than a constant: see :data:`DEFAULT_EXCLUDED_STAGES`.
+The fix is an allowlist, not a blocklist: only rows whose stage is a
+documented closed/won equivalent are counted, so an org's own open- or
+lost-stage names (which this module cannot enumerate) are excluded by
+default instead of silently summed. NPSP's Donation and Major Gift record
+types close won at ``Closed Won``; the Grant record type closes won at
+``Awarded``; and ``Posted`` is the closed/won stage name a payment
+processor's NPSP integration (e.g. Click & Pledge) commonly writes instead.
+NPSP's stage vocabulary is otherwise org-configured (custom sales processes
+can rename or add stages), so the allowlist is a documented default
+parameter rather than a constant: see :data:`DEFAULT_INCLUDED_STAGES`.
 
 Sources: Salesforce, *Standard NPSP Data Import Fields*
 (https://help.salesforce.com/s/articleView?id=sfdo.npsp_standard_di_fields.htm),
@@ -48,14 +55,20 @@ which lists the ``Donation Amount`` / ``Donation Date`` / ``Donation Stage`` /
 ``Donation Record Type Name`` headers NPSP's own Data Import tool uses;
 *NPSP Logic for Creating Opportunity Contact Roles*
 (https://help.salesforce.com/s/articleView?id=sfdo.NPSP_Logic_for_Creating_OCRs.htm),
-which documents the Opportunity's Primary Contact; and the Trailhead modules
+which documents the Opportunity's Primary Contact; the Trailhead modules
 "Managing Recurring Donations with Nonprofit Success Pack"
 (https://trailhead.salesforce.com/content/learn/modules/donation-management-basics-with-nonprofit-success-pack/create-recurring-donations),
 which walks through an instalment Opportunity moving from ``Pledged`` to
-``Closed Won``/``Posted``, and "Customize Sales Processes and Paths for
-Nonprofit Success"
+``Closed Won``, "Customize Sales Processes and Paths for Nonprofit Success"
 (https://trailhead.salesforce.com/content/learn/modules/opportunity-settings-in-nonprofit-success-pack/understand-and-customize-sales-process-and-path-npsp),
-which documents that the stage list is a per-org sales process.
+which documents that the stage list is a per-org sales process, and "Create
+and Manage Stages and Sales Processes"
+(https://trailhead.salesforce.com/content/learn/projects/create-an-opportunity-record-type-for-npsp/create-and-manage-stages-and-sales-processes),
+which shows the default sales process's open stages (``Prospecting``,
+``Qualification``, ...) closing at ``Closed Won`` / ``Closed Lost``; and
+Salesforce, *Manage Grantseeking Opportunities*
+(https://help.salesforce.com/s/articleView?id=sfdo.NPSP_Create_Manage_Grants.htm),
+which documents ``Awarded`` as the Grant record type's closed/won stage.
 """
 
 from __future__ import annotations
@@ -79,19 +92,24 @@ from ._civicrm import (
 )
 
 __all__ = [
-    "DEFAULT_EXCLUDED_STAGES",
+    "DEFAULT_INCLUDED_STAGES",
     "npsp_opportunities_to_features",
     "read_npsp_opportunities",
 ]
 
-#: Opportunity stages excluded from the roll-up by default: the stage NPSP
-#: selects for a Recurring Donation instalment that has not been received yet.
-#: Matching ignores case, spacing and punctuation, so this one spelling also
-#: matches ``"pledged"`` and ``"  PLEDGED  "``. Closed/won rows (``Closed
-#: Won``, a site's own ``Posted``, ...) are *not* in this set and are what the
-#: features are built from.
-DEFAULT_EXCLUDED_STAGES = (
-    "Pledged",
+#: Closed/won-equivalent Opportunity stages counted by default: NPSP's own
+#: ``Closed Won``, the Grant record type's ``Awarded``, and ``Posted`` (the
+#: stage name a payment processor's NPSP integration commonly writes).
+#: Matching ignores case, spacing and punctuation, so one spelling here also
+#: matches ``"closed won"`` and ``"  CLOSED_WON  "``. Everything else,
+#: including ``Pledged``, every open pipeline stage (``Prospecting``,
+#: ``Qualification``, ...) and ``Closed Lost``, is excluded by default,
+#: because this module cannot enumerate an org's own stage names and an
+#: unrecognised stage is not proof that the money arrived.
+DEFAULT_INCLUDED_STAGES = (
+    "Closed Won",
+    "Awarded",
+    "Posted",
 )
 
 # NPSP header normalisation, applied before the CiviCRM bridge's own. Case and
@@ -137,13 +155,13 @@ def npsp_opportunities_to_features(
     opportunities: Union[Iterable[Mapping], pd.DataFrame],
     *,
     reference_date: Optional[Union[str, pd.Timestamp]] = None,
-    exclude_stages: Optional[Sequence[str]] = DEFAULT_EXCLUDED_STAGES,
+    include_stages: Optional[Sequence[str]] = DEFAULT_INCLUDED_STAGES,
 ) -> pd.DataFrame:
     """Aggregate an NPSP Opportunity export into donor-level features.
 
-    ``Pledged`` instalment rows are dropped first, then the surviving rows are
-    handed to :func:`civicrm_contributions_to_features`, which produces the
-    donor frame. NPSP's stage vocabulary carries no test-mode flag, so none is
+    Only rows whose stage is a closed/won equivalent are kept, then handed to
+    :func:`civicrm_contributions_to_features`, which produces the donor
+    frame. NPSP's stage vocabulary carries no test-mode flag, so none is
     applied.
 
     Parameters
@@ -161,13 +179,18 @@ def npsp_opportunities_to_features(
         Anchor for the recency features. If ``None``, the latest Opportunity
         date in the batch is used, which keeps the aggregation free of "now"
         leakage.
-    exclude_stages : sequence of str or None, default=:data:`DEFAULT_EXCLUDED_STAGES`
-        Stages to drop before aggregating, matched against ``gift_type``
-        (the normalised Stage column) ignoring case, spacing and punctuation.
+    include_stages : sequence of str or None, default=:data:`DEFAULT_INCLUDED_STAGES`
+        Allowlist of closed/won-equivalent stages to keep before aggregating,
+        matched against ``gift_type`` (the normalised Stage column) ignoring
+        case, spacing and punctuation. Every other named stage, including
+        ``Pledged``, open pipeline stages and ``Closed Lost``, is dropped:
+        an org's own stage vocabulary cannot be enumerated here, so an
+        unrecognised stage is treated as not yet money rather than summed.
         ``None`` or an empty sequence disables the filter and sums **every**
         row, which double-counts an instalment recorded in both its
-        ``Pledged`` and closed/won stages. Rows whose stage is blank are kept
-        either way: an unlabelled row cannot be shown to be a pledge.
+        ``Pledged`` and closed/won stages, and counts open pipeline that was
+        never given. Rows whose stage is blank are kept either way: an
+        unlabelled row cannot be shown to be anything but a gift.
 
     Returns
     -------
@@ -185,11 +208,11 @@ def npsp_opportunities_to_features(
     Warns
     -----
     UserWarning
-        If ``exclude_stages`` was requested but the export carries no stage
+        If ``include_stages`` was requested but the export carries no stage
         column. Silently summing a ``Pledged`` instalment together with the
-        ``Closed Won`` row recording its receipt is exactly the error this
-        bridge exists to prevent, so it is worth a warning rather than a quiet
-        wrong total.
+        ``Closed Won`` row recording its receipt (or an open pipeline row)
+        is exactly the error this bridge exists to prevent, so it is worth a
+        warning rather than a quiet wrong total.
 
     Notes
     -----
@@ -226,19 +249,19 @@ def npsp_opportunities_to_features(
             f"{sorted(df.columns)}."
         )
 
-    if exclude_stages:
+    if include_stages:
         if "gift_type" in df.columns:
-            unwanted = {_stage_key(s) for s in exclude_stages}
+            wanted = {_stage_key(s) for s in include_stages}
             keys = df["gift_type"].map(_stage_key)
-            df = df[~keys.isin(unwanted)]
+            df = df[(keys == "") | keys.isin(wanted)]
         else:
             warnings.warn(
                 f"NPSP Opportunity export has no Stage column, so "
-                f"exclude_stages={tuple(exclude_stages)!r} could not be "
-                f"applied: a Pledged instalment (if any) is summed alongside "
-                f"the Closed Won row recording its receipt, which counts "
-                f"every pledged dollar twice. Add the 'Stage' field to the "
-                f"export.",
+                f"include_stages={tuple(include_stages)!r} could not be "
+                f"applied: a Pledged instalment or an open-pipeline row (if "
+                f"any) is summed alongside the Closed Won row recording a "
+                f"gift's receipt, which counts money that was never given. "
+                f"Add the 'Stage' field to the export.",
                 stacklevel=2,
             )
 

@@ -211,7 +211,7 @@ The script had a prediction written into it before it ran, that real leakage wou
 
 **Blackbaud Raiser's Edge / RE NXT.** `read_raisers_edge_gifts()` → `raisers_edge_gifts_to_features()`, dropping pledge and recurring-gift-template rows by default (`DEFAULT_EXCLUDED_GIFT_TYPES`) so a committed dollar is never summed as both the promise and the payment.
 
-**Salesforce NPSP.** `read_npsp_opportunities()` → `npsp_opportunities_to_features()`, with the same default protection against a Recurring Donation instalment counting twice (`DEFAULT_EXCLUDED_STAGES`), this time keyed off Opportunity stage instead of a separate gift record.
+**Salesforce NPSP.** `read_npsp_opportunities()` → `npsp_opportunities_to_features()`, counting only closed/won Opportunity stages by default (`DEFAULT_INCLUDED_STAGES`: `Closed Won`, `Awarded`, `Posted`). A `Pledged` instalment, an open pipeline stage, and `Closed Lost` are not gifts.
 
 All three gift bridges are also reachable through one function, `philanthropy.ingest.read_gifts(path_or_df, source="civicrm" | "raisers_edge" | "npsp")`, for code that needs to support more than one CRM without an `if/elif` per source.
 
@@ -276,7 +276,7 @@ Full parameter documentation for every symbol below is rendered in the [API refe
 | `constituent_events_to_features`, `read_constituent_events` | `ingest` | UniSchema bridge |
 | `civicrm_contributions_to_features`, `read_civicrm_contributions` | `ingest` | CiviCRM contribution-export bridge |
 | `raisers_edge_gifts_to_features`, `read_raisers_edge_gifts` | `ingest` | Blackbaud Raiser's Edge / RE NXT bridge; drops pledge and recurring-template rows by default |
-| `npsp_opportunities_to_features`, `read_npsp_opportunities` | `ingest` | Salesforce NPSP Opportunity bridge; drops unreceived Recurring Donation instalments by default |
+| `npsp_opportunities_to_features`, `read_npsp_opportunities` | `ingest` | Salesforce NPSP Opportunity bridge; counts closed/won stages only (`Closed Won`, `Awarded`, `Posted`) |
 | `read_gifts` | `ingest` | One entry point over the CiviCRM / Raiser's Edge / NPSP presets (`GIFT_SOURCES`) |
 | `map_columns` | `ingest` | Renames a user-mapped header set to the canonical names the bridges expect |
 | `activities_to_features` | `ingest` | Long, multi-source activity log (events, volunteering, ...) → per-donor, per-type engagement features |

@@ -19,8 +19,9 @@ dollar is not counted both as the promise and as the payments against it.
 
 NPSP: ``read_npsp_opportunities`` loads a Salesforce Nonprofit Success Pack
 Opportunity export CSV; ``npsp_opportunities_to_features`` aggregates it,
-dropping ``Pledged`` instalment rows first so a Recurring Donation instalment
-is not counted both in its ``Pledged`` stage and again once it closes ``Won``.
+keeping only closed/won stages (``Closed Won``, ``Awarded``, ``Posted``) so a
+``Pledged`` instalment, an open pipeline row, or ``Closed Lost`` is not
+counted as a gift.
 
 ``map_columns`` renames a user-supplied export's headers to the canonical
 names a bridge above expects, raising one error listing every column still
@@ -53,7 +54,7 @@ from ._constituent_events import (
 )
 from ._map_columns import map_columns
 from ._npsp import (
-    DEFAULT_EXCLUDED_STAGES,
+    DEFAULT_INCLUDED_STAGES,
     npsp_opportunities_to_features,
     read_npsp_opportunities,
 )
@@ -67,7 +68,7 @@ from ._upgrade_snapshots import build_upgrade_snapshots
 
 __all__ = [
     "DEFAULT_EXCLUDED_GIFT_TYPES",
-    "DEFAULT_EXCLUDED_STAGES",
+    "DEFAULT_INCLUDED_STAGES",
     "GIFT_SOURCES",
     "activities_to_features",
     "build_upgrade_snapshots",

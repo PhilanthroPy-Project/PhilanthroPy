@@ -113,9 +113,9 @@ def test_source_specific_kwarg_reaches_the_underlying_aggregator():
         {"Account ID": "88", "Close Date": "2025-02-10", "Amount": "100.00",
          "Stage": "Closed Won"},
     ]
-    # Default excludes Pledged: only the Closed Won row counts.
+    # Default keeps Closed Won only: the Pledged row does not count.
     default = read_gifts(rows, source="npsp")
     assert float(default.loc["88", "total_gift_amount"]) == 100.0
-    # exclude_stages=None disables the filter and sums both rows.
-    unfiltered = read_gifts(rows, source="npsp", exclude_stages=None)
+    # include_stages=None disables the filter and sums both rows.
+    unfiltered = read_gifts(rows, source="npsp", include_stages=None)
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 200.0

@@ -23,10 +23,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `philanthropy.ingest.read_npsp_opportunities` and
   `npsp_opportunities_to_features`: a Salesforce Nonprofit Success Pack (NPSP)
   Opportunity export bridge, alongside the existing CiviCRM and Raiser's Edge
-  ones. Drops `Pledged` Recurring Donation instalment rows by default
-  (`DEFAULT_EXCLUDED_STAGES`) so an instalment isn't counted both as the
-  pledge and again once it closes `Won`. Wired into the CLI as
-  `philanthropy features --source npsp`.
+  ones. Counts only closed/won stages by default (`Closed Won`,
+  `Awarded`, `Posted`, via `DEFAULT_INCLUDED_STAGES`) so a `Pledged`
+  instalment, an open pipeline stage, and `Closed Lost` are not summed as
+  gifts. Wired into the CLI as `philanthropy features --source npsp`.
 - `philanthropy.ingest.activities_to_features(activities, *, as_of,
   donors=None)`: aggregates a long, multi-source activity log (event
   attendance, volunteer shifts, email clicks, ...) into per-donor,
@@ -40,7 +40,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   Raiser's Edge or NPSP reader-and-aggregator pair by name from the new
   `GIFT_SOURCES` registry, for a caller working with more than one CRM export
   format. Keyword arguments other than `source` pass straight through to the
-  matched aggregator, so `exclude_stages`, `exclude_gift_types` and `statuses`
+  matched aggregator, so `include_stages`, `exclude_gift_types` and `statuses`
   all still work.
 - `philanthropy.ingest.build_upgrade_snapshots(gifts, *, fiscal_years,
   threshold=1000, band=(100, 999), fiscal_year_start=7, activities=None,
@@ -85,6 +85,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   they can look broken even when the model ranks donors well.
 
 ### Fixed
+- `npsp_opportunities_to_features` summed every Opportunity that was not
+  `Pledged`, so `Closed Lost` and open pipeline stages such as
+  `Prospecting` counted as gifts. It now keeps only closed/won stages
+  (`Closed Won`, `Awarded`, `Posted`) through `DEFAULT_INCLUDED_STAGES` and
+  the caller-extendable `include_stages` parameter. `DEFAULT_EXCLUDED_STAGES`
+  and `exclude_stages` are removed; neither was in a release.
 - `philanthropy train`, `philanthropy score` and `philanthropy validate` fit
   and score on the named feature DataFrame instead of a bare array, so
   `score` and `validate` no longer print an sklearn "X does not have valid

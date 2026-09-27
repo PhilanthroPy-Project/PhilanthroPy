@@ -411,10 +411,11 @@ def _build_parser() -> argparse.ArgumentParser:
             "the models consume, then feed that to `train` and `score`. "
             "Emitted columns, in order: " + _FEATURE_COLUMNS + ". Commitment "
             "rows (pledges, recurring gift templates) are dropped for "
-            "raisers_edge, Pledged instalment rows for npsp, and test-mode "
-            "and non-Completed rows for civicrm, so a committed dollar is "
-            "not counted twice. No label is produced: `train --target` "
-            "needs a column you define yourself."
+            "raisers_edge. For npsp only closed/won stages (Closed Won, "
+            "Awarded, Posted) are kept, so Pledged, open pipeline, and "
+            "Closed Lost are not counted as gifts. Test-mode and "
+            "non-Completed rows are dropped for civicrm. No label is "
+            "produced: `train --target` needs a column you define yourself."
         ),
     )
     features.add_argument(

@@ -66,7 +66,7 @@ def read_gifts(
     **kwargs
         Passed through to the source's aggregator, e.g. ``statuses=`` for
         ``"civicrm"``, ``exclude_gift_types=`` for ``"raisers_edge"``,
-        ``exclude_stages=`` for ``"npsp"``, or the ``reference_date=`` every
+        ``include_stages=`` for ``"npsp"``, or the ``reference_date=`` every
         preset accepts.
 
     Returns

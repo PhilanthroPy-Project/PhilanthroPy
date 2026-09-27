@@ -2,11 +2,13 @@
 tests/test_npsp.py
 Tests for the philanthropy.ingest Salesforce NPSP Opportunity bridge.
 
-The point of the module is one filter: NPSP's Recurring Donations feature can
-carry both a ``Pledged`` Opportunity for an instalment and the ``Closed Won``
-Opportunity recording its receipt, so a naive sum counts the instalment
-twice. Most of what follows checks that the ``Pledged`` rows leave and the
-closed/won rows stay, in each spelling NPSP writes the export's headers in.
+The point of the module is an allowlist: only closed/won-equivalent stages
+(``Closed Won``, ``Posted``, ``Awarded``) are counted, so neither a
+``Pledged`` Recurring Donation instalment nor open pipeline (``Prospecting``,
+...) nor ``Closed Lost`` is summed alongside the ``Closed Won`` row recording
+an instalment's actual receipt. Most of what follows checks that the
+included stages stay and everything else leaves, in each spelling NPSP writes
+the export's headers in.
 """
 
 import warnings
@@ -15,7 +17,7 @@ import pandas as pd
 import pytest
 
 from philanthropy.ingest import (
-    DEFAULT_EXCLUDED_STAGES,
+    DEFAULT_INCLUDED_STAGES,
     npsp_opportunities_to_features,
     read_npsp_opportunities,
 )
@@ -56,7 +58,7 @@ def opportunities():
 
 
 # --------------------------------------------------------------------------- #
-# The pledged-versus-closed-won filter
+# The closed/won allowlist
 # --------------------------------------------------------------------------- #
 def test_pledged_instalment_is_excluded_and_closed_won_is_not(opportunities):
     feats = npsp_opportunities_to_features(opportunities)
@@ -79,45 +81,61 @@ def test_every_row_filtered_out_returns_a_typed_empty_frame():
     assert feats.index.name == "contact_id"
 
 
-@pytest.mark.parametrize("stage", ["Pledged"])
-def test_every_default_excluded_stage_is_dropped(stage):
+@pytest.mark.parametrize("stage", ["Closed Won", "Posted", "Awarded"])
+def test_every_default_included_stage_is_kept(stage):
     rows = [{"Account ID": "1", "Close Date": "2025-01-01",
-             "Amount": "500.00", "Stage": stage},
+             "Amount": "500.00", "Stage": "Pledged"},
             {"Account ID": "1", "Close Date": "2025-01-02",
-             "Amount": "10.00", "Stage": "Closed Won"}]
-    feats = npsp_opportunities_to_features(rows)
-    assert float(feats.loc["1", "total_gift_amount"]) == 10.0
-
-
-@pytest.mark.parametrize("stage", ["Closed Won", "Posted", "Prospecting", "Awarded"])
-def test_closed_and_other_open_stages_are_kept(stage):
-    rows = [{"Account ID": "1", "Close Date": "2025-01-01",
              "Amount": "10.00", "Stage": stage}]
     feats = npsp_opportunities_to_features(rows)
     assert float(feats.loc["1", "total_gift_amount"]) == 10.0
 
 
-@pytest.mark.parametrize("stage", ["PLEDGED", "pledged", "  Pledged  "])
-def test_exclusion_matching_ignores_case_and_spacing(stage):
+def test_closed_lost_is_not_added_to_closed_won():
+    """A lost Opportunity is not a gift, even next to a real one."""
+    rows = [
+        {"Account ID": "1", "Close Date": "2025-01-01",
+         "Amount": "500.00", "Stage": "Closed Lost"},
+        {"Account ID": "1", "Close Date": "2025-01-02",
+         "Amount": "100.00", "Stage": "Closed Won"},
+    ]
+    feats = npsp_opportunities_to_features(rows)
+    assert float(feats.loc["1", "total_gift_amount"]) == 100.0
+
+
+@pytest.mark.parametrize("stage", ["Pledged", "Prospecting", "Qualification", "Closed Lost"])
+def test_stages_outside_the_allowlist_are_dropped_by_default(stage):
+    """Prospecting and other open pipeline is cultivation work, not a gift,
+    and Closed Lost never closed at all; neither is money and both must be
+    dropped just like a still-open Pledged instalment."""
     rows = [{"Account ID": "1", "Close Date": "2025-01-01",
-             "Amount": "500.00", "Stage": stage},
+             "Amount": "10.00", "Stage": stage}]
+    feats = npsp_opportunities_to_features(rows)
+    assert "1" not in feats.index
+
+
+@pytest.mark.parametrize("stage", ["CLOSED WON", "closed won", "  Closed Won  "])
+def test_inclusion_matching_ignores_case_and_spacing(stage):
+    rows = [{"Account ID": "1", "Close Date": "2025-01-01",
+             "Amount": "500.00", "Stage": "Pledged"},
             {"Account ID": "1", "Close Date": "2025-01-02",
-             "Amount": "10.00", "Stage": "Closed Won"}]
+             "Amount": "10.00", "Stage": stage}]
     feats = npsp_opportunities_to_features(rows)
     assert float(feats.loc["1", "total_gift_amount"]) == 10.0
 
 
-def test_a_stage_only_containing_pledged_as_a_substring_is_not_excluded():
-    """'Not Pledged Yet' must not be swept up by the 'Pledged' default: the
-    matching key is compared for equality, not membership."""
+def test_a_stage_only_containing_closed_won_as_a_substring_is_not_included():
+    """'Not Closed Won Yet' must not be swept into the 'Closed Won' default:
+    the matching key is compared for equality, not membership."""
     rows = [{"Account ID": "1", "Close Date": "2025-01-01",
-             "Amount": "25.00", "Stage": "Not Pledged Yet"}]
+             "Amount": "25.00", "Stage": "Not Closed Won Yet"}]
     feats = npsp_opportunities_to_features(rows)
-    assert float(feats.loc["1", "total_gift_amount"]) == 25.0
+    assert "1" not in feats.index
 
 
 def test_blank_stage_is_kept():
-    """An unlabelled row cannot be shown to be a pledge, so it stays."""
+    """An unlabelled row is kept. The export did not name a stage, so it is
+    not treated as open pipeline or as Closed Lost."""
     rows = [{"Account ID": "1", "Close Date": "2025-01-01",
              "Amount": "10.00", "Stage": ""},
             {"Account ID": "1", "Close Date": "2025-01-02",
@@ -127,20 +145,20 @@ def test_blank_stage_is_kept():
     assert int(feats.loc["1", "gift_count"]) == 2
 
 
-def test_custom_exclude_set_replaces_the_default(opportunities):
-    feats = npsp_opportunities_to_features(opportunities, exclude_stages=("Closed Won",))
-    # Pledged is no longer excluded; the two Closed Won rows are.
+def test_custom_include_set_replaces_the_default(opportunities):
+    feats = npsp_opportunities_to_features(opportunities, include_stages=("Pledged",))
+    # Closed Won is no longer included; the still-open Pledged row is.
     assert float(feats.loc["88", "total_gift_amount"]) == 100.0
 
 
-def test_exclude_none_counts_every_row(opportunities):
-    feats = npsp_opportunities_to_features(opportunities, exclude_stages=None)
+def test_include_none_counts_every_row(opportunities):
+    feats = npsp_opportunities_to_features(opportunities, include_stages=None)
     assert float(feats.loc["88", "total_gift_amount"]) == 300.0
     assert int(feats.loc["88", "gift_count"]) == 3
 
 
-def test_empty_exclude_sequence_counts_every_row(opportunities):
-    feats = npsp_opportunities_to_features(opportunities, exclude_stages=())
+def test_empty_include_sequence_counts_every_row(opportunities):
+    feats = npsp_opportunities_to_features(opportunities, include_stages=())
     assert float(feats.loc["88", "total_gift_amount"]) == 300.0
 
 
@@ -151,15 +169,15 @@ def test_missing_stage_column_warns():
     assert float(feats.loc["1", "total_gift_amount"]) == 10.0
 
 
-def test_exclude_none_does_not_warn_about_a_missing_stage_column():
+def test_include_none_does_not_warn_about_a_missing_stage_column():
     rows = [{"Account ID": "1", "Close Date": "2025-01-01", "Amount": "10.00"}]
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        npsp_opportunities_to_features(rows, exclude_stages=None)
+        npsp_opportunities_to_features(rows, include_stages=None)
 
 
-def test_default_excluded_set_is_documented_and_non_empty():
-    assert "Pledged" in DEFAULT_EXCLUDED_STAGES
+def test_default_included_set_is_documented_and_non_empty():
+    assert "Closed Won" in DEFAULT_INCLUDED_STAGES
 
 
 # --------------------------------------------------------------------------- #
@@ -222,7 +240,7 @@ def test_schema_and_dtypes(opportunities):
 
 
 def test_record_type_feeds_distinct_financial_types(opportunities):
-    feats = npsp_opportunities_to_features(opportunities, exclude_stages=None)
+    feats = npsp_opportunities_to_features(opportunities, include_stages=None)
     # Donor 88's three rows sit on Donation, Donation and Recurring Donation.
     assert int(feats.loc["88", "distinct_financial_types"]) == 2
 

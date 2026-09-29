@@ -213,6 +213,11 @@ def upgrade_worked_example() -> Dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--with-kdd98", action="store_true", help="Also run the KDD Cup 1998 section (downloads ~36MB).")
+    parser.add_argument(
+        "--with-cup98val", action="store_true",
+        help="Also score who-to-mail on KDD98's own held-out cup98VAL+valtargt file "
+        "(a second ~37MB download; opt-in). No effect without --with-kdd98.",
+    )
     args = parser.parse_args()
 
     results: Dict[str, Any] = {}
@@ -392,6 +397,28 @@ def main() -> None:
             ylabel="Net revenue after mailing cost ($)",
             title="Who to mail: KDD Cup 1998",
         )
+
+        # --- who to mail, scored on KDD98's own held-out validation file ----
+        if args.with_cup98val:
+            kdd_cost_val = bm.bench_kdd_cost_aware_val(seed)
+            net_row_val = _row(kdd_cost_val, "cost_aware_selection", "net_revenue")
+            results["who_to_mail_cup98val"] = {
+                "net_revenue_model": net_row_val.value,
+                "net_revenue_mail_everyone": net_row_val.baseline,
+                "verdict": net_row_val.verdict,
+                "note": net_row_val.note,
+            }
+            _bar_chart(
+                OUT_DIR / "who_to_mail_cup98val.png",
+                ["Net revenue"],
+                {
+                    "Only mail likely responders": [results["who_to_mail_cup98val"]["net_revenue_model"]],
+                    "Mail everyone": [results["who_to_mail_cup98val"]["net_revenue_mail_everyone"]],
+                },
+                {"Only mail likely responders": COLOR_MODEL, "Mail everyone": COLOR_RULE},
+                ylabel="Net revenue after mailing cost ($)",
+                title="Who to mail: KDD Cup 1998's own held-out validation file (cup98VAL)",
+            )
 
     results["_env"] = {
         "git_sha": _git_sha(),

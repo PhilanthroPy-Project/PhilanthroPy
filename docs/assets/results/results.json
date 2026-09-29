@@ -183,8 +183,14 @@
     "verdict": "wins",
     "note": "mail if E[gift]>$0.68; pieces=18704/28624"
   },
+  "who_to_mail_cup98val": {
+    "net_revenue_model": 13763.730000000003,
+    "net_revenue_mail_everyone": 10560.079999999994,
+    "verdict": "wins",
+    "note": "mail if E[gift]>$0.68; pieces=62703/96367; model fit on cup98LRN's own 55% train split only, scored on KDD98's own held-out validation file (cup98VAL+valtargt), reported next to bench_kdd_cost_aware's random-split number, not replacing it"
+  },
   "_env": {
-    "git_sha": "d196e50c71296e8ec341c74da5f2cc4ee15554e2",
+    "git_sha": "a01b411aa66567fa0bb4e1f6317a86649abce1bc",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

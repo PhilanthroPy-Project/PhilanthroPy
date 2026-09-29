@@ -11,6 +11,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `HistGradientBoostingClassifier`, alongside the existing `max_iter` and
   `learning_rate`. Purely additive: defaults match the underlying
   estimator's own defaults, so existing code is unaffected.
+- `philanthropy.datasets.fetch_kdd98_val_donors`: fetches KDD Cup 1998's own
+  held-out validation file (`cup98VAL` + its `valtargt` answer key), a
+  second 96,367-donor file that was never part of the learning file
+  `fetch_kdd98_donors` returns and never touched by that file's own
+  55/15/30 split. `scripts/benchmark_models_vs_baselines.py` gains
+  `bench_kdd_cost_aware_val` and a `--with-cup98val` flag (opt-in, a second
+  ~37MB download): it fits the same cost-aware mail-selection models on the
+  learning file's own train split and scores them on this genuinely
+  held-out file instead. Reported next to the existing random-split number,
+  not replacing it: net revenue $13,764 vs $10,560 for mailing everyone
+  (ROI 0.32 vs 0.16), the same shape as the learning-file split's $4,542 vs
+  $3,149. `scripts/make_results_pages.py --with-cup98val` writes this into
+  `docs/assets/results/results.json` and the "Who to mail" page now states
+  both numbers.
 - Test covering `PropensityScorer.predict_proba` when `fit` saw only one
   class (closes #50).
 - A "Results" section in the docs (`docs/results/`): one page per model

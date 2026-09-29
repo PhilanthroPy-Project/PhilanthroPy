@@ -90,7 +90,7 @@ parentheses.**
 | Model | Precision | Recall | F1 | ROC-AUC |
 |---|---:|---:|---:|---:|
 | `PropensityScorer` (baseline) | 0.000 (0.000–0.000) | 0.000 (0.000–0.000) | 0.000 (0.000–0.000) | 0.500 (0.500–0.500) |
-| `DonorPropensityModel` | 0.668 (0.625–0.699) | 0.609 (0.592–0.632) | 0.636 (0.625–0.645) | 0.810 (0.802–0.815) |
+| `DonorPropensityModel` | 0.714 (0.684–0.724) | 0.637 (0.622–0.660) | 0.673 (0.652–0.689) | 0.841 (0.837–0.844) |
 | `MajorGiftClassifier` | 0.731 (0.687–0.765) | 0.559 (0.536–0.585) | 0.633 (0.606–0.656) | 0.827 (0.817–0.832) |
 | `LapsePredictor` | 0.668 (0.625–0.699) | 0.609 (0.592–0.632) | 0.636 (0.625–0.645) | 0.810 (0.802–0.815) |
 | `PlannedGivingIntentScorer` | 0.731 (0.717–0.740) | 0.605 (0.576–0.636) | 0.662 (0.643–0.683) | 0.840 (0.833–0.844) |
@@ -116,11 +116,14 @@ turns on the third decimal is reading noise.
   `argmax(predict_proba) == predict`, and `argmax` of a tied `[0.5, 0.5]` row is
   index 0. Either choice is arbitrary for a constant scorer; only the ROC-AUC of
   0.500 carries information.
-- **`LapsePredictor` and `DonorPropensityModel` report identical numbers** on
-  this task. Both wrap a default `RandomForestClassifier` with the same
-  `random_state` and features, so the match is expected, not a bug.
-  `LapsePredictor` is purpose-built for a lapse label, not `is_major_donor`; it
-  appears here only because its estimator is applicable.
+- **`DonorPropensityModel` now edges out `LapsePredictor`** on this task (ROC-AUC
+  0.841 vs 0.810). Both wrap a `RandomForestClassifier` with the same
+  `random_state` and features, and used to report identical numbers; the gap is
+  `DonorPropensityModel`'s larger default leaf size (`min_samples_leaf=0.008`,
+  a fraction of the training rows), which stops its trees memorising the
+  training set. `LapsePredictor` still uses sklearn's default of 1 leaf sample.
+  It is purpose-built for a lapse label, not `is_major_donor`, and appears here
+  only because its estimator is applicable.
 - **ROC-AUC is the most transferable metric** across base rates. Precision and
   recall depend on the 0.5 decision threshold and this pool's 0.378 positive
   rate, which is still far higher than a real major-donor base rate of a few

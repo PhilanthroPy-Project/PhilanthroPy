@@ -177,9 +177,12 @@ def test_affinity_score_monotone_with_proba(fitted_model, donor_Xy):
     X, _ = donor_Xy
     scores = fitted_model.predict_affinity_score(X)
     proba = fitted_model.predict_proba(X)[:, 1]
-    rank_scores = scores.argsort()
-    rank_proba = proba.argsort()
-    assert np.array_equal(rank_scores, rank_proba)
+    # Comparing argsort permutations breaks on ties (argsort orders tied
+    # values arbitrarily, and rounding to 2 decimals creates ties), so check
+    # the ordering and the exact mapping directly.
+    order = np.argsort(proba, kind="stable")
+    assert np.all(np.diff(scores[order]) >= 0)
+    np.testing.assert_array_equal(scores, np.round(proba * 100, 2))
 
 
 def test_affinity_score_is_float_array(fitted_model, donor_Xy):
@@ -275,6 +278,17 @@ def test_accepts_pandas_dataframe():
     model.fit(X_df, y)
     preds = model.predict(X_df)
     assert preds.shape == (100,)
+
+
+def test_accepts_nan_in_fit_and_predict(donor_Xy):
+    X, y = donor_Xy
+    X_nan = X.copy()
+    X_nan[::7, 0] = np.nan
+    model = DonorPropensityModel(n_estimators=5, min_samples_leaf=5, random_state=0)
+    model.fit(X_nan, y)
+    scores = model.predict_affinity_score(X_nan)
+    assert scores.shape == (len(X),)
+    assert np.isfinite(scores).all()
 
 
 # ---------------------------------------------------------------------------

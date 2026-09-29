@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Test covering `PropensityScorer.predict_proba` when `fit` saw only one
+  class (closes #50).
 - A "Results" section in the docs (`docs/results/`): one page per model
   ($1K upgrade, response/major gift, lapse, suggested ask, planned giving,
   who to mail) written for fundraisers, not data scientists, comparing each

@@ -42,6 +42,15 @@ def test_propensity_scorer_predict_proba_shape(dummy_Xy):
     assert np.allclose(proba.sum(axis=1), 1.0)
 
 
+def test_propensity_scorer_predict_proba_single_class():
+    X = np.ones((5, 3))
+    y = np.zeros(5)
+    clf = PropensityScorer().fit(X, y)
+    proba = clf.predict_proba(X)
+    assert proba.shape == (5, 1)
+    assert np.all(proba == 1.0)
+
+
 # ---------------------------------------------------------------------------
 # LapsePredictor tests (production implementation)
 # ---------------------------------------------------------------------------

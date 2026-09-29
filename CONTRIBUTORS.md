@@ -82,7 +82,9 @@ contribution. Code, docs, tests, and review all count.
 - **Harsh Raj Singhania** ([@HarshRajSinghania](https://github.com/HarshRajSinghania)):
   added DataFrame and array-fit tests so `MovesManagementClassifier.feature_names_in_`
   is exercised rather than only assigned (closes
-  [#200](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/200)).
+  [#200](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/200));
+  added a test for `PropensityScorer.predict_proba` on single-class training
+  data (closes #50).
 - [@Dikshant2965](https://github.com/Dikshant2965): added regression coverage for
   `PlannedGivingSignalTransformer` when transforming a NumPy array after fitting
   on a DataFrame (closes #154).

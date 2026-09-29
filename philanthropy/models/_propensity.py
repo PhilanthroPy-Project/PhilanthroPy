@@ -373,6 +373,17 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         :class:`HistGradientBoostingClassifier`.
     learning_rate : float, default=0.1
         Shrinkage applied to each boosting iteration.
+    min_samples_leaf : int, default=20
+        Minimum number of samples per leaf, passed straight to the underlying
+        :class:`HistGradientBoostingClassifier`.
+    max_leaf_nodes : int or None, default=31
+        Maximum number of leaves per tree, passed straight to the underlying
+        :class:`HistGradientBoostingClassifier`.
+    monotonic_cst : array-like of int or dict, default=None
+        Monotonic constraint on each feature, passed straight to the
+        underlying :class:`HistGradientBoostingClassifier`. ``None`` applies
+        no constraint (current behaviour); see sklearn's docs for the
+        ``{-1, 0, 1}`` per-feature encoding.
     class_weight : dict, "balanced" or None, default=None
         Weight scheme for the two classes. Useful when the major-gift class
         is rare (e.g. a 2-3% base rate), where ``predict`` can otherwise
@@ -398,11 +409,17 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         self,
         max_iter: int = 100,
         learning_rate: float = 0.1,
+        min_samples_leaf: int = 20,
+        max_leaf_nodes: Optional[int] = 31,
+        monotonic_cst: Any = None,
         class_weight: Any = None,
         random_state: Optional[int] = None,
     ) -> None:
         self.max_iter = max_iter
         self.learning_rate = learning_rate
+        self.min_samples_leaf = min_samples_leaf
+        self.max_leaf_nodes = max_leaf_nodes
+        self.monotonic_cst = monotonic_cst
         self.class_weight = class_weight
         self.random_state = random_state
 
@@ -430,6 +447,9 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         base_estimator = HistGradientBoostingClassifier(
             max_iter=self.max_iter,
             learning_rate=self.learning_rate,
+            min_samples_leaf=self.min_samples_leaf,
+            max_leaf_nodes=self.max_leaf_nodes,
+            monotonic_cst=self.monotonic_cst,
             random_state=self.random_state
         )
         self.estimator_ = CalibratedClassifierCV(base_estimator)

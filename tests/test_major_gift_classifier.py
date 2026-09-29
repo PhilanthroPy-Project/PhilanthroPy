@@ -214,6 +214,53 @@ def test_class_weight_param_stored_verbatim():
     assert clf.class_weight == "balanced"
 
 
+def test_monotonic_cst_leaf_params_default_matches_prior_behavior(mg_Xy):
+    """monotonic_cst/min_samples_leaf/max_leaf_nodes are additive passthroughs;
+    leaving them at their defaults must reproduce the pre-passthrough fit
+    exactly (same predictions and affinity scores)."""
+    X, y = mg_Xy
+    default_clf = MajorGiftClassifier(max_iter=20, random_state=0)
+    explicit_clf = MajorGiftClassifier(
+        max_iter=20,
+        random_state=0,
+        min_samples_leaf=20,
+        max_leaf_nodes=31,
+        monotonic_cst=None,
+    )
+    default_clf.fit(X, y)
+    explicit_clf.fit(X, y)
+    np.testing.assert_array_equal(default_clf.predict(X), explicit_clf.predict(X))
+    np.testing.assert_allclose(
+        default_clf.predict_affinity_score(X), explicit_clf.predict_affinity_score(X)
+    )
+
+
+def test_monotonic_cst_leaf_params_stored_verbatim():
+    clf = MajorGiftClassifier(min_samples_leaf=5, max_leaf_nodes=15, monotonic_cst=[1, 0, -1])
+    assert clf.min_samples_leaf == 5
+    assert clf.max_leaf_nodes == 15
+    assert clf.monotonic_cst == [1, 0, -1]
+
+
+def test_monotonic_cst_forwarded_to_base_estimator(mg_Xy):
+    """A monotone-increasing constraint on feature 0 should make the
+    calibrated positive-class probability non-decreasing in that feature,
+    confirming monotonic_cst actually reaches the underlying HGB estimator."""
+    rng = np.random.default_rng(0)
+    n = 300
+    x0 = rng.random(n)
+    X = np.column_stack([x0, rng.random(n)])
+    y = (rng.random(n) < x0).astype(int)
+
+    clf = MajorGiftClassifier(
+        max_iter=50, random_state=0, monotonic_cst=[1, 0]
+    ).fit(X, y)
+
+    grid = np.column_stack([np.linspace(0, 1, 50), np.full(50, 0.5)])
+    scores = clf.predict_affinity_score(grid)
+    assert np.all(np.diff(scores) >= -1e-9)
+
+
 def test_class_weight_shifts_predictions_toward_upweighted_class():
     """class_weight must actually influence predict(), not just sit unused
     on self. Uses an extreme weight (mirrors sklearn's own

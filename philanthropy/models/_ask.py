@@ -93,6 +93,12 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
     min_samples_leaf : int, default=20
         Minimum number of samples per leaf.  Larger values prevent
         overfitting on sparse major-donor training sets.
+    loss : {"squared_error", "absolute_error"}, default="absolute_error"
+        Loss function for the backend ``HistGradientBoostingRegressor``.
+        Ask amounts are right-skewed (a few large gifts, many small ones),
+        and squared error fits the conditional *mean*, which overshoots most
+        donors; absolute error fits the conditional *median* instead, which
+        tracks a typical ask more closely.
     random_state : int or None, default=None
         Seed for the internal random-number generator.  Set to an integer
         for reproducible model artefacts suitable for audit trails.
@@ -168,6 +174,7 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         max_depth: Optional[int] = None,
         l2_regularization: float = 0.0,
         min_samples_leaf: int = 20,
+        loss: str = "absolute_error",
         random_state: Optional[int] = None,
         ask_floor: float = 1.0,
     ) -> None:
@@ -177,6 +184,7 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         self.max_depth = max_depth
         self.l2_regularization = l2_regularization
         self.min_samples_leaf = min_samples_leaf
+        self.loss = loss
         self.random_state = random_state
         self.ask_floor = ask_floor
 
@@ -207,6 +215,7 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
             max_depth=self.max_depth,
             l2_regularization=self.l2_regularization,
             min_samples_leaf=self.min_samples_leaf,
+            loss=self.loss,
             random_state=self.random_state,
         )
         self.estimator_.fit(X, y)

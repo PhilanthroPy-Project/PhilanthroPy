@@ -166,6 +166,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   (`NaN`) directly, as `RandomForestClassifier` has since scikit-learn 1.4.
 
 ### Fixed
+- `scripts/benchmark_models_vs_baselines.py`: the KDD Cup 1998 upgrade row
+  (`bench_kdd_upgrade`) split its multi-year snapshot table at random by
+  row, with `fiscal_year` as a feature. The file's gift log effectively ends
+  in March 1996, so the FY1996 snapshot has almost no upgrades (3 in
+  75,272), and the model scored AUC 0.902 mostly by learning which year a
+  row came from; the same donor could also sit in train and test. It now
+  walks forward (train FY1994, test FY1995, `fiscal_year` dropped as a
+  feature). On the corrected split the upgrade model does not beat the best
+  rule on this file: top-10% hit rate 11.0% vs 12.2% for "largest single
+  gift in band", AUC 0.750 vs 0.750. The Results pages never showed a KDD98
+  upgrade number, so no page changes.
 - `scripts/make_results_pages.py` now records the git SHA and the installed
   `scikit-learn`/`numpy`/`pandas` versions in `docs/assets/results/results.json`
   (an `_env` key), so a number that doesn't reproduce can be traced to the

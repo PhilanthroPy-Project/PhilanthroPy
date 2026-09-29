@@ -62,7 +62,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `build_upgrade_snapshots` | `ingest` | The gift-derived feature set (trend, consecutive years given, ...) is a minimal starting recipe and is likely to be refined. |
 | `score_upgrade_prospects` | `models` | The top-reasons heuristic (z-score within the scored population weighted by global permutation importance) and the top-N/lift report shape are a starting recipe over `build_upgrade_snapshots`, likely to be refined; `suggested_ask` is left `NaN` pending a real ask-amount training signal. |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Chart composition is presentation, not contract. |
-| `fetch_kdd98_donors` | `datasets` | Returns the raw upstream columns untyped; may gain as-of date parsing as the real-data leakage replication in #124 lands. |
+| `fetch_kdd98_donors`, `fetch_kdd98_val_donors` | `datasets` | Return the raw upstream columns untyped; may gain as-of date parsing as the real-data leakage replication in #124 lands. The validation fetcher shares the learning fetcher's tier and will follow any change to it. |
 | `make_donor_panel` | `datasets` | The returned dict may gain keys (pledges, appeals, soft credits) as more of the library needs panel-shaped fixtures; existing keys and their columns will not change silently. |
 | `GiftIntervalCalibrator`, `GiftInterval` | `models` | The conformity-score menu is expected to grow (conformalised quantile regression is not shipped), which adds `score` values rather than changing existing ones. |
 

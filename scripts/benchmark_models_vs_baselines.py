@@ -21,10 +21,16 @@ Run:
     python scripts/benchmark_models_vs_baselines.py --skip-kdd98         # synthetic only, no download
     python scripts/benchmark_models_vs_baselines.py --fast --skip-kdd98  # one-seed smoke run, <20s
     python scripts/benchmark_models_vs_baselines.py --out results/bench  # also writes bench.json / bench.csv
+    python scripts/benchmark_models_vs_baselines.py --with-cup98val      # also scores on cup98VAL (opt-in, +~37MB)
 
 The KDD Cup 1998 section downloads ``cup98lrn.zip`` (~36 MB) to
 ``~/philanthropy_data`` on first use (see ``fetch_kdd98_donors``); pass
-``--skip-kdd98`` to stay offline entirely.
+``--skip-kdd98`` to stay offline entirely. ``--with-cup98val`` additionally
+scores cost-aware selection on KDD98's own held-out validation file
+(``cup98VAL.zip`` + ``valtargt.txt``, another ~37 MB, see
+``fetch_kdd98_val_donors``), reported next to the random-split number rather
+than replacing it; off by default and has no effect with
+``--skip-kdd98``.
 
 ## What is measured
 
@@ -80,7 +86,7 @@ from sklearn.metrics import average_precision_score, mean_absolute_error, roc_au
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 
-from philanthropy.datasets import fetch_kdd98_donors, make_donor_panel
+from philanthropy.datasets import fetch_kdd98_donors, fetch_kdd98_val_donors, make_donor_panel
 from philanthropy.ingest import build_upgrade_snapshots
 from philanthropy.ingest._upgrade_snapshots import _fy_end
 from philanthropy.metrics import fundraising_roi
@@ -655,6 +661,22 @@ def _split_55_15_30(n: int, y_strat: np.ndarray, seed: int) -> Tuple[np.ndarray,
     return idx_train, idx_val, idx_test
 
 
+_KDD_BASE_COLS = [
+    "AGE", "INCOME", "WEALTH1", "WEALTH2", "NUMCHLD", "RAMNTALL", "NGIFTALL",
+    "LASTGIFT", "AVGGIFT", "MAXRAMNT", "MINRAMNT", "TIMELAG",
+]
+
+
+def _kdd_feature_frame(donors: pd.DataFrame, rfm: pd.DataFrame) -> pd.DataFrame:
+    """``_KDD_BASE_COLS`` plus the RFM features, indexed by ``CONTROLN``.
+    Shared by ``_kdd_ask_design`` (the LRN file, then split 55/15/30) and
+    ``bench_kdd_cost_aware_val`` (the VAL file, scored whole, never split)."""
+    donors_idx = donors.set_index("CONTROLN")
+    return donors_idx[_KDD_BASE_COLS].join(rfm.add_prefix("rfm_")).assign(
+        HOMEOWNER=(donors_idx["HOMEOWNR"] == "H").astype(int)
+    )
+
+
 def _kdd_ask_design(
     donors: pd.DataFrame, rfm: pd.DataFrame, seed: int
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
@@ -662,14 +684,8 @@ def _kdd_ask_design(
     series, 55/15/30 stratified on response (E.11a rule 1). ``val`` is not
     used to pick anything in PR2 (no hyperparameter search yet); it is
     reserved for later PRs' loss/config choices so every PR shares one split."""
-    base_cols = [
-        "AGE", "INCOME", "WEALTH1", "WEALTH2", "NUMCHLD", "RAMNTALL", "NGIFTALL",
-        "LASTGIFT", "AVGGIFT", "MAXRAMNT", "MINRAMNT", "TIMELAG",
-    ]
+    X_full = _kdd_feature_frame(donors, rfm)
     donors_idx = donors.set_index("CONTROLN")
-    X_full = donors_idx[base_cols].join(rfm.add_prefix("rfm_")).assign(
-        HOMEOWNER=(donors_idx["HOMEOWNR"] == "H").astype(int)
-    )
     y_amt = donors_idx["TARGET_D"]
     y_resp = donors_idx["TARGET_B"].to_numpy()
     idx_train, idx_val, idx_test = _split_55_15_30(len(X_full), y_resp, seed)
@@ -901,6 +917,66 @@ def bench_kdd_cost_aware(seed: int, cost: float = 0.68) -> List[Row]:
     ]
 
 
+def bench_kdd_cost_aware_val(seed: int, cost: float = 0.68) -> List[Row]:
+    """Cost-aware selection, scored on KDD98's own held-out
+    validation file instead of a random split of the learning file.
+
+    Fits the same response model (``MajorGiftClassifier``) and ask model
+    (``AskAmountRecommender``) as ``bench_kdd_cost_aware``, on the LRN file's
+    own 55% train split (``_kdd_ask_design``'s ``Xd_train``/``yd_train``),
+    then scores "mail if E[gift] > cost" on ``cup98VAL`` + ``valtargt``
+    (:func:`~philanthropy.datasets.fetch_kdd98_val_donors`): 96,367 donors
+    that were never part of the learning file and never touched by any split
+    of it. Reported *next to* ``bench_kdd_cost_aware``'s random-split number
+    (dataset ``"cup98val"`` vs ``"kdd98"``), not replacing it."""
+    donors = fetch_kdd98_donors()
+    rfm = _kdd_rfm(_kdd_gift_log(donors))
+    Xd_train, _Xd_val, _Xd_test, yd_train, _yd_val, _yd_test = _kdd_ask_design(donors, rfm, seed)
+    responders_train = yd_train > 0
+
+    resp_model = make_pipeline(
+        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
+        MajorGiftClassifier(random_state=seed),
+    ).fit(Xd_train, (yd_train > 0).astype(int))
+
+    ask_model = make_pipeline(
+        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
+        # Same pin as bench_kdd_cost_aware: expected gift needs the conditional mean.
+        AskAmountRecommender(loss="squared_error", random_state=seed),
+    ).fit(Xd_train[responders_train], yd_train[responders_train])
+
+    val_donors = fetch_kdd98_val_donors()
+    val_rfm = _kdd_rfm(_kdd_gift_log(val_donors))
+    X_val = _kdd_feature_frame(val_donors, val_rfm)
+    y_val = val_donors.set_index("CONTROLN")["TARGET_D"]
+
+    p_respond = resp_model.predict_proba(X_val)[:, 1]
+    expected_gift = p_respond * ask_model.predict(X_val)
+    mail = expected_gift > cost
+
+    raised_all, cost_all = float(y_val.sum()), cost * len(X_val)
+    raised_mail, cost_mail = float(y_val[mail].sum()), cost * int(mail.sum())
+    roi_all = fundraising_roi(total_raised=raised_all, total_fundraising_expense=cost_all)
+    roi_mail = fundraising_roi(total_raised=raised_mail, total_fundraising_expense=cost_mail)
+
+    return [
+        Row(
+            "cup98val", "cost_aware_selection", "net_revenue",
+            raised_mail - cost_mail, raised_all - cost_all,
+            note=(
+                f"mail if E[gift]>${cost:.2f}; pieces={int(mail.sum())}/{len(X_val)}; "
+                "model fit on cup98LRN's own 55% train split only, scored on KDD98's "
+                "own held-out validation file (cup98VAL+valtargt), reported next to "
+                "bench_kdd_cost_aware's random-split number, not replacing it"
+            ),
+        ),
+        Row(
+            "cup98val", "cost_aware_selection", "roi",
+            roi_mail, roi_all, note="baseline=mail everyone; KDD98's own held-out validation file",
+        ),
+    ]
+
+
 # --------------------------------------------------------------------------- #
 # Output
 # --------------------------------------------------------------------------- #
@@ -935,6 +1011,11 @@ def main() -> None:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--skip-kdd98", action="store_true", help="Skip the KDD Cup 1998 section entirely (no download).")
+    parser.add_argument(
+        "--with-cup98val", action="store_true",
+        help="Also score cost-aware selection on KDD98's own held-out cup98VAL+valtargt "
+        "file (a second ~37 MB download; opt-in). No effect with --skip-kdd98.",
+    )
     parser.add_argument("--fast", action="store_true", help="One seed and a small synthetic panel: a smoke run, not a benchmark.")
     parser.add_argument("--out", type=str, default=None, help="Path prefix; also writes <out>.json and <out>.csv.")
     args = parser.parse_args()
@@ -958,6 +1039,8 @@ def main() -> None:
         rows += bench_kdd_lapse(KDD_SEED)
         rows += bench_kdd_ask(KDD_SEED)
         rows += bench_kdd_cost_aware(KDD_SEED)
+        if args.with_cup98val:
+            rows += bench_kdd_cost_aware_val(KDD_SEED)
 
     runtime = time.time() - start
     _print_table(rows)

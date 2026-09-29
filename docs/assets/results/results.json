@@ -36,7 +36,7 @@
     "verdict": "loses"
   },
   "ask_synthetic": {
-    "within25pct_model": 19.599270571165107,
+    "within25pct_model": 23.11009415644001,
     "within25pct_last_gift": 23.657446585915693,
     "verdict": "loses"
   },
@@ -173,7 +173,7 @@
     }
   },
   "ask_kdd98": {
-    "within25pct_model": 58.56847900894701,
+    "within25pct_model": 64.96902959394356,
     "within25pct_last_gift": 67.44666207845836,
     "verdict": "loses"
   },
@@ -184,7 +184,7 @@
     "note": "mail if E[gift]>$0.68; pieces=18704/28624"
   },
   "_env": {
-    "git_sha": "2974d1a081303539ce65a2ab5dcb1ee910857b44",
+    "git_sha": "d196e50c71296e8ec341c74da5f2cc4ee15554e2",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

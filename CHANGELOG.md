@@ -92,6 +92,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   they can look broken even when the model ranks donors well.
 
 ### Changed
+- `AskAmountRecommender(loss=...)`: a new parameter passed through to the
+  backend `HistGradientBoostingRegressor`, default changed from
+  `"squared_error"` to `"absolute_error"`. Ask amounts are right-skewed (a
+  few big gifts, many small ones), and squared error was fitting the
+  conditional mean, which overshoots most donors; absolute error fits the
+  median instead. Chosen on the KDD Cup 1998 validation split (55/15/30):
+  absolute error's validation MAE ($4.19) beat squared error's ($4.72), and
+  on the held-out test split absolute error's MAE ($4.11, 65 of every 100
+  suggestions within 25% of the actual gift) beats the old default's ($4.56,
+  59 of 100). It still does not beat the best ask rule on this file (max of
+  last gift and average gift, $3.88 MAE, 67 of 100), so the Results page
+  keeps its "use the rule instead" verdict, just with the updated numbers.
+  The "Who to mail" cost-aware selection multiplies response probability by
+  expected gift size, which needs the conditional mean, so the benchmark
+  now passes `loss="squared_error"` there explicitly and that page's numbers
+  are unchanged. `docs/results/ask.md` and `docs/assets/results/results.json`
+  are regenerated in this PR.
 - `scripts/benchmark_models_vs_baselines.py` now pairs every model with a
   fixed set of 2-4 named baseline rules (e.g. lapse: LYBUNT/SYBUNT flag,
   years since last gift, shortest giving streak, gave nothing last period)

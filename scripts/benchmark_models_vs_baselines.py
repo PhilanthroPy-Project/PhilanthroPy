@@ -877,7 +877,8 @@ def bench_kdd_cost_aware(seed: int, cost: float = 0.68) -> List[Row]:
 
     ask_model = make_pipeline(
         WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
-        AskAmountRecommender(random_state=seed),
+        # Expected gift needs the conditional mean, not the ask default's median.
+        AskAmountRecommender(loss="squared_error", random_state=seed),
     ).fit(Xd_train[responders_train], yd_train[responders_train])
     expected_gift = p_respond * ask_model.predict(Xd_test)
     mail = expected_gift > cost

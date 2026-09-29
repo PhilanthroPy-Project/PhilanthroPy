@@ -10,7 +10,7 @@ score (0–100) for use by prospect-management officers and gift officers.
 
 from __future__ import annotations
 
-from typing import Any, Optional, TypeVar
+from typing import Any, Optional, TypeVar, Union
 
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
@@ -62,8 +62,17 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
         Minimum number of samples (or fraction) required to split an internal
         node.  Larger values act as a regulariser, improving generalisation
         on sparse hospital datasets.
-    min_samples_leaf : int or float, default=1
-        Minimum number of samples required to be at a leaf node.
+    min_samples_leaf : int or float, default=0.008
+        Minimum number of samples required to be at a leaf node. An int is
+        an absolute count; a float is a fraction of the training rows
+        (``ceil(min_samples_leaf * n_samples)``), so the default scales with
+        file size: about 2 rows per leaf on 250 donors, 400 on 50,000.
+        Changed from 1: with ``max_depth=None``, single-sample leaves let
+        the forest memorise the training set, collapsing ``predict_proba``
+        to near-0/1 votes and turning the affinity-score ranking into noise.
+        0.008 was chosen on a KDD98 validation fold (not the test split)
+        among 0.001/0.002/0.004/0.008 and confirmed on a second independent
+        split; see ``scripts/benchmark_models_vs_baselines.py``.
     min_weight_fraction_leaf : float, default=0.0
         Minimum weighted fraction of the sum of weights required to be at a
         leaf node.  When ``class_weight`` is set, this interacts strongly with
@@ -167,6 +176,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
         """
         tags = super().__sklearn_tags__()
         tags.classifier_tags.multi_class = True
+        tags.input_tags.allow_nan = True
         return tags
 
     def __init__(
@@ -174,7 +184,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
         n_estimators: int = 100,
         max_depth: Optional[int] = None,
         min_samples_split: int = 2,
-        min_samples_leaf: int = 1,
+        min_samples_leaf: Union[int, float] = 0.008,
         min_weight_fraction_leaf: float = 0.0,
         class_weight: Any = None,
         random_state: Optional[int] = None,
@@ -215,7 +225,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
             If ``X`` and ``y`` have incompatible shapes, or if ``y``
             contains values outside ``{0, 1}``.
         """
-        X, y = validate_data(self, X, y, reset=True)
+        X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
 
         self.classes_ = unique_labels(y)
         self.n_features_in_ = X.shape[1]
@@ -253,7 +263,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
             If :meth:`fit` has not been called yet.
         """
         check_is_fitted(self)
-        X = validate_data(self, X, reset=False)
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self.estimator_.predict(X)
 
     def predict_proba(self, X: Any) -> np.ndarray:
@@ -277,7 +287,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
             If :meth:`fit` has not been called yet.
         """
         check_is_fitted(self)
-        X = validate_data(self, X, reset=False)
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self.estimator_.predict_proba(X)
 
     def decision_function(self, X: np.ndarray) -> np.ndarray:
@@ -291,7 +301,7 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
             predict threshold.
         """
         check_is_fitted(self)
-        X = validate_data(self, X, reset=False)
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         proba = self.estimator_.predict_proba(X)
         if proba.shape[1] == 2:
             return proba[:, 1] - 0.5

@@ -141,6 +141,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   KDD98 split change (still beats mailing everyone's $3,149). All affected
   Results pages and `docs/assets/results/results.json` are regenerated in
   this PR.
+- `DonorPropensityModel`'s default `min_samples_leaf` goes from `1` to
+  `0.008`, a fraction of the training rows (so about 2 rows per leaf on a
+  250-donor file and 400 on 50,000). With single-sample leaves and no depth
+  limit the forest memorised its training rows, so `predict_proba`
+  collapsed to near-0/1 votes and the ranking was mostly noise. A fraction
+  rather than a fixed count, because a fixed 200 left files under about 400
+  rows with no possible split (every donor got the same score) and squeezed
+  mid-sized files' affinity scores into roughly 15-61. 0.008 was picked on
+  the KDD98 validation fold out of 0.001/0.002/0.004/0.008 (4
+  configurations) and won on a second split seed as well; the test split
+  was scored once, after the choice. On the KDD98 test split, against the
+  best of its three response rules (RFM cell score): top-1% hit rate 6.3%
+  before, 11.5% after (rule 9.1%); top-5% 6.9% to 10.6% (rule 7.1%);
+  top-10% 6.4% to 8.8%, 95% interval 7.8-9.9% (rule 7.5%); ROC-AUC 0.511 to
+  0.593, interval 0.578-0.607 (rule 0.567). On the synthetic panel (5 seeds)
+  ROC-AUC goes from 0.638 to 0.712 and top-10% from 61.5% to 76.5%, but it
+  still trails both the lifetime-giving rule (79.2%) and
+  `MajorGiftClassifier` (77.1%) there, so `MajorGiftClassifier` stays the
+  recommended response model. In `scripts/benchmark_models.py`'s accuracy
+  table its ROC-AUC moves from 0.810 to 0.841; the golden file and
+  `docs/explanation/benchmarks.md` are updated. Pass `min_samples_leaf=1`
+  to get the old behaviour. The model now also accepts missing values
+  (`NaN`) directly, as `RandomForestClassifier` has since scikit-learn 1.4.
 
 ### Fixed
 - `scripts/make_results_pages.py` now records the git SHA and the installed

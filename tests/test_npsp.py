@@ -209,6 +209,24 @@ def test_primary_contact_is_accepted_as_the_donor_key():
     assert float(feats.loc["7", "total_gift_amount"]) == 300.0
 
 
+def test_account_id_wins_over_primary_contact_when_both_are_present():
+    """NPSP's default Household Account model keys a gift to the Account;
+    when a report exports both, the Account is the donor key regardless of
+    which column comes first in the export."""
+    rows_account_first = [
+        {"Account ID": "7", "Primary Contact": "999", "Close Date": "2025-05-01",
+         "Amount": "300.00", "Stage": "Closed Won"}
+    ]
+    rows_contact_first = [
+        {"Primary Contact": "999", "Account ID": "7", "Close Date": "2025-05-01",
+         "Amount": "300.00", "Stage": "Closed Won"}
+    ]
+    for rows in (rows_account_first, rows_contact_first):
+        feats = npsp_opportunities_to_features(rows)
+        assert "7" in feats.index
+        assert "999" not in feats.index
+
+
 def test_export_labels_and_api_names_agree(opportunities):
     api = [
         {"AccountId": o["Account ID"], "CloseDate": o["Close Date"],

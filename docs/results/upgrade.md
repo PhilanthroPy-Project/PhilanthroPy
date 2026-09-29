@@ -9,7 +9,7 @@ Of our top 10% of picks, 25 out of every 100 crossed $1,000. Ranking by this
 year's giving total alone found 18 out of every 100. Picking at random finds
 about 12 out of every 100.
 
-![Model vs. rank-by-total vs. random, top 1/5/10% of picks](../assets/results/upgrade_topn.png)
+![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/upgrade_topn.png)
 
 **Beats the simple rule.**
 

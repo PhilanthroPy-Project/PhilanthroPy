@@ -86,6 +86,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   aren't mistaken for the whole picture on a rare, imbalanced target, where
   they can look broken even when the model ranks donors well.
 
+### Changed
+- `scripts/benchmark_models_vs_baselines.py` now pairs every model with a
+  fixed set of 2-4 named baseline rules (e.g. lapse: LYBUNT/SYBUNT flag,
+  years since last gift, shortest giving streak, gave nothing last period)
+  instead of one hand-picked rule, and reports the verdict against whichever
+  rule in that set is toughest. KDD Cup 1998 moves from a 70/30 split to
+  55/15/30 (train/validation/test; validation is unused until a later PR
+  adds hyperparameter choices), and every KDD98 row now carries a bootstrap
+  95% interval on its top-10% hit rate and ROC-AUC. Some verdicts flip now
+  that the comparison rule is honestly the strongest one available:
+  `MajorGiftClassifier` on the response task goes from "about the same" to
+  losing on synthetic data (still wins on KDD98); `LapsePredictor` loses on
+  both synthetic and KDD98 once "years since last gift" is in the rule set;
+  `AskAmountRecommender` now loses on synthetic data too, not just KDD98,
+  once "max(last gift, average gift)" is in the rule set. The "Who to mail"
+  page's net revenue moves from $4,240 to $4,542 as a side effect of the
+  KDD98 split change (still beats mailing everyone's $3,149). All affected
+  Results pages and `docs/assets/results/results.json` are regenerated in
+  this PR.
+
 ### Fixed
 - `scripts/make_results_pages.py` now records the git SHA and the installed
   `scikit-learn`/`numpy`/`pandas` versions in `docs/assets/results/results.json`

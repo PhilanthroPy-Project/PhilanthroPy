@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `MajorGiftClassifier` gains `monotonic_cst`, `min_samples_leaf`, and
+  `max_leaf_nodes` passthrough parameters to the underlying
+  `HistGradientBoostingClassifier`, alongside the existing `max_iter` and
+  `learning_rate`. Purely additive: defaults match the underlying
+  estimator's own defaults, so existing code is unaffected.
 - Test covering `PropensityScorer.predict_proba` when `fit` saw only one
   class (closes #50).
 - A "Results" section in the docs (`docs/results/`): one page per model

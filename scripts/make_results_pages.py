@@ -234,12 +234,12 @@ def main() -> None:
         ["Top 1%", "Top 5%", "Top 10%"],
         {
             "Model": [results["response_synthetic"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
-            "Rank by giving so far": [results["response_synthetic"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
+            "Best simple rule": [results["response_synthetic"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
             "Random pick": [results["response_synthetic"][f"top{p}pct"]["random"] for p in (1, 5, 10)],
         },
-        {"Model": COLOR_MODEL, "Rank by giving so far": COLOR_RULE, "Random pick": COLOR_RANDOM},
+        {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE, "Random pick": COLOR_RANDOM},
         ylabel="Gave next year, out of every 100 picked (%)",
-        title="Who responds next year: model vs. rank-by-giving vs. random",
+        title="Who responds next year: model vs. best simple rule vs. random",
     )
 
     # --- synthetic: lapse ----------------------------------------------------
@@ -283,12 +283,12 @@ def main() -> None:
         ["Top 1%", "Top 5%", "Top 10%"],
         {
             "Model": [results["upgrade_synthetic"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
-            "Rank by this year's total": [results["upgrade_synthetic"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
+            "Best simple rule": [results["upgrade_synthetic"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
             "Random pick": [results["upgrade_synthetic"][f"top{p}pct"]["random"] for p in (1, 5, 10)],
         },
-        {"Model": COLOR_MODEL, "Rank by this year's total": COLOR_RULE, "Random pick": COLOR_RANDOM},
+        {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE, "Random pick": COLOR_RANDOM},
         ylabel="Crossed $1,000 next year, out of every 100 picked (%)",
-        title="Who upgrades to $1,000+: model vs. rank-by-total vs. random",
+        title="Who upgrades to $1,000+: model vs. best simple rule vs. random",
     )
 
     # --- synthetic: planned giving (coverage vs. chance) ---------------------
@@ -348,10 +348,10 @@ def main() -> None:
             ["Top 1%", "Top 5%", "Top 10%"],
             {
                 "Model": [results["lapse_kdd98"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
-                "Gave nothing last time": [results["lapse_kdd98"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
+                "Best simple rule": [results["lapse_kdd98"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
                 "Random pick": [base_rate_lapse_kdd] * 3,
             },
-            {"Model": COLOR_MODEL, "Gave nothing last time": COLOR_RULE, "Random pick": COLOR_RANDOM},
+            {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE, "Random pick": COLOR_RANDOM},
             ylabel="Lapsed next period, out of every 100 picked (%)",
             title="Who lapses next: KDD Cup 1998 (almost everyone lapses here)",
         )
@@ -367,9 +367,9 @@ def main() -> None:
             ["Suggested ask"],
             {
                 "Model": [results["ask_kdd98"]["within25pct_model"]],
-                "Ask what they gave last time": [results["ask_kdd98"]["within25pct_last_gift"]],
+                "Best simple rule": [results["ask_kdd98"]["within25pct_last_gift"]],
             },
-            {"Model": COLOR_MODEL, "Ask what they gave last time": COLOR_RULE},
+            {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE},
             ylabel="Within 25% of what the donor actually gave (%)",
             title="How close is the suggested ask: KDD Cup 1998",
         )

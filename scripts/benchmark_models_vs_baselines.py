@@ -105,8 +105,75 @@ KDD_SEED = 42
 KDD_AS_OF = "1997-06-01"
 WIN_RATIO = 1.15
 COVERAGE_TOL = 0.03
+N_BOOTSTRAP = 1000
+BOOTSTRAP_METRICS = ("top10pct_hit_rate", "roc_auc")
+KDD_SPLIT = "55/15/30 stratified (train/validation/test)"
+SYNTHETIC_SPLIT = "walk-forward (train on fiscal years < T, test on T)"
 
 CSV_FIELDS = ("dataset", "model", "metric", "value", "baseline", "lo", "hi", "n_seeds", "verdict", "note")
+
+
+# --------------------------------------------------------------------------- #
+# E.11a rule 3: fixed baseline rule sets, committed before any run.
+# Every classifier row is scored against the *best* of its model's rules
+# (the toughest bar available, not a single arbitrary pick); every ask row
+# against the *lowest-MAE* of its rules. This module never re-picks a rule
+# set after seeing results on a given dataset.
+# --------------------------------------------------------------------------- #
+def _rfm_cell_score(recency: np.ndarray, frequency: np.ndarray, monetary: np.ndarray) -> np.ndarray:
+    """Recency+frequency+monetary quintile sum: the segmentation most CRMs
+    implement natively. ``recency`` is periods/months *since* the last gift
+    (lower is better), the others are cumulative counts/amounts (higher is
+    better); all three are rank-percentiled first so they combine on one
+    scale regardless of units."""
+
+    def pct_rank(values: np.ndarray, ascending_is_better: bool) -> np.ndarray:
+        r = pd.Series(values).rank(pct=True, method="average")
+        return (r if ascending_is_better else 1.0 - r).to_numpy()
+
+    return (
+        pct_rank(-np.asarray(recency), True)
+        + pct_rank(np.asarray(frequency), True)
+        + pct_rank(np.asarray(monetary), True)
+    )
+
+
+def _best_classifier_baseline(
+    y_true: np.ndarray, rules: Dict[str, np.ndarray], metric_fn
+) -> Tuple[str, np.ndarray, float]:
+    """The toughest (highest-scoring) rule in a fixed set, by ``metric_fn``."""
+    scored = {name: metric_fn(y_true, score) for name, score in rules.items()}
+    best = max(scored, key=scored.get)
+    return best, rules[best], scored[best]
+
+
+def _best_ask_baseline(
+    y_true: np.ndarray, rules: Dict[str, np.ndarray]
+) -> Tuple[str, np.ndarray, float]:
+    """The toughest (lowest-MAE) rule in a fixed set."""
+    scored = {name: mean_absolute_error(y_true, score) for name, score in rules.items()}
+    best = min(scored, key=scored.get)
+    return best, rules[best], scored[best]
+
+
+def _bootstrap_ci(
+    y_true: np.ndarray, score: np.ndarray, metric_fn, n_resamples: int = N_BOOTSTRAP, seed: int = 0,
+) -> Tuple[float, float]:
+    """Bootstrap 95% interval (E.11a rule 4) for a single-split row: resample
+    the test set with replacement ``n_resamples`` times and take the 2.5th
+    and 97.5th percentile of ``metric_fn`` over the resamples."""
+    rng = np.random.default_rng(seed)
+    n = len(y_true)
+    values = []
+    for _ in range(n_resamples):
+        idx = rng.integers(0, n, size=n)
+        y_b = np.asarray(y_true)[idx]
+        if len(np.unique(y_b)) < 2:
+            continue
+        values.append(metric_fn(y_b, np.asarray(score)[idx]))
+    if not values:
+        return float("nan"), float("nan")
+    return float(np.percentile(values, 2.5)), float(np.percentile(values, 97.5))
 
 
 # --------------------------------------------------------------------------- #
@@ -217,31 +284,45 @@ def _classifier_rows(
     model_name: str,
     y_true: np.ndarray,
     score: np.ndarray,
-    baseline_score: np.ndarray,
-    baseline_name: str,
+    rules: Dict[str, np.ndarray],
+    split: str,
+    n_configs: int = 1,
+    bootstrap: bool = False,
 ) -> List[Row]:
+    """One row per metric, scored against the best (E.11a rule 3) of a fixed
+    ``rules`` dict. The rule that wins top-10% hit rate is the one baseline
+    identity used for every metric below, so the comparison is against one
+    named rule, not a different cherry-picked one per metric. ``split`` and
+    ``n_configs`` (E.11a rules 1-2) are recorded in every row's note.
+    ``bootstrap=True`` adds a 1,000-resample 95% interval (rule 4) on
+    top10pct_hit_rate and roc_auc; that is for single-split (KDD98) rows
+    only, synthetic rows already have a 5-seed range."""
     y_true = np.asarray(y_true)
+    best_name, baseline_score, _ = _best_classifier_baseline(y_true, rules, lambda y, s: _topn_rate(y, s, 0.10)[0])
+    header = f"rule_set={best_name} (best of {len(rules)}); split={split}; n_configs={n_configs}"
     rows = []
     for frac in (0.01, 0.05, 0.10):
         m_rate, n = _topn_rate(y_true, score, frac)
         b_rate, _ = _topn_rate(y_true, baseline_score, frac)
-        rows.append(
-            Row(
-                dataset, model_name, f"top{int(frac * 100)}pct_hit_rate",
-                m_rate, b_rate, note=f"n={n}; baseline={baseline_name}",
-            )
-        )
+        metric = f"top{int(frac * 100)}pct_hit_rate"
+        lo = hi = None
+        if bootstrap and metric in BOOTSTRAP_METRICS:
+            lo, hi = _bootstrap_ci(y_true, score, lambda y, s: _topn_rate(y, s, frac)[0])
+        rows.append(Row(dataset, model_name, metric, m_rate, b_rate, note=f"n={n}; {header}", lo=lo, hi=hi))
     has_both_classes = len(np.unique(y_true)) > 1
     auc = roc_auc_score(y_true, score) if has_both_classes else float("nan")
     b_auc = roc_auc_score(y_true, baseline_score) if has_both_classes else float("nan")
-    rows.append(Row(dataset, model_name, "roc_auc", auc, b_auc, note=f"baseline={baseline_name}"))
+    auc_lo = auc_hi = None
+    if bootstrap and has_both_classes:
+        auc_lo, auc_hi = _bootstrap_ci(y_true, score, roc_auc_score)
+    rows.append(Row(dataset, model_name, "roc_auc", auc, b_auc, note=header, lo=auc_lo, hi=auc_hi))
     ap = average_precision_score(y_true, score) if has_both_classes else float("nan")
-    rows.append(Row(dataset, model_name, "average_precision", ap, note="no baseline; base-rate dependent"))
+    rows.append(Row(dataset, model_name, "average_precision", ap, note=f"no baseline; base-rate dependent; {header}"))
     rows.append(
         Row(
             dataset, model_name, "decile_calibration_gap",
             _decile_calibration_gap(y_true, score), lower_is_better=True,
-            note="mean |mean predicted - mean actual| across probability deciles",
+            note=f"mean |mean predicted - mean actual| across probability deciles; {header}",
         )
     )
     return rows
@@ -263,6 +344,15 @@ def _period_panel(n_donors: int, n_years: int, seed: int) -> pd.DataFrame:
     give the following year", and ``y_amount`` is that following year's gift
     amount when they did (``NaN`` otherwise). The final fiscal year contributes
     no row, because it has no following year to label.
+
+    Also carries the shared as-of feature set every bench in this module
+    draws its baseline rules from (E.11a rule 3): ``streak`` (consecutive
+    fiscal years given, ending at and including this row's ``fy``),
+    ``years_since_last`` (fiscal years since the donor's last gift, 0 if this
+    row's own year), ``prev_recent`` (the prior fiscal year's own gift
+    amount), ``max_gift`` (largest single-year total so far) and ``tenure``
+    (fiscal years since the donor's first-ever gift). Every one of these is
+    computed from data at or before this row's own ``fy``.
     """
     panel = make_donor_panel(n_donors=n_donors, n_years=n_years, random_state=seed)
     gifts, donors = panel["gifts"], panel["donors"]
@@ -275,14 +365,24 @@ def _period_panel(n_donors: int, n_years: int, seed: int) -> pd.DataFrame:
         .fillna(0.0)
     )
     gave = amount > 0
+    first_gift_fy = donors.set_index("donor_id")["first_gift_fy"].reindex(donor_ids).to_numpy()
 
     rows = []
     cum_total = np.zeros(len(donor_ids))
     cum_n = np.zeros(len(donor_ids))
+    streak = np.zeros(len(donor_ids))
+    years_since_last = np.full(len(donor_ids), float(len(years)))
+    max_gift = np.zeros(len(donor_ids))
+    prev_recent = np.zeros(len(donor_ids))
     for i, fy in enumerate(years[:-1]):
         recent = amount[fy].to_numpy()
+        gave_fy = gave[fy].to_numpy()
         cum_total = cum_total + recent
-        cum_n = cum_n + gave[fy].to_numpy()
+        cum_n = cum_n + gave_fy
+        max_gift = np.maximum(max_gift, recent)
+        streak = np.where(gave_fy, streak + 1, 0.0)
+        years_since_last = np.where(gave_fy, 0.0, years_since_last + 1.0)
+        tenure = np.maximum(0.0, fy - first_gift_fy)
         next_fy = years[i + 1]
         y_response = gave[next_fy].to_numpy().astype(int)
         y_amount = np.where(y_response == 1, amount[next_fy].to_numpy(), np.nan)
@@ -291,10 +391,13 @@ def _period_panel(n_donors: int, n_years: int, seed: int) -> pd.DataFrame:
                 {
                     "donor_id": donor_ids, "fy": fy,
                     "total": cum_total.copy(), "n": cum_n.copy(), "recent": recent,
+                    "streak": streak.copy(), "years_since_last": years_since_last.copy(),
+                    "prev_recent": prev_recent.copy(), "max_gift": max_gift.copy(), "tenure": tenure,
                     "y_response": y_response, "y_amount": y_amount,
                 }
             )
         )
+        prev_recent = recent
     return pd.concat(rows, ignore_index=True)
 
 
@@ -304,44 +407,55 @@ def _train_test_periods(panel: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame
 
 
 def bench_response(seeds: Sequence[int], n_donors: int, n_years: int) -> List[Row]:
-    """DonorPropensityModel / MajorGiftClassifier vs an RFM/monetary rule."""
+    """DonorPropensityModel / MajorGiftClassifier vs the response rule set
+    (E.11a rule 3): lifetime monetary, RFM cell score."""
     seed_rows = []
     for seed in seeds:
         train, test = _train_test_periods(_period_panel(n_donors, n_years, seed))
         Xtr = train[["total", "n", "recent"]].to_numpy()
         Xte = test[["total", "n", "recent"]].to_numpy()
         ytr, yte = train["y_response"].to_numpy(), test["y_response"].to_numpy()
-        baseline_score = test["total"].to_numpy()
+        rules = {
+            "lifetime monetary": test["total"].to_numpy(),
+            "RFM cell score": _rfm_cell_score(
+                test["years_since_last"].to_numpy(), test["n"].to_numpy(), test["total"].to_numpy()
+            ),
+        }
         rows: List[Row] = []
         for name, cls in (("DonorPropensityModel", DonorPropensityModel), ("MajorGiftClassifier", MajorGiftClassifier)):
             model = cls(random_state=seed).fit(Xtr, ytr)
             proba = model.predict_proba(Xte)[:, 1]
-            rows += _classifier_rows(
-                "synthetic_panel", name, yte, proba, baseline_score,
-                "RFM/monetary rule (highest cumulative giving)",
-            )
+            rows += _classifier_rows("synthetic_panel", name, yte, proba, rules, SYNTHETIC_SPLIT)
         seed_rows.append(rows)
     return _aggregate(seed_rows)
 
 
 def bench_lapse(seeds: Sequence[int], n_donors: int, n_years: int) -> List[Row]:
-    """LapsePredictor vs the "gave nothing last period" rule."""
+    """LapsePredictor vs the lapse rule set (E.11a rule 3): LYBUNT/SYBUNT
+    flag, years since last gift, shortest giving streak, gave nothing last
+    period."""
     seed_rows = []
     for seed in seeds:
         train, test = _train_test_periods(_period_panel(n_donors, n_years, seed))
         Xtr, Xte = train[["total", "n", "recent"]].to_numpy(), test[["total", "n", "recent"]].to_numpy()
         ytr, yte = 1 - train["y_response"].to_numpy(), 1 - test["y_response"].to_numpy()
-        baseline_score = -test["recent"].to_numpy()
+        rules = {
+            "LYBUNT/SYBUNT flag": ((test["recent"].to_numpy() == 0) & (test["prev_recent"].to_numpy() > 0)).astype(float),
+            "years since last gift": test["years_since_last"].to_numpy(),
+            "shortest giving streak": -test["streak"].to_numpy(),
+            "gave nothing last period": -test["recent"].to_numpy(),
+        }
         model = LapsePredictor(random_state=seed).fit(Xtr, ytr)
         score = model.predict_lapse_score(Xte) / 100.0  # predict_lapse_score is 0-100, calibration needs 0-1
         seed_rows.append(
-            _classifier_rows("synthetic_panel", "LapsePredictor", yte, score, baseline_score, "gave nothing last period")
+            _classifier_rows("synthetic_panel", "LapsePredictor", yte, score, rules, SYNTHETIC_SPLIT)
         )
     return _aggregate(seed_rows)
 
 
 def bench_ask(seeds: Sequence[int], n_donors: int, n_years: int) -> List[Row]:
-    """AskAmountRecommender vs "last gift" and "median" baselines."""
+    """AskAmountRecommender vs the ask rule set (E.11a rule 3): last gift,
+    max(last gift, average gift), median training gift."""
     seed_rows = []
     for seed in seeds:
         train, test = _train_test_periods(_period_panel(n_donors, n_years, seed))
@@ -355,24 +469,27 @@ def bench_ask(seeds: Sequence[int], n_donors: int, n_years: int) -> List[Row]:
         model = AskAmountRecommender(random_state=seed).fit(Xtr, ytr)
         pred = model.predict(Xte)
         last_gift = test_resp["recent"].to_numpy()
+        avg_gift = (test_resp["total"] / test_resp["n"].replace(0, np.nan)).fillna(pd.Series(last_gift, index=test_resp.index)).to_numpy()
         median_gift = np.full_like(yte, float(np.median(ytr)))
+        rules = {
+            "last gift": last_gift,
+            "max(last gift, average gift)": np.maximum(last_gift, avg_gift),
+            "median training gift": median_gift,
+        }
+        best_name, best_score, _ = _best_ask_baseline(yte, rules)
+        header = f"rule_set={best_name} (best of {len(rules)}); split={SYNTHETIC_SPLIT}; n_configs=1"
 
         seed_rows.append(
             [
                 Row(
                     "synthetic_panel", "AskAmountRecommender", "mae",
-                    mean_absolute_error(yte, pred), mean_absolute_error(yte, last_gift),
-                    lower_is_better=True, note="baseline=last gift",
-                ),
-                Row(
-                    "synthetic_panel", "AskAmountRecommender", "mae_vs_median",
-                    mean_absolute_error(yte, pred), mean_absolute_error(yte, median_gift),
-                    lower_is_better=True, note="baseline=median training gift",
+                    mean_absolute_error(yte, pred), mean_absolute_error(yte, best_score),
+                    lower_is_better=True, note=header,
                 ),
                 Row(
                     "synthetic_panel", "AskAmountRecommender", "within25pct",
-                    _within_pct(pred, yte), _within_pct(last_gift, yte),
-                    note="baseline=last gift",
+                    _within_pct(pred, yte), _within_pct(best_score, yte),
+                    note=header,
                 ),
             ]
         )
@@ -384,7 +501,9 @@ def bench_upgrade(
     threshold: float = 1000.0, band: Tuple[float, float] = (100.0, 999.0),
 ) -> List[Row]:
     """Upgrade model (build_upgrade_snapshots + MajorGiftClassifier) vs the
-    naive "highest current-year total" rule."""
+    upgrade rule set (E.11a rule 3): this-year total, previous-year total
+    plus this-year growth projected forward one more year, largest single
+    gift in band."""
     seed_rows = []
     for seed in seeds:
         panel = make_donor_panel(n_donors=n_donors, n_years=n_years, random_state=seed)
@@ -405,11 +524,15 @@ def bench_upgrade(
 
         model = MajorGiftClassifier(random_state=seed).fit(X[train_idx], y[train_idx])
         proba = model.predict_proba(X[test_idx])[:, 1]
-        baseline_score = snaps["fy_total"].to_numpy()[test_idx]
+        rules = {
+            "this-year total": snaps["fy_total"].to_numpy()[test_idx],
+            "previous-year total plus this-year growth": (snaps["fy_total"] + snaps["fy_trend"]).to_numpy()[test_idx],
+            "largest single gift in band": snaps["largest_gift"].to_numpy()[test_idx],
+        }
         seed_rows.append(
             _classifier_rows(
                 "synthetic_panel", "upgrade_model (MajorGiftClassifier)",
-                y[test_idx], proba, baseline_score, "highest current-year total",
+                y[test_idx], proba, rules, "walk-forward (FiscalYearGroupedSplitter, last split)",
             )
         )
     return _aggregate(seed_rows)
@@ -437,7 +560,10 @@ def bench_planned_giving(seeds: Sequence[int], n_donors: int, n_years: int) -> L
                     "synthetic_panel", "PlannedGivingIntentScorer", "roc_auc",
                     auc, baseline=0.5,
                     note="baseline=chance; no bequest-intent label exists in make_donor_panel, "
-                    "so this reuses the giving-response label as a coverage check only",
+                    "so this reuses the giving-response label as a coverage check only; "
+                    "E.11a rule 3's planned-giving rule (age 60+, 10+ years, 5+ gifts) needs an AGE "
+                    "field make_donor_panel does not generate, so it is not applied here; "
+                    f"split={SYNTHETIC_SPLIT}",
                 )
             ]
         )
@@ -517,9 +643,25 @@ def _kdd_rfm(gifts: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _split_55_15_30(n: int, y_strat: np.ndarray, seed: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """E.11a rule 1: KDD98 uses a 55/15/30 stratified split, not 70/30.
+    First splits off the 30% test set, then splits the remaining 70% into
+    55% train / 15% validation. Returns positional index arrays."""
+    idx = np.arange(n)
+    idx_trainval, idx_test = train_test_split(idx, test_size=0.30, random_state=seed, stratify=y_strat)
+    idx_train, idx_val = train_test_split(
+        idx_trainval, test_size=15 / 70, random_state=seed, stratify=y_strat[idx_trainval]
+    )
+    return idx_train, idx_val, idx_test
+
+
 def _kdd_ask_design(
     donors: pd.DataFrame, rfm: pd.DataFrame, seed: int
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
+    """Returns (train, val, test) X frames and (train, val, test) y_amount
+    series, 55/15/30 stratified on response (E.11a rule 1). ``val`` is not
+    used to pick anything in PR2 (no hyperparameter search yet); it is
+    reserved for later PRs' loss/config choices so every PR shares one split."""
     base_cols = [
         "AGE", "INCOME", "WEALTH1", "WEALTH2", "NUMCHLD", "RAMNTALL", "NGIFTALL",
         "LASTGIFT", "AVGGIFT", "MAXRAMNT", "MINRAMNT", "TIMELAG",
@@ -529,15 +671,24 @@ def _kdd_ask_design(
         HOMEOWNER=(donors_idx["HOMEOWNR"] == "H").astype(int)
     )
     y_amt = donors_idx["TARGET_D"]
-    y_resp = donors_idx["TARGET_B"]
-    return train_test_split(X_full, y_amt, test_size=0.3, stratify=y_resp, random_state=seed)
+    y_resp = donors_idx["TARGET_B"].to_numpy()
+    idx_train, idx_val, idx_test = _split_55_15_30(len(X_full), y_resp, seed)
+    return (
+        X_full.iloc[idx_train], X_full.iloc[idx_val], X_full.iloc[idx_test],
+        y_amt.iloc[idx_train], y_amt.iloc[idx_val], y_amt.iloc[idx_test],
+    )
 
 
 def bench_kdd_upgrade(seed: int, threshold: float = 50.0, band: Tuple[float, float] = (5.0, 49.0)) -> List[Row]:
     """Upgrade model on KDD98, threshold rescaled from the $1000/$100-999
     defaults: this file's per-donor annual giving tops out far lower than a
     major-gift program's, so $50/$5-49 keeps the same shape (threshold is
-    roughly the 93rd percentile of per-donor annual giving on this file)."""
+    roughly the 93rd percentile of per-donor annual giving on this file).
+    Split is 55/15/30 stratified (E.11a rule 1: KDD98 is not on the
+    walk-forward list), even though the snapshot table has one row per
+    qualifying (donor, fiscal year): the same donor can land in more than one
+    split across different years, a known limitation of applying the
+    dataset's blanket split rule to a multi-year snapshot table."""
     donors = fetch_kdd98_donors()
     gifts = _kdd_gift_log(donors)
     fiscal = (
@@ -560,22 +711,29 @@ def bench_kdd_upgrade(seed: int, threshold: float = 50.0, band: Tuple[float, flo
     feature_cols = [c for c in snaps.columns if c != "target" and pd.api.types.is_numeric_dtype(snaps[c])]
     X = snaps[feature_cols].to_numpy(dtype="float64")
     y = snaps["target"].to_numpy()
-    fy = snaps["fiscal_year"].to_numpy()
-    splitter = FiscalYearGroupedSplitter(n_splits=1, drop_repeat_donors=False)
-    train_idx, test_idx = list(splitter.split(X, groups=fy))[-1]
+    idx_train, _idx_val, idx_test = _split_55_15_30(len(y), y, seed)
 
-    model = MajorGiftClassifier(random_state=seed).fit(X[train_idx], y[train_idx])
-    proba = model.predict_proba(X[test_idx])[:, 1]
-    baseline_score = snaps["fy_total"].to_numpy()[test_idx]
+    model = MajorGiftClassifier(random_state=seed).fit(X[idx_train], y[idx_train])
+    proba = model.predict_proba(X[idx_test])[:, 1]
+    rules = {
+        "this-year total": snaps["fy_total"].to_numpy()[idx_test],
+        "previous-year total plus this-year growth": (snaps["fy_total"] + snaps["fy_trend"]).to_numpy()[idx_test],
+        "largest single gift in band": snaps["largest_gift"].to_numpy()[idx_test],
+    }
     return _classifier_rows(
-        "kdd98", "upgrade_model (MajorGiftClassifier)", y[test_idx], proba, baseline_score,
-        f"highest current-year total (threshold=${threshold:.0f}, band={band}, "
-        "rescaled from the $1000/$100-999 defaults for this file's gift sizes)",
+        "kdd98", "upgrade_model (MajorGiftClassifier)", y[idx_test], proba, rules, KDD_SPLIT, bootstrap=True,
     )
 
 
 def bench_kdd_response(seed: int) -> List[Row]:
-    """DonorPropensityModel / MajorGiftClassifier vs an RFM/monetary rule, scoring TARGET_B."""
+    """DonorPropensityModel / MajorGiftClassifier vs the response rule set
+    (E.11a rule 3): lifetime monetary, RFM cell score, and (KDD98 only) RFA_2
+    frequency then last gift. ``RFA_2`` is safe to use here: per
+    ``cup98dic.txt`` it is "donor's RFA status as of 97NK promotion date",
+    i.e. computed when the 97NK mailing was sent and not updated by its
+    response (``TARGET_B``/``TARGET_D``), the same "as of, not updated by"
+    check rule 5 asks for. ``HIT`` and ``LASTDATE`` are not used by this
+    script."""
     donors = fetch_kdd98_donors()
     rfm = _kdd_rfm(_kdd_gift_log(donors))
     donors_idx = donors.set_index("CONTROLN")
@@ -584,18 +742,34 @@ def bench_kdd_response(seed: int) -> List[Row]:
     X_rfm[["frequency", "monetary", "tenure"]] = X_rfm[["frequency", "monetary", "tenure"]].fillna(0.0)
     y = donors_idx["TARGET_B"].to_numpy()
 
-    Xtr, Xte, ytr, yte = train_test_split(X_rfm, y, test_size=0.3, stratify=y, random_state=seed)
+    idx_train, _idx_val, idx_test = _split_55_15_30(len(y), y, seed)
+    Xtr, Xte, ytr, yte = X_rfm.iloc[idx_train], X_rfm.iloc[idx_test], y[idx_train], y[idx_test]
+    rfa_2f_rank = donors_idx["RFA_2F"].map({"1": 1, "2": 2, "5": 3}).fillna(0).to_numpy()[idx_test]
+    lastgift = donors_idx["LASTGIFT"].to_numpy()[idx_test]
+    rules = {
+        "lifetime monetary": Xte["monetary"].to_numpy(),
+        "RFM cell score": _rfm_cell_score(Xte["recency"].to_numpy(), Xte["frequency"].to_numpy(), Xte["monetary"].to_numpy()),
+        "RFA_2 frequency then last gift": rfa_2f_rank * 1e6 + lastgift,
+    }
     rows: List[Row] = []
     for name, cls in (("DonorPropensityModel", DonorPropensityModel), ("MajorGiftClassifier", MajorGiftClassifier)):
         model = cls(random_state=seed).fit(Xtr.to_numpy(), ytr)
         proba = model.predict_proba(Xte.to_numpy())[:, 1]
-        baseline_score = Xte["monetary"].to_numpy()
-        rows += _classifier_rows("kdd98", name, yte, proba, baseline_score, "RFM rule (highest monetary)")
+        rows += _classifier_rows("kdd98", name, yte, proba, rules, KDD_SPLIT, bootstrap=True)
     return rows
 
 
 def bench_kdd_lapse(seed: int) -> List[Row]:
-    """LapsePredictor vs "gave nothing last period", over the 22-promotion history."""
+    """LapsePredictor vs the lapse rule set (E.11a rule 3), over the
+    22-promotion history: LYBUNT/SYBUNT flag, years since last gift,
+    shortest giving streak, gave nothing last period.
+
+    Split: the 23 promotion periods are naturally time-ordered, so this
+    walks forward across them (train on periods < N-1, validate on N-1, test
+    on N, the same shape as the synthetic panel split) rather than the
+    dataset-level 55/15/30 stratified split (E.11a rule 1): mixing periods
+    with a donor-level stratified split would let a donor's later promotion
+    history leak into training for an earlier one."""
     donors = fetch_kdd98_donors()
     hist_promos = list(range(24, 2, -1))
     ramnt = donors[[f"RAMNT_{i}" for i in hist_promos]].fillna(0.0).to_numpy()
@@ -604,33 +778,56 @@ def bench_kdd_lapse(seed: int) -> List[Row]:
     target_b = donors["TARGET_B"].to_numpy()
 
     cum_total, cum_n = np.zeros(len(donors)), np.zeros(len(donors))
+    streak, years_since_last, prev_recent = (
+        np.zeros(len(donors)), np.full(len(donors), float(n_periods)), np.zeros(len(donors)),
+    )
     periods = []
     for p in range(n_periods):
-        cum_total, cum_n = cum_total + ramnt[:, p], cum_n + gave[:, p]
+        recent = ramnt[:, p]
+        cum_total, cum_n = cum_total + recent, cum_n + gave[:, p]
         next_gave = gave[:, p + 1] if p < n_periods - 1 else (target_b == 1)
         periods.append(
             pd.DataFrame(
-                dict(period=p, total=cum_total.copy(), n=cum_n.copy(), recent=ramnt[:, p], lapsed=(~next_gave).astype(int))
+                dict(
+                    period=p, total=cum_total.copy(), n=cum_n.copy(), recent=recent,
+                    streak=streak.copy(), years_since_last=years_since_last.copy(), prev_recent=prev_recent.copy(),
+                    lapsed=(~next_gave).astype(int),
+                )
             )
         )
+        streak = np.where(gave[:, p], streak + 1, 0.0)
+        years_since_last = np.where(gave[:, p], 0.0, years_since_last + 1.0)
+        prev_recent = recent
     panel = pd.concat(periods, ignore_index=True)
     last_period = panel["period"].max()
-    train_p, test_p = panel[panel["period"] < last_period], panel[panel["period"] == last_period]
+    val_period = last_period - 1
+    train_p = panel[panel["period"] < val_period]
+    test_p = panel[panel["period"] == last_period]
 
     model = LapsePredictor(n_estimators=100, max_depth=10, random_state=seed).fit(
         train_p[["total", "n", "recent"]].to_numpy(), train_p["lapsed"].to_numpy()
     )
     score = model.predict_lapse_score(test_p[["total", "n", "recent"]].to_numpy()) / 100.0
     y = test_p["lapsed"].to_numpy()
-    baseline_score = -test_p["recent"].to_numpy()
-    return _classifier_rows("kdd98", "LapsePredictor", y, score, baseline_score, "gave nothing last period")
+    rules = {
+        "LYBUNT/SYBUNT flag": ((test_p["recent"].to_numpy() == 0) & (test_p["prev_recent"].to_numpy() > 0)).astype(float),
+        "years since last gift": test_p["years_since_last"].to_numpy(),
+        "shortest giving streak": -test_p["streak"].to_numpy(),
+        "gave nothing last period": -test_p["recent"].to_numpy(),
+    }
+    return _classifier_rows(
+        "kdd98", "LapsePredictor", y, score, rules,
+        "walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N)",
+        bootstrap=True,
+    )
 
 
 def bench_kdd_ask(seed: int) -> List[Row]:
-    """AskAmountRecommender vs "last gift" (LASTGIFT) and "average gift" (AVGGIFT)."""
+    """AskAmountRecommender vs the ask rule set (E.11a rule 3): last gift,
+    max(last gift, average gift), median training gift."""
     donors = fetch_kdd98_donors()
     rfm = _kdd_rfm(_kdd_gift_log(donors))
-    Xd_train, Xd_test, yd_train, yd_test = _kdd_ask_design(donors, rfm, seed)
+    Xd_train, _Xd_val, Xd_test, yd_train, _yd_val, yd_test = _kdd_ask_design(donors, rfm, seed)
     responders_train, responders_test = yd_train > 0, yd_test > 0
 
     ask_model = make_pipeline(
@@ -642,22 +839,25 @@ def bench_kdd_ask(seed: int) -> List[Row]:
     y_true = yd_test[responders_test].to_numpy()
     last_gift = Xd_test.loc[responders_test, "LASTGIFT"].to_numpy()
     avg_gift = Xd_test.loc[responders_test, "AVGGIFT"].to_numpy()
+    median_gift = np.full_like(y_true, float(np.median(yd_train[responders_train])))
+    rules = {
+        "last gift": last_gift,
+        "max(last gift, average gift)": np.maximum(last_gift, avg_gift),
+        "median training gift": median_gift,
+    }
+    best_name, best_score, _ = _best_ask_baseline(y_true, rules)
+    header = f"rule_set={best_name} (best of {len(rules)}); split={KDD_SPLIT}; n_configs=1"
 
     return [
         Row(
             "kdd98", "AskAmountRecommender", "mae",
-            mean_absolute_error(y_true, pred), mean_absolute_error(y_true, last_gift),
-            lower_is_better=True, note="baseline=last gift (LASTGIFT)",
-        ),
-        Row(
-            "kdd98", "AskAmountRecommender", "mae_vs_average_gift",
-            mean_absolute_error(y_true, pred), mean_absolute_error(y_true, avg_gift),
-            lower_is_better=True, note="baseline=average gift (AVGGIFT)",
+            mean_absolute_error(y_true, pred), mean_absolute_error(y_true, best_score),
+            lower_is_better=True, note=header,
         ),
         Row(
             "kdd98", "AskAmountRecommender", "within25pct",
-            _within_pct(pred, y_true), _within_pct(last_gift, y_true),
-            note="baseline=last gift",
+            _within_pct(pred, y_true), _within_pct(best_score, y_true),
+            note=header,
         ),
     ]
 
@@ -666,7 +866,7 @@ def bench_kdd_cost_aware(seed: int, cost: float = 0.68) -> List[Row]:
     """Mail if E[gift] > cost (the KDD Cup 1998 competition's own rule) vs mailing everyone."""
     donors = fetch_kdd98_donors()
     rfm = _kdd_rfm(_kdd_gift_log(donors))
-    Xd_train, Xd_test, yd_train, yd_test = _kdd_ask_design(donors, rfm, seed)
+    Xd_train, _Xd_val, Xd_test, yd_train, _yd_val, yd_test = _kdd_ask_design(donors, rfm, seed)
     responders_train = yd_train > 0
 
     resp_model = make_pipeline(

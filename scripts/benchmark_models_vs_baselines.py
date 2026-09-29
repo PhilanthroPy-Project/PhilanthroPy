@@ -67,6 +67,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import time
 import warnings
 from collections import defaultdict
@@ -762,6 +763,9 @@ def main() -> None:
     print(f"\nRuntime: {runtime:.1f}s")
 
     if args.out:
+        out_dir = os.path.dirname(args.out)
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
         _write_json(rows, args.out + ".json")
         _write_csv(rows, args.out + ".csv")
         print(f"Wrote {args.out}.json and {args.out}.csv")

@@ -5,7 +5,7 @@ then we checked what mid-level donors actually did in fiscal year 2022 (1 July
 2021 to 30 June 2022), specifically which of them crossed $1,000 for the
 first time.
 
-Of our top 10% of picks, 24 out of every 100 crossed $1,000. Ranking by this
+Of our top 10% of picks, 25 out of every 100 crossed $1,000. Ranking by this
 year's giving total alone found 18 out of every 100. Picking at random finds
 about 12 out of every 100.
 
@@ -18,7 +18,7 @@ about 12 out of every 100.
 Run `score_upgrade_prospects` on a sample donor panel
 (`make_donor_panel(random_state=0)`), cutting off at 30 June 2021 and checking
 fiscal year 2022. Out of 1,089 mid-level donors held out for validation, the
-model's top 109 picks (its top 10%) included 21 who actually upgraded.
+model's top 109 picks (its top 10%) included 19 who actually upgraded.
 Ranking those same 1,089 donors by this year's total giving instead would have
 found 14. Picking 109 of them at random would find about 13.
 

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import warnings
 from pathlib import Path
@@ -35,6 +36,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+import pandas  # noqa: E402
+import sklearn  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -42,6 +45,15 @@ import benchmark_models_vs_baselines as bm  # noqa: E402
 
 from philanthropy.datasets import make_donor_panel  # noqa: E402
 from philanthropy.models import PlannedGivingIntentScorer, score_upgrade_prospects  # noqa: E402
+
+
+def _git_sha() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+        ).strip()
+    except (subprocess.CalledProcessError, OSError):
+        return "unknown"
 
 OUT_DIR = ROOT / "docs" / "assets" / "results"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -381,6 +393,12 @@ def main() -> None:
             title="Who to mail: KDD Cup 1998",
         )
 
+    results["_env"] = {
+        "git_sha": _git_sha(),
+        "sklearn": sklearn.__version__,
+        "numpy": np.__version__,
+        "pandas": pandas.__version__,
+    }
     with open(OUT_DIR / "results.json", "w") as fh:
         json.dump(results, fh, indent=2)
     print(f"Wrote {OUT_DIR / 'results.json'} and PNGs to {OUT_DIR}")

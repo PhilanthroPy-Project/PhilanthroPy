@@ -4,9 +4,9 @@ Featured on a real donor file: [KDD Cup 1998](https://kdd.ics.uci.edu/databases/
 We pretended it was 1 June 1997 and asked: for each donor, is a $0.68 mailing
 worth sending, or should we skip it?
 
-We mailed 18,588 of the 28,624 donors held out for this test, only the ones
+We mailed 18,748 of the 28,624 donors held out for this test, only the ones
 where the model expected the gift to beat the mailing cost. That brought in
-$4,382 after mailing costs. Mailing all 28,624 of them would have brought in
+$4,240 after mailing costs. Mailing all 28,624 of them would have brought in
 $3,149 after costs.
 
 ![Net revenue: mail-only-likely-responders vs. mail-everyone](../assets/results/who_to_mail.png)

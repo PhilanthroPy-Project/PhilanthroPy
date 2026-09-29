@@ -87,6 +87,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   they can look broken even when the model ranks donors well.
 
 ### Fixed
+- `scripts/make_results_pages.py` now records the git SHA and the installed
+  `scikit-learn`/`numpy`/`pandas` versions in `docs/assets/results/results.json`
+  (an `_env` key), so a number that doesn't reproduce can be traced to the
+  environment it was generated under. The "Who to mail" page cited net
+  revenue $4,382 (18,588 pieces mailed); regenerating under the recorded
+  environment (scikit-learn 1.8.0, numpy 2.4.2, pandas 2.3.3) gives $4,240
+  (18,748 pieces), and the $1K-upgrade page's worked example moves from 21 to
+  19 upgrades in the model's top decile. Both pages now cite the regenerated
+  numbers. `scripts/benchmark_models_vs_baselines.py --out dir/name` no
+  longer crashes with `FileNotFoundError` when `dir/` does not already exist.
 - `npsp_opportunities_to_features` summed every Opportunity that was not
   `Pledged`, so `Closed Lost` and open pipeline stages such as
   `Prospecting` counted as gifts. It now keeps only closed/won stages

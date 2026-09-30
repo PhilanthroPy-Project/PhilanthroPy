@@ -17,6 +17,14 @@
 </p>
 
 <p align="center">
+  <strong><a href="https://philanthropy-project.github.io/PhilanthroPy/results/">See whether each model beats the rule your shop already uses, on a real donor file &rarr;</a></strong>
+</p>
+
+<p align="center">
+  <img src="docs/assets/results/scoreboard.png" alt="How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better" width="640"/>
+</p>
+
+<p align="center">
   <strong><a href="https://PhilanthroPy-Project.github.io/PhilanthroPy/">🚀 View the Full Documentation Site</a></strong>
 </p>
 

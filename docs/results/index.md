@@ -5,6 +5,18 @@ better than the simple rule your shop already uses, or than picking at random?**
 No statistics jargon here; everything is in donor counts. For the numbers behind
 these pages, see [Model Validation & Benchmarks](../explanation/benchmarks.md).
 
+![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](../assets/results/scoreboard.png)
+
+- **"The rule"** is whatever a fundraising shop already does without a model:
+  rank by past giving, ask for what a donor gave last time, mail everyone.
+  Every page compares the model against the best version of that rule it
+  could find, not a strawman.
+- **"Random"** is picking that many donors with no information at all, the
+  floor any model or rule should beat.
+- **A dot to the right of centre means the model earned its keep** on that
+  file; a dot to the left means the simple rule you already run for free
+  did better. Losses are shown as often as wins on this page.
+
 | Model | Question it answers | Verdict |
 |---|---|---|
 | [$1K upgrade](upgrade.md) | Which mid-level donors are about to become $1,000+ donors? | Beats the simple rule on our sample data; loses on the one real file we can test it on. Depends on your data |

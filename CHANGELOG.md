@@ -384,6 +384,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   now says plainly that no public bequest-intent dataset exists, what
   `PlannedGivingIntentScorer` would need to be tested for real, and how to
   run that test on your own file.
+- New "scoreboard" figure (`_scoreboard_chart` in `make_results_pages.py`,
+  `docs/assets/results/scoreboard.png`): one row per question, one dot per
+  dataset, placed left/centre/right for loses/about the same/beats the
+  simple rule, so a reader sees every model's win-or-loss verdict in one
+  image instead of reading six pages. It leads the home page, the Results
+  index, and the README, replacing the old wealth-screen-flavored donor
+  table on the home page (invented names and dollar capacities) with donor
+  IDs and a plain "gave again?" column. The home page's hero now asks the
+  reader's actual question ("find out whether a model beats the rule your
+  shop already uses, before you pay for one") instead of leading with
+  `check_estimator` and Tier 1/2, which move to a new "For developers"
+  section further down the page alongside the existing ROC-AUC code demo.
+  New `docs/start_here.md`, a non-technical landing page ahead of Tutorials
+  in the nav, walks through the same wins-and-losses story and links each
+  finding to the page with the number behind it. Results moved to the
+  second nav item, right after Home.
 ### Fixed
 - `activities_to_features`: `<type>_days_since_last` is now `NaN`, not 0, for
   a donor with no activity of that type at all; 0 read as "did it today"

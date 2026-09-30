@@ -1089,6 +1089,77 @@ def bench_kdd_cost_aware_val(seed: int, cost: float = 0.68) -> List[Row]:
     ]
 
 
+def _mail_profit_curve(y: np.ndarray, expected_gift: np.ndarray, cost: float, n_points: int = 40) -> Dict[str, Any]:
+    """Cumulative net revenue if the top-k donors by expected gift are
+    mailed, for k stepped from 0 to the full test set (E.13c: the profit
+    curve replacing the two-bar who-to-mail chart). Also reports the
+    model's own "mail if E[gift]>cost" stopping point on the same curve, so
+    a chart can mark both it and the mail-everyone endpoint."""
+    order = np.argsort(-expected_gift)
+    y_sorted = np.asarray(y)[order]
+    cum_raised = np.concatenate([[0.0], np.cumsum(y_sorted)])
+    n = len(y_sorted)
+    ks = np.unique(np.linspace(0, n, n_points).astype(int))
+    net = cum_raised[ks] - cost * ks
+    stop_k = int((expected_gift > cost).sum())
+    return {
+        "mailed": ks.tolist(),
+        "net_revenue": net.tolist(),
+        "n_total": n,
+        "stop_k": stop_k,
+        "stop_net_revenue": float(cum_raised[stop_k] - cost * stop_k),
+        "everyone_net_revenue": float(net[-1]),
+    }
+
+
+def kdd_mail_profit_curve(seed: int, cost: float = 0.68) -> Dict[str, Any]:
+    """Profit curve for bench_kdd_cost_aware's own fit and test split."""
+    donors = fetch_kdd98_donors()
+    rfm = _kdd_rfm(_kdd_gift_log(donors))
+    Xd_train, _Xd_val, Xd_test, yd_train, _yd_val, yd_test = _kdd_ask_design(donors, rfm, seed)
+    responders_train = yd_train > 0
+
+    resp_model = make_pipeline(
+        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
+        MajorGiftClassifier(random_state=seed),
+    ).fit(Xd_train, (yd_train > 0).astype(int))
+    ask_model = make_pipeline(
+        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
+        AskAmountRecommender(loss="squared_error", random_state=seed),
+    ).fit(Xd_train[responders_train], yd_train[responders_train])
+
+    p_respond = resp_model.predict_proba(Xd_test)[:, 1]
+    expected_gift = p_respond * ask_model.predict(Xd_test)
+    return _mail_profit_curve(yd_test.to_numpy(), expected_gift, cost)
+
+
+def kdd_mail_profit_curve_val(seed: int, cost: float = 0.68) -> Dict[str, Any]:
+    """Profit curve for bench_kdd_cost_aware_val's own fit (learning file's
+    train split) and test split (cup98VAL, never touched during fitting)."""
+    donors = fetch_kdd98_donors()
+    rfm = _kdd_rfm(_kdd_gift_log(donors))
+    Xd_train, _Xd_val, _Xd_test, yd_train, _yd_val, _yd_test = _kdd_ask_design(donors, rfm, seed)
+    responders_train = yd_train > 0
+
+    resp_model = make_pipeline(
+        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
+        MajorGiftClassifier(random_state=seed),
+    ).fit(Xd_train, (yd_train > 0).astype(int))
+    ask_model = make_pipeline(
+        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
+        AskAmountRecommender(loss="squared_error", random_state=seed),
+    ).fit(Xd_train[responders_train], yd_train[responders_train])
+
+    val_donors = fetch_kdd98_val_donors()
+    val_rfm = _kdd_rfm(_kdd_gift_log(val_donors))
+    X_val = _kdd_feature_frame(val_donors, val_rfm)
+    y_val = val_donors.set_index("CONTROLN")["TARGET_D"]
+
+    p_respond = resp_model.predict_proba(X_val)[:, 1]
+    expected_gift = p_respond * ask_model.predict(X_val)
+    return _mail_profit_curve(y_val.to_numpy(), expected_gift, cost)
+
+
 def bench_kdd_val_models(seed: int) -> List[Row]:
     """Response, lapse and ask models scored on KDD98's own held-out
     validation file (``cup98VAL`` + ``valtargt``, 96,367 donors never in the

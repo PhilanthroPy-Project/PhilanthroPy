@@ -6,6 +6,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `philanthropy.ingest.donorperfect_gifts_to_features` /
+  `read_donorperfect_gifts`: a bridge from a DonorPerfect gift export to the
+  donor-level feature table. DonorPerfect's commitment/split-total signal
+  lives in `record_type`, not its own `gift_type` field (a payment-method
+  descriptor); `P` (Pledge) and `M` (a split gift's Main total) are excluded
+  by default via `DEFAULT_EXCLUDED_RECORD_TYPES`, keeping `G` (a regular
+  gift, a pledge payment, or a split entry). Registered as `"donorperfect"`
+  in `read_gifts`/`GIFT_SOURCES`. Field names and the `record_type`
+  vocabulary are taken from SofterWare's DonorPerfect Online XML API
+  Documentation (dp_savegift's `@record_type` parameter and its "Split
+  Gifts"/"Pledge Notes" sections).
 - `philanthropy.ingest.bloomerang_transactions_to_features` /
   `read_bloomerang_transactions`: a bridge from a Bloomerang transaction
   export to the donor-level feature table, following the same

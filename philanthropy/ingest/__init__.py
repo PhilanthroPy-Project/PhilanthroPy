@@ -28,6 +28,12 @@ export CSV; ``bloomerang_transactions_to_features`` aggregates it, dropping
 the commitment rows (``Pledge``, ``Recurring Donation``) first so a pledged
 dollar is not counted both as the promise and as the payments against it.
 
+DonorPerfect: ``read_donorperfect_gifts`` loads a DonorPerfect gift export
+CSV; ``donorperfect_gifts_to_features`` aggregates it, dropping Pledge
+records and split-gift Main totals (``record_type`` ``P`` / ``M``) first so
+a pledged or split dollar is not counted both as the promise/total and as
+the payments/splits against it.
+
 ``map_columns`` renames a user-supplied export's headers to the canonical
 names a bridge above expects, raising one error listing every column still
 missing after the rename.
@@ -62,6 +68,11 @@ from ._constituent_events import (
     constituent_events_to_features,
     read_constituent_events,
 )
+from ._donorperfect import (
+    DEFAULT_EXCLUDED_RECORD_TYPES,
+    donorperfect_gifts_to_features,
+    read_donorperfect_gifts,
+)
 from ._map_columns import map_columns
 from ._npsp import (
     DEFAULT_INCLUDED_STAGES,
@@ -79,6 +90,7 @@ from ._upgrade_snapshots import build_upgrade_snapshots
 __all__ = [
     "DEFAULT_EXCLUDED_ENTRY_TYPES",
     "DEFAULT_EXCLUDED_GIFT_TYPES",
+    "DEFAULT_EXCLUDED_RECORD_TYPES",
     "DEFAULT_INCLUDED_STAGES",
     "GIFT_SOURCES",
     "activities_to_features",
@@ -86,12 +98,14 @@ __all__ = [
     "build_upgrade_snapshots",
     "civicrm_contributions_to_features",
     "constituent_events_to_features",
+    "donorperfect_gifts_to_features",
     "map_columns",
     "npsp_opportunities_to_features",
     "raisers_edge_gifts_to_features",
     "read_bloomerang_transactions",
     "read_civicrm_contributions",
     "read_constituent_events",
+    "read_donorperfect_gifts",
     "read_gifts",
     "read_npsp_opportunities",
     "read_raisers_edge_gifts",

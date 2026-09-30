@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none"><style>svg{color:#a4571b}@media (prefers-color-scheme:dark){svg{color:#e8935a}}</style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
 <ellipse cx="32" cy="37.3" rx="17.5" ry="14.7" stroke="currentColor" stroke-width="5.5"/>
 <path d="M32 17.7V58.3" stroke="currentColor" stroke-width="5.5" stroke-linecap="round"/>
 <circle cx="32" cy="7.2" r="4.2" fill="currentColor"/>

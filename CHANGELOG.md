@@ -161,6 +161,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   they can look broken even when the model ranks donors well.
 
 ### Changed
+- Logo: the heart-and-arrow mark is replaced by a phi (φ) with a dot above
+  it. φ is the "phil" (love) in philanthropy and also the golden ratio; the
+  dot is the gift, or the score, rising out of it. Same three places as
+  before: `overrides/.icons/philanthropy/phi.svg` (renamed from
+  `heart-rise.svg`) is the header logo, `docs/assets/logo.svg` is the
+  favicon, and `docs/assets/logo.png` is the README lockup, with the
+  wordmark lettering unchanged.
 - `AskAmountRecommender(loss=...)`: a new parameter passed through to the
   backend `HistGradientBoostingRegressor`, default changed from
   `"squared_error"` to `"absolute_error"`. Ask amounts are right-skewed (a

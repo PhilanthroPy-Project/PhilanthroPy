@@ -290,6 +290,24 @@ def test_knn_feature_names_out_honours_input_features():
     assert list(imp.get_feature_names_out(renamed)) == renamed
 
 
+def test_knn_only_imputes_the_documented_subset_of_columns():
+    # KNNImputer.transform fills every column internally (it needs them all
+    # for neighbour distance), but only imputed_cols_ should come back
+    # filled; an unrelated column's own NaN must survive untouched.
+    df = _knn_frame()
+    df.loc[df.index[20:25], "years_active"] = np.nan
+    imp = WealthScreeningImputerKNN(
+        wealth_cols=["estimated_net_worth", "real_estate_value"],
+        strategy="knn",
+        n_neighbors=3,
+    ).fit(df)
+    out = imp.transform(df)
+    years_active_idx = list(df.columns).index("years_active")
+    assert np.isnan(out[:, years_active_idx]).sum() == 5
+    net_worth_idx = list(df.columns).index("estimated_net_worth")
+    assert not np.isnan(out[:, net_worth_idx]).any()
+
+
 def test_knn_warns_for_a_requested_wealth_column_that_is_absent():
     df = _knn_frame()
     imp = WealthScreeningImputerKNN(

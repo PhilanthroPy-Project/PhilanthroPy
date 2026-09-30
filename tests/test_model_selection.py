@@ -162,6 +162,23 @@ def test_get_n_splits_matches_the_folds_actually_yielded(n_splits, gap_years):
     assert splitter.get_n_splits(groups=fy) == len(list(splitter.split(X, groups=fy)))
 
 
+def test_nan_fiscal_year_does_not_inflate_get_n_splits():
+    # A NaN fiscal year cannot be placed in any fold (every comparison
+    # against it is False), so it must not count as a distinct year either,
+    # or get_n_splits() promises one more fold than split() yields.
+    X = np.zeros((130, 3))
+    fy = np.array(
+        [2019] * 30 + [2020] * 30 + [2021] * 30 + [2022] * 30 + [np.nan] * 10
+    )
+    splitter = FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=3)
+    with pytest.warns(UserWarning, match="NaN fiscal year"):
+        splits = list(splitter.split(X, groups=fy))
+    assert splitter.get_n_splits(groups=fy) == len(splits)
+    for train_idx, test_idx in splits:
+        assert not np.isnan(fy[train_idx]).any()
+        assert not np.isnan(fy[test_idx]).any()
+
+
 # ---------------------------------------------------------------------------
 # drop_repeat_donors: the static-per-donor-label case
 # ---------------------------------------------------------------------------

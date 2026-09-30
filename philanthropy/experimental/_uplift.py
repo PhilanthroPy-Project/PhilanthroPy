@@ -110,12 +110,19 @@ class UpliftTLearner(ClassifierMixin, BaseEstimator):
         Raises
         ------
         ValueError
-            If ``treatment`` is not binary ``{0, 1}``, if its length does not
-            match ``n_samples``, or if either arm (treated / control) is empty.
+            If ``y`` or ``treatment`` is not binary ``{0, 1}``, if
+            ``treatment``'s length does not match ``n_samples``, or if either
+            arm (treated / control) is empty.
         """
         X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
         treatment = np.asarray(treatment)
 
+        if not set(np.unique(y)).issubset({0, 1}):
+            raise ValueError(
+                "y must be binary with values in {0, 1} (1 = gave, 0 = did "
+                "not give); other label encodings are not supported because "
+                "_prob_give resolves the positive class as literal 1."
+            )
         if treatment.shape[0] != X.shape[0]:
             raise ValueError(
                 f"treatment has length {treatment.shape[0]}, "

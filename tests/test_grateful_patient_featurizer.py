@@ -255,6 +255,26 @@ class TestGratefulPatientFeaturizer:
         result = gpf.transform(pd.DataFrame({"donor_id": [1]}))
         assert result[0, 0] == pytest.approx(1 * 3.2)
 
+    def test_missing_service_line_values_are_not_counted_as_a_line(self, X_donors):
+        """A NaN service_line must not become the literal string "nan" and
+        get counted as a distinct service line."""
+        enc = pd.DataFrame({
+            "donor_id": [1, 1, 2],
+            "discharge_date": ["2022-01-01", "2022-02-01", "2022-01-01"],
+            "service_line": ["cardiac", np.nan, np.nan],
+            "attending_physician_id": ["P1", "P2", "P3"],
+        })
+        gpf = GratefulPatientFeaturizer(encounter_df=enc)
+        gpf.fit(X_donors)
+        result = gpf.transform(pd.DataFrame({"donor_id": [1, 2]}))
+        distinct_idx = list(gpf.get_feature_names_out()).index("distinct_service_lines")
+        # Donor 1: one real line ("cardiac") plus one NaN encounter -> 1 distinct,
+        # not 2 ("cardiac" and the literal string "nan").
+        assert result[0, distinct_idx] == 1
+        # Donor 2: no real service line recorded at all -> 0 distinct, not 1
+        # ("nan" wrongly counted as a known line).
+        assert result[1, distinct_idx] == 0
+
 
 # --------------------------------------------------------------------------- #
 # The two all-zero fallbacks must be loud (audit finding: 84% coverage file,

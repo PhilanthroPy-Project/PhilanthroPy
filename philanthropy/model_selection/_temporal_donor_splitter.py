@@ -307,7 +307,18 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
                 f"samples in X ({n_samples})."
             )
 
-        unique_fy = np.sort(np.unique(groups))
+        # A NaN fiscal year cannot be placed in any fold (every comparison
+        # against it is False, so the row silently never trains or tests).
+        # Exclude it from the distinct-year count too, or get_n_splits()
+        # reports one more fold than split() actually yields.
+        nan_fy = _missing_mask(fiscal_years)
+        if nan_fy.any():
+            warnings.warn(
+                f"FiscalYearGroupedSplitter: {int(nan_fy.sum())} row(s) have "
+                "a NaN fiscal year and are excluded from every split.",
+                UserWarning,
+            )
+        unique_fy = np.sort(np.unique(fiscal_years[~nan_fy]))
         n_fy = len(unique_fy)
 
         if n_fy < 2:
@@ -403,7 +414,7 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
             drop_repeat = bool(self.drop_repeat_donors)
             if drop_repeat and groups.ndim == 2 and groups.shape[1] == 2:
                 groups = groups[:, 0]
-            unique_fy = np.unique(groups)
+            unique_fy = np.unique(groups[~_missing_mask(groups)])
             n_fy = len(unique_fy)
             max_splits = max(0, n_fy - 1 - gap_years)
             return min(n_splits, max_splits)

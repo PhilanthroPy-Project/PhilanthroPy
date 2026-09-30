@@ -140,8 +140,11 @@ def test_wealth_screening_imputer_knn_ndarray_path():
     rng = np.random.default_rng(0)
     X = rng.random((30, 4))
     X[X < 0.2] = np.nan  # inject missingness
+    # No column names to substring-match, so wealth_cols must be given
+    # explicitly for every column to land in imputed_cols_.
     out = WealthScreeningImputerKNN(
-        strategy="knn", n_neighbors=3, add_indicator=False
+        wealth_cols=["x0", "x1", "x2", "x3"],
+        strategy="knn", n_neighbors=3, add_indicator=False,
     ).fit_transform(X)
     assert out.shape[0] == 30
     assert not np.any(np.isnan(out))

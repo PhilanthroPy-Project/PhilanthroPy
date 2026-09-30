@@ -23,6 +23,8 @@ def _clean_nonneg_amounts(amounts: Collection) -> np.ndarray:
     a = a[~np.isnan(a)]
     if np.any(a < 0):
         raise ValueError("gift amounts must be non-negative.")
+    if np.any(np.isinf(a)):
+        raise ValueError("gift amounts must be finite.")
     return a
 
 
@@ -35,7 +37,8 @@ def gift_concentration_gini(amounts: Collection) -> float:
     Parameters
     ----------
     amounts : array-like of shape (n_donors,)
-        Per-donor total giving. ``NaN`` entries are dropped; negatives raise.
+        Per-donor total giving. ``NaN`` entries are dropped; negative or
+        infinite values raise.
 
     Returns
     -------
@@ -46,7 +49,7 @@ def gift_concentration_gini(amounts: Collection) -> float:
     Raises
     ------
     ValueError
-        If any gift amounts are negative.
+        If any gift amounts are negative or infinite.
     """
     a = _clean_nonneg_amounts(amounts)
     total = a.sum()
@@ -65,7 +68,8 @@ def top_donor_share(amounts: Collection, top_fraction: float = 0.1) -> float:
     Parameters
     ----------
     amounts : array-like of shape (n_donors,)
-        Per-donor total giving. ``NaN`` entries are dropped; negatives raise.
+        Per-donor total giving. ``NaN`` entries are dropped; negative or
+        infinite values raise.
     top_fraction : float, default=0.1
         Slice of donors (ranked by giving, descending) to sum. Must be in
         ``(0.0, 1.0]``. At least one donor is always counted.
@@ -79,7 +83,8 @@ def top_donor_share(amounts: Collection, top_fraction: float = 0.1) -> float:
     Raises
     ------
     ValueError
-        If ``top_fraction`` is not in ``(0.0, 1.0]``, or if any gift amounts are negative.
+        If ``top_fraction`` is not in ``(0.0, 1.0]``, or if any gift amounts
+        are negative or infinite.
     """
     if not 0.0 < top_fraction <= 1.0:
         raise ValueError("top_fraction must be in (0.0, 1.0].")

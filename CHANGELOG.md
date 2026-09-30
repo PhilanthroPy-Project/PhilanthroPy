@@ -179,6 +179,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   (`NaN`) directly, as `RandomForestClassifier` has since scikit-learn 1.4.
 
 ### Fixed
+- `scripts/benchmark_models_vs_baselines.py`: the KDD Cup 1998 upgrade row
+  (`bench_kdd_upgrade`) split its multi-year snapshot table at random by
+  row, with `fiscal_year` as a feature. The file's gift log effectively ends
+  in March 1996, so the FY1996 snapshot has almost no upgrades (3 in
+  75,272), and the model scored AUC 0.902 mostly by learning which year a
+  row came from; the same donor could also sit in train and test. It now
+  walks forward (train FY1994, test FY1995, `fiscal_year` dropped as a
+  feature). On the corrected split the upgrade model does not beat the best
+  rule on this file: top-10% hit rate 11.0% vs 12.2% for "largest single
+  gift in band", AUC 0.750 vs 0.750. The Results pages never showed a KDD98
+  upgrade number, so no page changes.
 - `scripts/make_results_pages.py` now records the git SHA and the installed
   `scikit-learn`/`numpy`/`pandas` versions in `docs/assets/results/results.json`
   (an `_env` key), so a number that doesn't reproduce can be traced to the
@@ -239,6 +250,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   ~10% of the held-out fold), and the report adds `deciles`, `roc_auc`,
   `average_precision`, and two named baselines ("gave >= X last FY" and
   "top N by FY total") with their own rates and lifts.
+
+### Fixed
+- `npsp_opportunities_to_features` now resolves the donor key explicitly
+  when an export carries both `AccountId`/`Account Name` and `Primary
+  Contact`: the Account always wins, per NPSP's default Household Account
+  model. Previously the two columns collapsed onto the same `contact_id`
+  name and whichever happened to come first in the export's column order
+  silently won.
+- The docs homepage's quickstart example cited a stale held-out ROC-AUC
+  (0.932) and major-donor count (347); the current code gives 0.841 and
+  183. `docs/index.md`'s numbers, chart and table are regenerated to match.
+- `docs/explanation/benchmarks.md`'s per-model accuracy table had one row
+  (`DonorPropensityModel`) already regenerated under scikit-learn 1.8.0
+  while the other three still carried their scikit-learn 1.7.2 numbers, and
+  its footnote still cited 1.7.2. The whole table is now regenerated
+  consistently to match the committed golden file
+  (`docs/explanation/benchmark_results.txt`), and the footnote cites 1.8.0.
+
 ### Documentation
 - README and the docs homepage now cover the Raiser's Edge and NPSP gift
   bridges, `read_gifts` as the one-call entry point over all three CRM

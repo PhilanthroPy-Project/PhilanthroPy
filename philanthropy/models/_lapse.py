@@ -10,29 +10,56 @@ from typing import Any, TypeVar
 
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.utils.validation import check_is_fitted, validate_data
 from sklearn.utils import Tags
 from sklearn.utils.multiclass import unique_labels
 
 _Self = TypeVar("_Self", bound="LapsePredictor")
 
+RETENTION_READ_THRESHOLD = 0.80
+"""E.12d: above this training lapse rate, ranking by lapse score stops being
+useful (almost everyone lapses, so the list barely beats random); the useful
+list is the retention read instead, see :attr:`LapsePredictor.retention_read_`
+and :meth:`LapsePredictor.predict_retention_score`."""
+
 
 class LapsePredictor(ClassifierMixin, BaseEstimator):
     """
     Predicts whether a donor will lapse within a configurable window.
-    Uses RandomForestClassifier backend.
+    Uses RandomForestClassifier backend by default.
 
     Parameters
     ----------
     n_estimators : int, default=100
-        Number of trees in the RandomForestClassifier.
+        Number of trees in the RandomForestClassifier. Ignored when
+        ``backend="hist_gradient_boosting"``.
     max_depth : int or None, default=None
-        Maximum depth of trees. None means nodes expand until pure.
+        Maximum depth of trees. None means nodes expand until pure
+        (unbounded for ``RandomForestClassifier``; the backend's own default
+        depth limit for ``HistGradientBoostingRegressor``).
     class_weight : dict, "balanced", "balanced_subsample" or None, default=None
-        Class weights for imbalanced lapse prediction.
+        Class weights for imbalanced lapse prediction. Ignored when
+        ``backend="hist_gradient_boosting"`` (that backend has no
+        ``class_weight`` parameter).
     random_state : int or None, default=None
         Random seed for reproducibility.
+    backend : {"random_forest", "hist_gradient_boosting"}, default="random_forest"
+        ``"hist_gradient_boosting"`` handles ``NaN`` natively and is faster on
+        large files (E.12d); adopt only after it is confirmed to beat "years
+        since last gift" at top-10% on one real file without losing on
+        another. The default has not changed.
+
+    Attributes
+    ----------
+    training_lapse_rate_ : float
+        Fraction of training rows labelled "lapsed", set at fit time.
+    retention_read_ : bool
+        ``True`` when ``training_lapse_rate_`` exceeds
+        :data:`RETENTION_READ_THRESHOLD`: on files where almost everyone
+        lapses, the retention read (the 10% *least* likely to lapse, see
+        :meth:`predict_retention_score`) is the useful list, not the lapse
+        read (E.12d, E.13d "Lapse" fix).
     """
 
     def __sklearn_tags__(self) -> Tags:
@@ -47,11 +74,13 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         max_depth: int | None = None,
         class_weight: Any = None,
         random_state: int | None = None,
+        backend: str = "random_forest",
     ) -> None:
         self.n_estimators = n_estimators
         self.max_depth = max_depth
         self.class_weight = class_weight
         self.random_state = random_state
+        self.backend = backend
 
     def fit(self: _Self, X: Any, y: Any) -> _Self:
         """Fit the LapsePredictor.
@@ -70,13 +99,23 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
         self.classes_ = unique_labels(y)
         self.n_features_in_ = X.shape[1]
+        self.training_lapse_rate_ = float(np.mean(y == 1))
+        self.retention_read_ = self.training_lapse_rate_ > RETENTION_READ_THRESHOLD
 
-        self.estimator_ = RandomForestClassifier(
-            n_estimators=self.n_estimators,
-            max_depth=self.max_depth,
-            class_weight=self.class_weight,
-            random_state=self.random_state,
-        )
+        if self.backend == "random_forest":
+            self.estimator_ = RandomForestClassifier(
+                n_estimators=self.n_estimators,
+                max_depth=self.max_depth,
+                class_weight=self.class_weight,
+                random_state=self.random_state,
+            )
+        elif self.backend == "hist_gradient_boosting":
+            self.estimator_ = HistGradientBoostingClassifier(
+                max_depth=self.max_depth,
+                random_state=self.random_state,
+            )
+        else:
+            raise ValueError(f"Unknown backend: {self.backend!r}")
         self.estimator_.fit(X, y)
         return self
 
@@ -104,3 +143,13 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
             # Column 1 is P(class=1), i.e. P(lapse) when classes_ is [0, 1].
             proba_lapse = proba[:, 1]
         return np.round(proba_lapse * 100.0, 2)
+
+    def predict_retention_score(self, X: Any) -> np.ndarray:
+        """Return P(retained) x 100, the complement of
+        :meth:`predict_lapse_score`.
+
+        Ranking donors by this score, highest first, is the useful list on a
+        file where :attr:`retention_read_` is ``True``: ranking by lapse
+        score barely beats random when almost everyone lapses, but the tail
+        least likely to lapse still beats the rule (E.12d)."""
+        return np.round(100.0 - self.predict_lapse_score(X), 2)

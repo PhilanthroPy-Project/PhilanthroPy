@@ -103,3 +103,52 @@ def test_n_iter_property(ask_Xy):
     X, y = ask_Xy
     model = AskAmountRecommender(max_iter=20, random_state=0).fit(X, y)
     assert model.n_iter_ >= 1
+
+
+def test_relative_target_mode_predicts_positive_and_floored():
+    rng = np.random.default_rng(0)
+    last_gift = rng.uniform(10, 500, 200)
+    avg_gift = rng.uniform(10, 500, 200)
+    other = rng.uniform(0, 1, (200, 3))
+    X = np.column_stack([last_gift, avg_gift, other])
+    y = np.maximum(last_gift, avg_gift) * rng.uniform(0.5, 1.5, 200)
+
+    model = AskAmountRecommender(
+        target_mode="relative", last_gift_idx=0, avg_gift_idx=1, max_iter=50, random_state=0,
+    ).fit(X, y)
+    preds = model.predict(X)
+    assert preds.shape == (200,)
+    assert (preds >= model.ask_floor).all()
+
+
+def test_relative_target_mode_recovers_exact_ratio():
+    # A perfect log-linear relationship: the estimator should reconstruct it
+    # to a tight tolerance, proving the log/exp round-trip through the
+    # reference amount is correct, not just "doesn't crash".
+    rng = np.random.default_rng(1)
+    last_gift = rng.uniform(50, 500, 300)
+    avg_gift = rng.uniform(50, 500, 300)
+    ref = np.maximum(last_gift, avg_gift)
+    y = ref * 1.2  # every donor gives exactly 1.2x the rule
+    X = np.column_stack([last_gift, avg_gift])
+
+    model = AskAmountRecommender(
+        target_mode="relative", last_gift_idx=0, avg_gift_idx=1, max_iter=200, random_state=0,
+    ).fit(X, y)
+    preds = model.predict(X)
+    np.testing.assert_allclose(preds, y, rtol=0.05)
+
+
+def test_relative_target_mode_requires_indices():
+    X = np.random.default_rng(0).uniform(0, 1000, (20, 3))
+    y = np.random.default_rng(1).uniform(0, 1000, 20)
+    model = AskAmountRecommender(target_mode="relative", random_state=0)
+    with pytest.raises(ValueError):
+        model.fit(X, y)
+
+
+def test_unknown_target_mode_raises(ask_Xy):
+    X, y = ask_Xy
+    model = AskAmountRecommender(target_mode="bogus", random_state=0)
+    with pytest.raises(ValueError):
+        model.fit(X, y)

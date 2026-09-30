@@ -106,6 +106,19 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         Minimum recommended ask (in dollars).  Predictions are clipped to
         this floor via ``np.maximum`` to prevent negative ask amounts that
         are semantically meaningless.
+    target_mode : {"absolute", "relative"}, default="absolute"
+        ``"absolute"`` fits the ask amount directly, as before. ``"relative"``
+        instead fits ``log(y / max(last_gift, avg_gift))`` and multiplies the
+        prediction back out at inference time, targeting the ratio to the
+        simple rule this model is meant to beat (max of last and average
+        gift) rather than the raw dollar amount. Requires ``last_gift_idx``
+        and ``avg_gift_idx``.
+    last_gift_idx : int or None, default=None
+        Column index of the donor's last gift amount in ``X``. Required when
+        ``target_mode="relative"``.
+    avg_gift_idx : int or None, default=None
+        Column index of the donor's average gift amount in ``X``. Required
+        when ``target_mode="relative"``.
 
     Attributes
     ----------
@@ -177,6 +190,9 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         loss: str = "absolute_error",
         random_state: Optional[int] = None,
         ask_floor: float = 1.0,
+        target_mode: str = "absolute",
+        last_gift_idx: Optional[int] = None,
+        avg_gift_idx: Optional[int] = None,
     ) -> None:
         # scikit-learn rule: __init__ stores parameters and does NO logic.
         self.learning_rate = learning_rate
@@ -187,6 +203,9 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         self.loss = loss
         self.random_state = random_state
         self.ask_floor = ask_floor
+        self.target_mode = target_mode
+        self.last_gift_idx = last_gift_idx
+        self.avg_gift_idx = avg_gift_idx
 
     def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
@@ -204,10 +223,27 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
     # Public API
     # ------------------------------------------------------------------
 
+    def _relative_reference(self, X: np.ndarray) -> np.ndarray:
+        """max(last gift, average gift) per row, floored to avoid log(0)."""
+        if self.last_gift_idx is None or self.avg_gift_idx is None:
+            raise ValueError(
+                "target_mode='relative' requires both last_gift_idx and avg_gift_idx."
+            )
+        ref = np.maximum(X[:, self.last_gift_idx], X[:, self.avg_gift_idx])
+        return np.maximum(ref, self.ask_floor)
+
     def fit(self: _Self, X: Any, y: Any) -> _Self:
         """Fit the ask-amount recommender to labelled prospect data."""
         X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
         self.n_features_in_ = X.shape[1]
+
+        if self.target_mode == "relative":
+            ref = self._relative_reference(X)
+            fit_target = np.log(np.maximum(y, self.ask_floor) / ref)
+        elif self.target_mode == "absolute":
+            fit_target = y
+        else:
+            raise ValueError(f"Unknown target_mode: {self.target_mode!r}")
 
         self.estimator_ = HistGradientBoostingRegressor(
             learning_rate=self.learning_rate,
@@ -218,7 +254,7 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
             loss=self.loss,
             random_state=self.random_state,
         )
-        self.estimator_.fit(X, y)
+        self.estimator_.fit(X, fit_target)
         return self
 
     def predict(self, X: Any) -> np.ndarray:
@@ -226,6 +262,8 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         check_is_fitted(self, ["estimator_"])
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         raw = self.estimator_.predict(X)
+        if self.target_mode == "relative":
+            raw = np.exp(raw) * self._relative_reference(X)
         return np.maximum(raw, self.ask_floor)
 
     def ask_ladder(

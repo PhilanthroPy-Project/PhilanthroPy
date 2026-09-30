@@ -108,6 +108,10 @@ from philanthropy.preprocessing import (
 )
 
 DEFAULT_SEEDS: Tuple[int, ...] = (42, 43, 44, 45, 46)
+GIFT_INTERVAL_SEEDS: Tuple[int, ...] = tuple(range(42, 52))
+PARITY_FEATURES: Tuple[str, ...] = (
+    "total", "n", "recent", "streak", "years_since_last", "prev_recent", "max_gift", "tenure",
+)
 KDD_SEED = 42
 KDD_AS_OF = "1997-06-01"
 WIN_RATIO = 1.15
@@ -413,14 +417,21 @@ def _train_test_periods(panel: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame
     return panel[panel["fy"] < test_fy], panel[panel["fy"] == test_fy]
 
 
-def bench_response(seeds: Sequence[int], n_donors: int, n_years: int) -> List[Row]:
+def bench_response(
+    seeds: Sequence[int], n_donors: int, n_years: int,
+    feature_cols: Sequence[str] = ("total", "n", "recent"), dataset: str = "synthetic_panel",
+) -> List[Row]:
     """DonorPropensityModel / MajorGiftClassifier vs the response rule set
-    (E.11a rule 3): lifetime monetary, RFM cell score."""
+    (E.11a rule 3): lifetime monetary, RFM cell score.
+
+    ``feature_cols`` defaults to the 3 features the rules are not fed
+    (E.12b's "feature parity probe"); pass :data:`PARITY_FEATURES` for the
+    same comparison on the full 8 as-of columns."""
     seed_rows = []
     for seed in seeds:
         train, test = _train_test_periods(_period_panel(n_donors, n_years, seed))
-        Xtr = train[["total", "n", "recent"]].to_numpy()
-        Xte = test[["total", "n", "recent"]].to_numpy()
+        Xtr = train[list(feature_cols)].to_numpy()
+        Xte = test[list(feature_cols)].to_numpy()
         ytr, yte = train["y_response"].to_numpy(), test["y_response"].to_numpy()
         rules = {
             "lifetime monetary": test["total"].to_numpy(),
@@ -432,19 +443,27 @@ def bench_response(seeds: Sequence[int], n_donors: int, n_years: int) -> List[Ro
         for name, cls in (("DonorPropensityModel", DonorPropensityModel), ("MajorGiftClassifier", MajorGiftClassifier)):
             model = cls(random_state=seed).fit(Xtr, ytr)
             proba = model.predict_proba(Xte)[:, 1]
-            rows += _classifier_rows("synthetic_panel", name, yte, proba, rules, SYNTHETIC_SPLIT)
+            rows += _classifier_rows(dataset, name, yte, proba, rules, SYNTHETIC_SPLIT)
         seed_rows.append(rows)
     return _aggregate(seed_rows)
 
 
-def bench_lapse(seeds: Sequence[int], n_donors: int, n_years: int) -> List[Row]:
+def bench_lapse(
+    seeds: Sequence[int], n_donors: int, n_years: int,
+    feature_cols: Sequence[str] = ("total", "n", "recent"), dataset: str = "synthetic_panel",
+) -> List[Row]:
     """LapsePredictor vs the lapse rule set (E.11a rule 3): LYBUNT/SYBUNT
     flag, years since last gift, shortest giving streak, gave nothing last
-    period."""
+    period.
+
+    ``feature_cols`` defaults to the 3 features the rules are not fed
+    (E.12b's "feature parity probe"); pass :data:`PARITY_FEATURES` for the
+    same comparison on the full 8 as-of columns."""
     seed_rows = []
     for seed in seeds:
         train, test = _train_test_periods(_period_panel(n_donors, n_years, seed))
-        Xtr, Xte = train[["total", "n", "recent"]].to_numpy(), test[["total", "n", "recent"]].to_numpy()
+        Xtr = train[list(feature_cols)].to_numpy()
+        Xte = test[list(feature_cols)].to_numpy()
         ytr, yte = 1 - train["y_response"].to_numpy(), 1 - test["y_response"].to_numpy()
         rules = {
             "LYBUNT/SYBUNT flag": ((test["recent"].to_numpy() == 0) & (test["prev_recent"].to_numpy() > 0)).astype(float),
@@ -455,7 +474,7 @@ def bench_lapse(seeds: Sequence[int], n_donors: int, n_years: int) -> List[Row]:
         model = LapsePredictor(random_state=seed).fit(Xtr, ytr)
         score = model.predict_lapse_score(Xte) / 100.0  # predict_lapse_score is 0-100, calibration needs 0-1
         seed_rows.append(
-            _classifier_rows("synthetic_panel", "LapsePredictor", yte, score, rules, SYNTHETIC_SPLIT)
+            _classifier_rows(dataset, "LapsePredictor", yte, score, rules, SYNTHETIC_SPLIT)
         )
     return _aggregate(seed_rows)
 
@@ -950,6 +969,45 @@ def bench_kdd_lapse_retention(seed: int) -> List[Row]:
     )
 
 
+def bench_kdd_lapse_backend_trial(seed: int) -> List[Row]:
+    """E.12d LapsePredictor backend trial: RandomForest (today's default) vs
+    ``backend="hist_gradient_boosting"``, picked on cup98val rather than
+    KDD98's own period N-1 (E.12c item 3: that period is 99.7% base lapse,
+    too degenerate to pick anything on). The winner's KDD98-split test
+    number (the same held-out period :func:`bench_kdd_lapse` reports) is the
+    only one that counts. Adopt only if the winner beats "years since last
+    gift" at top-10% on one real file without losing on the other."""
+    lrn, val = fetch_kdd98_donors(), fetch_kdd98_val_donors()
+    panel_lrn, panel_val = _kdd_lapse_panel(lrn), _kdd_lapse_panel(val)
+    last_period = panel_lrn["period"].max()
+    train_p = panel_lrn[panel_lrn["period"] < last_period]
+    test_p = panel_lrn[panel_lrn["period"] == last_period]
+    val_p = panel_val[panel_val["period"] == last_period]
+
+    candidates = {
+        "random_forest": LapsePredictor(n_estimators=100, max_depth=10, random_state=seed),
+        "hist_gradient_boosting": LapsePredictor(backend="hist_gradient_boosting", max_depth=10, random_state=seed),
+    }
+    val_auc: Dict[str, float] = {}
+    for name, model in candidates.items():
+        model.fit(train_p[["total", "n", "recent"]].to_numpy(), train_p["lapsed"].to_numpy())
+        score = model.predict_lapse_score(val_p[["total", "n", "recent"]].to_numpy()) / 100.0
+        val_auc[name] = roc_auc_score(val_p["lapsed"].to_numpy(), score)
+
+    winner = max(val_auc, key=val_auc.get)
+    runner_up = [n for n in val_auc if n != winner][0]
+    model = candidates[winner]
+    score_test = model.predict_lapse_score(test_p[["total", "n", "recent"]].to_numpy()) / 100.0
+    y_test = test_p["lapsed"].to_numpy()
+    rules = _kdd_lapse_rules(test_p)
+    return _classifier_rows(
+        "kdd98", "LapsePredictor (E.12d backend trial)", y_test, score_test, rules,
+        f"walk-forward across KDD98 promotion periods; backend picked on cup98val's last period "
+        f"(winner={winner}, AUC {val_auc[winner]:.3f} vs {runner_up} {val_auc[runner_up]:.3f})",
+        n_configs=2, bootstrap=True,
+    )
+
+
 def bench_kdd_ask(seed: int) -> List[Row]:
     """AskAmountRecommender vs the ask rule set (E.11a rule 3): last gift,
     max(last gift, average gift), median training gift."""
@@ -985,6 +1043,102 @@ def bench_kdd_ask(seed: int) -> List[Row]:
         Row(
             "kdd98", "AskAmountRecommender", "within25pct",
             _within_pct(pred, y_true), _within_pct(best_score, y_true),
+            note=header,
+        ),
+    ]
+
+
+def _with_max_last_avg_feature(X: pd.DataFrame) -> pd.DataFrame:
+    return X.assign(max_last_avg=np.maximum(X["LASTGIFT"], X["AVGGIFT"]))
+
+
+def _pick_ask_candidate(
+    Xd_train: pd.DataFrame, yd_train: pd.Series, Xd_val: pd.DataFrame, yd_val: pd.Series, seed: int,
+) -> Tuple[str, Any, Any, Dict[str, float]]:
+    """E.12d ask-model improvement attempt, under the E.11a protocol: two
+    candidate configurations, picked on a validation fold that
+    :func:`bench_kdd_ask` does not use, so only the winner's later test-fold
+    number counts.
+
+    Candidate 1, ``absolute+max_feature``: today's absolute target, with
+    max(last gift, average gift) added as an explicit input column (the
+    model already has LASTGIFT and AVGGIFT separately and still loses to
+    their max). Candidate 2, ``relative_target``: predicts
+    log(next gift / max(last, average)) and multiplies back
+    (``AskAmountRecommender(target_mode="relative")``), targeting the exact
+    rule this model keeps losing to. Returns the winner's name, fitted
+    pipeline, its featurizer and every candidate's validation MAE."""
+    responders_train, responders_val = yd_train > 0, yd_val > 0
+    last_idx, avg_idx = Xd_train.columns.get_loc("LASTGIFT"), Xd_train.columns.get_loc("AVGGIFT")
+
+    candidates = {
+        "absolute+max_feature": (
+            make_pipeline(
+                WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
+                AskAmountRecommender(random_state=seed),
+            ),
+            _with_max_last_avg_feature,
+        ),
+        "relative_target": (
+            make_pipeline(
+                WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
+                AskAmountRecommender(
+                    target_mode="relative", last_gift_idx=last_idx, avg_gift_idx=avg_idx, random_state=seed,
+                ),
+            ),
+            lambda X: X,
+        ),
+    }
+
+    val_mae: Dict[str, float] = {}
+    for name, (pipe, featurize) in candidates.items():
+        pipe.fit(featurize(Xd_train)[responders_train], yd_train[responders_train])
+        pred_val = pipe.predict(featurize(Xd_val)[responders_val])
+        val_mae[name] = mean_absolute_error(yd_val[responders_val], pred_val)
+
+    winner = min(val_mae, key=val_mae.get)
+    pipe, featurize = candidates[winner]
+    return winner, pipe, featurize, val_mae
+
+
+def bench_kdd_ask_relative(seed: int) -> List[Row]:
+    """Test-fold number for the E.12d ask-model candidate picked by
+    :func:`_pick_ask_candidate` on the KDD98 learning-file validation fold.
+    Reported as a separate model name so it sits next to, not instead of,
+    :func:`bench_kdd_ask`'s current-default row until an adopt decision is
+    made (E.12d: adopt only if a candidate wins on both KDD files)."""
+    donors = fetch_kdd98_donors()
+    rfm = _kdd_rfm(_kdd_gift_log(donors))
+    Xd_train, Xd_val, Xd_test, yd_train, yd_val, yd_test = _kdd_ask_design(donors, rfm, seed)
+    responders_train, responders_test = yd_train > 0, yd_test > 0
+    winner, pipe, featurize, val_mae = _pick_ask_candidate(Xd_train, yd_train, Xd_val, yd_val, seed)
+    runner_up = [n for n in val_mae if n != winner][0]
+    pred_test = pipe.predict(featurize(Xd_test)[responders_test])
+
+    y_true = yd_test[responders_test].to_numpy()
+    last_gift = Xd_test.loc[responders_test, "LASTGIFT"].to_numpy()
+    avg_gift = Xd_test.loc[responders_test, "AVGGIFT"].to_numpy()
+    median_gift = np.full_like(y_true, float(np.median(yd_train[responders_train])))
+    rules = {
+        "last gift": last_gift,
+        "max(last gift, average gift)": np.maximum(last_gift, avg_gift),
+        "median training gift": median_gift,
+    }
+    best_name, best_score, _ = _best_ask_baseline(y_true, rules)
+    header = (
+        f"E.12d relative-target experiment; winner={winner} (validation-fold MAE "
+        f"{val_mae[winner]:.2f} vs {runner_up}'s {val_mae[runner_up]:.2f}); "
+        f"rule_set={best_name} (best of {len(rules)}); split={KDD_SPLIT}; n_configs=2"
+    )
+    return [
+        Row(
+            "kdd98", "AskAmountRecommender (E.12d candidate)", "mae",
+            mean_absolute_error(y_true, pred_test), mean_absolute_error(y_true, best_score),
+            lower_is_better=True, note=header,
+        ),
+        Row(
+            "kdd98", "AskAmountRecommender (E.12d candidate)", "within25pct",
+            _within_pct(pred_test, y_true), _within_pct(best_score, y_true),
             note=header,
         ),
     ]
@@ -1194,7 +1348,7 @@ def bench_kdd_val_models(seed: int) -> List[Row]:
         split_note, bootstrap=True,
     )
 
-    Xd_train, _Xd_v, _Xd_t, yd_train, _yd_v, _yd_t = _kdd_ask_design(lrn, _kdd_rfm(_kdd_gift_log(lrn)), seed)
+    Xd_train, Xd_val_lrn, _Xd_t, yd_train, yd_val_lrn, _yd_t = _kdd_ask_design(lrn, _kdd_rfm(_kdd_gift_log(lrn)), seed)
     responders_train = yd_train > 0
     ask_model = make_pipeline(
         WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
@@ -1223,6 +1377,28 @@ def bench_kdd_val_models(seed: int) -> List[Row]:
         Row(
             "cup98val", "AskAmountRecommender", "within25pct",
             _within_pct(pred, y_true), _within_pct(best_score, y_true), note=header,
+        ),
+    ]
+
+    # E.12d adopt bar: a candidate must win on both KDD files, so the
+    # winner picked on the LRN train/val split (bench_kdd_ask_relative's
+    # candidate) is confirmed here on cup98val, not re-picked.
+    winner, cand_pipe, featurize, val_mae = _pick_ask_candidate(Xd_train, yd_train, Xd_val_lrn, yd_val_lrn, seed)
+    cand_pred = cand_pipe.predict(featurize(Xd_val)[responders_val])
+    cand_header = (
+        f"E.12d relative-target experiment, confirmed on cup98val; winner={winner} "
+        f"(picked on the LRN val fold, MAE {val_mae[winner]:.2f}); "
+        f"rule_set={best_name} (best of {len(ask_rules)}); split={split_note}; n_configs=2"
+    )
+    rows += [
+        Row(
+            "cup98val", "AskAmountRecommender (E.12d candidate)", "mae",
+            mean_absolute_error(y_true, cand_pred), mean_absolute_error(y_true, best_score),
+            lower_is_better=True, note=cand_header,
+        ),
+        Row(
+            "cup98val", "AskAmountRecommender (E.12d candidate)", "within25pct",
+            _within_pct(cand_pred, y_true), _within_pct(best_score, y_true), note=cand_header,
         ),
     ]
     return rows
@@ -1339,10 +1515,21 @@ def main() -> None:
     rows: List[Row] = []
     rows += bench_response(seeds, n_donors, n_years)
     rows += bench_lapse(seeds, n_donors, n_years)
+    # E.12b feature-parity probe: the rules above see 5+ as-of columns
+    # (years_since_last, streak, ...) while the models above see only 3.
+    # This second column re-runs both on the same full 8 columns so the
+    # comparison is no longer lopsided; reported next to the default row,
+    # not replacing it (E.12e item 2).
+    rows += bench_response(seeds, n_donors, n_years, feature_cols=PARITY_FEATURES, dataset="synthetic_panel_full_features")
+    rows += bench_lapse(seeds, n_donors, n_years, feature_cols=PARITY_FEATURES, dataset="synthetic_panel_full_features")
     rows += bench_ask(seeds, n_donors, n_years)
     rows += bench_upgrade(seeds, n_donors, n_years)
     rows += bench_planned_giving(seeds, n_donors, n_years)
-    rows += bench_gift_interval(seeds, n_donors, n_years)
+    # E.9: 10 seeds at each requested level, not just 5 seeds at 90%, since a
+    # single-seed 88% vs 90% gap on its own does not tell a bug from noise.
+    gift_interval_seeds = (GIFT_INTERVAL_SEEDS[0],) if args.fast else GIFT_INTERVAL_SEEDS
+    for alpha in (0.2, 0.1, 0.05):
+        rows += bench_gift_interval(gift_interval_seeds, n_donors, n_years, alpha=alpha)
     rows += bench_forecast(seeds, n_donors, n_years)
 
     if not args.skip_kdd98:
@@ -1351,8 +1538,10 @@ def main() -> None:
         rows += bench_kdd_lapse(KDD_SEED)
         rows += bench_kdd_lapse_retention(KDD_SEED)
         rows += bench_kdd_ask(KDD_SEED)
+        rows += bench_kdd_ask_relative(KDD_SEED)
         rows += bench_kdd_cost_aware(KDD_SEED)
         if args.with_cup98val:
+            rows += bench_kdd_lapse_backend_trial(KDD_SEED)
             rows += bench_kdd_cost_aware_val(KDD_SEED)
             rows += bench_kdd_val_models(KDD_SEED)
 

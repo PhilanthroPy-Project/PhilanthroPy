@@ -91,11 +91,11 @@ parentheses.**
 |---|---:|---:|---:|---:|
 | `PropensityScorer` (baseline) | 0.000 (0.000–0.000) | 0.000 (0.000–0.000) | 0.000 (0.000–0.000) | 0.500 (0.500–0.500) |
 | `DonorPropensityModel` | 0.714 (0.684–0.724) | 0.637 (0.622–0.660) | 0.673 (0.652–0.689) | 0.841 (0.837–0.844) |
-| `MajorGiftClassifier` | 0.731 (0.687–0.765) | 0.559 (0.536–0.585) | 0.633 (0.606–0.656) | 0.827 (0.817–0.832) |
-| `LapsePredictor` | 0.668 (0.625–0.699) | 0.609 (0.592–0.632) | 0.636 (0.625–0.645) | 0.810 (0.802–0.815) |
-| `PlannedGivingIntentScorer` | 0.731 (0.717–0.740) | 0.605 (0.576–0.636) | 0.662 (0.643–0.683) | 0.840 (0.833–0.844) |
+| `MajorGiftClassifier` | 0.732 (0.693–0.752) | 0.565 (0.544–0.593) | 0.638 (0.614–0.663) | 0.828 (0.819–0.832) |
+| `LapsePredictor` | 0.669 (0.625–0.707) | 0.607 (0.588–0.632) | 0.636 (0.623–0.645) | 0.810 (0.802–0.815) |
+| `PlannedGivingIntentScorer` | 0.730 (0.717–0.740) | 0.605 (0.576–0.636) | 0.662 (0.643–0.683) | 0.840 (0.833–0.844) |
 
-*(Measured with scikit-learn 1.7.2 on the synthetic dataset; your numbers will
+*(Measured with scikit-learn 1.8.0 on the synthetic dataset; your numbers will
 differ.)*
 
 The ranges are narrow, roughly ±0.01 on F1 and ±0.01 on ROC-AUC, so the models

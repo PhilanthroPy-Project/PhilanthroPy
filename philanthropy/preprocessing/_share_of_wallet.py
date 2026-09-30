@@ -104,15 +104,20 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
 
     Examples
     --------
-    >>> import numpy as np
+    >>> import numpy as np, pandas as pd
     >>> from philanthropy.preprocessing._share_of_wallet import WealthScreeningImputerKNN
     >>> rng = np.random.default_rng(42)
-    >>> X = rng.uniform(0, 1e6, (50, 3))
-    >>> X[rng.random((50, 3)) < 0.3] = np.nan
+    >>> X = pd.DataFrame(
+    ...     rng.uniform(0, 1e6, (50, 3)), columns=["net_worth", "real_estate", "other"]
+    ... )
+    >>> X.loc[rng.random(50) < 0.3, "net_worth"] = np.nan
+    >>> X.loc[rng.random(50) < 0.3, "real_estate"] = np.nan
     >>> imp = WealthScreeningImputerKNN(strategy="knn", n_neighbors=3, add_indicator=False)
     >>> imp.fit(X)
     WealthScreeningImputerKNN(...)
     >>> out = imp.transform(X)
+    >>> imp.imputed_cols_
+    ['net_worth', 'real_estate']
     >>> bool(np.isnan(out).any())
     False
     """
@@ -259,7 +264,18 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
                     indicators.append(np.isnan(X_arr[:, idx]).astype(np.float64).reshape(-1, 1))
 
         if self.strategy == "knn" and self.knn_imputer_ is not None:
-            X_out = self.knn_imputer_.transform(X_arr)
+            # KNNImputer.transform fills every column, but only imputed_cols_
+            # (the documented "subset of columns to impute") is contractually
+            # ours to change; the rest of the matrix passes through as-is,
+            # NaN included. The other columns still inform each neighbour's
+            # distance, which is why the imputer was fit on all of them.
+            knn_out = self.knn_imputer_.transform(X_arr)
+            X_out = X_arr.copy()
+            for col in self.imputed_cols_:
+                if col not in input_cols:
+                    continue
+                idx = input_cols.index(col)
+                X_out[:, idx] = knn_out[:, idx]
         else:
             X_out = X_arr.copy()
             for col in self.imputed_cols_:

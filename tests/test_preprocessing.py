@@ -250,9 +250,9 @@ class TestFiscalYearTransformer:
         df = pd.DataFrame({"gift_date": ["2023-01-01", "2023-12-31"]})
         t = FiscalYearTransformer(fiscal_year_start=1).set_output(transform="pandas")
         out = t.fit_transform(df)
-        # With January start, calendar year == fiscal year
-        assert out.loc[0, "fiscal_year"] == 2024  # Jan 01 ≥ Jan → FY = year+1
-        assert out.loc[1, "fiscal_year"] == 2024  # Dec 31 ≥ Jan → FY = year+1
+        # With January start, calendar year == fiscal year: no rollover.
+        assert out.loc[0, "fiscal_year"] == 2023  # Jan 01, 2023 → FY2023
+        assert out.loc[1, "fiscal_year"] == 2023  # Dec 31, 2023 → FY2023
 
     def test_fiscal_quarter_range(self):
         dates = pd.date_range("2022-07-01", periods=12, freq="MS").strftime(
@@ -498,6 +498,17 @@ class TestEncounterRecencyTransformerEdgeCases:
             EncounterRecencyTransformer(fiscal_year_start="july").fit(
                 pd.DataFrame({"last_encounter_date": ["2023-01-01"]})
             )
+
+    def test_january_start_fiscal_year_has_no_rollover(self):
+        from philanthropy.preprocessing import EncounterRecencyTransformer
+
+        X = pd.DataFrame({"last_encounter_date": ["2023-06-01"]})
+        t = EncounterRecencyTransformer(
+            fiscal_year_start=1, reference_date="2023-09-01"
+        )
+        out = t.fit_transform(X)
+        col = [c for c in t.get_feature_names_out() if c.endswith("fiscal_year_of_encounter")][0]
+        assert out[0, list(t.get_feature_names_out()).index(col)] == 2023
 
     def test_multiple_date_columns_emit_three_features_each(self):
         from philanthropy.preprocessing import EncounterRecencyTransformer

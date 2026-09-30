@@ -133,7 +133,10 @@ def test_knn_imputation_is_batch_independent_for_fixed_row():
     Xtr[rng.random((60, 3)) < 0.3] = np.nan
 
     imp = WealthScreeningImputerKNN(
-        strategy="knn", n_neighbors=3, add_indicator=True
+        # No column names to substring-match, so wealth_cols must be given
+        # explicitly for every column to land in imputed_cols_.
+        wealth_cols=["x0", "x1", "x2"],
+        strategy="knn", n_neighbors=3, add_indicator=True,
     )
     imp.fit(Xtr)
     # Frozen fitted attributes exist after fit.

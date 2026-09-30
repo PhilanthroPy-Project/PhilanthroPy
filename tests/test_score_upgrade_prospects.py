@@ -274,6 +274,17 @@ def test_as_of_defaults_to_latest_gift_date():
     pd.testing.assert_frame_equal(explicit.sort_index(), default.sort_index())
 
 
+def test_january_start_current_fiscal_year_has_no_rollover():
+    # With fiscal_year_start=1, a January-start fiscal year is the same
+    # twelve months as the calendar year: as_of="2024-08-01" is FY2024, not
+    # FY2025 (the bug this regression test covers).
+    scores, report = score_upgrade_prospects(
+        _archetype_gifts(), fiscal_year_start=1, random_state=0
+    )
+    assert report["current_fiscal_year"] == 2024
+    assert set(scores["fiscal_year"].unique()) == {2024}
+
+
 # --------------------------------------------------------------------------- #
 # F5: no upgraders / all upgraders in history (previously an IndexError deep
 # inside predict_proba)

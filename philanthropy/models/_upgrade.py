@@ -40,6 +40,7 @@ from philanthropy.ingest._upgrade_snapshots import (
 )
 from philanthropy.inspection import donor_feature_importance
 from philanthropy.model_selection import FiscalYearGroupedSplitter
+from philanthropy.utils._validation import fiscal_year_for
 
 from ._propensity import MajorGiftClassifier
 
@@ -284,9 +285,7 @@ def score_upgrade_prospects(
         raise ValueError(f"No gift rows on or before as_of={as_of_ts.date()}.")
     df, pivot_sum, pivot_max, pivot_count = _prepare_gifts(cut, fiscal_year_start)
 
-    current_fy = (
-        as_of_ts.year + 1 if as_of_ts.month >= fiscal_year_start else as_of_ts.year
-    )
+    current_fy = fiscal_year_for(as_of_ts.year, as_of_ts.month, fiscal_year_start)
     min_fy, max_fy = int(df["_fy"].min()), int(df["_fy"].max())
     historical_years = [
         t for t in range(min_fy, max_fy + 1)

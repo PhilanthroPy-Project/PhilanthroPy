@@ -25,7 +25,7 @@ import pandas as pd
 from sklearn.base import TransformerMixin, BaseEstimator
 from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
-from philanthropy.utils._validation import validate_fiscal_year_start
+from philanthropy.utils._validation import fiscal_year_and_quarter, validate_fiscal_year_start
 
 _SelfC = TypeVar("_SelfC", bound="CRMCleaner")
 _SelfF = TypeVar("_SelfF", bound="FiscalYearTransformer")
@@ -318,11 +318,8 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
             X_df["fiscal_quarter"] = np.nan
         else:
             dates = pd.to_datetime(X_df[self.date_col], errors="coerce")
-            X_df["fiscal_year"] = dates.apply(
-                lambda d: np.nan if pd.isna(d) else float(d.year + 1 if d.month >= self.fiscal_year_start else d.year)
-            )
-            X_df["fiscal_quarter"] = dates.apply(
-                lambda d: np.nan if pd.isna(d) else float(((d.month - self.fiscal_year_start) % 12) // 3 + 1)
+            X_df["fiscal_year"], X_df["fiscal_quarter"] = fiscal_year_and_quarter(
+                dates, self.fiscal_year_start
             )
         
         out_df = pd.DataFrame({

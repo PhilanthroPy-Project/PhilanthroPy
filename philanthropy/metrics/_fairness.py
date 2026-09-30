@@ -108,3 +108,45 @@ def disparate_impact_ratio(
     if max_rate == 0.0:
         return 1.0
     return float(values.min() / max_rate)
+
+
+def demographic_parity_difference(
+    y_pred: Collection,
+    sensitive_features: Collection,
+    pos_label: Any = 1,
+) -> float:
+    """``max(selection_rate) - min(selection_rate)`` across protected groups.
+
+    A companion to :func:`disparate_impact_ratio` for when selection rates
+    are small: two rates of 0.01 and 0.02 give a ratio of 0.5 (looks severe)
+    but a difference of 0.01 (looks negligible), and which reading matters
+    depends on the decision being made. Report both.
+
+    This is a **diagnostic, not a fairness guarantee or legal clearance**: a
+    small difference does not certify a model as non-discriminatory, and the
+    choice of protected groups and decision threshold materially affects the
+    result.
+
+    Parameters
+    ----------
+    y_pred : array-like of shape (n_samples,)
+        Binary decisions. Threshold continuous scores first.
+    sensitive_features : array-like of shape (n_samples,)
+        Protected-group label per sample.
+    pos_label : default=1
+        Value in ``y_pred`` that counts as "selected".
+
+    Returns
+    -------
+    float
+        Difference in ``[0.0, 1.0]``. ``0.0`` is exact parity, or when only
+        one group is present.
+
+    Raises
+    ------
+    ValueError
+        If inputs have mismatched lengths, are empty, or contain missing values.
+    """
+    rates = selection_rate_by_group(y_pred, sensitive_features, pos_label=pos_label)
+    values = np.array(list(rates.values()), dtype=float)
+    return float(values.max() - values.min())

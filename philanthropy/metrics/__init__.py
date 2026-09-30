@@ -11,7 +11,11 @@ from ._scoring import (
     fundraising_roi,
 )
 from ._financial import donor_lifetime_value
-from ._fairness import disparate_impact_ratio, selection_rate_by_group
+from ._fairness import (
+    demographic_parity_difference,
+    disparate_impact_ratio,
+    selection_rate_by_group,
+)
 from ._concentration import gift_concentration_gini, top_donor_share
 from ._conformal import (
     IntervalReport,
@@ -30,6 +34,7 @@ __all__ = [
     "fundraising_roi",
     "donor_lifetime_value",
     "disparate_impact_ratio",
+    "demographic_parity_difference",
     "selection_rate_by_group",
     "gift_concentration_gini",
     "top_donor_share",

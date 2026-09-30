@@ -62,6 +62,19 @@ assert disparate_impact_ratio(y_pred, groups) == 0.5
 assert selection_rate_by_group(y_pred, groups) == {"A": 0.8, "B": 0.4}
 ```
 
+## The ratio can mislead when rates are small
+
+`demographic_parity_difference` is `max(selection_rate) - min(selection_rate)`. Report it alongside the ratio: selection rates of 0.01 and 0.02 give a ratio of 0.5, which reads as severe, but a difference of 0.01, which reads as negligible. Which one matters depends on the decision the score drives.
+
+```python
+from philanthropy.metrics import demographic_parity_difference
+
+y_pred = [1] + [0] * 99 + [1, 1] + [0] * 98
+groups = ["A"] * 100 + ["B"] * 100
+assert disparate_impact_ratio(y_pred, groups) == 0.5
+assert demographic_parity_difference(y_pred, groups) == 0.01
+```
+
 ## Sweep the threshold
 
 The ratio is a function of where you cut. Audit the cut-off you actually plan to use, and look at the curve around it.

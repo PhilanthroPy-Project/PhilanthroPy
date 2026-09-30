@@ -48,7 +48,7 @@ from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
 
 from ._encounters import _parse_as_of
-from ..utils._validation import validate_fiscal_year_start
+from ..utils._validation import fiscal_year_and_quarter, validate_fiscal_year_start
 
 _Self = TypeVar("_Self", bound="EncounterRecencyTransformer")
 
@@ -229,14 +229,6 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
             return cutoff.tz_convert("UTC").tz_localize(None)
         return cutoff
 
-    def _fiscal_year(self, dt: pd.Timestamp) -> int:
-        """Return the fiscal year for a single Timestamp."""
-        fys = int(self.fiscal_year_start)
-        if dt.month >= fys:
-            # Encounter is in the opening half of fiscal year → FY ends next calendar year
-            return dt.year + 1
-        return dt.year
-
     def _compute_recency_features(
         self, dates: pd.Series, prefix: str
     ) -> pd.DataFrame:
@@ -286,9 +278,7 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         in_90d = np.where(dates.isna(), 0.0, (delta_days <= 90.0).astype(np.float64))
 
         # fiscal_year_of_encounter: float64 (NaN for missing)
-        fy = dates.apply(
-            lambda d: np.nan if pd.isna(d) else float(self._fiscal_year(d))
-        ).astype("float64")
+        fy, _ = fiscal_year_and_quarter(dates, int(self.fiscal_year_start))
 
         cols = {}
         p = f"{prefix}__" if prefix else ""

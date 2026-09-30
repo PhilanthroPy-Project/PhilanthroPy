@@ -66,6 +66,15 @@ def test_fit_rejects_non_binary_treatment():
         UpliftTLearner(random_state=0).fit(X, y, treatment)
 
 
+def test_fit_rejects_non_binary_y():
+    # _prob_give resolves the positive class as literal 1, so any other
+    # label encoding (e.g. "yes"/"no") would silently score the wrong arm.
+    X, y, treatment = make_uplift_data(n=50)
+    y_str = np.where(y == 1, "yes", "no")
+    with pytest.raises(ValueError, match="y must be binary"):
+        UpliftTLearner(random_state=0).fit(X, y_str, treatment)
+
+
 def test_fit_rejects_length_mismatch():
     X, y, treatment = make_uplift_data(n=50)
     with pytest.raises(ValueError):

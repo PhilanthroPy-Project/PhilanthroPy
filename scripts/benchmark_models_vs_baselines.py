@@ -27,10 +27,10 @@ Run:
 The KDD Cup 1998 section downloads ``cup98lrn.zip`` (~36 MB) to
 ``~/philanthropy_data`` on first use (see ``fetch_kdd98_donors``); pass
 ``--skip-kdd98`` to stay offline entirely. ``--with-cup98val`` additionally
-scores cost-aware selection on KDD98's own held-out validation file
-(``cup98VAL.zip`` + ``valtargt.txt``, another ~37 MB, see
-``fetch_kdd98_val_donors``), reported next to the random-split number rather
-than replacing it; off by default and has no effect with
+scores cost-aware selection, response, lapse and ask on KDD98's own held-out
+validation file (``cup98VAL.zip`` + ``valtargt.txt``, another ~37 MB, see
+``fetch_kdd98_val_donors``), reported next to the learning-file numbers
+rather than replacing them; off by default and has no effect with
 ``--skip-kdd98``.
 
 ## What is measured
@@ -744,6 +744,33 @@ def bench_kdd_upgrade(seed: int, threshold: float = 50.0, band: Tuple[float, flo
     )
 
 
+def _kdd_response_frame(donors: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """RFM + tenure features for every donor in a KDD98 file (never-gave
+    donors get recency one past the file maximum and zero counts), plus the
+    donor table indexed by ``CONTROLN``. Shared by the learning-file split
+    and the cup98VAL rows."""
+    rfm = _kdd_rfm(_kdd_gift_log(donors))
+    donors_idx = donors.set_index("CONTROLN")
+    X_rfm = rfm.reindex(donors_idx.index)
+    X_rfm["recency"] = X_rfm["recency"].fillna(X_rfm["recency"].max() + 1)
+    X_rfm[["frequency", "monetary", "tenure"]] = X_rfm[["frequency", "monetary", "tenure"]].fillna(0.0)
+    return X_rfm, donors_idx
+
+
+def _kdd_response_rules(X_rfm: pd.DataFrame, donors_idx: pd.DataFrame) -> Dict[str, np.ndarray]:
+    """The fixed KDD98 response rule set (E.11a rule 3) for the given rows.
+    ``RFA_2F`` is the frequency code of the RFA_2 segment, an integer 1 to 4
+    (4 = four or more gifts in the period), used directly as the rank."""
+    rfa_2f = donors_idx["RFA_2F"].to_numpy(dtype="float64")
+    return {
+        "lifetime monetary": X_rfm["monetary"].to_numpy(),
+        "RFM cell score": _rfm_cell_score(
+            X_rfm["recency"].to_numpy(), X_rfm["frequency"].to_numpy(), X_rfm["monetary"].to_numpy()
+        ),
+        "RFA_2 frequency then last gift": rfa_2f * 1e6 + donors_idx["LASTGIFT"].to_numpy(),
+    }
+
+
 def bench_kdd_response(seed: int) -> List[Row]:
     """DonorPropensityModel / MajorGiftClassifier vs the response rule set
     (E.11a rule 3): lifetime monetary, RFM cell score, and (KDD98 only) RFA_2
@@ -753,23 +780,12 @@ def bench_kdd_response(seed: int) -> List[Row]:
     response (``TARGET_B``/``TARGET_D``), the same "as of, not updated by"
     check rule 5 asks for. ``HIT`` and ``LASTDATE`` are not used by this
     script."""
-    donors = fetch_kdd98_donors()
-    rfm = _kdd_rfm(_kdd_gift_log(donors))
-    donors_idx = donors.set_index("CONTROLN")
-    X_rfm = rfm.reindex(donors_idx.index)
-    X_rfm["recency"] = X_rfm["recency"].fillna(X_rfm["recency"].max() + 1)
-    X_rfm[["frequency", "monetary", "tenure"]] = X_rfm[["frequency", "monetary", "tenure"]].fillna(0.0)
+    X_rfm, donors_idx = _kdd_response_frame(fetch_kdd98_donors())
     y = donors_idx["TARGET_B"].to_numpy()
 
     idx_train, _idx_val, idx_test = _split_55_15_30(len(y), y, seed)
     Xtr, Xte, ytr, yte = X_rfm.iloc[idx_train], X_rfm.iloc[idx_test], y[idx_train], y[idx_test]
-    rfa_2f_rank = donors_idx["RFA_2F"].map({"1": 1, "2": 2, "5": 3}).fillna(0).to_numpy()[idx_test]
-    lastgift = donors_idx["LASTGIFT"].to_numpy()[idx_test]
-    rules = {
-        "lifetime monetary": Xte["monetary"].to_numpy(),
-        "RFM cell score": _rfm_cell_score(Xte["recency"].to_numpy(), Xte["frequency"].to_numpy(), Xte["monetary"].to_numpy()),
-        "RFA_2 frequency then last gift": rfa_2f_rank * 1e6 + lastgift,
-    }
+    rules = _kdd_response_rules(Xte, donors_idx.iloc[idx_test])
     rows: List[Row] = []
     for name, cls in (("DonorPropensityModel", DonorPropensityModel), ("MajorGiftClassifier", MajorGiftClassifier)):
         model = cls(random_state=seed).fit(Xtr.to_numpy(), ytr)
@@ -778,18 +794,12 @@ def bench_kdd_response(seed: int) -> List[Row]:
     return rows
 
 
-def bench_kdd_lapse(seed: int) -> List[Row]:
-    """LapsePredictor vs the lapse rule set (E.11a rule 3), over the
-    22-promotion history: LYBUNT/SYBUNT flag, years since last gift,
-    shortest giving streak, gave nothing last period.
-
-    Split: the 23 promotion periods are naturally time-ordered, so this
-    walks forward across them (train on periods < N-1, validate on N-1, test
-    on N, the same shape as the synthetic panel split) rather than the
-    dataset-level 55/15/30 stratified split (E.11a rule 1): mixing periods
-    with a donor-level stratified split would let a donor's later promotion
-    history leak into training for an earlier one."""
-    donors = fetch_kdd98_donors()
+def _kdd_lapse_panel(donors: pd.DataFrame) -> pd.DataFrame:
+    """One row per (donor, promotion period) over the 22-promotion history:
+    as-of cumulative total and count, that period's gift, streak, periods
+    since last gift and the previous period's gift, labelled ``lapsed`` if
+    the donor gave nothing in the next period (the last period's next one is
+    the 97NK mailing, ``TARGET_B``)."""
     hist_promos = list(range(24, 2, -1))
     ramnt = donors[[f"RAMNT_{i}" for i in hist_promos]].fillna(0.0).to_numpy()
     gave = ramnt > 0
@@ -817,7 +827,31 @@ def bench_kdd_lapse(seed: int) -> List[Row]:
         streak = np.where(gave[:, p], streak + 1, 0.0)
         years_since_last = np.where(gave[:, p], 0.0, years_since_last + 1.0)
         prev_recent = recent
-    panel = pd.concat(periods, ignore_index=True)
+    return pd.concat(periods, ignore_index=True)
+
+
+def _kdd_lapse_rules(test_p: pd.DataFrame) -> Dict[str, np.ndarray]:
+    """The fixed lapse rule set (E.11a rule 3) for the given panel rows."""
+    return {
+        "LYBUNT/SYBUNT flag": ((test_p["recent"].to_numpy() == 0) & (test_p["prev_recent"].to_numpy() > 0)).astype(float),
+        "years since last gift": test_p["years_since_last"].to_numpy(),
+        "shortest giving streak": -test_p["streak"].to_numpy(),
+        "gave nothing last period": -test_p["recent"].to_numpy(),
+    }
+
+
+def bench_kdd_lapse(seed: int) -> List[Row]:
+    """LapsePredictor vs the lapse rule set (E.11a rule 3), over the
+    22-promotion history: LYBUNT/SYBUNT flag, years since last gift,
+    shortest giving streak, gave nothing last period.
+
+    Split: the 23 promotion periods are naturally time-ordered, so this
+    walks forward across them (train on periods < N-1, validate on N-1, test
+    on N, the same shape as the synthetic panel split) rather than the
+    dataset-level 55/15/30 stratified split (E.11a rule 1): mixing periods
+    with a donor-level stratified split would let a donor's later promotion
+    history leak into training for an earlier one."""
+    panel = _kdd_lapse_panel(fetch_kdd98_donors())
     last_period = panel["period"].max()
     val_period = last_period - 1
     train_p = panel[panel["period"] < val_period]
@@ -828,12 +862,7 @@ def bench_kdd_lapse(seed: int) -> List[Row]:
     )
     score = model.predict_lapse_score(test_p[["total", "n", "recent"]].to_numpy()) / 100.0
     y = test_p["lapsed"].to_numpy()
-    rules = {
-        "LYBUNT/SYBUNT flag": ((test_p["recent"].to_numpy() == 0) & (test_p["prev_recent"].to_numpy() > 0)).astype(float),
-        "years since last gift": test_p["years_since_last"].to_numpy(),
-        "shortest giving streak": -test_p["streak"].to_numpy(),
-        "gave nothing last period": -test_p["recent"].to_numpy(),
-    }
+    rules = _kdd_lapse_rules(test_p)
     return _classifier_rows(
         "kdd98", "LapsePredictor", y, score, rules,
         "walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N)",
@@ -980,6 +1009,74 @@ def bench_kdd_cost_aware_val(seed: int, cost: float = 0.68) -> List[Row]:
     ]
 
 
+def bench_kdd_val_models(seed: int) -> List[Row]:
+    """Response, lapse and ask models scored on KDD98's own held-out
+    validation file (``cup98VAL`` + ``valtargt``, 96,367 donors never in the
+    learning file), each fit exactly as in its learning-file bench: response
+    and ask on the learning file's 55% train split, lapse on its periods
+    before N-1. The rule sets are the same fixed lists. Reported next to the
+    learning-file rows (dataset ``"cup98val"``), not replacing them."""
+    lrn, val = fetch_kdd98_donors(), fetch_kdd98_val_donors()
+    split_note = "fit on cup98LRN (same split as the kdd98 row), scored on cup98VAL+valtargt"
+    rows: List[Row] = []
+
+    X_lrn, idx_lrn = _kdd_response_frame(lrn)
+    X_val, idx_val = _kdd_response_frame(val)
+    y_lrn, y_val = idx_lrn["TARGET_B"].to_numpy(), idx_val["TARGET_B"].to_numpy()
+    idx_train, _idx_v, _idx_t = _split_55_15_30(len(y_lrn), y_lrn, seed)
+    rules = _kdd_response_rules(X_val, idx_val)
+    for name, cls in (("DonorPropensityModel", DonorPropensityModel), ("MajorGiftClassifier", MajorGiftClassifier)):
+        model = cls(random_state=seed).fit(X_lrn.iloc[idx_train].to_numpy(), y_lrn[idx_train])
+        proba = model.predict_proba(X_val.to_numpy())[:, 1]
+        rows += _classifier_rows("cup98val", name, y_val, proba, rules, split_note, bootstrap=True)
+
+    panel_lrn, panel_val = _kdd_lapse_panel(lrn), _kdd_lapse_panel(val)
+    last_period = panel_lrn["period"].max()
+    train_p = panel_lrn[panel_lrn["period"] < last_period - 1]
+    test_p = panel_val[panel_val["period"] == last_period]
+    lapse = LapsePredictor(n_estimators=100, max_depth=10, random_state=seed).fit(
+        train_p[["total", "n", "recent"]].to_numpy(), train_p["lapsed"].to_numpy()
+    )
+    score = lapse.predict_lapse_score(test_p[["total", "n", "recent"]].to_numpy()) / 100.0
+    rows += _classifier_rows(
+        "cup98val", "LapsePredictor", test_p["lapsed"].to_numpy(), score, _kdd_lapse_rules(test_p),
+        split_note, bootstrap=True,
+    )
+
+    Xd_train, _Xd_v, _Xd_t, yd_train, _yd_v, _yd_t = _kdd_ask_design(lrn, _kdd_rfm(_kdd_gift_log(lrn)), seed)
+    responders_train = yd_train > 0
+    ask_model = make_pipeline(
+        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
+        AskAmountRecommender(random_state=seed),
+    ).fit(Xd_train[responders_train], yd_train[responders_train])
+    Xd_val = _kdd_feature_frame(val, _kdd_rfm(_kdd_gift_log(val)))
+    yd_val = val.set_index("CONTROLN")["TARGET_D"]
+    responders_val = (yd_val > 0).to_numpy()
+    pred = ask_model.predict(Xd_val[responders_val])
+    y_true = yd_val[responders_val].to_numpy()
+    last_gift = Xd_val.loc[responders_val, "LASTGIFT"].to_numpy()
+    avg_gift = Xd_val.loc[responders_val, "AVGGIFT"].to_numpy()
+    ask_rules = {
+        "last gift": last_gift,
+        "max(last gift, average gift)": np.maximum(last_gift, avg_gift),
+        "median training gift": np.full_like(y_true, float(np.median(yd_train[responders_train]))),
+    }
+    best_name, best_score, _ = _best_ask_baseline(y_true, ask_rules)
+    header = f"rule_set={best_name} (best of {len(ask_rules)}); split={split_note}; n_configs=1"
+    rows += [
+        Row(
+            "cup98val", "AskAmountRecommender", "mae",
+            mean_absolute_error(y_true, pred), mean_absolute_error(y_true, best_score),
+            lower_is_better=True, note=header,
+        ),
+        Row(
+            "cup98val", "AskAmountRecommender", "within25pct",
+            _within_pct(pred, y_true), _within_pct(best_score, y_true), note=header,
+        ),
+    ]
+    return rows
+
+
 # --------------------------------------------------------------------------- #
 # UCI Blood Transfusion (opt-in download)
 # --------------------------------------------------------------------------- #
@@ -1071,8 +1168,8 @@ def main() -> None:
     parser.add_argument("--skip-kdd98", action="store_true", help="Skip the KDD Cup 1998 section entirely (no download).")
     parser.add_argument(
         "--with-cup98val", action="store_true",
-        help="Also score cost-aware selection on KDD98's own held-out cup98VAL+valtargt "
-        "file (a second ~37 MB download; opt-in). No effect with --skip-kdd98.",
+        help="Also score cost-aware selection, response, lapse and ask on KDD98's own held-out "
+        "cup98VAL+valtargt file (a second ~37 MB download; opt-in). No effect with --skip-kdd98.",
     )
     parser.add_argument(
         "--with-blood", action="store_true",
@@ -1104,6 +1201,7 @@ def main() -> None:
         rows += bench_kdd_cost_aware(KDD_SEED)
         if args.with_cup98val:
             rows += bench_kdd_cost_aware_val(KDD_SEED)
+            rows += bench_kdd_val_models(KDD_SEED)
 
     if args.with_blood:
         rows += bench_blood(seeds)

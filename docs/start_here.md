@@ -26,7 +26,8 @@ already have for those, and we say so on those pages. The rest are not
 testable on public data yet, and we say that too, rather than show a number
 that isn't real.
 
-![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](assets/results/scoreboard.png)
+![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](assets/results/scoreboard.png#only-light)
+![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](assets/results/scoreboard-dark.png#only-dark)
 
 See the [full Results pages](results/index.md) for the number behind every
 dot on this chart.

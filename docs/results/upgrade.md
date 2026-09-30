@@ -13,7 +13,8 @@ try it on your own file before trusting either number.**
     Of our top 10% of picks, 25 out of every 100 crossed $1,000. Ranking by this year's giving
     total alone found 18 out of every 100. Picking at random finds about 12 out of every 100.
 
-    ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/upgrade_topn.png)
+    ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/upgrade_topn.png#only-light)
+    ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/upgrade_topn-dark.png#only-dark)
 
     **Beats the simple rule here.**
 
@@ -39,7 +40,8 @@ try it on your own file before trusting either number.**
     line through each bar. The top decile clearly stands out; the groups below it decline toward
     the overall rate. Use the model to pick your top slice, not to rank the whole file:
 
-    ![Upgrade rate by decile, 5 draws averaged](../assets/results/upgrade_deciles.png)
+    ![Upgrade rate by decile, 5 draws averaged](../assets/results/upgrade_deciles.png#only-light)
+    ![Upgrade rate by decile, 5 draws averaged](../assets/results/upgrade_deciles-dark.png#only-dark)
 
 === "KDD Cup 1998 (real donor file)"
 
@@ -53,7 +55,8 @@ try it on your own file before trusting either number.**
     list the gap is bigger and goes the other way: the model's top 1% found 17 in 100 against 23
     in 100 for the rule.
 
-    ![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/upgrade_kdd98.png)
+    ![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/upgrade_kdd98.png#only-light)
+    ![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/upgrade_kdd98-dark.png#only-dark)
 
     **Loses here.** On this file, at this threshold, ranking by the size of a donor's biggest
     eligible gift beats the model, especially for the very top of the list.

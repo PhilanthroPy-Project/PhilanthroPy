@@ -11,7 +11,8 @@ of the simple rules we compare against here, years since the donor's last
 gift, found 97 out of every 100. Picking at random also finds about 95 out
 of every 100.
 
-![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/lapse_kdd98.png)
+![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/lapse_kdd98.png#only-light)
+![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/lapse_kdd98-dark.png#only-dark)
 
 **About the same as random picks.** When almost every donor is a lapse risk,
 telling them apart barely matters; do not expect a lapse model to sharpen your
@@ -27,7 +28,8 @@ last gift, i.e. the ones the rule itself would call safest). At the top 1% and t
 are close enough to call about the same (9 vs 9, and 6 vs 6), though the model's own number is a
 shade ahead at every size checked. Picking at random finds about 5 out of every 100 at any size.
 
-![Retained donors in the model's least-likely-to-lapse 10%, vs. the same rule, KDD Cup 1998](../assets/results/lapse_kdd98_retention.png)
+![Retained donors in the model's least-likely-to-lapse 10%, vs. the same rule, KDD Cup 1998](../assets/results/lapse_kdd98_retention.png#only-light)
+![Retained donors in the model's least-likely-to-lapse 10%, vs. the same rule, KDD Cup 1998](../assets/results/lapse_kdd98_retention-dark.png#only-dark)
 
 **Slightly ahead of the rule for this retention read**, most clearly at the top 5%; treat the
 margin as small. On a file where nearly everyone lapses, use the model this way, as a retention

@@ -5,7 +5,8 @@ better than the simple rule your shop already uses, or than picking at random?**
 No statistics jargon here; everything is in donor counts. For the numbers behind
 these pages, see [Model Validation & Benchmarks](../explanation/benchmarks.md).
 
-![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](../assets/results/scoreboard.png)
+![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](../assets/results/scoreboard.png#only-light)
+![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](../assets/results/scoreboard-dark.png#only-dark)
 
 - **"The rule"** is whatever a fundraising shop already does without a model:
   rank by past giving, ask for what a donor gave last time, mail everyone.

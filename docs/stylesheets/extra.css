@@ -550,6 +550,17 @@ body {
   .md-tabs__link { transition: none; }
 }
 
+/* ---- Wide screens: Material's 61rem grid leaves two ~12rem sidebars eating
+   most of it, so content pages (nav + toc both showing) get a squeezed
+   middle column flanked by big empty gutters. Widen that row past that
+   breakpoint on every page, including the homepage, so the primary nav
+   sidebar sits at the same left edge everywhere; the homepage hero keeps
+   its own 61rem max-width, so it stays centered with its current right
+   margin instead of stretching with the wider grid. */
+@media screen and (min-width: 76.25em) {
+  .md-main__inner.md-grid { max-width: 90rem; }
+}
+
 /* ---- Mobile ------------------------------------------------------------- */
 @media screen and (max-width: 44.9375em) {
   .ap-hero { padding-top: 2.2rem; }

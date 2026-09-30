@@ -43,7 +43,8 @@ hide:
 
 </div>
 
-![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](assets/results/scoreboard.png)
+![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](assets/results/scoreboard.png#only-light)
+![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](assets/results/scoreboard-dark.png#only-dark)
 
 ## What is PhilanthroPy?
 

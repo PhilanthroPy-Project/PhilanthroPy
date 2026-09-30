@@ -468,7 +468,7 @@
     "verdict": "wins"
   },
   "_env": {
-    "git_sha": "a3f2e3cfa1f9d5dca5ef225c2174e5a8642ab700",
+    "git_sha": "41f8722a8cee16841a8e3d4d330116c4812c30da",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

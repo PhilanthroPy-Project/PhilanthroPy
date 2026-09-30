@@ -14,7 +14,8 @@ sample data.** Which one you should expect on your own file depends on your data
     100, against 7 and 8 in 100 for the best rule. At the top 10% it was about the same as the
     rule (9 in 100 against 8).
 
-    ![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/response_kdd98.png)
+    ![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/response_kdd98.png#only-light)
+    ![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/response_kdd98-dark.png#only-dark)
 
     **Checked again on a file the model never saw at all.** `cup98VAL`, a second, entirely
     separate file this program released (96,367 more donors, its answer key withheld until
@@ -22,7 +23,8 @@ sample data.** Which one you should expect on your own file depends on your data
     model's top 1% found 12 in 100 and its top 10% found 9 in 100, against 9 and 7 in 100 for the
     best rule.
 
-    ![Model vs. best simple rule, top 1/5/10% of picks, cup98VAL](../assets/results/response_cup98val.png)
+    ![Model vs. best simple rule, top 1/5/10% of picks, cup98VAL](../assets/results/response_cup98val.png#only-light)
+    ![Model vs. best simple rule, top 1/5/10% of picks, cup98VAL](../assets/results/response_cup98val-dark.png#only-dark)
 
     So on this real file the model beats the rule for your top picks, on two separate donor
     files from the same program. Results on your own file will differ.
@@ -37,7 +39,8 @@ sample data.** Which one you should expect on your own file depends on your data
     and monetary value, whichever does better on each draw) found 84 out of every 100. Picking at
     random finds about 44 out of every 100.
 
-    ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/response.png)
+    ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/response.png#only-light)
+    ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/response-dark.png#only-dark)
 
     **Does not beat the simple rule here.** Ranking donors by their own giving history does at
     least as well as the model at every pick size checked. Our sample data is built so that

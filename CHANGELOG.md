@@ -16,6 +16,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   and 11.3%). The `predict_revenue_forecast` docstring now says when to use
   `predict` instead. Sample data only; no real monthly revenue series has
   been tested yet.
+- `scripts/benchmark_models_vs_baselines.py --with-cup98val` now also scores
+  the response (`DonorPropensityModel`, `MajorGiftClassifier`), lapse and
+  ask models on KDD Cup 1998's own held-out validation file
+  (`bench_kdd_val_models`), each fit exactly as in its learning-file row.
+  On that file `MajorGiftClassifier`'s top 10% found 8.9% responders
+  against 7.4% for the best rule (RFM cell score) and 5.1% at random;
+  `LapsePredictor` and `AskAmountRecommender` still do not beat their
+  rules. `make_results_pages.py --with-cup98val` writes the response numbers
+  into `results.json`, and the Response page and Results index now report
+  the real-file result next to the sample-data one.
 - `MajorGiftClassifier` gains `monotonic_cst`, `min_samples_leaf`, and
   `max_leaf_nodes` passthrough parameters to the underlying
   `HistGradientBoostingClassifier`, alongside the existing `max_iter` and
@@ -176,6 +186,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   (`NaN`) directly, as `RandomForestClassifier` has since scikit-learn 1.4.
 
 ### Fixed
+- `scripts/benchmark_models_vs_baselines.py`: the KDD98 response rule "RFA_2
+  frequency then last gift" mapped the string codes `"1"`, `"2"`, `"5"`, but
+  `RFA_2F` loads as the integers 1 to 4, so every donor mapped to 0 and the
+  rule was really just "last gift". It now ranks on `RFA_2F` directly. This
+  makes the rule stronger on the learning-file split (top 10% 8.3% instead
+  of 7.5% for the previous best rule), so `MajorGiftClassifier`'s top-10%
+  edge there (8.9%) is now inside the interval; its top-1% and top-5% leads
+  (10.1% vs 7.3%, 9.6% vs 7.6%) remain. `results.json` regenerated.
 - `scripts/benchmark_models_vs_baselines.py`: the KDD Cup 1998 upgrade row
   (`bench_kdd_upgrade`) split its multi-year snapshot table at random by
   row, with `fiscal_year` as a feature. The file's gift log effectively ends
@@ -247,6 +265,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   ~10% of the held-out fold), and the report adds `deciles`, `roc_auc`,
   `average_precision`, and two named baselines ("gave >= X last FY" and
   "top N by FY total") with their own rates and lifts.
+
+### Fixed
+- `npsp_opportunities_to_features` now resolves the donor key explicitly
+  when an export carries both `AccountId`/`Account Name` and `Primary
+  Contact`: the Account always wins, per NPSP's default Household Account
+  model. Previously the two columns collapsed onto the same `contact_id`
+  name and whichever happened to come first in the export's column order
+  silently won.
+- The docs homepage's quickstart example cited a stale held-out ROC-AUC
+  (0.932) and major-donor count (347); the current code gives 0.841 and
+  183. `docs/index.md`'s numbers, chart and table are regenerated to match.
+- `docs/explanation/benchmarks.md`'s per-model accuracy table had one row
+  (`DonorPropensityModel`) already regenerated under scikit-learn 1.8.0
+  while the other three still carried their scikit-learn 1.7.2 numbers, and
+  its footnote still cited 1.7.2. The whole table is now regenerated
+  consistently to match the committed golden file
+  (`docs/explanation/benchmark_results.txt`), and the footnote cites 1.8.0.
+
 ### Documentation
 - README and the docs homepage now cover the Raiser's Edge and NPSP gift
   bridges, `read_gifts` as the one-call entry point over all three CRM

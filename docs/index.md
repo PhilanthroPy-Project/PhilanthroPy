@@ -79,32 +79,32 @@ print(pd.Series(scores).groupby(y_test).describe()[["count", "mean", "min", "max
 ```
 
 <figure class="ap-figure">
-<p class="ap-stat"><span class="ap-stat__v">0.932</span><span class="ap-stat__l">held-out ROC-AUC, 500 donors the model never saw</span></p>
+<p class="ap-stat"><span class="ap-stat__v">0.841</span><span class="ap-stat__l">held-out ROC-AUC, 500 donors the model never saw</span></p>
 <svg viewBox="0 0 740 232" role="img" aria-labelledby="apc-title apc-desc">
   <title id="apc-title">Held-out affinity score by donor class</title>
-  <desc id="apc-desc">Range and interquartile spread of the 0 to 100 affinity score for 500 held-out donors. Both groups span the full scale at their extremes, but the middle half of non-major donors sits between 1.5 and 38.5 while the middle half of major donors sits between 85.5 and 99.5, 47 points apart.</desc>
+  <desc id="apc-desc">Range and interquartile spread of the 0 to 100 affinity score for 500 held-out donors. Both groups span the full scale at their extremes, but the middle half of non-major donors sits between 3.0 and 35.0 while the middle half of major donors sits between 38.5 and 83.25, 3.5 points apart.</desc>
 
-  <rect class="apc-band" x="354" y="56" width="218.6" height="100" rx="4"/>
-  <text class="apc-callout" x="463.3" y="46" text-anchor="middle">middle halves 47 points apart</text>
+  <rect class="apc-band" x="337.75" y="56" width="16.3" height="100" rx="4"/>
+  <text class="apc-callout" x="345.9" y="46" text-anchor="middle">middle halves 3.5 points apart</text>
 
   <g data-row="major">
-    <title>Major donors: n = 347 · min 18 · Q1 85.5 · median 96.5 · Q3 99.5 · max 100</title>
+    <title>Major donors: n = 183 · min 1 · Q1 38.5 · median 62 · Q3 83.25 · max 100</title>
     <text class="apc-name" x="160" y="74" text-anchor="end">Major donors</text>
-    <text class="apc-sub" x="160" y="91" text-anchor="end">n = 347</text>
-    <line class="apc-whisker apc-focus" x1="258.7" y1="78" x2="640" y2="78"/>
-    <rect class="apc-focus" x="572.6" y="69" width="65.1" height="18" rx="4"/>
-    <rect class="apc-median" x="622.7" y="69" width="2" height="18"/>
-    <text class="apc-value" x="652" y="83">median 96.5</text>
+    <text class="apc-sub" x="160" y="91" text-anchor="end">n = 183</text>
+    <line class="apc-whisker apc-focus" x1="179.65" y1="78" x2="640" y2="78"/>
+    <rect class="apc-focus" x="354.025" y="69" width="208.1" height="18" rx="4"/>
+    <rect class="apc-median" x="462.3" y="69" width="2" height="18"/>
+    <text class="apc-value" x="652" y="83">median 62</text>
   </g>
 
   <g data-row="non-major">
-    <title>Non-major donors: n = 153 · min 0 · Q1 1.5 · median 8.5 · Q3 38.5 · max 100</title>
+    <title>Non-major donors: n = 317 · min 0 · Q1 3 · median 14 · Q3 35 · max 96</title>
     <text class="apc-name" x="160" y="130" text-anchor="end">Non-major donors</text>
-    <text class="apc-sub" x="160" y="147" text-anchor="end">n = 153</text>
-    <line class="apc-whisker apc-muted" x1="175" y1="134" x2="640" y2="134"/>
-    <rect class="apc-muted" x="182" y="125" width="172" height="18" rx="4"/>
-    <rect class="apc-median" x="213.5" y="125" width="2" height="18"/>
-    <text class="apc-value" x="652" y="139">median 8.5</text>
+    <text class="apc-sub" x="160" y="147" text-anchor="end">n = 317</text>
+    <line class="apc-whisker apc-muted" x1="175" y1="134" x2="621.4" y2="134"/>
+    <rect class="apc-muted" x="188.95" y="125" width="148.8" height="18" rx="4"/>
+    <rect class="apc-median" x="239.1" y="125" width="2" height="18"/>
+    <text class="apc-value" x="652" y="139">median 14</text>
   </g>
 
   <line class="apc-axis" x1="175" y1="176" x2="640" y2="176"/>
@@ -117,7 +117,7 @@ print(pd.Series(scores).groupby(y_test).describe()[["count", "mean", "min", "max
 </svg>
 <figcaption>
 Bar = interquartile range, notch = median, line = full min-to-max range.
-The tails overlap: a few non-major donors score 100 and a few majors score 18.
+The tails overlap: a few non-major donors score 96 and a few majors score 1.
 The middles do not, and that is what a call list needs. Rank by score, work
 down the list. Fit on the rows you score and the two groups separate perfectly,
 which is the model reciting its training set, not a result.
@@ -129,18 +129,18 @@ which is the model reciting its training set, not a result.
     What the snippet prints:
 
     ```text
-    held-out ROC-AUC: 0.932
-       count       mean   min    max
-    0  153.0  25.019608   0.0  100.0
-    1  347.0  88.665706  18.0  100.0
+    held-out ROC-AUC: 0.841
+       count       mean  min   max
+    0  317.0  22.069401  0.0  96.0
+    1  183.0  58.704918  1.0  100.0
     ```
 
     The full five-number summary the chart is drawn from:
 
     | Group | n | Min | Q1 | Median | Q3 | Max |
     | --- | --- | --- | --- | --- | --- | --- |
-    | Non-major donors | 153 | 0.0 | 1.5 | 8.5 | 38.5 | 100.0 |
-    | Major donors | 347 | 18.0 | 85.5 | 96.5 | 99.5 | 100.0 |
+    | Non-major donors | 317 | 0.0 | 3.0 | 14.0 | 35.0 | 96.0 |
+    | Major donors | 183 | 1.0 | 38.5 | 62.0 | 83.25 | 100.0 |
 
 [Run it in Colab, zero install](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/notebooks/01_quickstart_propensity.ipynb){ .md-button .md-button--secondary }
 

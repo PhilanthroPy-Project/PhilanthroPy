@@ -8,13 +8,14 @@ hide:
 
 <div class="ap-hero__copy" markdown>
 
-# Predictive donor analytics, done right. { .ap-hero__title }
+# Find out whether a model beats the rule your shop already uses, before you pay for one. { .ap-hero__title }
 
-<p class="ap-hero__sub">A leakage-safe, pipeline-ready toolkit for nonprofit and academic-medical-center fundraising. Every Tier 1/2 estimator passes scikit-learn's <code>check_estimator</code>.</p>
+<p class="ap-hero__sub">PhilanthroPy scores your donors for major-gift propensity, lapse risk, and more, then checks the score against the rule your shop already runs without a model (rank by past giving, ask for what they gave last time), so you can see whether a model is worth adopting before you commit to one.</p>
 
 <div class="ap-cta" markdown>
-[Get started](tutorials/index.md){ .md-button }
-[View on GitHub](https://github.com/PhilanthroPy-Project/PhilanthroPy){ .md-button .md-button--secondary }
+[See the results](results/index.md){ .md-button }
+[Try it on your file](tutorials/index.md){ .md-button .md-button--secondary }
+[For developers](#for-developers){ .md-button .md-button--secondary }
 </div>
 
 </div>
@@ -23,24 +24,32 @@ hide:
 <table class="ap-ledger">
 <caption>Sample ranked output</caption>
 <colgroup>
-<col style="width: 16%"><col style="width: 34%"><col style="width: 25%"><col style="width: 25%">
+<col style="width: 20%"><col style="width: 45%"><col style="width: 35%">
 </colgroup>
 <thead>
-<tr><th scope="col">#</th><th scope="col">Donor</th><th scope="col">Cap.</th><th scope="col">Score</th></tr>
+<tr><th scope="col">#</th><th scope="col">Donor ID</th><th scope="col">Gave again?</th></tr>
 </thead>
 <tbody>
-<tr><td>1</td><td>D. Alvarez</td><td>$2.1M</td><td>98</td></tr>
-<tr><td>2</td><td>R. Chen</td><td>$340K</td><td>96</td></tr>
-<tr><td>3</td><td>M. Osei</td><td>$1.4M</td><td>93</td></tr>
-<tr><td>4</td><td>K. Novak</td><td>$610K</td><td>89</td></tr>
-<tr><td>5</td><td>S. Ibarra</td><td>$95K</td><td>85</td></tr>
-<tr><td>6</td><td>T. Marsh</td><td>$2.8M</td><td>81</td></tr>
+<tr><td>1</td><td>D-04821</td><td>Yes</td></tr>
+<tr><td>2</td><td>D-01193</td><td>Yes</td></tr>
+<tr><td>3</td><td>D-07750</td><td>Yes</td></tr>
+<tr><td>4</td><td>D-02264</td><td>No</td></tr>
+<tr><td>5</td><td>D-05531</td><td>Yes</td></tr>
+<tr><td>6</td><td>D-09902</td><td>No</td></tr>
 </tbody>
 </table>
-<p class="ap-hero__caption">Six of the <a href="#a-ranked-call-list-scored-honestly">500 held-out donors scored below</a>, ranked by <code>predict_affinity_score</code>.</p>
+<p class="ap-hero__caption">Six of the top picks from a held-out donor list, ranked by <code>predict_affinity_score</code>. See the <a href="results/index.md">Results</a> for whether that beats the rule your shop already uses.</p>
 </div>
 
 </div>
+
+![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](assets/results/scoreboard.png)
+
+## What is PhilanthroPy?
+
+PhilanthroPy is a production-ready Python library that slots directly into `sklearn.pipeline.Pipeline`. It covers the full predictive workflow for nonprofit and academic medical center (AMC) fundraising, from raw CRM cleaning and wealth imputation to major-gift propensity scoring, lapse prediction, and planned-giving intent.
+
+## For developers
 
 <div class="ap-specs">
   <div class="ap-specs__item"><span class="ap-specs__k ap-specs__k--ok">Leakage-safe</span><span class="ap-specs__v">train-only statistics, frozen before transform</span></div>
@@ -49,7 +58,7 @@ hide:
   <div class="ap-specs__item"><span class="ap-specs__k ap-specs__k--ok">MIT</span><span class="ap-specs__v">open source, no vendor lock-in</span></div>
 </div>
 
-## A ranked call list, scored honestly
+### A ranked call list, scored honestly
 
 ```python
 import pandas as pd
@@ -143,10 +152,6 @@ which is the model reciting its training set, not a result.
     | Major donors | 183 | 1.0 | 38.5 | 62.0 | 83.25 | 100.0 |
 
 [Run it in Colab, zero install](https://colab.research.google.com/github/PhilanthroPy-Project/PhilanthroPy/blob/main/examples/notebooks/01_quickstart_propensity.ipynb){ .md-button .md-button--secondary }
-
-## What is PhilanthroPy?
-
-PhilanthroPy is a production-ready Python library that slots directly into `sklearn.pipeline.Pipeline`. It covers the full predictive workflow for nonprofit and academic medical center (AMC) fundraising, from raw CRM cleaning and wealth imputation to major-gift propensity scoring, lapse prediction, and planned-giving intent.
 
 ## Quick start
 

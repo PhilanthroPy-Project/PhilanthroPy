@@ -314,6 +314,83 @@ def _profit_curve_chart(
     _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle, legend_ncol=2)
 
 
+_SCOREBOARD_X = {"loses": 0.15, "modest": 0.5, "wins": 0.85}
+_SCOREBOARD_MARKERS = {"Sample data": "o", "KDD Cup 1998": "s", "cup98VAL": "^"}
+
+
+def _scoreboard_chart(path: Path, rows: List[tuple]) -> None:
+    """One row per question, one dot per dataset, placed left (loses to the
+    simple rule), centre (about the same) or right (beats the rule); a
+    dataset with no rule to compare against (planned giving) gets a hollow
+    grey marker at centre labelled untested instead. Different marker shapes
+    (not just colour) tell datasets apart for colour-blind readers. Replaces
+    a table as the first thing a reader sees (E.13c)."""
+    n = len(rows)
+    row_in = 0.5
+    fig_h = _HEADER_IN + row_in * n + 0.7
+    fig, ax = plt.subplots(figsize=(_FIG_W, fig_h), dpi=150)
+    ax.set_facecolor("#fcfcfb")
+    fig.patch.set_facecolor("#fcfcfb")
+    body_in = row_in * n + 0.7
+    fig.subplots_adjust(top=body_in / fig_h, left=0.24, right=0.98, bottom=0.55 / fig_h)
+
+    seen_datasets: List[str] = []
+    n_wins = n_total = 0
+    for i, (_label, dots) in enumerate(rows):
+        y = n - 1 - i
+        y_jitter = np.linspace(-0.12, 0.12, len(dots)) if len(dots) > 1 else [0.0]
+        for (dataset, verdict), dy in zip(dots, y_jitter):
+            if dataset not in seen_datasets:
+                seen_datasets.append(dataset)
+            marker = _SCOREBOARD_MARKERS.get(dataset, "o")
+            if verdict is None:
+                ax.scatter(
+                    [0.5], [y + dy], marker="o", s=90, facecolor="none", edgecolor=COLOR_RANDOM,
+                    linewidth=1.4, zorder=3,
+                )
+                continue
+            n_total += 1
+            n_wins += verdict == "wins"
+            ax.scatter(
+                [_SCOREBOARD_X[verdict]], [y + dy], marker=marker, s=90, color=COLOR_MODEL,
+                edgecolor="white", linewidth=1, zorder=3,
+            )
+    for xv in _SCOREBOARD_X.values():
+        ax.axvline(xv, color=GRID, linewidth=0.8, zorder=0)
+    ax.set_xlim(0, 1)
+    ax.set_xticks(list(_SCOREBOARD_X.values()))
+    ax.set_xticklabels(["Worse than\nthe rule", "About the\nsame", "Beats\nthe rule"], fontsize=8.5, color=INK_SECONDARY)
+    ax.set_yticks(range(n))
+    ax.set_yticklabels([label for label, _ in reversed(rows)])
+    ax.set_ylim(-0.6, n - 0.4)
+    for spine in ("top", "right", "left"):
+        ax.spines[spine].set_visible(False)
+    ax.tick_params(colors=INK_SECONDARY, length=0)
+
+    legend_handles = [
+        plt.Line2D([0], [0], marker=_SCOREBOARD_MARKERS.get(ds, "o"), color="w", markerfacecolor=COLOR_MODEL,
+                   markeredgecolor="white", markersize=9, label=ds)
+        for ds in seen_datasets
+    ] + [
+        plt.Line2D([0], [0], marker="o", color="w", markerfacecolor="none", markeredgecolor=COLOR_RANDOM,
+                   markersize=9, label="Not yet tested")
+    ]
+
+    title = f"{n_wins} of {n_total} real-and-sample-data comparisons beat the simple rule your shop already uses"
+    wrapped_title = _wrap_title(title)
+    extra_in = _TITLE_LINE_IN * wrapped_title.count("\n")
+    fig.legend(
+        handles=legend_handles, loc="center", bbox_to_anchor=(0.5, 1 - (_LEGEND_Y_IN + extra_in) / fig_h),
+        ncol=len(legend_handles), frameon=False, labelcolor=INK_SECONDARY, fontsize=9,
+    )
+    fig.suptitle(
+        wrapped_title, x=0.015, ha="left", y=1 - _TITLE_Y_IN / fig_h, fontsize=12, fontweight="bold",
+        color=INK_PRIMARY, linespacing=1.3,
+    )
+    fig.savefig(path)
+    plt.close(fig)
+
+
 def _row(rows, model, metric):
     for r in rows:
         if r.model == model and r.metric == metric:
@@ -646,6 +723,7 @@ def main() -> None:
         base_rate_lapse_kdd = float((donors["TARGET_B"].to_numpy() == 0).mean()) * 100
         results["lapse_kdd98"] = {
             "base_rate_pct": base_rate_lapse_kdd,
+            "verdict": lapse_top[10].verdict,
             **{f"top{p}pct": {"model": r.value * 100, "rule": r.baseline * 100} for p, r in lapse_top.items()},
         }
         _neartie_dot_chart(
@@ -787,6 +865,26 @@ def main() -> None:
                     "Best simple rule": [None, None, None],
                 },
             )
+
+    # --- scoreboard: one row per question, one dot per dataset -------------
+    def _dots(*pairs):
+        return [(label, results[key]["verdict"]) for label, key in pairs if key in results]
+
+    scoreboard_rows = [
+        ("$1K upgrade", _dots(("Sample data", "upgrade_synthetic"), ("KDD Cup 1998", "upgrade_kdd98"))),
+        (
+            "Response", _dots(
+                ("Sample data", "response_synthetic"), ("KDD Cup 1998", "response_kdd98"),
+                ("cup98VAL", "response_cup98val"),
+            ),
+        ),
+        ("Lapse", _dots(("Sample data", "lapse_synthetic"), ("KDD Cup 1998", "lapse_kdd98"))),
+        ("Lapse (retention read)", _dots(("KDD Cup 1998", "lapse_kdd98_retention"))),
+        ("Suggested ask", _dots(("Sample data", "ask_synthetic"), ("KDD Cup 1998", "ask_kdd98"))),
+        ("Who to mail", _dots(("KDD Cup 1998", "who_to_mail_kdd98"), ("cup98VAL", "who_to_mail_cup98val"))),
+        ("Planned giving", [("Sample data", None)]),
+    ]
+    _scoreboard_chart(OUT_DIR / "scoreboard.png", scoreboard_rows)
 
     results["_env"] = {
         "git_sha": _git_sha(),

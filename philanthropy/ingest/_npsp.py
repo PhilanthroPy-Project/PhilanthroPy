@@ -112,6 +112,13 @@ DEFAULT_INCLUDED_STAGES = (
     "Posted",
 )
 
+# Donor-key precedence: NPSP's default Household Account model keys a gift to
+# the Account, so when an export carries both the Account and the Opportunity's
+# Primary Contact, the Account is the intended donor key (see
+# _prefer_account_donor_key below).
+_ACCOUNT_KEY_ALIASES = frozenset({"account_id", "accountid", "account_name"})
+_CONTACT_KEY_ALIASES = frozenset({"primary_contact", "npsp_primary_contact_c"})
+
 # NPSP header normalisation, applied before the CiviCRM bridge's own. Case and
 # punctuation are already collapsed ("Close Date" -> close_date), so this maps
 # only the residue onto the canonical names. Anything absent here falls
@@ -174,7 +181,10 @@ def npsp_opportunities_to_features(
         Date``, ``Donation Amount``, ``Donation Stage``). ``contact_id``,
         ``receive_date`` and ``total_amount`` are required after
         normalisation; ``gift_type``, ``financial_type``, ``email``,
-        ``first_name`` and ``last_name`` are used when present.
+        ``first_name`` and ``last_name`` are used when present. If both an
+        Account column (``Account Name``, ``AccountId``) and ``Primary
+        Contact`` are present, the Account is used as the donor key, per
+        NPSP's default Household Account model.
     reference_date : str or datetime-like, optional
         Anchor for the recency features. If ``None``, the latest Opportunity
         date in the batch is used, which keeps the aggregation free of "now"
@@ -236,7 +246,7 @@ def npsp_opportunities_to_features(
     >>> int(feats.loc["88", "gift_count"])
     2
     """
-    df = _normalise_headers(_to_frame(opportunities), _canonical_npsp)
+    df = _normalise_headers(_prefer_account_donor_key(_to_frame(opportunities)), _canonical_npsp)
     if df.empty:
         return _empty_feature_frame()
 
@@ -310,6 +320,28 @@ def read_npsp_opportunities(path: Union[str, Path]) -> pd.DataFrame:
 def _canonical_npsp(header: str) -> str:
     key = _NON_ALNUM.sub("_", str(header).strip().lower()).strip("_")
     return _HEADER_ALIASES.get(key) or _canonical(header)
+
+
+def _prefer_account_donor_key(df: pd.DataFrame) -> pd.DataFrame:
+    """Resolve which column is the donor key when an export has both.
+
+    NPSP's default Household Account model keys a gift to the Account, not
+    the Opportunity's ``Primary Contact`` (see module docstring). Without
+    this, an export carrying both columns would have them collapse onto the
+    same ``contact_id`` name and ``_normalise_headers`` would silently keep
+    whichever one happens to come first in the export's column order. Drop
+    the Primary Contact column(s) first instead, so the donor key is always
+    the Account when both are present.
+    """
+    if df.empty:
+        return df
+    raw_keys = {c: _NON_ALNUM.sub("_", str(c).strip().lower()).strip("_") for c in df.columns}
+    has_account = any(k in _ACCOUNT_KEY_ALIASES for k in raw_keys.values())
+    has_contact = any(k in _CONTACT_KEY_ALIASES for k in raw_keys.values())
+    if has_account and has_contact:
+        drop_cols = [c for c, k in raw_keys.items() if k in _CONTACT_KEY_ALIASES]
+        df = df.drop(columns=drop_cols)
+    return df
 
 
 def _stage_key(value: object) -> str:

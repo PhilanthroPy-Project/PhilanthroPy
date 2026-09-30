@@ -11,11 +11,27 @@ of the simple rules we compare against here, years since the donor's last
 gift, found 97 out of every 100. Picking at random also finds about 95 out
 of every 100.
 
-![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/lapse_kdd98.png)
+![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/lapse_kdd98.png)
 
 **About the same as random picks.** When almost every donor is a lapse risk,
 telling them apart barely matters; do not expect a lapse model to sharpen your
 list much on a file shaped like this one.
+
+## The useful list here is the opposite one
+
+On a file this lopsided, the question worth asking is not "who is about to lapse" (nearly
+everyone), it is "who is the model most confident will *not* lapse". Take the donors the model
+ranks least likely to lapse: at the top 5% of that ranking, 8 out of every 100 gave again,
+against 6 out of every 100 for the same rule inverted (donors with the fewest years since their
+last gift, i.e. the ones the rule itself would call safest). At the top 1% and top 10% the two
+are close enough to call about the same (9 vs 9, and 6 vs 6), though the model's own number is a
+shade ahead at every size checked. Picking at random finds about 5 out of every 100 at any size.
+
+![Retained donors in the model's least-likely-to-lapse 10%, vs. the same rule, KDD Cup 1998](../assets/results/lapse_kdd98_retention.png)
+
+**Slightly ahead of the rule for this retention read**, most clearly at the top 5%; treat the
+margin as small. On a file where nearly everyone lapses, use the model this way, as a retention
+list, not as a lapse list.
 
 ## Which data
 

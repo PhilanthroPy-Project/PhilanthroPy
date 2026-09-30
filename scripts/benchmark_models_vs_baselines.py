@@ -924,6 +924,32 @@ def bench_kdd_lapse(seed: int) -> List[Row]:
     )
 
 
+def bench_kdd_lapse_retention(seed: int) -> List[Row]:
+    """The useful list on a file where almost everyone lapses (E.12d): not
+    the top decile by lapse score, but the bottom decile, the donors the
+    model is *least* confident will lapse. Same fit, same rules, same
+    split as :func:`bench_kdd_lapse`, ranked in the opposite direction with
+    the label flipped to "retained", so the reported hit rate reads as a
+    retention rate rather than a lapse rate."""
+    panel = _kdd_lapse_panel(fetch_kdd98_donors())
+    last_period = panel["period"].max()
+    val_period = last_period - 1
+    train_p = panel[panel["period"] < val_period]
+    test_p = panel[panel["period"] == last_period]
+
+    model = LapsePredictor(n_estimators=100, max_depth=10, random_state=seed).fit(
+        train_p[["total", "n", "recent"]].to_numpy(), train_p["lapsed"].to_numpy()
+    )
+    lapse_score = model.predict_lapse_score(test_p[["total", "n", "recent"]].to_numpy()) / 100.0
+    retained = 1 - test_p["lapsed"].to_numpy()
+    inv_rules = {name: -score for name, score in _kdd_lapse_rules(test_p).items()}
+    return _classifier_rows(
+        "kdd98", "LapsePredictor", retained, -lapse_score, inv_rules,
+        "walk-forward across KDD98 promotion periods; bottom decile by lapse score (E.12d retention read)",
+        bootstrap=True,
+    )
+
+
 def bench_kdd_ask(seed: int) -> List[Row]:
     """AskAmountRecommender vs the ask rule set (E.11a rule 3): last gift,
     max(last gift, average gift), median training gift."""
@@ -1252,6 +1278,7 @@ def main() -> None:
         rows += bench_kdd_upgrade(KDD_SEED)
         rows += bench_kdd_response(KDD_SEED)
         rows += bench_kdd_lapse(KDD_SEED)
+        rows += bench_kdd_lapse_retention(KDD_SEED)
         rows += bench_kdd_ask(KDD_SEED)
         rows += bench_kdd_cost_aware(KDD_SEED)
         if args.with_cup98val:

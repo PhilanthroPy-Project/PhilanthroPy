@@ -7,9 +7,9 @@ these pages, see [Model Validation & Benchmarks](../explanation/benchmarks.md).
 
 | Model | Question it answers | Verdict |
 |---|---|---|
-| [$1K upgrade](upgrade.md) | Which mid-level donors are about to become $1,000+ donors? | Beats the simple rule |
+| [$1K upgrade](upgrade.md) | Which mid-level donors are about to become $1,000+ donors? | Beats the simple rule on our sample data; loses on the one real file we can test it on. Depends on your data |
 | [Response](response.md) | Who is most likely to give again next year? | Beats the simple rule for the top picks on a real donor file, twice; does not beat it on our sample data. Depends on your data |
-| [Lapse](lapse.md) | Which donors are about to stop giving? | Does not beat the simple rule on our sample data; about the same as random on a real donor file |
+| [Lapse](lapse.md) | Which donors are about to stop giving? | Does not beat the simple rule on our sample data; about the same as random on a real donor file. Turned around, the model's most-confident non-lapse picks are slightly ahead of the rule as a retention list |
 | [Suggested ask](ask.md) | How much should we ask a donor for? | Does not beat the simple rule; use the rule instead |
 | [Planned giving](planned_giving.md) | Which donors look like bequest prospects? | Not yet tested on real bequest data |
 | [Who to mail](who_to_mail.md) | Is it worth mailing this donor at all? | Beats mailing everyone |

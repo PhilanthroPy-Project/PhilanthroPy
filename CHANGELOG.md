@@ -6,6 +6,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `philanthropy.ingest.bloomerang_transactions_to_features` /
+  `read_bloomerang_transactions`: a bridge from a Bloomerang transaction
+  export to the donor-level feature table, following the same
+  commitment-versus-payment shape as the Raiser's Edge and NPSP bridges.
+  `Pledge` (the up-front commitment) and `Recurring Donation` (the
+  not-yet-charged schedule) are excluded by default via
+  `DEFAULT_EXCLUDED_ENTRY_TYPES`; `Donation`, `PledgePayment` and
+  `RecurringDonationPayment` are kept. Registered as `"bloomerang"` in
+  `read_gifts`/`GIFT_SOURCES`. Field names and the entry-type vocabulary are
+  taken from Bloomerang's REST API V1 docs
+  (https://bloomerang.com/api/rest-api-v1/) and Help Center Transactions
+  Report article
+  (https://help.bloomerang.com/en/articles/13382625-transactions-report).
 - `scripts/benchmark_models_vs_baselines.py --with-blood`: an opt-in second
   real dataset, the UCI Blood Transfusion Service Center file (Yeh, Yang and
   Ting 2009, DOI 10.24432/C5GS39, CC BY 4.0; 748 repeat blood donors,

@@ -121,6 +121,7 @@ nav:
     - tutorials/end_to_end_on_real_donor_data.md
   - How-To Guides:
     - how-to/index.md
+    - how-to/get_your_crm_export_in.md
     - how-to/use_the_cli.md
     - how-to/ingest_unischema_events.md
     - how-to/ingest_civicrm_contributions.md

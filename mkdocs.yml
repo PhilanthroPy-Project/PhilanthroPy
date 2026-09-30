@@ -104,6 +104,15 @@ plugins:
 
 nav:
   - Home: index.md
+  - Results:
+    - results/index.md
+    - results/upgrade.md
+    - results/response.md
+    - results/lapse.md
+    - results/ask.md
+    - results/planned_giving.md
+    - results/who_to_mail.md
+  - Start Here: start_here.md
   - Tutorials:
     - tutorials/index.md
     - tutorials/building_your_first_model.md
@@ -112,6 +121,7 @@ nav:
     - tutorials/end_to_end_on_real_donor_data.md
   - How-To Guides:
     - how-to/index.md
+    - how-to/get_your_crm_export_in.md
     - how-to/use_the_cli.md
     - how-to/ingest_unischema_events.md
     - how-to/ingest_civicrm_contributions.md
@@ -124,14 +134,6 @@ nav:
     - how-to/estimate_appeal_uplift.md
     - how-to/save_and_load_models.md
     - how-to/develop_and_test.md
-  - Results:
-    - results/index.md
-    - results/upgrade.md
-    - results/response.md
-    - results/lapse.md
-    - results/ask.md
-    - results/planned_giving.md
-    - results/who_to_mail.md
   - Explanation:
     - explanation/index.md
     - explanation/fundraising_metrics.md

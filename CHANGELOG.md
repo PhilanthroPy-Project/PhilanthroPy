@@ -384,6 +384,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   now says plainly that no public bequest-intent dataset exists, what
   `PlannedGivingIntentScorer` would need to be tested for real, and how to
   run that test on your own file.
+- New "scoreboard" figure (`_scoreboard_chart` in `make_results_pages.py`,
+  `docs/assets/results/scoreboard.png`): one row per question, one dot per
+  dataset, placed left/centre/right for loses/about the same/beats the
+  simple rule, so a reader sees every model's win-or-loss verdict in one
+  image instead of reading six pages. It leads the home page, the Results
+  index, and the README, replacing the old wealth-screen-flavored donor
+  table on the home page (invented names and dollar capacities) with donor
+  IDs and a plain "gave again?" column. The home page's hero now asks the
+  reader's actual question ("find out whether a model beats the rule your
+  shop already uses, before you pay for one") instead of leading with
+  `check_estimator` and Tier 1/2, which move to a new "For developers"
+  section further down the page alongside the existing ROC-AUC code demo.
+  New `docs/start_here.md`, a non-technical landing page ahead of Tutorials
+  in the nav, walks through the same wins-and-losses story and links each
+  finding to the page with the number behind it. Results moved to the
+  second nav item, right after Home.
+- New how-to guide `docs/how-to/get_your_crm_export_in.md`: one tab per
+  `read_gifts` source (Raiser's Edge, Salesforce NPSP, Bloomerang,
+  DonorPerfect, CiviCRM), each with the exact column mapping to
+  `contact_id`/`receive_date`/`total_amount`, which column excludes pledges
+  or failed contributions from the total, and a runnable example using each
+  reader module's own already-verified sample rows.
+  `tests/test_doc_examples.py`'s fenced-code extraction now dedents each
+  block before executing it, since a code fence nested under a
+  `pymdownx.tabbed` "===" tab is indented same as the rest of that tab's
+  content; this doc is the first one to put a runnable example inside a
+  tab.
 ### Fixed
 - `activities_to_features`: `<type>_days_since_last` is now `NaN`, not 0, for
   a donor with no activity of that type at all; 0 read as "did it today"

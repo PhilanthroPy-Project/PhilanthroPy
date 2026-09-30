@@ -226,6 +226,7 @@
   },
   "lapse_kdd98": {
     "base_rate_pct": 94.92411855951033,
+    "verdict": "loses",
     "top1pct": {
       "model": 95.9119496855346,
       "rule": 96.75052410901468
@@ -467,7 +468,7 @@
     "verdict": "wins"
   },
   "_env": {
-    "git_sha": "6c599aa70170eee06894080b81d8c94f57886556",
+    "git_sha": "a3f2e3cfa1f9d5dca5ef225c2174e5a8642ab700",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

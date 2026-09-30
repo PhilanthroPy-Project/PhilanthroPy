@@ -13,6 +13,7 @@ explicit ``<!-- docs-notest -->`` marker *and* naming it in ``_NOTEST`` below;
 
 import os
 import re
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -53,7 +54,9 @@ def test_doc_python_blocks_execute(path, tmp_path):
     if _NOTEST_MARKER in text:
         pytest.skip("docs-notest")
 
-    code = "\n\n".join(_PY_FENCE.findall(text))
+    # dedent() so a fence indented under a pymdownx.tabbed "===" block (4
+    # spaces, same as any other tab content) still parses as top-level code.
+    code = "\n\n".join(textwrap.dedent(block) for block in _PY_FENCE.findall(text))
 
     # Execute inside a throwaway cwd so any files a doc writes (e.g. joblib
     # artifacts) land in the temp dir, not the repo.

@@ -370,6 +370,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   retention list than the same rule inverted, on a file where the top-decile
   lapse comparison is close to meaningless (95% base rate). Index verdicts
   updated to match.
+- Who-to-mail's two-bar chart is now a profit curve: net revenue against how
+  many donors are mailed, ranked most to least likely to respond, with the
+  model's own "mail if expected gift beats the cost" stopping point and the
+  mail-everyone endpoint both marked on the same line (new
+  `kdd_mail_profit_curve`/`kdd_mail_profit_curve_val` in
+  `benchmark_models_vs_baselines.py`, reusing the same fits and test splits
+  `bench_kdd_cost_aware`/`bench_kdd_cost_aware_val` already used, so the
+  numbers don't move). The page now leads with the persuasive sentence
+  ("we skipped 9,920 of 28,624 letters and still raised $1,393 more")
+  instead of burying it in paragraph two. Planned giving's stand-in chart
+  (giving-response scored as if it were bequest intent) is dropped; the page
+  now says plainly that no public bequest-intent dataset exists, what
+  `PlannedGivingIntentScorer` would need to be tested for real, and how to
+  run that test on your own file.
 ### Fixed
 - `activities_to_features`: `<type>_days_since_last` is now `NaN`, not 0, for
   a donor with no activity of that type at all; 0 read as "did it today"

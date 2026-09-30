@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import subprocess
 import sys
 import textwrap
@@ -266,6 +265,55 @@ def _neartie_dot_chart(
     _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle, legend_ncol=len(series) + 1)
 
 
+def _profit_curve_chart(
+    path: Path,
+    mailed: List[int],
+    net_revenue: List[float],
+    stop_k: int,
+    stop_net: float,
+    everyone_k: int,
+    everyone_net: float,
+    title: str,
+    subtitle: str,
+) -> None:
+    """Net revenue (y) against how many donors are mailed (x), most likely
+    to respond first, replacing the two-bar who-to-mail chart (E.13c). Marks
+    the model's own "mail if E[gift]>cost" stopping point and the
+    mail-everyone endpoint on the same curve, so the whole decision -
+    including what a higher or lower cost per piece would do to it - is in
+    one picture."""
+    wrapped_title = _wrap_title(title)
+    wrapped_subtitle = _wrap_subtitle(subtitle)
+    extra_in = _TITLE_LINE_IN * wrapped_title.count("\n") + _SUBTITLE_LINE_IN * wrapped_subtitle.count("\n")
+    body_in = 2.6
+    fig_h = _HEADER_IN + extra_in + body_in
+    fig, ax = plt.subplots(figsize=(_FIG_W, fig_h), dpi=150)
+    ax.set_facecolor("#fcfcfb")
+    fig.patch.set_facecolor("#fcfcfb")
+    fig.subplots_adjust(top=body_in / fig_h, left=0.16, right=0.97, bottom=0.65 / fig_h)
+
+    ax.plot(mailed, net_revenue, color=COLOR_MODEL, linewidth=2, zorder=2)
+    ax.scatter(
+        [stop_k], [stop_net], color=COLOR_MODEL, s=70, zorder=3, edgecolor="white", linewidth=1,
+        label=f"Model's stopping point: {stop_k:,} mailed, {_fmt_money(stop_net)}",
+    )
+    ax.scatter(
+        [everyone_k], [everyone_net], color=COLOR_RULE, s=70, zorder=3, marker="s", edgecolor="white", linewidth=1,
+        label=f"Mail everyone: {everyone_k:,} mailed, {_fmt_money(everyone_net)}",
+    )
+    ax.set_xlabel("Donors mailed, ranked most to least likely to respond", color=INK_SECONDARY, fontsize=9)
+    ax.set_ylabel("Net revenue", color=INK_SECONDARY, fontsize=9)
+    ax.xaxis.set_major_formatter(lambda v, _pos: f"{v:,.0f}")
+    ax.yaxis.set_major_formatter(lambda v, _pos: _fmt_money(v))
+    for spine in ("top", "right"):
+        ax.spines[spine].set_visible(False)
+    ax.spines["left"].set_color(GRID)
+    ax.spines["bottom"].set_color(GRID)
+    ax.tick_params(colors=INK_SECONDARY)
+    ax.grid(axis="y", color=GRID, linewidth=0.6, zorder=0)
+    _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle, legend_ncol=2)
+
+
 def _row(rows, model, metric):
     for r in rows:
         if r.model == model and r.metric == metric:
@@ -281,16 +329,6 @@ def _ci(row) -> tuple[float, float] | None:
     if row is None or row.lo is None or row.hi is None:
         return None
     return (row.lo * 100, row.hi * 100)
-
-
-_PIECES_RE = re.compile(r"pieces=(\d+)/(\d+)")
-
-
-def _parse_pieces(note: str) -> tuple[int, int] | None:
-    m = _PIECES_RE.search(note or "")
-    if not m:
-        return None
-    return int(m.group(1)), int(m.group(2))
 
 
 # --------------------------------------------------------------------------- #
@@ -519,20 +557,10 @@ def main() -> None:
     )
 
     # --- synthetic: planned giving (coverage vs. chance) ---------------------
-    pg = planned_giving_hit_rates()
-    results["planned_giving_synthetic"] = pg
-    pg10_model, pg10_random = pg["model"]["0.1"] * 100, pg["random"]["0.1"] * 100
-    _hbar_chart(
-        OUT_DIR / "planned_giving.png",
-        ["Top 1%", "Top 5%", "Top 10%"],
-        {
-            "Model": [pg["model"][str(f)] * 100 for f in (0.01, 0.05, 0.10)],
-            "Random pick": [pg["random"][str(f)] * 100 for f in (0.01, 0.05, 0.10)],
-        },
-        {"Model": COLOR_MODEL, "Random pick": COLOR_RANDOM},
-        title=f"The score finds {pg10_model:.0f} of 100 vs {pg10_random:.0f} of 100 at random (top 10%)",
-        subtitle="Giving-response used as a stand-in label; no public bequest-intent data exists yet. See the page.",
-    )
+    # No chart: this scores a stand-in label (giving-response), not real
+    # bequest intent, so a bar chart of it would misrepresent the model as
+    # tested on planned giving. See docs/results/planned_giving.md.
+    results["planned_giving_synthetic"] = planned_giving_hit_rates()
 
     # --- $1K upgrade worked example ------------------------------------------
     ex = upgrade_worked_example(SEEDS[0])
@@ -696,20 +724,17 @@ def main() -> None:
             "verdict": net_row.verdict,
             "note": net_row.note,
         }
-        pieces = _parse_pieces(net_row.note)
-        gain = net_row.value - net_row.baseline
-        skip_txt = f", skipping {pieces[1] - pieces[0]:,} of {pieces[1]:,} letters" if pieces else ""
-        _hbar_chart(
+        curve = bm.kdd_mail_profit_curve(seed)
+        results["who_to_mail_kdd98"]["curve"] = curve
+        gain = curve["stop_net_revenue"] - curve["everyone_net_revenue"]
+        skip = curve["n_total"] - curve["stop_k"]
+        _profit_curve_chart(
             OUT_DIR / "who_to_mail.png",
-            ["Net revenue"],
-            {
-                "Only mail likely responders": [results["who_to_mail_kdd98"]["net_revenue_model"]],
-                "Mail everyone": [results["who_to_mail_kdd98"]["net_revenue_mail_everyone"]],
-            },
-            {"Only mail likely responders": COLOR_MODEL, "Mail everyone": COLOR_RULE},
-            title=f"Mailing only likely responders raised ${gain:,.0f} more{skip_txt}",
+            curve["mailed"], curve["net_revenue"],
+            curve["stop_k"], curve["stop_net_revenue"],
+            curve["n_total"], curve["everyone_net_revenue"],
+            title=f"Mailing only likely responders raised ${gain:,.0f} more, skipping {skip:,} of {curve['n_total']:,} letters",
             subtitle="KDD Cup 1998. Net revenue after mailing cost, mail if expected gift beats the $0.68 cost.",
-            value_fmt=_fmt_money,
         )
 
         # --- who to mail, scored on KDD98's own held-out validation file ----
@@ -722,22 +747,20 @@ def main() -> None:
                 "verdict": net_row_val.verdict,
                 "note": net_row_val.note,
             }
-            pieces_val = _parse_pieces(net_row_val.note)
-            gain_val = net_row_val.value - net_row_val.baseline
-            skip_val_txt = (
-                f", skipping {pieces_val[1] - pieces_val[0]:,} of {pieces_val[1]:,} letters" if pieces_val else ""
-            )
-            _hbar_chart(
+            curve_val = bm.kdd_mail_profit_curve_val(seed)
+            results["who_to_mail_cup98val"]["curve"] = curve_val
+            gain_val = curve_val["stop_net_revenue"] - curve_val["everyone_net_revenue"]
+            skip_val = curve_val["n_total"] - curve_val["stop_k"]
+            _profit_curve_chart(
                 OUT_DIR / "who_to_mail_cup98val.png",
-                ["Net revenue"],
-                {
-                    "Only mail likely responders": [results["who_to_mail_cup98val"]["net_revenue_model"]],
-                    "Mail everyone": [results["who_to_mail_cup98val"]["net_revenue_mail_everyone"]],
-                },
-                {"Only mail likely responders": COLOR_MODEL, "Mail everyone": COLOR_RULE},
-                title=f"On a file the model never saw, mailing smarter still raised ${gain_val:,.0f} more{skip_val_txt}",
+                curve_val["mailed"], curve_val["net_revenue"],
+                curve_val["stop_k"], curve_val["stop_net_revenue"],
+                curve_val["n_total"], curve_val["everyone_net_revenue"],
+                title=(
+                    f"On a file the model never saw, mailing smarter still raised ${gain_val:,.0f} more, "
+                    f"skipping {skip_val:,} of {curve_val['n_total']:,} letters"
+                ),
                 subtitle="cup98VAL, KDD Cup 1998's own held-out file: 96,367 donors never touched during fitting.",
-                value_fmt=_fmt_money,
             )
 
             # --- response, scored on the same held-out file -----------------

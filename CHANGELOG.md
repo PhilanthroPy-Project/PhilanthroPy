@@ -6,6 +6,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `scripts/benchmark_models_vs_baselines.py --with-cup98val` now also scores
+  the response (`DonorPropensityModel`, `MajorGiftClassifier`), lapse and
+  ask models on KDD Cup 1998's own held-out validation file
+  (`bench_kdd_val_models`), each fit exactly as in its learning-file row.
+  On that file `MajorGiftClassifier`'s top 10% found 8.9% responders
+  against 7.4% for the best rule (RFM cell score) and 5.1% at random;
+  `LapsePredictor` and `AskAmountRecommender` still do not beat their
+  rules. `make_results_pages.py --with-cup98val` writes the response numbers
+  into `results.json`, and the Response page and Results index now report
+  the real-file result next to the sample-data one.
 - `MajorGiftClassifier` gains `monotonic_cst`, `min_samples_leaf`, and
   `max_leaf_nodes` passthrough parameters to the underlying
   `HistGradientBoostingClassifier`, alongside the existing `max_iter` and
@@ -166,6 +176,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   (`NaN`) directly, as `RandomForestClassifier` has since scikit-learn 1.4.
 
 ### Fixed
+- `scripts/benchmark_models_vs_baselines.py`: the KDD98 response rule "RFA_2
+  frequency then last gift" mapped the string codes `"1"`, `"2"`, `"5"`, but
+  `RFA_2F` loads as the integers 1 to 4, so every donor mapped to 0 and the
+  rule was really just "last gift". It now ranks on `RFA_2F` directly. This
+  makes the rule stronger on the learning-file split (top 10% 8.3% instead
+  of 7.5% for the previous best rule), so `MajorGiftClassifier`'s top-10%
+  edge there (8.9%) is now inside the interval; its top-1% and top-5% leads
+  (10.1% vs 7.3%, 9.6% vs 7.6%) remain. `results.json` regenerated.
 - `scripts/benchmark_models_vs_baselines.py`: the KDD Cup 1998 upgrade row
   (`bench_kdd_upgrade`) split its multi-year snapshot table at random by
   row, with `fiscal_year` as a feature. The file's gift log effectively ends

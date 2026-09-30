@@ -420,6 +420,17 @@ def main() -> None:
                 title="Who to mail: KDD Cup 1998's own held-out validation file (cup98VAL)",
             )
 
+            # --- response, scored on the same held-out file -----------------
+            kdd_val = bm.bench_kdd_val_models(seed)
+            results["response_cup98val"] = {
+                f"top{p}pct": {
+                    "model": _row(kdd_val, "MajorGiftClassifier", f"top{p}pct_hit_rate").value * 100,
+                    "rule": _row(kdd_val, "MajorGiftClassifier", f"top{p}pct_hit_rate").baseline * 100,
+                }
+                for p in (1, 5, 10)
+            }
+            results["response_cup98val"]["verdict"] = _row(kdd_val, "MajorGiftClassifier", "top10pct_hit_rate").verdict
+
     results["_env"] = {
         "git_sha": _git_sha(),
         "sklearn": sklearn.__version__,

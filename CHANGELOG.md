@@ -5,7 +5,41 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Changed
+- `scripts/benchmark_models_vs_baselines.py` now checks `GiftIntervalCalibrator`
+  coverage over 10 seeds at 80/90/95% requested levels instead of 5 seeds at
+  90% only. Attained coverage is 0.784/0.9045/0.9539, all within 2 points of
+  target, confirming the earlier single-seed 88% vs 90% reading was noise.
+- `scripts/benchmark_models_vs_baselines.py` adds a second synthetic column
+  (`synthetic_panel_full_features`) that re-runs `DonorPropensityModel`,
+  `MajorGiftClassifier` and `LapsePredictor` on the full 8 as-of columns
+  instead of the 3 the models were fed while the baseline rules already saw
+  5+. `LapsePredictor` moves from losing everywhere (AUC 0.638) to beating
+  the rule on synthetic (AUC 0.680, top-10% 94.4% vs 83.1%); response models
+  move only slightly. The same feature set hurts lapse on KDD98 (below
+  chance, AUC 0.488 in an earlier probe), so this is reported next to the
+  3-feature row, not adopted as a default.
+
 ### Added
+- `AskAmountRecommender(target_mode="relative")`: fits
+  `log(y / max(last_gift, avg_gift))` and multiplies the prediction back out,
+  via new `last_gift_idx`/`avg_gift_idx` parameters (E.12d). Evaluated under
+  E.11a against an "absolute + max(last, avg) as a feature" candidate: the
+  feature-only candidate wins the validation fold and still loses the KDD98
+  test (MAE 4.077 vs the rule's 3.875) and cup98val (4.147 vs 3.866), so the
+  default stays `target_mode="absolute"` without the extra feature; the
+  option ships for anyone who wants to try it on their own file.
+- `LapsePredictor(backend="hist_gradient_boosting")`: an opt-in
+  `HistGradientBoostingClassifier` backend alongside the default
+  `RandomForestClassifier` (E.12d). Picked against the default on cup98val
+  (to avoid KDD98's own near-empty validation period, E.12c), the two backends
+  tied exactly (AUC 0.555 vs 0.555), so the default stays
+  `backend="random_forest"`.
+- `LapsePredictor.predict_retention_score` and the `retention_read_` fitted
+  attribute (`True` when the training lapse rate exceeds 80%): on a file
+  where almost everyone lapses, ranking by lapse score barely beats random,
+  but the 10% *least* likely to lapse still beats the rule on both KDD98
+  files (top-10% retention 6.5% vs 5.6%, top-5% 7.6% vs 6.0%).
 - `philanthropy.ingest.donorperfect_gifts_to_features` /
   `read_donorperfect_gifts`: a bridge from a DonorPerfect gift export to the
   donor-level feature table. DonorPerfect's commitment/split-total signal

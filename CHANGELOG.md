@@ -325,6 +325,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   upload path, and the CLI's `--activity`/`--as-of` and `train --task
   upgrade` flags for the leadership-upgrade model, none of which had been
   mentioned outside the API reference and the how-to guide.
+- `scripts/make_results_pages.py`'s charts now state the finding in the
+  title instead of only describing the axes (e.g. "Ranking by past giving
+  beats the model: 79 of 100 vs 77 of 100 in the top 10%"), carry a
+  direct end label on every bar so the value reads without an axis, show a
+  5-seed range or a bootstrap interval as an error bar where one exists in
+  `results.json`, draw "picking at random" as a dashed reference line (or a
+  legend entry) instead of a third bar, format money results with a `$`
+  and a thousands separator, and put the legend in a fixed header band so
+  it never sits over a bar. The KDD98 lapse chart, where model, rule and
+  random were all within two points of each other, is now a zoomed dot
+  plot instead of three bars that looked identical. No result numbers
+  changed; `docs/assets/results/results.json`'s values are byte-identical
+  to before. `tests/test_results_docs_images.py` checks every Results page
+  image has non-empty alt text and resolves to a real file.
 ### Fixed
 - `activities_to_features`: `<type>_days_since_last` is now `NaN`, not 0, for
   a donor with no activity of that type at all; 0 read as "did it today"

@@ -25,8 +25,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
+import textwrap
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List
@@ -71,46 +73,189 @@ INK_SECONDARY = "#52514e"
 GRID = "#e1e0d9"
 
 
-def _bar_chart(
+def _fmt_count(v: float) -> str:
+    """'24 of 100' style label for a hit-rate percentage."""
+    return f"{v:.0f} of 100"
+
+
+def _fmt_money(v: float) -> str:
+    return f"${v:,.0f}"
+
+
+def _takeaway(model_v: float, rule_v: float, model_name: str = "The model", rule_name: str = "the rule") -> str:
+    """One clause naming which of model/rule is ahead at top 10%, for a
+    chart title. Computed from the numbers, not hand-written, so it cannot
+    drift from the data the way a hardcoded title can."""
+    gap = abs(model_v - rule_v)
+    if gap < 1.5:
+        return f"{model_name} and {rule_name} are about the same here"
+    if model_v > rule_v:
+        return f"{model_name} beats {rule_name}: {model_v:.0f} of 100 vs {rule_v:.0f} of 100 in the top 10%"
+    return f"{rule_name.capitalize()} beats {model_name.lower()}: {rule_v:.0f} of 100 vs {model_v:.0f} of 100 in the top 10%"
+
+
+# Fixed-inch header band (title, legend, subtitle) so the three never
+# collide regardless of how many bar groups a chart has: only the body
+# (the axes) grows with `n_groups`. `_finish_chart` draws the shared header
+# and frame; the two chart kinds below just plot into the returned axes.
+_HEADER_IN = 1.55
+_TITLE_Y_IN = 0.32   # from the top, for a one-line title
+_TITLE_LINE_IN = 0.30  # extra height per wrapped title line beyond the first
+_LEGEND_Y_IN = 0.78  # from the top, for a one-line title
+_FIG_W = 7.6
+_TITLE_WRAP_CHARS = 62
+
+
+def _wrap_title(title: str) -> str:
+    """Wraps a takeaway title to the figure width instead of letting
+    matplotlib clip it, since `suptitle` does not wrap on its own."""
+    return "\n".join(textwrap.wrap(title, _TITLE_WRAP_CHARS)) or title
+
+
+def _new_chart_figure(
+    n_groups: int, groups: List[str], title: str, body_in_per_group: float = 0.62, body_min_in: float = 0.9,
+):
+    wrapped_title = _wrap_title(title)
+    extra_in = _TITLE_LINE_IN * wrapped_title.count("\n")
+    body_in = max(body_min_in, body_in_per_group * n_groups)
+    fig_h = _HEADER_IN + extra_in + body_in
+    fig, ax = plt.subplots(figsize=(_FIG_W, fig_h), dpi=150)
+    ax.set_facecolor("#fcfcfb")
+    fig.patch.set_facecolor("#fcfcfb")
+    top_frac = body_in / fig_h
+    left_frac = min(0.32, 0.025 + 0.011 * max((len(g) for g in groups), default=0))
+    fig.subplots_adjust(top=top_frac, left=left_frac, right=0.98, bottom=max(0.06, 0.5 / fig_h))
+    return fig, ax, fig_h, extra_in, wrapped_title
+
+
+def _finish_chart(
+    path: Path, fig, ax, fig_h: float, extra_in: float, wrapped_title: str, subtitle: str, legend_ncol: int,
+) -> None:
+    """Draws the title (bold, top), the legend (one row, centered, below the
+    title and above the subtitle), and the subtitle (grey, directly above
+    the axes) at fixed inch offsets from the top of the figure, so none of
+    the three ever overlaps no matter how tall or short the plot body is,
+    or how many lines the wrapped title needs."""
+    handles, labels = ax.get_legend_handles_labels()
+    if handles:
+        fig.legend(
+            handles, labels, loc="center", bbox_to_anchor=(0.5, 1 - (_LEGEND_Y_IN + extra_in) / fig_h),
+            ncol=legend_ncol, frameon=False, labelcolor=INK_SECONDARY, fontsize=9,
+        )
+    ax.set_title(subtitle, color=INK_SECONDARY, fontsize=8.5, loc="left", pad=8)
+    fig.suptitle(
+        wrapped_title, x=0.015, ha="left", y=1 - _TITLE_Y_IN / fig_h, fontsize=12, fontweight="bold",
+        color=INK_PRIMARY, linespacing=1.3,
+    )
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def _style_value_axis(ax, groups: List[str]) -> None:
+    ax.set_yticks(np.arange(len(groups)))
+    ax.set_yticklabels(groups)
+    ax.invert_yaxis()
+    ax.set_xticks([])
+    for spine in ("top", "right", "bottom"):
+        ax.spines[spine].set_visible(False)
+    ax.spines["left"].set_color(GRID)
+    ax.tick_params(colors=INK_SECONDARY, length=0)
+
+
+def _hbar_chart(
     path: Path,
     groups: List[str],
     series: Dict[str, List[float]],
     colors: Dict[str, str],
-    ylabel: str,
     title: str,
+    subtitle: str,
+    errors: Dict[str, List[Any]] | None = None,
+    value_fmt=None,
+    base_rate: float | None = None,
+    base_rate_label: str = "",
 ) -> None:
-    """Grouped bar chart: one group of bars per `groups` entry, one bar per
-    series. Thin bars, direct value labels, recessive gridlines, a legend."""
+    """Horizontal grouped bar chart: one cluster of bars per `groups` entry
+    (e.g. "Top 1%"), one bar per series. The title states the finding; the
+    subtitle (smaller, grey, below the title) names what was measured. Bars
+    carry their own value as a direct end label, placed past the error
+    whisker so the whisker never crosses the text. `errors[name]` is an
+    optional list of `(lo, hi)` pairs (or `None` per group), giving an
+    asymmetric error bar from a 5-seed range or a bootstrap interval.
+    `base_rate`, if given, is drawn as a dashed line instead of a fourth
+    bar. Legend sits above the plot, never over a bar."""
+    fmt = value_fmt or _fmt_count
     n_groups, n_series = len(groups), len(series)
-    width = 0.8 / n_series
-    x = np.arange(n_groups)
-    fig, ax = plt.subplots(figsize=(6.4, 4.2), dpi=150)
-    ax.set_facecolor("#fcfcfb")
-    fig.patch.set_facecolor("#fcfcfb")
+    height = 0.8 / n_series
+    y = np.arange(n_groups)
+    fig, ax, fig_h, extra_in, wrapped_title = _new_chart_figure(n_groups, groups, title)
+    max_v = max((v for values in series.values() for v in values), default=1.0) or 1.0
+    max_extent = max_v
     for i, (name, values) in enumerate(series.items()):
-        offset = (i - (n_series - 1) / 2) * width
-        bars = ax.bar(
-            x + offset, values, width=width * 0.9, label=name,
+        offset = ((n_series - 1) / 2 - i) * height
+        errs = errors.get(name) if errors else None
+        xerr = None
+        if errs and any(e is not None for e in errs):
+            lo = [v - (e[0] if e is not None else v) for v, e in zip(values, errs)]
+            hi = [(e[1] if e is not None else v) - v for v, e in zip(values, errs)]
+            xerr = [lo, hi]
+        bars = ax.barh(
+            y + offset, values, height=height * 0.85, label=name,
             color=colors[name], edgecolor="none",
+            xerr=xerr, ecolor=INK_SECONDARY, capsize=2,
+            error_kw={"linewidth": 1, "alpha": 0.8},
         )
-        for b, v in zip(bars, values):
+        for j, (b, v) in enumerate(zip(bars, values)):
+            hi_extent = errs[j][1] if errs and errs[j] is not None else v
+            max_extent = max(max_extent, hi_extent)
             ax.text(
-                b.get_x() + b.get_width() / 2, b.get_height(), f"{v:.0f}",
-                ha="center", va="bottom", fontsize=9, color=INK_PRIMARY,
+                max(b.get_width(), hi_extent) + max_v * 0.03, b.get_y() + b.get_height() / 2,
+                fmt(v), ha="left", va="center", fontsize=9, color=INK_PRIMARY,
             )
-    ax.set_xticks(x)
-    ax.set_xticklabels(groups)
-    ax.set_ylabel(ylabel, color=INK_SECONDARY)
-    ax.set_title(title, color=INK_PRIMARY, fontsize=11, loc="left")
-    ax.spines[["top", "right"]].set_visible(False)
-    ax.spines[["left", "bottom"]].set_color(GRID)
-    ax.tick_params(colors=INK_SECONDARY)
-    ax.yaxis.grid(True, color=GRID, linewidth=0.8)
-    ax.set_axisbelow(True)
-    ax.legend(frameon=False, labelcolor=INK_SECONDARY)
-    fig.tight_layout()
-    fig.savefig(path)
-    plt.close(fig)
+    if base_rate is not None:
+        max_extent = max(max_extent, base_rate)
+        ax.axvline(base_rate, color=COLOR_RANDOM, linestyle="--", linewidth=1.4, zorder=0)
+        if base_rate_label:
+            ax.text(
+                base_rate, -0.5, base_rate_label, color=INK_SECONDARY, fontsize=8.5,
+                ha="left", va="bottom",
+            )
+    _style_value_axis(ax, groups)
+    ax.set_xlim(0, max_extent * 1.30)
+    _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, subtitle, legend_ncol=n_series)
+
+
+def _neartie_dot_chart(
+    path: Path,
+    groups: List[str],
+    series: Dict[str, List[float]],
+    colors: Dict[str, str],
+    base_rate: float,
+    title: str,
+    subtitle: str,
+) -> None:
+    """For a comparison where model, rule and random are all close together
+    (e.g. a file where almost everyone lapses): dots instead of bars, a
+    zoomed value axis, and the random/base rate drawn as a dashed line
+    rather than a third bar, since a bar chart of 96 vs 97 vs 95 makes three
+    identical-looking columns."""
+    n_groups = len(groups)
+    y = np.arange(n_groups)
+    all_v = [v for values in series.values() for v in values] + [base_rate]
+    lo_v, hi_v = min(all_v), max(all_v)
+    pad = max(1.5, (hi_v - lo_v) * 0.9)
+    fig, ax, fig_h, extra_in, wrapped_title = _new_chart_figure(n_groups, groups, title)
+    ax.axvline(
+        base_rate, color=COLOR_RANDOM, linestyle="--", linewidth=1.4, zorder=1,
+        label=f"Picking at random: {base_rate:.0f} of 100",
+    )
+    offsets = np.linspace(-0.16, 0.16, len(series))
+    for off, (name, values) in zip(offsets, series.items()):
+        ax.scatter(values, y + off, color=colors[name], s=60, zorder=3, label=name)
+        for v, yy in zip(values, y + off):
+            ax.text(v, yy, f"  {v:.0f}", va="center", ha="left", fontsize=9, color=INK_PRIMARY)
+    _style_value_axis(ax, groups)
+    ax.set_xlim(lo_v - pad, hi_v + pad)
+    _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, subtitle, legend_ncol=len(series) + 1)
 
 
 def _row(rows, model, metric):
@@ -118,6 +263,26 @@ def _row(rows, model, metric):
         if r.model == model and r.metric == metric:
             return r
     return None
+
+
+def _ci(row) -> tuple[float, float] | None:
+    """A row's `(lo, hi)` interval in percentage points: a 5-seed min/max
+    range for synthetic rows, a bootstrap 95% interval for KDD98 single-split
+    rows on the metrics `bootstrap=True` was requested for, or `None` when
+    neither applies (E.11a rule 4)."""
+    if row is None or row.lo is None or row.hi is None:
+        return None
+    return (row.lo * 100, row.hi * 100)
+
+
+_PIECES_RE = re.compile(r"pieces=(\d+)/(\d+)")
+
+
+def _parse_pieces(note: str) -> tuple[int, int] | None:
+    m = _PIECES_RE.search(note or "")
+    if not m:
+        return None
+    return int(m.group(1)), int(m.group(2))
 
 
 # --------------------------------------------------------------------------- #
@@ -225,16 +390,18 @@ def main() -> None:
     # --- synthetic: response / major gift -----------------------------------
     resp_rows = bm.bench_response(SEEDS, N_DONORS, N_YEARS)
     rand_resp = random_rate_response() * 100
+    resp_row_by_p = {p: _row(resp_rows, "MajorGiftClassifier", f"top{p}pct_hit_rate") for p in (1, 5, 10)}
     results["response_synthetic"] = {
         f"top{p}pct": {
-            "model": _row(resp_rows, "MajorGiftClassifier", f"top{p}pct_hit_rate").value * 100,
-            "rule": _row(resp_rows, "MajorGiftClassifier", f"top{p}pct_hit_rate").baseline * 100,
+            "model": resp_row_by_p[p].value * 100,
+            "rule": resp_row_by_p[p].baseline * 100,
             "random": rand_resp,
         }
         for p in (1, 5, 10)
     }
-    results["response_synthetic"]["verdict"] = _row(resp_rows, "MajorGiftClassifier", "top10pct_hit_rate").verdict
-    _bar_chart(
+    results["response_synthetic"]["verdict"] = resp_row_by_p[10].verdict
+    r10 = results["response_synthetic"]["top10pct"]
+    _hbar_chart(
         OUT_DIR / "response.png",
         ["Top 1%", "Top 5%", "Top 10%"],
         {
@@ -243,8 +410,13 @@ def main() -> None:
             "Random pick": [results["response_synthetic"][f"top{p}pct"]["random"] for p in (1, 5, 10)],
         },
         {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE, "Random pick": COLOR_RANDOM},
-        ylabel="Gave next year, out of every 100 picked (%)",
-        title="Who responds next year: model vs. best simple rule vs. random",
+        title=_takeaway(r10["model"], r10["rule"], "The model", "ranking by past giving"),
+        subtitle="Sample donor panel, 5 random draws averaged. Who gave again next year, out of every 100 picked.",
+        errors={
+            "Model": [_ci(resp_row_by_p[p]) for p in (1, 5, 10)],
+            "Best simple rule": [None, None, None],
+            "Random pick": [None, None, None],
+        },
     )
 
     # --- synthetic: lapse ----------------------------------------------------
@@ -272,18 +444,20 @@ def main() -> None:
     # --- synthetic: $1K upgrade (bench_upgrade) ------------------------------
     upgrade_rows = bm.bench_upgrade(SEEDS, N_DONORS, N_YEARS)
     rand_upgrade = random_rate_upgrade() * 100
+    upg_row_by_p = {
+        p: _row(upgrade_rows, "upgrade_model (MajorGiftClassifier)", f"top{p}pct_hit_rate") for p in (1, 5, 10)
+    }
     results["upgrade_synthetic"] = {
         f"top{p}pct": {
-            "model": _row(upgrade_rows, "upgrade_model (MajorGiftClassifier)", f"top{p}pct_hit_rate").value * 100,
-            "rule": _row(upgrade_rows, "upgrade_model (MajorGiftClassifier)", f"top{p}pct_hit_rate").baseline * 100,
+            "model": upg_row_by_p[p].value * 100,
+            "rule": upg_row_by_p[p].baseline * 100,
             "random": rand_upgrade,
         }
         for p in (1, 5, 10)
     }
-    results["upgrade_synthetic"]["verdict"] = _row(
-        upgrade_rows, "upgrade_model (MajorGiftClassifier)", "top10pct_hit_rate"
-    ).verdict
-    _bar_chart(
+    results["upgrade_synthetic"]["verdict"] = upg_row_by_p[10].verdict
+    u10 = results["upgrade_synthetic"]["top10pct"]
+    _hbar_chart(
         OUT_DIR / "upgrade_topn.png",
         ["Top 1%", "Top 5%", "Top 10%"],
         {
@@ -292,14 +466,20 @@ def main() -> None:
             "Random pick": [results["upgrade_synthetic"][f"top{p}pct"]["random"] for p in (1, 5, 10)],
         },
         {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE, "Random pick": COLOR_RANDOM},
-        ylabel="Crossed $1,000 next year, out of every 100 picked (%)",
-        title="Who upgrades to $1,000+: model vs. best simple rule vs. random",
+        title=_takeaway(u10["model"], u10["rule"], "The model", "ranking by this year's giving"),
+        subtitle="Sample donor panel, 5 random draws averaged. Who crossed $1,000 next year, out of every 100 picked.",
+        errors={
+            "Model": [_ci(upg_row_by_p[p]) for p in (1, 5, 10)],
+            "Best simple rule": [None, None, None],
+            "Random pick": [None, None, None],
+        },
     )
 
     # --- synthetic: planned giving (coverage vs. chance) ---------------------
     pg = planned_giving_hit_rates()
     results["planned_giving_synthetic"] = pg
-    _bar_chart(
+    pg10_model, pg10_random = pg["model"]["0.1"] * 100, pg["random"]["0.1"] * 100
+    _hbar_chart(
         OUT_DIR / "planned_giving.png",
         ["Top 1%", "Top 5%", "Top 10%"],
         {
@@ -307,21 +487,26 @@ def main() -> None:
             "Random pick": [pg["random"][str(f)] * 100 for f in (0.01, 0.05, 0.10)],
         },
         {"Model": COLOR_MODEL, "Random pick": COLOR_RANDOM},
-        ylabel="Gave next year, out of every 100 picked (%)",
-        title="Planned-giving score vs. random (giving-response used as a stand-in label)",
+        title=f"The score finds {pg10_model:.0f} of 100 vs {pg10_random:.0f} of 100 at random (top 10%)",
+        subtitle="Giving-response used as a stand-in label; no public bequest-intent data exists yet. See the page.",
     )
 
     # --- $1K upgrade worked example ------------------------------------------
     ex = upgrade_worked_example()
     results["upgrade_worked_example"] = ex
     deciles = ex["deciles"]
-    _bar_chart(
+    overall_rate = ex["overall_upgrade_rate"] * 100
+    top_decile_rate = deciles[0]["actual_rate"] * 100 if deciles[0]["actual_rate"] is not None else 0.0
+    _hbar_chart(
         OUT_DIR / "upgrade_deciles.png",
         [f"D{d['decile']}" for d in deciles],
         {"Upgrade rate": [d["actual_rate"] * 100 if d["actual_rate"] is not None else 0.0 for d in deciles]},
         {"Upgrade rate": COLOR_MODEL},
-        ylabel="Crossed $1,000 next year (%)",
-        title="Upgrade rate by decile (D1 = top 10% of picks, D10 = bottom 10%)",
+        title=f"The top decile (D1) upgrades at {top_decile_rate:.0f} of 100, against {overall_rate:.0f} of 100 overall",
+        subtitle="One validation fold (D1 = the 10% the model liked most, D10 = the 10% it liked least). Dashed line: the overall rate.",
+        value_fmt=lambda v: f"{v:.0f}",
+        base_rate=overall_rate,
+        base_rate_label=f"overall: {overall_rate:.0f} of 100",
     )
 
     # --- KDD98 (opt-in) --------------------------------------------------
@@ -348,17 +533,17 @@ def main() -> None:
             "base_rate_pct": base_rate_lapse_kdd,
             **{f"top{p}pct": {"model": r.value * 100, "rule": r.baseline * 100} for p, r in lapse_top.items()},
         }
-        _bar_chart(
+        _neartie_dot_chart(
             OUT_DIR / "lapse_kdd98.png",
             ["Top 1%", "Top 5%", "Top 10%"],
             {
                 "Model": [results["lapse_kdd98"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
                 "Best simple rule": [results["lapse_kdd98"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
-                "Random pick": [base_rate_lapse_kdd] * 3,
             },
-            {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE, "Random pick": COLOR_RANDOM},
-            ylabel="Lapsed next period, out of every 100 picked (%)",
-            title="Who lapses next: KDD Cup 1998 (almost everyone lapses here)",
+            {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE},
+            base_rate=base_rate_lapse_kdd,
+            title="Almost everyone lapses here, so no list beats picking at random by much",
+            subtitle="KDD Cup 1998. Lapsed next period, out of every 100 picked.",
         )
 
         ask_row = _row(kdd_ask, "AskAmountRecommender", "within25pct")
@@ -367,7 +552,7 @@ def main() -> None:
             "within25pct_last_gift": ask_row.baseline * 100,
             "verdict": ask_row.verdict,
         }
-        _bar_chart(
+        _hbar_chart(
             OUT_DIR / "ask_kdd98.png",
             ["Suggested ask"],
             {
@@ -375,8 +560,11 @@ def main() -> None:
                 "Best simple rule": [results["ask_kdd98"]["within25pct_last_gift"]],
             },
             {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE},
-            ylabel="Within 25% of what the donor actually gave (%)",
-            title="How close is the suggested ask: KDD Cup 1998",
+            title=_takeaway(
+                results["ask_kdd98"]["within25pct_model"], results["ask_kdd98"]["within25pct_last_gift"],
+                "The model", "the higher of last gift and average gift",
+            ),
+            subtitle="KDD Cup 1998. Suggested amounts landing within 25% of what the donor actually gave.",
         )
 
         net_row = _row(kdd_cost, "cost_aware_selection", "net_revenue")
@@ -386,7 +574,10 @@ def main() -> None:
             "verdict": net_row.verdict,
             "note": net_row.note,
         }
-        _bar_chart(
+        pieces = _parse_pieces(net_row.note)
+        gain = net_row.value - net_row.baseline
+        skip_txt = f", skipping {pieces[1] - pieces[0]:,} of {pieces[1]:,} letters" if pieces else ""
+        _hbar_chart(
             OUT_DIR / "who_to_mail.png",
             ["Net revenue"],
             {
@@ -394,8 +585,9 @@ def main() -> None:
                 "Mail everyone": [results["who_to_mail_kdd98"]["net_revenue_mail_everyone"]],
             },
             {"Only mail likely responders": COLOR_MODEL, "Mail everyone": COLOR_RULE},
-            ylabel="Net revenue after mailing cost ($)",
-            title="Who to mail: KDD Cup 1998",
+            title=f"Mailing only likely responders raised ${gain:,.0f} more{skip_txt}",
+            subtitle="KDD Cup 1998. Net revenue after mailing cost, mail if expected gift beats the $0.68 cost.",
+            value_fmt=_fmt_money,
         )
 
         # --- who to mail, scored on KDD98's own held-out validation file ----
@@ -408,7 +600,12 @@ def main() -> None:
                 "verdict": net_row_val.verdict,
                 "note": net_row_val.note,
             }
-            _bar_chart(
+            pieces_val = _parse_pieces(net_row_val.note)
+            gain_val = net_row_val.value - net_row_val.baseline
+            skip_val_txt = (
+                f", skipping {pieces_val[1] - pieces_val[0]:,} of {pieces_val[1]:,} letters" if pieces_val else ""
+            )
+            _hbar_chart(
                 OUT_DIR / "who_to_mail_cup98val.png",
                 ["Net revenue"],
                 {
@@ -416,8 +613,9 @@ def main() -> None:
                     "Mail everyone": [results["who_to_mail_cup98val"]["net_revenue_mail_everyone"]],
                 },
                 {"Only mail likely responders": COLOR_MODEL, "Mail everyone": COLOR_RULE},
-                ylabel="Net revenue after mailing cost ($)",
-                title="Who to mail: KDD Cup 1998's own held-out validation file (cup98VAL)",
+                title=f"On a file the model never saw, mailing smarter still raised ${gain_val:,.0f} more{skip_val_txt}",
+                subtitle="cup98VAL, KDD Cup 1998's own held-out file: 96,367 donors never touched during fitting.",
+                value_fmt=_fmt_money,
             )
 
             # --- response, scored on the same held-out file -----------------

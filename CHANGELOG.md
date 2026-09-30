@@ -17,6 +17,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   AUC 0.745 vs 0.692; `MajorGiftClassifier` 55.5% vs 58.2% (AUC 0.725);
   `LapsePredictor` ties months since last donation (91.8% each, AUC 0.695
   vs 0.697). Benchmark-only; no loader is added to the package.
+- `scripts/benchmark_models_vs_baselines.py` gains `bench_forecast`, the
+  first benchmark of `FinancialForecastModel`: monthly giving totals on the
+  synthetic panel, last 12 months held out, against a 12-month mean and
+  seasonal naive. `predict_revenue_forecast` loses to the 12-month mean (5
+  seeds: 13.0% error on the held-out year's total vs 7.2%; monthly MAPE
+  16.9% vs 13.0%), because its roll-forward never sees the future months'
+  features. `predict` on the future months' calendar features wins (3.5%
+  and 11.3%). The `predict_revenue_forecast` docstring now says when to use
+  `predict` instead. Sample data only; no real monthly revenue series has
+  been tested yet.
 - `scripts/benchmark_models_vs_baselines.py --with-cup98val` now also scores
   the response (`DonorPropensityModel`, `MajorGiftClassifier`), lapse and
   ask models on KDD Cup 1998's own held-out validation file

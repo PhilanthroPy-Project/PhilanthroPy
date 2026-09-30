@@ -302,6 +302,14 @@ class FinancialForecastModel(RegressorMixin, BaseEstimator):
         coefficients are frozen at :meth:`fit` time, no information from ``X``
         can contaminate the learned dynamics.
 
+        The roll-forward sees only the target's own recent values, never the
+        future periods' features, so it cannot follow a seasonal pattern.
+        When the future periods' features are known in advance (fiscal
+        month, planned appeal count), call :meth:`predict` on those rows
+        instead. On the synthetic monthly benchmark
+        (``scripts/benchmark_models_vs_baselines.py``, ``bench_forecast``)
+        that beats a 12-month mean, and this method does not.
+
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)

@@ -400,6 +400,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   in the nav, walks through the same wins-and-losses story and links each
   finding to the page with the number behind it. Results moved to the
   second nav item, right after Home.
+- New how-to guide `docs/how-to/get_your_crm_export_in.md`: one tab per
+  `read_gifts` source (Raiser's Edge, Salesforce NPSP, Bloomerang,
+  DonorPerfect, CiviCRM), each with the exact column mapping to
+  `contact_id`/`receive_date`/`total_amount`, which column excludes pledges
+  or failed contributions from the total, and a runnable example using each
+  reader module's own already-verified sample rows.
+  `tests/test_doc_examples.py`'s fenced-code extraction now dedents each
+  block before executing it, since a code fence nested under a
+  `pymdownx.tabbed` "===" tab is indented same as the rest of that tab's
+  content; this doc is the first one to put a runnable example inside a
+  tab.
 ### Fixed
 - `activities_to_features`: `<type>_days_since_last` is now `NaN`, not 0, for
   a donor with no activity of that type at all; 0 read as "did it today"

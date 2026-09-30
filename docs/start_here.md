@@ -57,6 +57,7 @@ built the second way.
 ## Try it on your file
 
 Export your donor data from your CRM, map the columns, and run the same
-report on your own donors. See the [How-To Guides](how-to/index.md) for the
-exact steps for your system (Raiser's Edge, Salesforce NPSP, Bloomerang,
-DonorPerfect, or CiviCRM).
+report on your own donors. See [Get your CRM export
+in](how-to/get_your_crm_export_in.md) for the exact column mapping and a
+runnable command for your system (Raiser's Edge, Salesforce NPSP,
+Bloomerang, DonorPerfect, or CiviCRM).

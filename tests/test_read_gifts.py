@@ -1,12 +1,13 @@
 """
 tests/test_read_gifts.py
 Tests for philanthropy.ingest.read_gifts, the preset-registry entry point
-over the CiviCRM, Raiser's Edge and NPSP gift bridges.
+over the CiviCRM, Raiser's Edge, NPSP and Bloomerang gift bridges.
 
 The point of this module is that `read_gifts(x, source=name)` is exactly
 equivalent to calling that source's own reader-and-aggregator pair directly;
 each preset's own filtering behaviour is already covered by
-tests/test_civicrm.py, tests/test_raisers_edge.py and tests/test_npsp.py.
+tests/test_civicrm.py, tests/test_raisers_edge.py, tests/test_npsp.py and
+tests/test_bloomerang.py.
 """
 
 import pandas as pd
@@ -14,9 +15,11 @@ import pytest
 
 from philanthropy.ingest import (
     GIFT_SOURCES,
+    bloomerang_transactions_to_features,
     civicrm_contributions_to_features,
     npsp_opportunities_to_features,
     raisers_edge_gifts_to_features,
+    read_bloomerang_transactions,
     read_civicrm_contributions,
     read_gifts,
     read_npsp_opportunities,
@@ -68,6 +71,18 @@ def test_npsp_path_matches_direct_call(tmp_path):
     pd.testing.assert_frame_equal(via_registry, direct)
 
 
+def test_bloomerang_path_matches_direct_call(tmp_path):
+    path = _write_csv(
+        tmp_path,
+        "Account Number,Date,Amount,Transaction Type",
+        "88,2025-01-10,1200.00,Pledge",
+        "88,2025-02-10,100.00,PledgePayment",
+    )
+    via_registry = read_gifts(path, source="bloomerang")
+    direct = bloomerang_transactions_to_features(read_bloomerang_transactions(path))
+    pd.testing.assert_frame_equal(via_registry, direct)
+
+
 # --------------------------------------------------------------------------- #
 # In-memory input: no file read, straight to the aggregator
 # --------------------------------------------------------------------------- #
@@ -99,8 +114,8 @@ def test_unknown_source_raises_a_clear_error():
         read_gifts([], source="salesforce_classic")
 
 
-def test_gift_sources_lists_the_three_presets():
-    assert set(GIFT_SOURCES) == {"civicrm", "raisers_edge", "npsp"}
+def test_gift_sources_lists_the_four_presets():
+    assert set(GIFT_SOURCES) == {"civicrm", "raisers_edge", "npsp", "bloomerang"}
 
 
 # --------------------------------------------------------------------------- #
@@ -119,3 +134,18 @@ def test_source_specific_kwarg_reaches_the_underlying_aggregator():
     # include_stages=None disables the filter and sums both rows.
     unfiltered = read_gifts(rows, source="npsp", include_stages=None)
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 200.0
+
+
+def test_bloomerang_kwarg_reaches_the_underlying_aggregator():
+    rows = [
+        {"Account Number": "88", "Date": "2025-01-10", "Amount": "1200.00",
+         "Transaction Type": "Pledge"},
+        {"Account Number": "88", "Date": "2025-02-10", "Amount": "100.00",
+         "Transaction Type": "PledgePayment"},
+    ]
+    # Default excludes the Pledge; only the payment counts.
+    default = read_gifts(rows, source="bloomerang")
+    assert float(default.loc["88", "total_gift_amount"]) == 100.0
+    # exclude_entry_types=None disables the filter and sums both rows.
+    unfiltered = read_gifts(rows, source="bloomerang", exclude_entry_types=None)
+    assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0

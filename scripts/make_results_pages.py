@@ -104,6 +104,8 @@ _TITLE_LINE_IN = 0.30  # extra height per wrapped title line beyond the first
 _LEGEND_Y_IN = 0.78  # from the top, for a one-line title
 _FIG_W = 7.6
 _TITLE_WRAP_CHARS = 62
+_SUBTITLE_WRAP_CHARS = 100
+_SUBTITLE_LINE_IN = 0.16  # extra height per wrapped subtitle line beyond the first
 
 
 def _wrap_title(title: str) -> str:
@@ -112,11 +114,17 @@ def _wrap_title(title: str) -> str:
     return "\n".join(textwrap.wrap(title, _TITLE_WRAP_CHARS)) or title
 
 
+def _wrap_subtitle(subtitle: str) -> str:
+    return "\n".join(textwrap.wrap(subtitle, _SUBTITLE_WRAP_CHARS)) or subtitle
+
+
 def _new_chart_figure(
-    n_groups: int, groups: List[str], title: str, body_in_per_group: float = 0.62, body_min_in: float = 0.9,
+    n_groups: int, groups: List[str], title: str, subtitle: str = "",
+    body_in_per_group: float = 0.62, body_min_in: float = 0.9,
 ):
     wrapped_title = _wrap_title(title)
-    extra_in = _TITLE_LINE_IN * wrapped_title.count("\n")
+    wrapped_subtitle = _wrap_subtitle(subtitle)
+    extra_in = _TITLE_LINE_IN * wrapped_title.count("\n") + _SUBTITLE_LINE_IN * wrapped_subtitle.count("\n")
     body_in = max(body_min_in, body_in_per_group * n_groups)
     fig_h = _HEADER_IN + extra_in + body_in
     fig, ax = plt.subplots(figsize=(_FIG_W, fig_h), dpi=150)
@@ -125,24 +133,24 @@ def _new_chart_figure(
     top_frac = body_in / fig_h
     left_frac = min(0.32, 0.025 + 0.011 * max((len(g) for g in groups), default=0))
     fig.subplots_adjust(top=top_frac, left=left_frac, right=0.98, bottom=max(0.06, 0.5 / fig_h))
-    return fig, ax, fig_h, extra_in, wrapped_title
+    return fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle
 
 
 def _finish_chart(
-    path: Path, fig, ax, fig_h: float, extra_in: float, wrapped_title: str, subtitle: str, legend_ncol: int,
+    path: Path, fig, ax, fig_h: float, extra_in: float, wrapped_title: str, wrapped_subtitle: str, legend_ncol: int,
 ) -> None:
     """Draws the title (bold, top), the legend (one row, centered, below the
     title and above the subtitle), and the subtitle (grey, directly above
     the axes) at fixed inch offsets from the top of the figure, so none of
     the three ever overlaps no matter how tall or short the plot body is,
-    or how many lines the wrapped title needs."""
+    or how many lines the wrapped title or subtitle need."""
     handles, labels = ax.get_legend_handles_labels()
     if handles:
         fig.legend(
             handles, labels, loc="center", bbox_to_anchor=(0.5, 1 - (_LEGEND_Y_IN + extra_in) / fig_h),
             ncol=legend_ncol, frameon=False, labelcolor=INK_SECONDARY, fontsize=9,
         )
-    ax.set_title(subtitle, color=INK_SECONDARY, fontsize=8.5, loc="left", pad=8)
+    ax.set_title(wrapped_subtitle, color=INK_SECONDARY, fontsize=8.5, loc="left", pad=8)
     fig.suptitle(
         wrapped_title, x=0.015, ha="left", y=1 - _TITLE_Y_IN / fig_h, fontsize=12, fontweight="bold",
         color=INK_PRIMARY, linespacing=1.3,
@@ -187,7 +195,7 @@ def _hbar_chart(
     n_groups, n_series = len(groups), len(series)
     height = 0.8 / n_series
     y = np.arange(n_groups)
-    fig, ax, fig_h, extra_in, wrapped_title = _new_chart_figure(n_groups, groups, title)
+    fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle = _new_chart_figure(n_groups, groups, title, subtitle)
     max_v = max((v for values in series.values() for v in values), default=1.0) or 1.0
     max_extent = max_v
     for i, (name, values) in enumerate(series.items()):
@@ -221,7 +229,7 @@ def _hbar_chart(
             )
     _style_value_axis(ax, groups)
     ax.set_xlim(0, max_extent * 1.30)
-    _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, subtitle, legend_ncol=n_series)
+    _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle, legend_ncol=n_series)
 
 
 def _neartie_dot_chart(
@@ -243,7 +251,7 @@ def _neartie_dot_chart(
     all_v = [v for values in series.values() for v in values] + [base_rate]
     lo_v, hi_v = min(all_v), max(all_v)
     pad = max(1.5, (hi_v - lo_v) * 0.9)
-    fig, ax, fig_h, extra_in, wrapped_title = _new_chart_figure(n_groups, groups, title)
+    fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle = _new_chart_figure(n_groups, groups, title, subtitle)
     ax.axvline(
         base_rate, color=COLOR_RANDOM, linestyle="--", linewidth=1.4, zorder=1,
         label=f"Picking at random: {base_rate:.0f} of 100",
@@ -255,7 +263,7 @@ def _neartie_dot_chart(
             ax.text(v, yy, f"  {v:.0f}", va="center", ha="left", fontsize=9, color=INK_PRIMARY)
     _style_value_axis(ax, groups)
     ax.set_xlim(lo_v - pad, hi_v + pad)
-    _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, subtitle, legend_ncol=len(series) + 1)
+    _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle, legend_ncol=len(series) + 1)
 
 
 def _row(rows, model, metric):
@@ -358,11 +366,18 @@ def planned_giving_hit_rates() -> Dict[str, Any]:
 # --------------------------------------------------------------------------- #
 # $1K upgrade worked example: score_upgrade_prospects on a fixed seeded panel
 # --------------------------------------------------------------------------- #
-def upgrade_worked_example() -> Dict[str, Any]:
-    panel = make_donor_panel(n_donors=N_DONORS, n_years=N_YEARS, random_state=0)
+def upgrade_worked_example(seed: int) -> Dict[str, Any]:
+    """One seed's worth of the public `score_upgrade_prospects` API, for the
+    donor-count narrative on the Upgrade page. Uses the first of `SEEDS`
+    (the same seeds `bench_upgrade`'s 5-seed average uses) rather than an
+    unrelated fixed seed, so the worked example is traceable to the same
+    population the top-of-page chart summarises, even though it is a
+    different pipeline (the shipped function, not the benchmark's own
+    feature set) and so a different single number."""
+    panel = make_donor_panel(n_donors=N_DONORS, n_years=N_YEARS, random_state=seed)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
-        _, report = score_upgrade_prospects(panel["gifts"], random_state=0)
+        _, report = score_upgrade_prospects(panel["gifts"], random_state=seed)
     return {
         "validation_fiscal_year": report["validation_fiscal_year"],
         "n_validation_rows": report["n_validation_rows"],
@@ -372,6 +387,34 @@ def upgrade_worked_example() -> Dict[str, Any]:
         "overall_upgrade_rate": report["overall_upgrade_rate"],
         "deciles": report["deciles"],
         "n_scored": report["n_scored"],
+    }
+
+
+def upgrade_decile_average(seeds) -> Dict[str, Any]:
+    """Averages `score_upgrade_prospects`'s per-decile upgrade rate across
+    all of `seeds` (min/max kept as a range), instead of reading the decile
+    breakdown off a single seed the way the page used to. A one-seed decile
+    chart can show a step that is just that seed's noise (E.13a finding 5);
+    averaging is the same fix `bench_upgrade`'s topn numbers already get."""
+    per_decile: Dict[int, list] = {}
+    overall_rates = []
+    for seed in seeds:
+        panel = make_donor_panel(n_donors=N_DONORS, n_years=N_YEARS, random_state=seed)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            _, report = score_upgrade_prospects(panel["gifts"], random_state=seed)
+        overall_rates.append(report["overall_upgrade_rate"] * 100)
+        for d in report["deciles"]:
+            if d["actual_rate"] is not None:
+                per_decile.setdefault(d["decile"], []).append(d["actual_rate"] * 100)
+    deciles = sorted(per_decile)
+    return {
+        "decile": deciles,
+        "mean": [float(np.mean(per_decile[d])) for d in deciles],
+        "lo": [float(min(per_decile[d])) for d in deciles],
+        "hi": [float(max(per_decile[d])) for d in deciles],
+        "overall_mean": float(np.mean(overall_rates)),
+        "n_seeds": len(seeds),
     }
 
 
@@ -492,21 +535,24 @@ def main() -> None:
     )
 
     # --- $1K upgrade worked example ------------------------------------------
-    ex = upgrade_worked_example()
+    ex = upgrade_worked_example(SEEDS[0])
     results["upgrade_worked_example"] = ex
-    deciles = ex["deciles"]
-    overall_rate = ex["overall_upgrade_rate"] * 100
-    top_decile_rate = deciles[0]["actual_rate"] * 100 if deciles[0]["actual_rate"] is not None else 0.0
+
+    davg = upgrade_decile_average(SEEDS)
+    results["upgrade_deciles_avg"] = davg
+    overall_rate = davg["overall_mean"]
+    top_decile_rate = davg["mean"][0]
     _hbar_chart(
         OUT_DIR / "upgrade_deciles.png",
-        [f"D{d['decile']}" for d in deciles],
-        {"Upgrade rate": [d["actual_rate"] * 100 if d["actual_rate"] is not None else 0.0 for d in deciles]},
+        [f"D{d}" for d in davg["decile"]],
+        {"Upgrade rate": davg["mean"]},
         {"Upgrade rate": COLOR_MODEL},
         title=f"The top decile (D1) upgrades at {top_decile_rate:.0f} of 100, against {overall_rate:.0f} of 100 overall",
-        subtitle="One validation fold (D1 = the 10% the model liked most, D10 = the 10% it liked least). Dashed line: the overall rate.",
+        subtitle=f"{davg['n_seeds']} random draws averaged (D1 = the 10% the model liked most, D10 = the 10% it liked least). Dashed line: the overall rate.",
         value_fmt=lambda v: f"{v:.0f}",
         base_rate=overall_rate,
         base_rate_label=f"overall: {overall_rate:.0f} of 100",
+        errors={"Upgrade rate": list(zip(davg["lo"], davg["hi"]))},
     )
 
     # --- KDD98 (opt-in) --------------------------------------------------
@@ -517,14 +563,55 @@ def main() -> None:
         kdd_ask = bm.bench_kdd_ask(seed)
         kdd_cost = bm.bench_kdd_cost_aware(seed)
 
+        resp_kdd_row_by_p = {p: _row(kdd_resp, "MajorGiftClassifier", f"top{p}pct_hit_rate") for p in (1, 5, 10)}
         results["response_kdd98"] = {
-            f"top{p}pct": {
-                "model": _row(kdd_resp, "MajorGiftClassifier", f"top{p}pct_hit_rate").value * 100,
-                "rule": _row(kdd_resp, "MajorGiftClassifier", f"top{p}pct_hit_rate").baseline * 100,
-            }
+            f"top{p}pct": {"model": resp_kdd_row_by_p[p].value * 100, "rule": resp_kdd_row_by_p[p].baseline * 100}
             for p in (1, 5, 10)
         }
-        results["response_kdd98"]["verdict"] = _row(kdd_resp, "MajorGiftClassifier", "top10pct_hit_rate").verdict
+        results["response_kdd98"]["verdict"] = resp_kdd_row_by_p[10].verdict
+        rk10 = results["response_kdd98"]["top10pct"]
+        _hbar_chart(
+            OUT_DIR / "response_kdd98.png",
+            ["Top 1%", "Top 5%", "Top 10%"],
+            {
+                "Model": [results["response_kdd98"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
+                "Best simple rule": [results["response_kdd98"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
+            },
+            {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE},
+            title=_takeaway(rk10["model"], rk10["rule"], "The model", "the best of lifetime giving, RFM and RFA_2"),
+            subtitle="KDD Cup 1998, held-out 30% of the file. Who gave again, out of every 100 picked.",
+            errors={
+                "Model": [_ci(resp_kdd_row_by_p[p]) for p in (1, 5, 10)],
+                "Best simple rule": [None, None, None],
+            },
+        )
+
+        # --- $1K upgrade on KDD98 (rescaled $50/$5-49 threshold) ------------
+        kdd_upgrade = bm.bench_kdd_upgrade(seed)
+        upg_kdd_row_by_p = {
+            p: _row(kdd_upgrade, "upgrade_model (MajorGiftClassifier)", f"top{p}pct_hit_rate") for p in (1, 5, 10)
+        }
+        results["upgrade_kdd98"] = {
+            f"top{p}pct": {"model": upg_kdd_row_by_p[p].value * 100, "rule": upg_kdd_row_by_p[p].baseline * 100}
+            for p in (1, 5, 10)
+        }
+        results["upgrade_kdd98"]["verdict"] = upg_kdd_row_by_p[10].verdict
+        uk10 = results["upgrade_kdd98"]["top10pct"]
+        _hbar_chart(
+            OUT_DIR / "upgrade_kdd98.png",
+            ["Top 1%", "Top 5%", "Top 10%"],
+            {
+                "Model": [results["upgrade_kdd98"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
+                "Best simple rule": [results["upgrade_kdd98"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
+            },
+            {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE},
+            title=_takeaway(uk10["model"], uk10["rule"], "The model", "the largest single gift in the band"),
+            subtitle="KDD Cup 1998, threshold rescaled to $50 (this file's gifts are far smaller than a major-gift program's). Crossed $50 next year, out of every 100 picked.",
+            errors={
+                "Model": [_ci(upg_kdd_row_by_p[p]) for p in (1, 5, 10)],
+                "Best simple rule": [None, None, None],
+            },
+        )
 
         lapse_top = {p: _row(kdd_lapse, "LapsePredictor", f"top{p}pct_hit_rate") for p in (1, 5, 10)}
         donors = bm.fetch_kdd98_donors()
@@ -544,6 +631,41 @@ def main() -> None:
             base_rate=base_rate_lapse_kdd,
             title="Almost everyone lapses here, so no list beats picking at random by much",
             subtitle="KDD Cup 1998. Lapsed next period, out of every 100 picked.",
+        )
+
+        # --- the retention read: the bottom decile by lapse score -----------
+        kdd_retention = bm.bench_kdd_lapse_retention(seed)
+        ret_row_by_p = {p: _row(kdd_retention, "LapsePredictor", f"top{p}pct_hit_rate") for p in (1, 5, 10)}
+        retention_base_rate = 100.0 - base_rate_lapse_kdd
+        results["lapse_kdd98_retention"] = {
+            f"top{p}pct": {"model": ret_row_by_p[p].value * 100, "rule": ret_row_by_p[p].baseline * 100}
+            for p in (1, 5, 10)
+        }
+        results["lapse_kdd98_retention"]["verdict"] = ret_row_by_p[10].verdict
+        rt10 = results["lapse_kdd98_retention"]["top10pct"]
+        rt_gap = abs(rt10["model"] - rt10["rule"])
+        if rt_gap < 1.5:
+            rt_title = "The model and the rule find about the same retained group here"
+        elif rt10["model"] > rt10["rule"]:
+            rt_title = f"The model's least-likely-to-lapse 10% retains better: {rt10['model']:.0f} of 100 vs {rt10['rule']:.0f} of 100"
+        else:
+            rt_title = f"Years since last gift still finds a better group: {rt10['rule']:.0f} of 100 vs {rt10['model']:.0f} of 100"
+        _hbar_chart(
+            OUT_DIR / "lapse_kdd98_retention.png",
+            ["Top 1%", "Top 5%", "Top 10%"],
+            {
+                "Model": [results["lapse_kdd98_retention"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
+                "Best simple rule": [results["lapse_kdd98_retention"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
+            },
+            {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE},
+            title=rt_title,
+            subtitle="KDD Cup 1998, the 10% least likely to lapse by model score. Gave again, out of every 100 in that group.",
+            base_rate=retention_base_rate,
+            base_rate_label=f"everyone: {retention_base_rate:.0f} of 100",
+            errors={
+                "Model": [_ci(ret_row_by_p[p]) for p in (1, 5, 10)],
+                "Best simple rule": [None, None, None],
+            },
         )
 
         ask_row = _row(kdd_ask, "AskAmountRecommender", "within25pct")
@@ -620,14 +742,28 @@ def main() -> None:
 
             # --- response, scored on the same held-out file -----------------
             kdd_val = bm.bench_kdd_val_models(seed)
+            val_row_by_p = {p: _row(kdd_val, "MajorGiftClassifier", f"top{p}pct_hit_rate") for p in (1, 5, 10)}
             results["response_cup98val"] = {
-                f"top{p}pct": {
-                    "model": _row(kdd_val, "MajorGiftClassifier", f"top{p}pct_hit_rate").value * 100,
-                    "rule": _row(kdd_val, "MajorGiftClassifier", f"top{p}pct_hit_rate").baseline * 100,
-                }
+                f"top{p}pct": {"model": val_row_by_p[p].value * 100, "rule": val_row_by_p[p].baseline * 100}
                 for p in (1, 5, 10)
             }
-            results["response_cup98val"]["verdict"] = _row(kdd_val, "MajorGiftClassifier", "top10pct_hit_rate").verdict
+            results["response_cup98val"]["verdict"] = val_row_by_p[10].verdict
+            rv10 = results["response_cup98val"]["top10pct"]
+            _hbar_chart(
+                OUT_DIR / "response_cup98val.png",
+                ["Top 1%", "Top 5%", "Top 10%"],
+                {
+                    "Model": [results["response_cup98val"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
+                    "Best simple rule": [results["response_cup98val"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
+                },
+                {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE},
+                title=_takeaway(rv10["model"], rv10["rule"], "The model", "the best simple rule"),
+                subtitle="cup98VAL, 96,367 donors never touched during fitting. Who gave again, out of every 100 picked.",
+                errors={
+                    "Model": [_ci(val_row_by_p[p]) for p in (1, 5, 10)],
+                    "Best simple rule": [None, None, None],
+                },
+            )
 
     results["_env"] = {
         "git_sha": _git_sha(),

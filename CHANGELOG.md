@@ -346,6 +346,30 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   changed; `docs/assets/results/results.json`'s values are byte-identical
   to before. `tests/test_results_docs_images.py` checks every Results page
   image has non-empty alt text and resolves to a real file.
+- Results pages now lead with the finding, not the chart type, and losses
+  get the same prominence as wins. Response leads with its two real-file
+  wins (KDD98 held-out split and `cup98val`, both newly charted as
+  `response_kdd98.png` / `response_cup98val.png`) instead of the synthetic
+  loss it used to open with; the synthetic tab is now labelled "checks the
+  code runs, not that the model works". Upgrade's verdict is now honest
+  about the one real test available: it loses on KDD98 at a threshold
+  rescaled to $50 (`bench_kdd_upgrade`, newly wired into
+  `make_results_pages.py` as `upgrade_kdd98.png`), so the page says "wins
+  on sample data, loses on the one real file, depends on your data"
+  instead of a bare "Beats the simple rule". The decile chart is now a
+  5-seed average with a range per bar (`upgrade_decile_average`) instead
+  of one seed's noise, which is what actually produces the clean top-decile
+  step the old caption claimed but the old single-seed chart did not show;
+  the worked example below it now runs on the first of the same 5 seeds
+  instead of an unrelated fixed seed, with one sentence explaining why its
+  number still differs from the 5-seed average (a different feature
+  pipeline, not a discrepancy). Lapse gains a retention read: a new
+  `bench_kdd_lapse_retention` benchmark (same fit, ranked bottom-decile
+  instead of top-decile, label flipped to "retained") shows the 10% of
+  donors the model is least confident will lapse are a slightly better
+  retention list than the same rule inverted, on a file where the top-decile
+  lapse comparison is close to meaningless (95% base rate). Index verdicts
+  updated to match.
 ### Fixed
 - `activities_to_features`: `<type>_days_since_last` is now `NaN`, not 0, for
   a donor with no activity of that type at all; 0 read as "did it today"

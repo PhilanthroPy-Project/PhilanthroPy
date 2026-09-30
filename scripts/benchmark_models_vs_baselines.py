@@ -93,6 +93,7 @@ from philanthropy.model_selection import FiscalYearGroupedSplitter
 from philanthropy.models import (
     AskAmountRecommender,
     DonorPropensityModel,
+    FinancialForecastModel,
     GiftIntervalCalibrator,
     LapsePredictor,
     MajorGiftClassifier,
@@ -610,6 +611,59 @@ def bench_gift_interval(seeds: Sequence[int], n_donors: int, n_years: int, alpha
     return _aggregate(seed_rows)
 
 
+def bench_forecast(seeds: Sequence[int], n_donors: int, n_years: int, horizon: int = 12) -> List[Row]:
+    """FinancialForecastModel on monthly giving totals, last ``horizon``
+    months held out, against the forecast rule set: the mean of the last 12
+    training months, and seasonal naive (same month one year earlier).
+
+    Two ways to use the model are scored, because they answer differently:
+    ``predict_revenue_forecast`` rolls a frozen AR model of the target
+    forward from its own recent values, so it never sees the future months'
+    features; ``predict`` on the future months' calendar features (month
+    index, sine and cosine of the month) uses them directly. Metrics: mean
+    absolute percentage error per month, and the error on the held-out
+    period's total (what a budget forecast is judged on)."""
+    seed_rows = []
+    for seed in seeds:
+        gifts = make_donor_panel(n_donors=n_donors, n_years=n_years, random_state=seed)["gifts"]
+        y = gifts.set_index("gift_date")["gift_amount"].resample("MS").sum().to_numpy(dtype="float64")
+        t = np.arange(len(y))
+        X = np.column_stack([t, np.sin(2 * np.pi * t / 12), np.cos(2 * np.pi * t / 12)])
+        n_train = len(y) - horizon
+        if n_train < 24:
+            continue
+        y_test = y[n_train:]
+        model = FinancialForecastModel(random_state=seed).fit(X[:n_train], y[:n_train])
+        preds = {
+            "predict_revenue_forecast": model.predict_revenue_forecast(X[:n_train], horizon=horizon),
+            "predict on future calendar features": model.predict(X[n_train:]),
+        }
+        rules = {
+            "12-month mean": np.full(horizon, y[n_train - 12:n_train].mean()),
+            "seasonal naive": y[n_train - 12:n_train][:horizon],
+        }
+
+        def mape(p: np.ndarray) -> float:
+            return float(np.mean(np.abs(p - y_test) / np.maximum(np.abs(y_test), 1e-9)))
+
+        def total_error(p: np.ndarray) -> float:
+            return float(abs(p.sum() - y_test.sum()) / y_test.sum())
+
+        rows = []
+        for metric, fn in (("monthly_mape", mape), ("total_error", total_error)):
+            best = min(rules, key=lambda k: fn(rules[k]))
+            for name, p in preds.items():
+                rows.append(
+                    Row(
+                        "synthetic_panel", f"FinancialForecastModel ({name})", metric, fn(p), fn(rules[best]),
+                        lower_is_better=True,
+                        note=f"rule_set={best} (best of {len(rules)}); split=last {horizon} months held out; n_configs=1",
+                    )
+                )
+        seed_rows.append(rows)
+    return _aggregate(seed_rows)
+
+
 # --------------------------------------------------------------------------- #
 # KDD Cup 1998 (opt-in download; see fetch_kdd98_donors)
 # --------------------------------------------------------------------------- #
@@ -1033,6 +1087,7 @@ def main() -> None:
     rows += bench_upgrade(seeds, n_donors, n_years)
     rows += bench_planned_giving(seeds, n_donors, n_years)
     rows += bench_gift_interval(seeds, n_donors, n_years)
+    rows += bench_forecast(seeds, n_donors, n_years)
 
     if not args.skip_kdd98:
         rows += bench_kdd_upgrade(KDD_SEED)

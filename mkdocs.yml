@@ -11,7 +11,7 @@ theme:
   # The logo artwork exists twice on purpose, and the two copies must be kept in
   # step by hand. Nothing checks that they agree.
   #
-  #   overrides/.icons/philanthropy/heart-rise.svg  -> icon.logo, below.
+  #   overrides/.icons/philanthropy/phi.svg         -> icon.logo, below.
   #     Material inlines this into every page, so it uses `currentColor` and
   #     follows the header, which flips between white and black with the palette.
   #     Registering a custom icon namespace is the only reason `custom_dir`
@@ -25,7 +25,7 @@ theme:
   favicon: assets/logo.svg
   font: false
   icon:
-    logo: philanthropy/heart-rise
+    logo: philanthropy/phi
     repo: fontawesome/brands/github
   palette:
     - media: "(prefers-color-scheme: dark)"

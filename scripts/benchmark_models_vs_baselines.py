@@ -88,7 +88,6 @@ from sklearn.pipeline import make_pipeline
 
 from philanthropy.datasets import fetch_kdd98_donors, fetch_kdd98_val_donors, make_donor_panel
 from philanthropy.ingest import build_upgrade_snapshots
-from philanthropy.ingest._upgrade_snapshots import _fy_end
 from philanthropy.metrics import fundraising_roi
 from philanthropy.model_selection import FiscalYearGroupedSplitter
 from philanthropy.models import (
@@ -101,7 +100,6 @@ from philanthropy.models import (
 )
 from philanthropy.preprocessing import (
     CRMCleaner,
-    FiscalYearTransformer,
     RFMTransformer,
     WealthScreeningImputer,
 )
@@ -700,44 +698,47 @@ def bench_kdd_upgrade(seed: int, threshold: float = 50.0, band: Tuple[float, flo
     defaults: this file's per-donor annual giving tops out far lower than a
     major-gift program's, so $50/$5-49 keeps the same shape (threshold is
     roughly the 93rd percentile of per-donor annual giving on this file).
-    Split is 55/15/30 stratified (E.11a rule 1: KDD98 is not on the
-    walk-forward list), even though the snapshot table has one row per
-    qualifying (donor, fiscal year): the same donor can land in more than one
-    split across different years, a known limitation of applying the
-    dataset's blanket split rule to a multi-year snapshot table."""
+
+    Split is walk-forward by fiscal year (July start): train on the FY1994
+    snapshot (outcome FY1995), test on FY1995 (outcome FY1996). The RDATE
+    gift log effectively ends in March 1996 (10,000+ gifts a month up to
+    then, under 150 a month after, plus a few mis-dated 1998 entries), so
+    FY1996 as a test year has an outcome year that is not in the file (3
+    positives in 75,272 rows) and is dropped; FY1995's outcome year is
+    observed for 9 of its 12 months, so "upgraded" there means "reached the
+    threshold by March 1996", the same cut for every donor. A random row
+    split over the multi-year snapshot table is not used: with
+    ``fiscal_year`` as a feature it let the model learn which year a row
+    came from (the near-empty FY1996) instead of who upgrades, and it put
+    the same donor in train and test. ``fiscal_year`` is dropped from the
+    features, since it is constant within each side of the split."""
     donors = fetch_kdd98_donors()
     gifts = _kdd_gift_log(donors)
-    fiscal = (
-        FiscalYearTransformer(date_col="gift_date", fiscal_year_start=7)
-        .set_output(transform="pandas")
-        .fit_transform(gifts)
-    )
-    years = sorted(fiscal["fiscal_year"].astype(int).unique())
-    max_date = gifts["gift_date"].max()
-    # Only years fully resolved by max_date (T and T+1 both complete), same rule
-    # score_upgrade_prospects uses internally: a handful of mis-dated RDATE_i
-    # entries in this real file otherwise leave a near-empty trailing stub
-    # fiscal year with too few (or zero) positive targets to evaluate on.
-    fiscal_years = [t for t in years if _fy_end(t + 1, 7) <= max_date]
+    train_fy, test_fy = 1994, 1995
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         snaps = build_upgrade_snapshots(
-            gifts, fiscal_years=fiscal_years, threshold=threshold, band=band, fiscal_year_start=7,
+            gifts, fiscal_years=[train_fy, test_fy], threshold=threshold, band=band, fiscal_year_start=7,
         )
-    feature_cols = [c for c in snaps.columns if c != "target" and pd.api.types.is_numeric_dtype(snaps[c])]
-    X = snaps[feature_cols].to_numpy(dtype="float64")
-    y = snaps["target"].to_numpy()
-    idx_train, _idx_val, idx_test = _split_55_15_30(len(y), y, seed)
+    feature_cols = [
+        c for c in snaps.columns
+        if c not in ("target", "fiscal_year") and pd.api.types.is_numeric_dtype(snaps[c])
+    ]
+    train, test = snaps[snaps["fiscal_year"] == train_fy], snaps[snaps["fiscal_year"] == test_fy]
+    y_test = test["target"].to_numpy()
 
-    model = MajorGiftClassifier(random_state=seed).fit(X[idx_train], y[idx_train])
-    proba = model.predict_proba(X[idx_test])[:, 1]
+    model = MajorGiftClassifier(random_state=seed).fit(
+        train[feature_cols].to_numpy(dtype="float64"), train["target"].to_numpy()
+    )
+    proba = model.predict_proba(test[feature_cols].to_numpy(dtype="float64"))[:, 1]
     rules = {
-        "this-year total": snaps["fy_total"].to_numpy()[idx_test],
-        "previous-year total plus this-year growth": (snaps["fy_total"] + snaps["fy_trend"]).to_numpy()[idx_test],
-        "largest single gift in band": snaps["largest_gift"].to_numpy()[idx_test],
+        "this-year total": test["fy_total"].to_numpy(),
+        "previous-year total plus this-year growth": (test["fy_total"] + test["fy_trend"]).to_numpy(),
+        "largest single gift in band": test["largest_gift"].to_numpy(),
     }
     return _classifier_rows(
-        "kdd98", "upgrade_model (MajorGiftClassifier)", y[idx_test], proba, rules, KDD_SPLIT, bootstrap=True,
+        "kdd98", "upgrade_model (MajorGiftClassifier)", y_test, proba, rules,
+        f"walk-forward by fiscal year (train FY{train_fy}, test FY{test_fy})", bootstrap=True,
     )
 
 

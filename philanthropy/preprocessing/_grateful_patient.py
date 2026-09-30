@@ -254,10 +254,12 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
 
         # Step 3: Normalise service_line values
         if self.service_line_col in raw_enc.columns:
+            present = raw_enc[self.service_line_col].notna()
             raw_enc[self.service_line_col] = (
                 raw_enc[self.service_line_col]
                 .astype(str)
                 .apply(_normalise_service_line)
+                .where(present)
             )
 
         # Step 4: Groupby merge_key
@@ -269,7 +271,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
             # Mode (most frequent) service line per donor
             summary_parts["primary_service_line"] = grouped[
                 self.service_line_col
-            ].agg(lambda x: x.mode().iloc[0] if len(x) > 0 else "general")
+            ].agg(lambda x: x.mode().iloc[0] if x.notna().any() else "general")
             summary_parts["distinct_service_lines"] = grouped[
                 self.service_line_col
             ].nunique()

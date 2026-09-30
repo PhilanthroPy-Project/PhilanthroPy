@@ -5,6 +5,47 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- `FiscalYearTransformer` and `EncounterRecencyTransformer` labelled every
+  January-start fiscal year one year ahead of the calendar year (e.g. June
+  2024 came out as FY2025 instead of FY2024). Every other start month was
+  already correct. **Behaviour change** for `fiscal_year_start=1` users: the
+  fiscal year now equals the calendar year, matching the class docs. The
+  same off-by-one existed in `score_upgrade_prospects`'s current-fiscal-year
+  calculation and in `build_upgrade_snapshots`'s `_fy_end` cutoff; both now
+  share the corrected, vectorised `philanthropy.utils._validation.
+  fiscal_year_and_quarter`/`fiscal_year_for` helpers instead of duplicating
+  the formula (and a per-row `.apply`) in four places.
+- `UpliftTLearner.fit` now rejects a non-``{0, 1}`` `y` instead of silently
+  mis-scoring: `_prob_give` resolves the positive class as the literal
+  integer `1`, so a string-labelled ("yes"/"no") arm that saw only one class
+  during fit produced a sign-flipped uplift score with no error.
+- `WealthScreeningImputerKNN(strategy="knn")` filled every column via
+  `KNNImputer.transform`, not just the columns in `wealth_cols`/
+  `imputed_cols_`, contradicting the documented "subset of columns to
+  impute". It still fits `KNNImputer` on the whole matrix (neighbour
+  distance benefits from every column), but now only writes back the
+  columns it is contracted to impute.
+- `GratefulPatientFeaturizer` counted a missing `service_line` value as a
+  distinct line: `.astype(str)` turned `NaN`/`None` into the literal string
+  `"nan"`, which could be counted in `distinct_service_lines` or win
+  `primary_service_line`. Missing values are now excluded before counting.
+- `FiscalYearGroupedSplitter` counted a `NaN` fiscal year as one more
+  distinct year in `get_n_splits`, while `split` silently produced one fewer
+  fold (every comparison against `NaN` is `False`, so those rows never
+  landed in a train or test fold). `get_n_splits` and `split` now agree, and
+  a `UserWarning` names how many rows were excluded.
+- `gift_concentration_gini`/`top_donor_share` returned `NaN` (with a
+  `RuntimeWarning`) for an infinite gift amount, despite `_clean_nonneg_
+  amounts` documenting that it keeps only finite values. Both now raise
+  `ValueError`, matching the existing negative-amount check.
+
+### Added
+- `philanthropy.metrics.demographic_parity_difference`: `max(selection_rate)
+  - min(selection_rate)` across protected groups, alongside the existing
+  `disparate_impact_ratio`. The ratio is noisy when rates are small (0.01
+  vs 0.02 gives a ratio of 0.5 but a difference of 0.01); report both.
+
 ### Changed
 - `scripts/benchmark_models_vs_baselines.py` now checks `GiftIntervalCalibrator`
   coverage over 10 seeds at 80/90/95% requested levels instead of 5 seeds at

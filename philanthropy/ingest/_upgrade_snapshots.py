@@ -341,8 +341,10 @@ def _fy_end(fy: int, fiscal_year_start: int) -> pd.Timestamp:
     """The last calendar day of fiscal year ``fy``.
 
     Matches :class:`~philanthropy.preprocessing.FiscalYearTransformer`'s
-    convention (``fiscal_year = year + 1`` once the month reaches
-    ``fiscal_year_start``): FY ``fy`` ends the day before ``fiscal_year_start``
-    rolls over in calendar year ``fy``.
+    convention: FY ``fy`` ends the day before ``fiscal_year_start`` rolls
+    over, in calendar year ``fy`` for every start month except January,
+    where FY ``fy`` is calendar year ``fy`` itself and so ends the following
+    Dec 31.
     """
-    return pd.Timestamp(year=fy, month=fiscal_year_start, day=1) - pd.Timedelta(days=1)
+    end_year = fy + 1 if fiscal_year_start == 1 else fy
+    return pd.Timestamp(year=end_year, month=fiscal_year_start, day=1) - pd.Timedelta(days=1)

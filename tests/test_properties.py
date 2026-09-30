@@ -129,7 +129,10 @@ class TestFiscalYearTransformerProperties:
             .set_output(transform="pandas")
             .fit_transform(pd.DataFrame({"gift_date": [f"{leap_year}-02-29"]}))
         )
-        expected = leap_year + 1 if 2 >= fy_start else leap_year
+        if fy_start == 1:
+            expected = leap_year
+        else:
+            expected = leap_year + 1 if 2 >= fy_start else leap_year
         assert int(out.loc[0, "fiscal_year"]) == expected
 
     @_SETTINGS

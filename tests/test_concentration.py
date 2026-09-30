@@ -34,6 +34,11 @@ def test_gini_rejects_negative():
         gift_concentration_gini([1, -2, 3])
 
 
+def test_gini_rejects_infinite():
+    with pytest.raises(ValueError):
+        gift_concentration_gini([1, np.inf, 3])
+
+
 def test_top_donor_share_top_decile():
     # 10 donors; top 10% = 1 donor holding 91 of 100 total.
     amounts = [1] * 9 + [91]
@@ -54,6 +59,11 @@ def test_top_donor_share_rejects_bad_fraction():
 def test_top_donor_share_empty_and_zero():
     assert top_donor_share([]) == 0.0
     assert top_donor_share([0, 0]) == 0.0
+
+
+def test_top_donor_share_rejects_infinite():
+    with pytest.raises(ValueError):
+        top_donor_share([1, np.inf, 3])
 
 
 def test_cost_per_dollar_raised():

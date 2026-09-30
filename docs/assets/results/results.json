@@ -145,17 +145,17 @@
   "response_kdd98": {
     "top1pct": {
       "model": 10.13986013986014,
-      "rule": 9.090909090909092
+      "rule": 7.3426573426573425
     },
     "top5pct": {
       "model": 9.57372466806429,
-      "rule": 7.058001397624039
+      "rule": 7.617051013277429
     },
     "top10pct": {
       "model": 8.874912648497554,
-      "rule": 7.512229210342418
+      "rule": 8.280922431865829
     },
-    "verdict": "wins"
+    "verdict": "modest"
   },
   "lapse_kdd98": {
     "base_rate_pct": 94.92411855951033,
@@ -189,8 +189,23 @@
     "verdict": "wins",
     "note": "mail if E[gift]>$0.68; pieces=62703/96367; model fit on cup98LRN's own 55% train split only, scored on KDD98's own held-out validation file (cup98VAL+valtargt), reported next to bench_kdd_cost_aware's random-split number, not replacing it"
   },
+  "response_cup98val": {
+    "top1pct": {
+      "model": 12.344398340248963,
+      "rule": 9.12863070539419
+    },
+    "top5pct": {
+      "model": 9.194686591946866,
+      "rule": 7.575757575757576
+    },
+    "top10pct": {
+      "model": 8.934315658399917,
+      "rule": 7.398568019093078
+    },
+    "verdict": "wins"
+  },
   "_env": {
-    "git_sha": "a01b411aa66567fa0bb4e1f6317a86649abce1bc",
+    "git_sha": "a5e5e69e4f9a4ac7e1036959f39f0e9c78816da6",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

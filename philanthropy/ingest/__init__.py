@@ -23,6 +23,11 @@ keeping only closed/won stages (``Closed Won``, ``Awarded``, ``Posted``) so a
 ``Pledged`` instalment, an open pipeline row, or ``Closed Lost`` is not
 counted as a gift.
 
+Bloomerang: ``read_bloomerang_transactions`` loads a Bloomerang transaction
+export CSV; ``bloomerang_transactions_to_features`` aggregates it, dropping
+the commitment rows (``Pledge``, ``Recurring Donation``) first so a pledged
+dollar is not counted both as the promise and as the payments against it.
+
 DonorPerfect: ``read_donorperfect_gifts`` loads a DonorPerfect gift export
 CSV; ``donorperfect_gifts_to_features`` aggregates it, dropping Pledge
 records and split-gift Main totals (``record_type`` ``P`` / ``M``) first so
@@ -50,6 +55,11 @@ a leadership threshold.
 """
 
 from ._activities import activities_to_features
+from ._bloomerang import (
+    DEFAULT_EXCLUDED_ENTRY_TYPES,
+    bloomerang_transactions_to_features,
+    read_bloomerang_transactions,
+)
 from ._civicrm import (
     civicrm_contributions_to_features,
     read_civicrm_contributions,
@@ -78,11 +88,13 @@ from ._read_gifts import GIFT_SOURCES, read_gifts
 from ._upgrade_snapshots import build_upgrade_snapshots
 
 __all__ = [
+    "DEFAULT_EXCLUDED_ENTRY_TYPES",
     "DEFAULT_EXCLUDED_GIFT_TYPES",
     "DEFAULT_EXCLUDED_RECORD_TYPES",
     "DEFAULT_INCLUDED_STAGES",
     "GIFT_SOURCES",
     "activities_to_features",
+    "bloomerang_transactions_to_features",
     "build_upgrade_snapshots",
     "civicrm_contributions_to_features",
     "constituent_events_to_features",
@@ -90,6 +102,7 @@ __all__ = [
     "map_columns",
     "npsp_opportunities_to_features",
     "raisers_edge_gifts_to_features",
+    "read_bloomerang_transactions",
     "read_civicrm_contributions",
     "read_constituent_events",
     "read_donorperfect_gifts",

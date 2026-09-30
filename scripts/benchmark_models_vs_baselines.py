@@ -22,6 +22,7 @@ Run:
     python scripts/benchmark_models_vs_baselines.py --fast --skip-kdd98  # one-seed smoke run, <20s
     python scripts/benchmark_models_vs_baselines.py --out results/bench  # also writes bench.json / bench.csv
     python scripts/benchmark_models_vs_baselines.py --with-cup98val      # also scores on cup98VAL (opt-in, +~37MB)
+    python scripts/benchmark_models_vs_baselines.py --with-blood         # also UCI Blood Transfusion (opt-in, ~12KB)
 
 The KDD Cup 1998 section downloads ``cup98lrn.zip`` (~36 MB) to
 ``~/philanthropy_data`` on first use (see ``fetch_kdd98_donors``); pass
@@ -75,6 +76,7 @@ import csv
 import json
 import os
 import time
+import urllib.request
 import warnings
 from collections import defaultdict
 from dataclasses import dataclass
@@ -1130,6 +1132,61 @@ def bench_kdd_val_models(seed: int) -> List[Row]:
 
 
 # --------------------------------------------------------------------------- #
+# UCI Blood Transfusion (opt-in download)
+# --------------------------------------------------------------------------- #
+BLOOD_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/blood-transfusion/transfusion.data"
+
+
+def _fetch_blood() -> pd.DataFrame:
+    """UCI Blood Transfusion Service Center (Yeh, Yang and Ting 2009; DOI
+    10.24432/C5GS39; CC BY 4.0): 748 real repeat blood donors from one
+    Taiwanese centre, four as-of features (months since last donation,
+    number of donations, total volume, months since first donation) and
+    whether each donated in March 2007. Cached in ``~/philanthropy_data``
+    like the KDD98 files. Benchmark-only: blood, not money, so it tests
+    response and lapse ranking on a real repeat-donor file, nothing else."""
+    path = os.path.join(os.path.expanduser("~"), "philanthropy_data", "transfusion.data")
+    if not os.path.exists(path):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        urllib.request.urlretrieve(BLOOD_URL, path)
+    df = pd.read_csv(path)
+    df.columns = ["recency", "frequency", "monetary", "tenure", "donated"]
+    return df
+
+
+def bench_blood(seeds: Sequence[int]) -> List[Row]:
+    """Response (``DonorPropensityModel``, ``MajorGiftClassifier``) and lapse
+    (``LapsePredictor``, label = did not donate) on the blood file, one
+    stratified 70/30 split per seed. Rule sets are the synthetic ones
+    restricted to what the file has: response against lifetime volume and
+    the RFM cell score; lapse against months since last donation and fewest
+    donations."""
+    df = _fetch_blood()
+    X = df[["recency", "frequency", "monetary", "tenure"]].to_numpy(dtype="float64")
+    y = df["donated"].to_numpy()
+    split = "stratified 70/30 per seed"
+    seed_rows = []
+    for seed in seeds:
+        idx_train, idx_test = train_test_split(np.arange(len(y)), test_size=0.30, random_state=seed, stratify=y)
+        Xte = X[idx_test]
+        response_rules = {
+            "lifetime monetary": Xte[:, 2],
+            "RFM cell score": _rfm_cell_score(Xte[:, 0], Xte[:, 1], Xte[:, 2]),
+        }
+        lapse_rules = {"years since last gift": Xte[:, 0], "fewest gifts": -Xte[:, 1]}
+        rows: List[Row] = []
+        for name, cls in (("DonorPropensityModel", DonorPropensityModel), ("MajorGiftClassifier", MajorGiftClassifier)):
+            model = cls(random_state=seed).fit(X[idx_train], y[idx_train])
+            rows += _classifier_rows("uci_blood", name, y[idx_test], model.predict_proba(Xte)[:, 1], response_rules, split)
+        lapse = LapsePredictor(random_state=seed).fit(X[idx_train], 1 - y[idx_train])
+        rows += _classifier_rows(
+            "uci_blood", "LapsePredictor", 1 - y[idx_test], lapse.predict_lapse_score(Xte) / 100.0, lapse_rules, split,
+        )
+        seed_rows.append(rows)
+    return _aggregate(seed_rows)
+
+
+# --------------------------------------------------------------------------- #
 # Output
 # --------------------------------------------------------------------------- #
 def _print_table(rows: List[Row]) -> None:
@@ -1168,6 +1225,11 @@ def main() -> None:
         help="Also score cost-aware selection, response, lapse and ask on KDD98's own held-out "
         "cup98VAL+valtargt file (a second ~37 MB download; opt-in). No effect with --skip-kdd98.",
     )
+    parser.add_argument(
+        "--with-blood", action="store_true",
+        help="Also score response and lapse on the UCI Blood Transfusion file (748 real repeat "
+        "donors, ~12 KB download, CC BY 4.0; opt-in).",
+    )
     parser.add_argument("--fast", action="store_true", help="One seed and a small synthetic panel: a smoke run, not a benchmark.")
     parser.add_argument("--out", type=str, default=None, help="Path prefix; also writes <out>.json and <out>.csv.")
     args = parser.parse_args()
@@ -1195,6 +1257,9 @@ def main() -> None:
         if args.with_cup98val:
             rows += bench_kdd_cost_aware_val(KDD_SEED)
             rows += bench_kdd_val_models(KDD_SEED)
+
+    if args.with_blood:
+        rows += bench_blood(seeds)
 
     runtime = time.time() - start
     _print_table(rows)

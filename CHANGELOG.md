@@ -17,6 +17,30 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   vocabulary are taken from SofterWare's DonorPerfect Online XML API
   Documentation (dp_savegift's `@record_type` parameter and its "Split
   Gifts"/"Pledge Notes" sections).
+- `philanthropy.ingest.bloomerang_transactions_to_features` /
+  `read_bloomerang_transactions`: a bridge from a Bloomerang transaction
+  export to the donor-level feature table, following the same
+  commitment-versus-payment shape as the Raiser's Edge and NPSP bridges.
+  `Pledge` (the up-front commitment) and `Recurring Donation` (the
+  not-yet-charged schedule) are excluded by default via
+  `DEFAULT_EXCLUDED_ENTRY_TYPES`; `Donation`, `PledgePayment` and
+  `RecurringDonationPayment` are kept. Registered as `"bloomerang"` in
+  `read_gifts`/`GIFT_SOURCES`. Field names and the entry-type vocabulary are
+  taken from Bloomerang's REST API V1 docs
+  (https://bloomerang.com/api/rest-api-v1/) and Help Center Transactions
+  Report article
+  (https://help.bloomerang.com/en/articles/13382625-transactions-report).
+- `scripts/benchmark_models_vs_baselines.py --with-blood`: an opt-in second
+  real dataset, the UCI Blood Transfusion Service Center file (Yeh, Yang and
+  Ting 2009, DOI 10.24432/C5GS39, CC BY 4.0; 748 repeat blood donors,
+  ~12 KB, cached in `~/philanthropy_data`). `bench_blood` scores response
+  and lapse on five stratified 70/30 splits against the same rule sets
+  used elsewhere. Blood, not money, so it only tests ranking of repeat
+  donors. Results are noisy (22 donors in each top 10%): `DonorPropensityModel`
+  top 10% 64.6% [54.5-72.7] vs 58.2% for the RFM cell score (random 23.8%),
+  AUC 0.745 vs 0.692; `MajorGiftClassifier` 55.5% vs 58.2% (AUC 0.725);
+  `LapsePredictor` ties months since last donation (91.8% each, AUC 0.695
+  vs 0.697). Benchmark-only; no loader is added to the package.
 - `scripts/benchmark_models_vs_baselines.py` gains `bench_forecast`, the
   first benchmark of `FinancialForecastModel`: monthly giving totals on the
   synthetic panel, last 12 months held out, against a 12-month mean and

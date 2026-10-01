@@ -6,6 +6,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Fixed
+- Results-page charts (`docs/results/*.md`, the homepage, Start Here) were
+  baked as light-background PNGs only, so on the site's default dark theme
+  each one rendered as a bright rectangle. `scripts/make_results_pages.py`
+  now renders a matching dark variant of every chart, and each page embeds
+  both via Material's `#only-light`/`#only-dark` image switch. Also fixes a
+  reference-line label overlapping the first bar on two charts, and widens
+  the docs layout's content column on pages with both a nav and
+  table-of-contents sidebar (previously squeezed on wide screens).
 - `FiscalYearTransformer` and `EncounterRecencyTransformer` labelled every
   January-start fiscal year one year ahead of the calendar year (e.g. June
   2024 came out as FY2025 instead of FY2024). Every other start month was

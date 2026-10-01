@@ -9,7 +9,8 @@ actually gave. The best of the simple rules we compare against here, the
 higher of what they gave last time or their average gift, landed within 25%
 for 67 out of every 100.
 
-![How close is the suggested ask: model vs. best simple rule](../assets/results/ask_kdd98.png)
+![How close is the suggested ask: model vs. best simple rule](../assets/results/ask_kdd98.png#only-light)
+![How close is the suggested ask: model vs. best simple rule](../assets/results/ask_kdd98-dark.png#only-dark)
 
 **Does not beat the simple rule; use the rule instead.** On this file, the
 simple rule is a better guess than the model's suggestion.

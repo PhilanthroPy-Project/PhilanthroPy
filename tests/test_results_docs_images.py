@@ -43,5 +43,9 @@ def test_results_image_has_alt_text(page, alt, target):
     "page,alt,target", IMAGES, ids=[f"{p}:{t}" for p, _, t in IMAGES]
 )
 def test_results_image_file_exists(page, alt, target):
-    resolved = (RESULTS_DOCS / target).resolve()
+    # Strip a Material light/dark switch fragment (`#only-light`/`#only-dark`)
+    # before resolving: it selects which theme shows the image, it is not
+    # part of the file path.
+    path_part = target.split("#", 1)[0]
+    resolved = (RESULTS_DOCS / path_part).resolve()
     assert resolved.is_file(), f"{page} references missing image {target}"

@@ -63,13 +63,33 @@ SEEDS = bm.DEFAULT_SEEDS
 N_DONORS, N_YEARS = 3000, 7
 
 # Categorical palette slots 1/2/3 (blue/orange/aqua) from the dataviz skill's
-# validated default palette: model, simple rule, random.
-COLOR_MODEL = "#2a78d6"
-COLOR_RULE = "#eb6834"
-COLOR_RANDOM = "#898781"  # muted ink: "random" is a floor, not a series
-INK_PRIMARY = "#0b0b0b"
-INK_SECONDARY = "#52514e"
-GRID = "#e1e0d9"
+# validated default palette: model, simple rule, random. Every chart is
+# rendered once per THEMES entry (docs/stylesheets/extra.css ships both a
+# light and a dark `data-md-color-scheme`, and a chart baked for one reads as
+# a bright or a black rectangle in the other); each markdown page then embeds
+# both PNGs with the `#only-light` / `#only-dark` suffixes Material's theme
+# switches on natively. Dark steps are the same palette's dark column, not
+# improvised: "random" keeps the same muted ink in both modes.
+LIGHT = {
+    "model": "#2a78d6", "rule": "#eb6834", "random": "#898781",
+    "surface": "#fcfcfb", "ink1": "#0b0b0b", "ink2": "#52514e", "grid": "#e1e0d9",
+}
+DARK = {
+    "model": "#3987e5", "rule": "#d95926", "random": "#898781",
+    "surface": "#1a1a19", "ink1": "#ffffff", "ink2": "#c3c2b7", "grid": "#2c2c2a",
+}
+THEMES = (LIGHT, DARK)
+
+
+def _themed_path(path: Path, theme: dict) -> Path:
+    return path if theme is LIGHT else path.with_name(f"{path.stem}-dark{path.suffix}")
+
+
+def _render_themed(draw_fn, path: Path, *args, **kwargs) -> None:
+    """Calls `draw_fn(path, *args, theme=..., **kwargs)` once per entry in
+    THEMES, writing `name.png` for light and `name-dark.png` for dark."""
+    for theme in THEMES:
+        draw_fn(_themed_path(path, theme), *args, theme=theme, **kwargs)
 
 
 def _fmt_count(v: float) -> str:
@@ -118,7 +138,7 @@ def _wrap_subtitle(subtitle: str) -> str:
 
 
 def _new_chart_figure(
-    n_groups: int, groups: List[str], title: str, subtitle: str = "",
+    n_groups: int, groups: List[str], title: str, subtitle: str, theme: dict,
     body_in_per_group: float = 0.62, body_min_in: float = 0.9,
 ):
     wrapped_title = _wrap_title(title)
@@ -127,8 +147,8 @@ def _new_chart_figure(
     body_in = max(body_min_in, body_in_per_group * n_groups)
     fig_h = _HEADER_IN + extra_in + body_in
     fig, ax = plt.subplots(figsize=(_FIG_W, fig_h), dpi=150)
-    ax.set_facecolor("#fcfcfb")
-    fig.patch.set_facecolor("#fcfcfb")
+    ax.set_facecolor(theme["surface"])
+    fig.patch.set_facecolor(theme["surface"])
     top_frac = body_in / fig_h
     left_frac = min(0.32, 0.025 + 0.011 * max((len(g) for g in groups), default=0))
     fig.subplots_adjust(top=top_frac, left=left_frac, right=0.98, bottom=max(0.06, 0.5 / fig_h))
@@ -137,6 +157,7 @@ def _new_chart_figure(
 
 def _finish_chart(
     path: Path, fig, ax, fig_h: float, extra_in: float, wrapped_title: str, wrapped_subtitle: str, legend_ncol: int,
+    theme: dict,
 ) -> None:
     """Draws the title (bold, top), the legend (one row, centered, below the
     title and above the subtitle), and the subtitle (grey, directly above
@@ -147,26 +168,26 @@ def _finish_chart(
     if handles:
         fig.legend(
             handles, labels, loc="center", bbox_to_anchor=(0.5, 1 - (_LEGEND_Y_IN + extra_in) / fig_h),
-            ncol=legend_ncol, frameon=False, labelcolor=INK_SECONDARY, fontsize=9,
+            ncol=legend_ncol, frameon=False, labelcolor=theme["ink2"], fontsize=9,
         )
-    ax.set_title(wrapped_subtitle, color=INK_SECONDARY, fontsize=8.5, loc="left", pad=8)
+    ax.set_title(wrapped_subtitle, color=theme["ink2"], fontsize=8.5, loc="left", pad=8)
     fig.suptitle(
         wrapped_title, x=0.015, ha="left", y=1 - _TITLE_Y_IN / fig_h, fontsize=12, fontweight="bold",
-        color=INK_PRIMARY, linespacing=1.3,
+        color=theme["ink1"], linespacing=1.3,
     )
     fig.savefig(path)
     plt.close(fig)
 
 
-def _style_value_axis(ax, groups: List[str]) -> None:
+def _style_value_axis(ax, groups: List[str], theme: dict) -> None:
     ax.set_yticks(np.arange(len(groups)))
     ax.set_yticklabels(groups)
     ax.invert_yaxis()
     ax.set_xticks([])
     for spine in ("top", "right", "bottom"):
         ax.spines[spine].set_visible(False)
-    ax.spines["left"].set_color(GRID)
-    ax.tick_params(colors=INK_SECONDARY, length=0)
+    ax.spines["left"].set_color(theme["grid"])
+    ax.tick_params(colors=theme["ink2"], length=0)
 
 
 def _hbar_chart(
@@ -176,6 +197,7 @@ def _hbar_chart(
     colors: Dict[str, str],
     title: str,
     subtitle: str,
+    theme: dict,
     errors: Dict[str, List[Any]] | None = None,
     value_fmt=None,
     base_rate: float | None = None,
@@ -189,12 +211,15 @@ def _hbar_chart(
     optional list of `(lo, hi)` pairs (or `None` per group), giving an
     asymmetric error bar from a 5-seed range or a bootstrap interval.
     `base_rate`, if given, is drawn as a dashed line instead of a fourth
-    bar. Legend sits above the plot, never over a bar."""
+    bar. Legend sits above the plot, never over a bar. `colors[name]` is a
+    theme role key ("model"/"rule"/"random"), resolved against `theme`."""
     fmt = value_fmt or _fmt_count
     n_groups, n_series = len(groups), len(series)
     height = 0.8 / n_series
     y = np.arange(n_groups)
-    fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle = _new_chart_figure(n_groups, groups, title, subtitle)
+    fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle = _new_chart_figure(
+        n_groups, groups, title, subtitle, theme,
+    )
     max_v = max((v for values in series.values() for v in values), default=1.0) or 1.0
     max_extent = max_v
     for i, (name, values) in enumerate(series.items()):
@@ -207,8 +232,8 @@ def _hbar_chart(
             xerr = [lo, hi]
         bars = ax.barh(
             y + offset, values, height=height * 0.85, label=name,
-            color=colors[name], edgecolor="none",
-            xerr=xerr, ecolor=INK_SECONDARY, capsize=2,
+            color=theme[colors[name]], edgecolor="none",
+            xerr=xerr, ecolor=theme["ink2"], capsize=2,
             error_kw={"linewidth": 1, "alpha": 0.8},
         )
         for j, (b, v) in enumerate(zip(bars, values)):
@@ -216,19 +241,23 @@ def _hbar_chart(
             max_extent = max(max_extent, hi_extent)
             ax.text(
                 max(b.get_width(), hi_extent) + max_v * 0.03, b.get_y() + b.get_height() / 2,
-                fmt(v), ha="left", va="center", fontsize=9, color=INK_PRIMARY,
+                fmt(v), ha="left", va="center", fontsize=9, color=theme["ink1"],
             )
     if base_rate is not None:
         max_extent = max(max_extent, base_rate)
-        ax.axvline(base_rate, color=COLOR_RANDOM, linestyle="--", linewidth=1.4, zorder=0)
+        ax.axvline(base_rate, color=theme["random"], linestyle="--", linewidth=1.4, zorder=0)
         if base_rate_label:
             ax.text(
-                base_rate, -0.5, base_rate_label, color=INK_SECONDARY, fontsize=8.5,
+                base_rate, -0.5, base_rate_label, color=theme["ink2"], fontsize=8.5,
                 ha="left", va="bottom",
             )
-    _style_value_axis(ax, groups)
+    _style_value_axis(ax, groups, theme)
     ax.set_xlim(0, max_extent * 1.30)
-    _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle, legend_ncol=n_series)
+    if base_rate_label:
+        # The reference-line label sits just above row 0; without extra
+        # headroom it overlaps that row's bar instead of floating above it.
+        ax.set_ylim(n_groups - 0.5, -0.9)
+    _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle, n_series, theme)
 
 
 def _neartie_dot_chart(
@@ -239,6 +268,7 @@ def _neartie_dot_chart(
     base_rate: float,
     title: str,
     subtitle: str,
+    theme: dict,
 ) -> None:
     """For a comparison where model, rule and random are all close together
     (e.g. a file where almost everyone lapses): dots instead of bars, a
@@ -250,19 +280,21 @@ def _neartie_dot_chart(
     all_v = [v for values in series.values() for v in values] + [base_rate]
     lo_v, hi_v = min(all_v), max(all_v)
     pad = max(1.5, (hi_v - lo_v) * 0.9)
-    fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle = _new_chart_figure(n_groups, groups, title, subtitle)
+    fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle = _new_chart_figure(
+        n_groups, groups, title, subtitle, theme,
+    )
     ax.axvline(
-        base_rate, color=COLOR_RANDOM, linestyle="--", linewidth=1.4, zorder=1,
+        base_rate, color=theme["random"], linestyle="--", linewidth=1.4, zorder=1,
         label=f"Picking at random: {base_rate:.0f} of 100",
     )
     offsets = np.linspace(-0.16, 0.16, len(series))
     for off, (name, values) in zip(offsets, series.items()):
-        ax.scatter(values, y + off, color=colors[name], s=60, zorder=3, label=name)
+        ax.scatter(values, y + off, color=theme[colors[name]], s=60, zorder=3, label=name)
         for v, yy in zip(values, y + off):
-            ax.text(v, yy, f"  {v:.0f}", va="center", ha="left", fontsize=9, color=INK_PRIMARY)
-    _style_value_axis(ax, groups)
+            ax.text(v, yy, f"  {v:.0f}", va="center", ha="left", fontsize=9, color=theme["ink1"])
+    _style_value_axis(ax, groups, theme)
     ax.set_xlim(lo_v - pad, hi_v + pad)
-    _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle, legend_ncol=len(series) + 1)
+    _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle, len(series) + 1, theme)
 
 
 def _profit_curve_chart(
@@ -275,6 +307,7 @@ def _profit_curve_chart(
     everyone_net: float,
     title: str,
     subtitle: str,
+    theme: dict,
 ) -> None:
     """Net revenue (y) against how many donors are mailed (x), most likely
     to respond first, replacing the two-bar who-to-mail chart (E.13c). Marks
@@ -288,37 +321,38 @@ def _profit_curve_chart(
     body_in = 2.6
     fig_h = _HEADER_IN + extra_in + body_in
     fig, ax = plt.subplots(figsize=(_FIG_W, fig_h), dpi=150)
-    ax.set_facecolor("#fcfcfb")
-    fig.patch.set_facecolor("#fcfcfb")
+    ax.set_facecolor(theme["surface"])
+    fig.patch.set_facecolor(theme["surface"])
     fig.subplots_adjust(top=body_in / fig_h, left=0.16, right=0.97, bottom=0.65 / fig_h)
 
-    ax.plot(mailed, net_revenue, color=COLOR_MODEL, linewidth=2, zorder=2)
+    ax.plot(mailed, net_revenue, color=theme["model"], linewidth=2, zorder=2)
     ax.scatter(
-        [stop_k], [stop_net], color=COLOR_MODEL, s=70, zorder=3, edgecolor="white", linewidth=1,
+        [stop_k], [stop_net], color=theme["model"], s=70, zorder=3, edgecolor=theme["surface"], linewidth=1,
         label=f"Model's stopping point: {stop_k:,} mailed, {_fmt_money(stop_net)}",
     )
     ax.scatter(
-        [everyone_k], [everyone_net], color=COLOR_RULE, s=70, zorder=3, marker="s", edgecolor="white", linewidth=1,
+        [everyone_k], [everyone_net], color=theme["rule"], s=70, zorder=3, marker="s",
+        edgecolor=theme["surface"], linewidth=1,
         label=f"Mail everyone: {everyone_k:,} mailed, {_fmt_money(everyone_net)}",
     )
-    ax.set_xlabel("Donors mailed, ranked most to least likely to respond", color=INK_SECONDARY, fontsize=9)
-    ax.set_ylabel("Net revenue", color=INK_SECONDARY, fontsize=9)
+    ax.set_xlabel("Donors mailed, ranked most to least likely to respond", color=theme["ink2"], fontsize=9)
+    ax.set_ylabel("Net revenue", color=theme["ink2"], fontsize=9)
     ax.xaxis.set_major_formatter(lambda v, _pos: f"{v:,.0f}")
     ax.yaxis.set_major_formatter(lambda v, _pos: _fmt_money(v))
     for spine in ("top", "right"):
         ax.spines[spine].set_visible(False)
-    ax.spines["left"].set_color(GRID)
-    ax.spines["bottom"].set_color(GRID)
-    ax.tick_params(colors=INK_SECONDARY)
-    ax.grid(axis="y", color=GRID, linewidth=0.6, zorder=0)
-    _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle, legend_ncol=2)
+    ax.spines["left"].set_color(theme["grid"])
+    ax.spines["bottom"].set_color(theme["grid"])
+    ax.tick_params(colors=theme["ink2"])
+    ax.grid(axis="y", color=theme["grid"], linewidth=0.6, zorder=0)
+    _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle, 2, theme)
 
 
 _SCOREBOARD_X = {"loses": 0.15, "modest": 0.5, "wins": 0.85}
 _SCOREBOARD_MARKERS = {"Sample data": "o", "KDD Cup 1998": "s", "cup98VAL": "^"}
 
 
-def _scoreboard_chart(path: Path, rows: List[tuple]) -> None:
+def _scoreboard_chart(path: Path, rows: List[tuple], theme: dict) -> None:
     """One row per question, one dot per dataset, placed left (loses to the
     simple rule), centre (about the same) or right (beats the rule); a
     dataset with no rule to compare against (planned giving) gets a hollow
@@ -329,8 +363,8 @@ def _scoreboard_chart(path: Path, rows: List[tuple]) -> None:
     row_in = 0.5
     fig_h = _HEADER_IN + row_in * n + 0.7
     fig, ax = plt.subplots(figsize=(_FIG_W, fig_h), dpi=150)
-    ax.set_facecolor("#fcfcfb")
-    fig.patch.set_facecolor("#fcfcfb")
+    ax.set_facecolor(theme["surface"])
+    fig.patch.set_facecolor(theme["surface"])
     body_in = row_in * n + 0.7
     fig.subplots_adjust(top=body_in / fig_h, left=0.24, right=0.98, bottom=0.55 / fig_h)
 
@@ -345,34 +379,34 @@ def _scoreboard_chart(path: Path, rows: List[tuple]) -> None:
             marker = _SCOREBOARD_MARKERS.get(dataset, "o")
             if verdict is None:
                 ax.scatter(
-                    [0.5], [y + dy], marker="o", s=90, facecolor="none", edgecolor=COLOR_RANDOM,
+                    [0.5], [y + dy], marker="o", s=90, facecolor="none", edgecolor=theme["random"],
                     linewidth=1.4, zorder=3,
                 )
                 continue
             n_total += 1
             n_wins += verdict == "wins"
             ax.scatter(
-                [_SCOREBOARD_X[verdict]], [y + dy], marker=marker, s=90, color=COLOR_MODEL,
-                edgecolor="white", linewidth=1, zorder=3,
+                [_SCOREBOARD_X[verdict]], [y + dy], marker=marker, s=90, color=theme["model"],
+                edgecolor=theme["surface"], linewidth=1, zorder=3,
             )
     for xv in _SCOREBOARD_X.values():
-        ax.axvline(xv, color=GRID, linewidth=0.8, zorder=0)
+        ax.axvline(xv, color=theme["grid"], linewidth=0.8, zorder=0)
     ax.set_xlim(0, 1)
     ax.set_xticks(list(_SCOREBOARD_X.values()))
-    ax.set_xticklabels(["Worse than\nthe rule", "About the\nsame", "Beats\nthe rule"], fontsize=8.5, color=INK_SECONDARY)
+    ax.set_xticklabels(["Worse than\nthe rule", "About the\nsame", "Beats\nthe rule"], fontsize=8.5, color=theme["ink2"])
     ax.set_yticks(range(n))
     ax.set_yticklabels([label for label, _ in reversed(rows)])
     ax.set_ylim(-0.6, n - 0.4)
     for spine in ("top", "right", "left"):
         ax.spines[spine].set_visible(False)
-    ax.tick_params(colors=INK_SECONDARY, length=0)
+    ax.tick_params(colors=theme["ink2"], length=0)
 
     legend_handles = [
-        plt.Line2D([0], [0], marker=_SCOREBOARD_MARKERS.get(ds, "o"), color="w", markerfacecolor=COLOR_MODEL,
-                   markeredgecolor="white", markersize=9, label=ds)
+        plt.Line2D([0], [0], marker=_SCOREBOARD_MARKERS.get(ds, "o"), color="w", markerfacecolor=theme["model"],
+                   markeredgecolor=theme["surface"], markersize=9, label=ds)
         for ds in seen_datasets
     ] + [
-        plt.Line2D([0], [0], marker="o", color="w", markerfacecolor="none", markeredgecolor=COLOR_RANDOM,
+        plt.Line2D([0], [0], marker="o", color="w", markerfacecolor="none", markeredgecolor=theme["random"],
                    markersize=9, label="Not yet tested")
     ]
 
@@ -381,11 +415,11 @@ def _scoreboard_chart(path: Path, rows: List[tuple]) -> None:
     extra_in = _TITLE_LINE_IN * wrapped_title.count("\n")
     fig.legend(
         handles=legend_handles, loc="center", bbox_to_anchor=(0.5, 1 - (_LEGEND_Y_IN + extra_in) / fig_h),
-        ncol=len(legend_handles), frameon=False, labelcolor=INK_SECONDARY, fontsize=9,
+        ncol=len(legend_handles), frameon=False, labelcolor=theme["ink2"], fontsize=9,
     )
     fig.suptitle(
         wrapped_title, x=0.015, ha="left", y=1 - _TITLE_Y_IN / fig_h, fontsize=12, fontweight="bold",
-        color=INK_PRIMARY, linespacing=1.3,
+        color=theme["ink1"], linespacing=1.3,
     )
     fig.savefig(path)
     plt.close(fig)
@@ -559,7 +593,8 @@ def main() -> None:
     }
     results["response_synthetic"]["verdict"] = resp_row_by_p[10].verdict
     r10 = results["response_synthetic"]["top10pct"]
-    _hbar_chart(
+    _render_themed(
+        _hbar_chart,
         OUT_DIR / "response.png",
         ["Top 1%", "Top 5%", "Top 10%"],
         {
@@ -567,7 +602,7 @@ def main() -> None:
             "Best simple rule": [results["response_synthetic"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
             "Random pick": [results["response_synthetic"][f"top{p}pct"]["random"] for p in (1, 5, 10)],
         },
-        {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE, "Random pick": COLOR_RANDOM},
+        {"Model": "model", "Best simple rule": "rule", "Random pick": "random"},
         title=_takeaway(r10["model"], r10["rule"], "The model", "ranking by past giving"),
         subtitle="Sample donor panel, 5 random draws averaged. Who gave again next year, out of every 100 picked.",
         errors={
@@ -615,7 +650,8 @@ def main() -> None:
     }
     results["upgrade_synthetic"]["verdict"] = upg_row_by_p[10].verdict
     u10 = results["upgrade_synthetic"]["top10pct"]
-    _hbar_chart(
+    _render_themed(
+        _hbar_chart,
         OUT_DIR / "upgrade_topn.png",
         ["Top 1%", "Top 5%", "Top 10%"],
         {
@@ -623,7 +659,7 @@ def main() -> None:
             "Best simple rule": [results["upgrade_synthetic"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
             "Random pick": [results["upgrade_synthetic"][f"top{p}pct"]["random"] for p in (1, 5, 10)],
         },
-        {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE, "Random pick": COLOR_RANDOM},
+        {"Model": "model", "Best simple rule": "rule", "Random pick": "random"},
         title=_takeaway(u10["model"], u10["rule"], "The model", "ranking by this year's giving"),
         subtitle="Sample donor panel, 5 random draws averaged. Who crossed $1,000 next year, out of every 100 picked.",
         errors={
@@ -647,11 +683,12 @@ def main() -> None:
     results["upgrade_deciles_avg"] = davg
     overall_rate = davg["overall_mean"]
     top_decile_rate = davg["mean"][0]
-    _hbar_chart(
+    _render_themed(
+        _hbar_chart,
         OUT_DIR / "upgrade_deciles.png",
         [f"D{d}" for d in davg["decile"]],
         {"Upgrade rate": davg["mean"]},
-        {"Upgrade rate": COLOR_MODEL},
+        {"Upgrade rate": "model"},
         title=f"The top decile (D1) upgrades at {top_decile_rate:.0f} of 100, against {overall_rate:.0f} of 100 overall",
         subtitle=f"{davg['n_seeds']} random draws averaged (D1 = the 10% the model liked most, D10 = the 10% it liked least). Dashed line: the overall rate.",
         value_fmt=lambda v: f"{v:.0f}",
@@ -675,14 +712,15 @@ def main() -> None:
         }
         results["response_kdd98"]["verdict"] = resp_kdd_row_by_p[10].verdict
         rk10 = results["response_kdd98"]["top10pct"]
-        _hbar_chart(
+        _render_themed(
+            _hbar_chart,
             OUT_DIR / "response_kdd98.png",
             ["Top 1%", "Top 5%", "Top 10%"],
             {
                 "Model": [results["response_kdd98"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
                 "Best simple rule": [results["response_kdd98"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
             },
-            {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE},
+            {"Model": "model", "Best simple rule": "rule"},
             title=_takeaway(rk10["model"], rk10["rule"], "The model", "the best of lifetime giving, RFM and RFA_2"),
             subtitle="KDD Cup 1998, held-out 30% of the file. Who gave again, out of every 100 picked.",
             errors={
@@ -702,14 +740,15 @@ def main() -> None:
         }
         results["upgrade_kdd98"]["verdict"] = upg_kdd_row_by_p[10].verdict
         uk10 = results["upgrade_kdd98"]["top10pct"]
-        _hbar_chart(
+        _render_themed(
+            _hbar_chart,
             OUT_DIR / "upgrade_kdd98.png",
             ["Top 1%", "Top 5%", "Top 10%"],
             {
                 "Model": [results["upgrade_kdd98"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
                 "Best simple rule": [results["upgrade_kdd98"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
             },
-            {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE},
+            {"Model": "model", "Best simple rule": "rule"},
             title=_takeaway(uk10["model"], uk10["rule"], "The model", "the largest single gift in the band"),
             subtitle="KDD Cup 1998, threshold rescaled to $50 (this file's gifts are far smaller than a major-gift program's). Crossed $50 next year, out of every 100 picked.",
             errors={
@@ -726,14 +765,15 @@ def main() -> None:
             "verdict": lapse_top[10].verdict,
             **{f"top{p}pct": {"model": r.value * 100, "rule": r.baseline * 100} for p, r in lapse_top.items()},
         }
-        _neartie_dot_chart(
+        _render_themed(
+            _neartie_dot_chart,
             OUT_DIR / "lapse_kdd98.png",
             ["Top 1%", "Top 5%", "Top 10%"],
             {
                 "Model": [results["lapse_kdd98"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
                 "Best simple rule": [results["lapse_kdd98"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
             },
-            {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE},
+            {"Model": "model", "Best simple rule": "rule"},
             base_rate=base_rate_lapse_kdd,
             title="Almost everyone lapses here, so no list beats picking at random by much",
             subtitle="KDD Cup 1998. Lapsed next period, out of every 100 picked.",
@@ -756,14 +796,15 @@ def main() -> None:
             rt_title = f"The model's least-likely-to-lapse 10% retains better: {rt10['model']:.0f} of 100 vs {rt10['rule']:.0f} of 100"
         else:
             rt_title = f"Years since last gift still finds a better group: {rt10['rule']:.0f} of 100 vs {rt10['model']:.0f} of 100"
-        _hbar_chart(
+        _render_themed(
+            _hbar_chart,
             OUT_DIR / "lapse_kdd98_retention.png",
             ["Top 1%", "Top 5%", "Top 10%"],
             {
                 "Model": [results["lapse_kdd98_retention"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
                 "Best simple rule": [results["lapse_kdd98_retention"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
             },
-            {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE},
+            {"Model": "model", "Best simple rule": "rule"},
             title=rt_title,
             subtitle="KDD Cup 1998, the 10% least likely to lapse by model score. Gave again, out of every 100 in that group.",
             base_rate=retention_base_rate,
@@ -780,14 +821,15 @@ def main() -> None:
             "within25pct_last_gift": ask_row.baseline * 100,
             "verdict": ask_row.verdict,
         }
-        _hbar_chart(
+        _render_themed(
+            _hbar_chart,
             OUT_DIR / "ask_kdd98.png",
             ["Suggested ask"],
             {
                 "Model": [results["ask_kdd98"]["within25pct_model"]],
                 "Best simple rule": [results["ask_kdd98"]["within25pct_last_gift"]],
             },
-            {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE},
+            {"Model": "model", "Best simple rule": "rule"},
             title=_takeaway(
                 results["ask_kdd98"]["within25pct_model"], results["ask_kdd98"]["within25pct_last_gift"],
                 "The model", "the higher of last gift and average gift",
@@ -806,7 +848,8 @@ def main() -> None:
         results["who_to_mail_kdd98"]["curve"] = curve
         gain = curve["stop_net_revenue"] - curve["everyone_net_revenue"]
         skip = curve["n_total"] - curve["stop_k"]
-        _profit_curve_chart(
+        _render_themed(
+            _profit_curve_chart,
             OUT_DIR / "who_to_mail.png",
             curve["mailed"], curve["net_revenue"],
             curve["stop_k"], curve["stop_net_revenue"],
@@ -829,7 +872,8 @@ def main() -> None:
             results["who_to_mail_cup98val"]["curve"] = curve_val
             gain_val = curve_val["stop_net_revenue"] - curve_val["everyone_net_revenue"]
             skip_val = curve_val["n_total"] - curve_val["stop_k"]
-            _profit_curve_chart(
+            _render_themed(
+                _profit_curve_chart,
                 OUT_DIR / "who_to_mail_cup98val.png",
                 curve_val["mailed"], curve_val["net_revenue"],
                 curve_val["stop_k"], curve_val["stop_net_revenue"],
@@ -850,14 +894,15 @@ def main() -> None:
             }
             results["response_cup98val"]["verdict"] = val_row_by_p[10].verdict
             rv10 = results["response_cup98val"]["top10pct"]
-            _hbar_chart(
+            _render_themed(
+                _hbar_chart,
                 OUT_DIR / "response_cup98val.png",
                 ["Top 1%", "Top 5%", "Top 10%"],
                 {
                     "Model": [results["response_cup98val"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
                     "Best simple rule": [results["response_cup98val"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
                 },
-                {"Model": COLOR_MODEL, "Best simple rule": COLOR_RULE},
+                {"Model": "model", "Best simple rule": "rule"},
                 title=_takeaway(rv10["model"], rv10["rule"], "The model", "the best simple rule"),
                 subtitle="cup98VAL, 96,367 donors never touched during fitting. Who gave again, out of every 100 picked.",
                 errors={
@@ -884,7 +929,7 @@ def main() -> None:
         ("Who to mail", _dots(("KDD Cup 1998", "who_to_mail_kdd98"), ("cup98VAL", "who_to_mail_cup98val"))),
         ("Planned giving", [("Sample data", None)]),
     ]
-    _scoreboard_chart(OUT_DIR / "scoreboard.png", scoreboard_rows)
+    _render_themed(_scoreboard_chart, OUT_DIR / "scoreboard.png", scoreboard_rows)
 
     results["_env"] = {
         "git_sha": _git_sha(),

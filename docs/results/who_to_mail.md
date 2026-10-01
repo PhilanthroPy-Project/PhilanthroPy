@@ -8,7 +8,8 @@ Featured on a real donor file: [KDD Cup 1998](https://kdd.ics.uci.edu/databases/
 We pretended it was 1 June 1997 and asked: for each donor, is a $0.68 mailing
 worth sending, or should we skip it?
 
-![Net revenue against how many donors are mailed, most to least likely to respond, KDD Cup 1998](../assets/results/who_to_mail.png)
+![Net revenue against how many donors are mailed, most to least likely to respond, KDD Cup 1998](../assets/results/who_to_mail.png#only-light)
+![Net revenue against how many donors are mailed, most to least likely to respond, KDD Cup 1998](../assets/results/who_to_mail-dark.png#only-dark)
 
 The chart ranks the 28,624 donors held out for this test from most to least
 likely to respond, and tracks net revenue as you mail further down that list.
@@ -34,7 +35,8 @@ worth it brought in $13,764 after costs, against $10,560 for mailing
 everyone. Same shape as the chart above, on a file the model has never
 seen in any capacity.
 
-![Net revenue against how many donors are mailed, most to least likely to respond, cup98VAL](../assets/results/who_to_mail_cup98val.png)
+![Net revenue against how many donors are mailed, most to least likely to respond, cup98VAL](../assets/results/who_to_mail_cup98val.png#only-light)
+![Net revenue against how many donors are mailed, most to least likely to respond, cup98VAL](../assets/results/who_to_mail_cup98val-dark.png#only-dark)
 
 ## Which data
 

@@ -60,6 +60,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `ValueError`, matching the existing negative-amount check.
 
 ### Added
+- `philanthropy.datasets.load_psid_philanthropy`: reads a user-downloaded
+  PSID (Panel Study of Income Dynamics) individual-level cross-year extract
+  into a long household giving/volunteering table (`household_key`, `year`,
+  `total_giving`, per-category giving, family income, wealth, and two
+  separate volunteering-hours measures: annual, asked in 2001, and typical
+  week, asked 2017 onward; these are never combined into one series).
+  Never downloads or redistributes PSID data; the file stays on the user's
+  own machine, fetched under their own PSID Data Center registration.
 - `philanthropy.metrics.demographic_parity_difference`: `max(selection_rate)
   - min(selection_rate)` across protected groups, alongside the existing
   `disparate_impact_ratio`. The ratio is noisy when rates are small (0.01

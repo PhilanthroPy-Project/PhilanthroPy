@@ -42,3 +42,12 @@ Compare `score`'s ranking against `y_bequest_test` using whatever top-N hit
 rate matters to your program, the same way the other Results pages do. If
 you're willing to share an anonymized version of that comparison, it would
 let this page report a real number instead of "untested."
+
+## What the model looks at
+
+The drivers below come from the same giving-response stand-in label used
+above, not real bequest intent; read them as "what the estimator weighs when
+fit on this kind of label," not as a finding about who actually leaves a
+bequest.
+
+--8<-- "results/_features/planned_giving__planned_giving_synthetic.md"

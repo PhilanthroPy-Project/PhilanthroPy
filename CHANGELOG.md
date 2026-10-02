@@ -49,6 +49,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `ValueError`, matching the existing negative-amount check.
 
 ### Added
+- `philanthropy.datasets.load_donorschoose`: reads a user-downloaded
+  DonorsChoose Open Data export (ICPSR 37898) into the gift-table shape
+  `build_upgrade_snapshots` and `RFMTransformer` expect (`donor_id`,
+  `gift_date`, `gift_amount`). It never downloads or redistributes the
+  dataset; the file stays on the user's own machine, fetched under their own
+  ICPSR account.
 - `philanthropy.metrics.demographic_parity_difference`: `max(selection_rate)
   - min(selection_rate)` across protected groups, alongside the existing
   `disparate_impact_ratio`. The ratio is noisy when rates are small (0.01

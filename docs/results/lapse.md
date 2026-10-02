@@ -42,3 +42,7 @@ where lapsing is close to universal. On our sample (synthetic) donor panel,
 where lapsing is a genuine minority outcome, the simple rule "years since the
 donor's last gift" beats the model at every pick size we checked; use that
 rule instead there. Results on your own file will differ from both.
+
+## What the model looks at
+
+--8<-- "results/_features/lapse__lapse_kdd98.md"

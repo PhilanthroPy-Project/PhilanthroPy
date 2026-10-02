@@ -96,6 +96,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   - min(selection_rate)` across protected groups, alongside the existing
   `disparate_impact_ratio`. The ratio is noisy when rates are small (0.01
   vs 0.02 gives a ratio of 0.5 but a difference of 0.01); report both.
+- Every Results page now has a second tab group, "What the model looks at",
+  one tab per dataset: a plain-language table of the feature groups the
+  model is given, its top 5 drivers with direction (raises/lowers/depends
+  the score), and, where a feature-set comparison exists, what adding more
+  signal did to the top-N hit rate. `scripts/make_results_pages.py` computes
+  driver size with `philanthropy.inspection.donor_feature_importance`
+  (permutation importance) and direction from
+  `sklearn.inspection.partial_dependence`, and writes one snippet per
+  (model, dataset) under `docs/results/_features/`, included into each page
+  with `pymdownx.snippets`. Raw column names, importance intervals and
+  method details stay in a collapsed "For analysts" note.
 
 ### Changed
 - `scripts/benchmark_models_vs_baselines.py` now checks `GiftIntervalCalibrator`

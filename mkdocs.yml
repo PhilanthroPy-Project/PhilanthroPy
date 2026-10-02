@@ -83,7 +83,8 @@ markdown_extensions:
       line_spans: __span
       pygments_lang_class: true
   - pymdownx.inlinehilite
-  - pymdownx.snippets
+  - pymdownx.snippets:
+      base_path: ["docs"]
   - pymdownx.magiclink
   - pymdownx.tabbed:
       alternate_style: true

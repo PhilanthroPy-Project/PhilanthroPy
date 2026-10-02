@@ -23,3 +23,9 @@ simple rule (about 23 in 100 within 25%, versus about 24 in 100 for the best
 of last gift, max(last gift, average gift), and the median training gift);
 use the simple rule on both kinds of data. Results on your own data will
 differ from both.
+
+## What the model looks at
+
+--8<-- "results/_features/ask__ask_kdd98.md"
+
+--8<-- "results/_features/ask__ask_synthetic.md"

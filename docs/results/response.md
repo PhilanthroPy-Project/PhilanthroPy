@@ -50,3 +50,11 @@ sample data.** Which one you should expect on your own file depends on your data
     the rule.
 
 Results on your own file will differ from both of these.
+
+## What the model looks at
+
+--8<-- "results/_features/response__response_kdd98.md"
+
+--8<-- "results/_features/response__response_cup98val.md"
+
+--8<-- "results/_features/response__response_synthetic.md"

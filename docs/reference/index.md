@@ -69,6 +69,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `load_donorschoose` | `datasets` | Reads the ICPSR 37898 DS0001 variable names (`DONOR_ID`, `AMOUNT`, `CREATED_MONTH`, ...); may grow a configurable column mapping if a later ICPSR version renames them. |
 | `load_psid_philanthropy` | `datasets` | Reads a fixed list of PSID ER/S variables for 2001-2023; an extract that omits some of them skips those waves (or raises KeyError for a partially selected wave). |
 | `GiftIntervalCalibrator`, `GiftInterval` | `models` | The conformity-score menu is expected to grow (conformalised quantile regression is not shipped), which adds `score` values rather than changing existing ones. |
+| `trailing_slope_features` | `utils` | New, off-by-default helper; the bin width, window set and NaN threshold are a starting recipe and may be refined. |
 
 ### Tier 3: Experimental
 

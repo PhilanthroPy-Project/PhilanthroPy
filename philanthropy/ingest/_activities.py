@@ -34,6 +34,7 @@ from typing import Iterable, Mapping, Optional, Union
 import pandas as pd
 
 from philanthropy.ingest._civicrm import _resolve_reference_date, _to_datetime
+from philanthropy.utils._momentum import trailing_slope_features
 
 __all__ = ["activities_to_features"]
 
@@ -45,6 +46,7 @@ def activities_to_features(
     *,
     as_of: Union[str, pd.Timestamp],
     donors: Optional[Union[pd.DataFrame, pd.Series, Iterable]] = None,
+    include_momentum: bool = False,
 ) -> pd.DataFrame:
     """Aggregate a long activity log into per-donor, per-type features.
 
@@ -69,6 +71,15 @@ def activities_to_features(
         (cutoff) activity log that are also in ``donors``. Does not affect
         which rows appear in the output; a donor absent from the activity log
         entirely does not get a row here regardless of ``donors``.
+    include_momentum : bool, default=False
+        Also emit, per activity type, ``<type>_count_slope_{k}y`` and
+        ``<type>_count_rel_slope_{k}y`` for k in (3, 5) (plus the ``_hours_``
+        / ``_amount_`` equivalents when those columns are present): the
+        closed-form OLS slope, and slope relative to the window mean, of
+        that type's annual activity over the trailing k years before
+        ``as_of``. NaN when fewer than 2 of those years have any row in
+        ``activities`` at all. Off by default so existing output shapes are
+        unchanged; see :func:`philanthropy.utils._momentum.trailing_slope_features`.
 
     Returns
     -------
@@ -180,6 +191,7 @@ def activities_to_features(
 
     donor_ids = pd.Index(sorted(df["_contact_id"].unique()), name="contact_id")
     out = pd.DataFrame(index=donor_ids)
+    data_start = df["_ts"].min()
 
     for activity_type in sorted(df["_type"].unique()):
         type_rows = df[df["_type"] == activity_type]
@@ -206,6 +218,19 @@ def activities_to_features(
         if has_amount:
             amount_12m = type_rows[type_rows["_ts"] > window_12m].groupby("_contact_id")["_amount"].sum()
             out[prefix + "amount_12m"] = amount_12m.reindex(donor_ids, fill_value=0.0)
+
+        if include_momentum:
+            momentum_cols = [("_ts", "count", prefix + "count")]
+            if has_hours:
+                momentum_cols.append(("_hours", "sum", prefix + "hours"))
+            if has_amount:
+                momentum_cols.append(("_amount", "sum", prefix + "amount"))
+            for value_col, agg, col_prefix in momentum_cols:
+                momentum = trailing_slope_features(
+                    type_rows, donor_ids, as_of_ts, date_col="_ts", value_col=value_col,
+                    agg=agg, prefix=col_prefix, donor_col="_contact_id", data_start=data_start,
+                )
+                out = out.join(momentum, how="left")
 
     for col in out.columns:
         if col.endswith(("_count_12m", "_count_36m", "_distinct")):

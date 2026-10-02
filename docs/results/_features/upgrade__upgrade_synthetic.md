@@ -8,7 +8,8 @@
     | Recency | how recently they gave |
     | Year-over-year change | whether this year's giving is up or down from last year |
 
-    This file has no engagement, wealth & demographics, and mailing history records, so they are not used here.
+    This file has no engagement and mailing history records, so they are not used here.
+    Wealth & demographics is in this file, but this model is not given it here.
 
     These matter most:
 

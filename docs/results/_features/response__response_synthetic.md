@@ -7,7 +7,8 @@
     | Giving history | how much and how often they have given in total |
     | Recency | how recently they gave |
 
-    This file has no engagement, wealth & demographics, and mailing history records, so they are not used here.
+    This file has no engagement and mailing history records, so they are not used here.
+    Wealth & demographics is in this file, but this model is not given it here.
 
     These matter most:
 

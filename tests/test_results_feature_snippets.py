@@ -151,6 +151,36 @@ def test_available_but_unused_group_is_not_called_truly_absent(mrp, tmp_path):
     assert "momentum" not in text.lower()
 
 
+def test_synthetic_wealth_is_available_but_unused_not_absent(mrp, tmp_path):
+    """make_donor_panel's donors frame carries wealth_estimate; no synthetic
+    benchmark feeds it to a model, but the file does have it, so it must
+    land in the "available but unused" sentence, not "this file has no
+    wealth" (bug: DATASET_GROUPS_AVAILABLE['synthetic'] used to omit wealth
+    entirely, as if make_donor_panel never generated it)."""
+    drivers = [
+        {"column": "total", "label": "lifetime giving", "group": "giving_history", "importance": 0.10, "lo": None, "hi": None, "direction": "+"},
+        {"column": "recent", "label": "this year's gift", "group": "recency", "importance": 0.05, "lo": None, "hi": None, "direction": "+"},
+    ]
+    entry = mrp._features_entry(("total", "recent"), drivers, scoring="roc_auc", split="train/test")
+    results = {
+        "demo_synthetic": {
+            "top1pct": {"model": 40.0, "rule": 20.0}, "top5pct": {"model": 35.0, "rule": 22.0},
+            "top10pct": {"model": 30.0, "rule": 18.0}, "features": entry,
+        }
+    }
+    mrp.MODEL_DATASET_TABS = {"demo": [("Sample data", "demo_synthetic")]}
+    mrp.render_feature_snippets(results, tmp_path)
+    text = (tmp_path / "demo__demo_synthetic.md").read_text()
+    assert "this file has no wealth" not in text.lower()
+    assert "wealth & demographics is in this file, but this model is not given it here" in text.lower()
+    # generate_synthetic_donor_data's event_attendance_count isn't in the
+    # data source any synthetic benchmark actually uses (make_donor_panel),
+    # and no synthetic benchmark's gifts carry a true solicitation/response
+    # mailing history (only which appeal an actual gift came from), so both
+    # really are absent here.
+    assert "this file has no engagement and mailing history" in text.lower()
+
+
 def test_momentum_group_is_relabeled_year_over_year_change(mrp, tmp_path):
     """fy_trend/streak/consecutive_years_given are a one-year diff and a
     years-given count, not the trailing-slope 'momentum' features from

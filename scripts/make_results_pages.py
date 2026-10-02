@@ -608,7 +608,17 @@ GROUP_MEANINGS = {
 # "lacks" the way wealth or mailing history is, it's a computed column, so it
 # is excluded from that sentence entirely rather than asserted either way.
 DATASET_GROUPS_AVAILABLE = {
-    "synthetic": frozenset({"giving_history", "recency"}),
+    # Every synthetic driver function below fits on make_donor_panel's
+    # output (via _period_panel), never generate_synthetic_donor_data's, so
+    # "engagement" (that other generator's event_attendance_count) really is
+    # absent here. make_donor_panel's donors frame does carry
+    # wealth_estimate, unused by every synthetic benchmark, so "wealth" is
+    # available-but-unused, not absent. Its gifts frame's "appeal" records
+    # which campaign an actual gift came from, not a solicitation/response
+    # history across mailed and non-responding donors, so it isn't "mailing
+    # history" in the sense KDD98's TIMELAG/promotion-history columns are;
+    # mailing stays absent for synthetic data.
+    "synthetic": frozenset({"giving_history", "recency", "wealth"}),
     "kdd98": frozenset({"giving_history", "recency", "wealth", "mailing"}),
     "cup98val": frozenset({"giving_history", "recency", "wealth", "mailing"}),
 }

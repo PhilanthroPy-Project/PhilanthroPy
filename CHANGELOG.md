@@ -68,6 +68,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   week, asked 2017 onward; these are never combined into one series).
   Never downloads or redistributes PSID data; the file stays on the user's
   own machine, fetched under their own PSID Data Center registration.
+- `philanthropy.datasets.load_donorschoose`: reads a user-downloaded
+  DonorsChoose Open Data Donations file (ICPSR 37898, DS0001) into a gift
+  table (`donor_id`, `gift_date`, `gift_amount`, plus `donor_type` and three
+  payment-source flags). `gift_date` is month-resolution only, matching the
+  source's `CREATED_MONTH` field. It never downloads or redistributes the
+  dataset; the file stays on the user's own machine, fetched under their own
+  ICPSR account.
 - `philanthropy.metrics.demographic_parity_difference`: `max(selection_rate)
   - min(selection_rate)` across protected groups, alongside the existing
   `disparate_impact_ratio`. The ratio is noisy when rates are small (0.01

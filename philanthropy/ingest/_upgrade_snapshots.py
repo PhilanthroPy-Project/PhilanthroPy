@@ -30,6 +30,8 @@ import pandas as pd
 from philanthropy.preprocessing import FiscalYearTransformer
 from philanthropy.utils._validation import validate_fiscal_year_start
 
+from philanthropy.utils._momentum import trailing_slope_features
+
 from ._activities import activities_to_features
 
 __all__ = ["build_upgrade_snapshots"]
@@ -46,6 +48,7 @@ def build_upgrade_snapshots(
     fiscal_year_start: int = 7,
     activities: Optional[Union[Iterable[Mapping], pd.DataFrame]] = None,
     donors: Optional[pd.DataFrame] = None,
+    include_momentum: bool = False,
 ) -> pd.DataFrame:
     """Build upgrade-candidate snapshots, one row per (donor, fiscal year).
 
@@ -95,6 +98,16 @@ def build_upgrade_snapshots(
         ``activities`` is given. The caller is responsible for not including
         a column that already encodes the answer (e.g. a precomputed giving
         tier); this function does not attempt to detect that.
+    include_momentum : bool, default=False
+        Also emit, for each of ``fy_total``, ``gift_count`` and
+        ``largest_gift``, a trailing 3- and 5-year OLS slope and relative
+        slope (and, when ``activities`` is given, the same for each activity
+        type's count/hours/amount), plus ``fy_total_growth_ratio``. Off by
+        default so existing callers, including the shipped
+        :func:`~philanthropy.models.score_upgrade_prospects` model, see an
+        unchanged feature set; opt in explicitly once you want the model
+        trained on momentum too. See
+        :func:`philanthropy.utils._momentum.trailing_slope_features`.
 
     Returns
     -------
@@ -103,12 +116,20 @@ def build_upgrade_snapshots(
         by ``fiscal_year`` then ``donor_id``. Columns: ``fiscal_year`` (the
         snapshot year T, not T+1); ``fy_total``, ``fy_total_prior1``,
         ``fy_total_prior2`` (summed gift amount in FY T, T-1, T-2); ``fy_trend``
-        (``fy_total - fy_total_prior1``); ``largest_gift`` and ``gift_count``
-        (within FY T); ``consecutive_years_given`` (count of unbroken prior
-        fiscal years, ending at and including T, with positive giving);
-        ``months_since_last_gift`` (from the donor's most recent gift on or
-        before the end of FY T); any ``activities_to_features`` columns;
-        any ``donors`` columns; and ``target``. A fiscal year with no
+        (``fy_total - fy_total_prior1``); ``fy_total_growth_ratio``
+        (``(fy_total + 1) / (fy_total_prior1 + 1)``); ``largest_gift`` and
+        ``gift_count`` (within FY T); ``consecutive_years_given`` (count of
+        unbroken prior fiscal years, ending at and including T, with positive
+        giving); ``months_since_last_gift`` (from the donor's most recent
+        gift on or before the end of FY T); for each of ``fy_total``,
+        ``gift_count`` and ``largest_gift``, a trailing 3- and 5-year OLS
+        slope and relative slope (``<base>_slope_3y``, ``<base>_rel_slope_3y``,
+        ``<base>_slope_5y``, ``<base>_rel_slope_5y``; NaN with fewer than 2
+        observed years in the window, see
+        :func:`philanthropy.utils._momentum.trailing_slope_features`); any
+        ``activities_to_features`` columns, including its own momentum
+        columns (always requested here); any ``donors`` columns; and
+        ``target``. A fiscal year with no
         qualifying donors contributes no rows. Returns an empty, columnless
         frame (index name ``donor_id``) if no year has any.
 
@@ -173,6 +194,7 @@ def build_upgrade_snapshots(
         snap = _snapshot_features_for_year(
             df, pivot_sum, pivot_max, pivot_count, donor_ids, fy_t,
             fiscal_year_start, activities, donors, donors_norm,
+            include_momentum=include_momentum,
         )
 
         next_totals = _column(pivot_sum, fy_t + 1).reindex(donor_ids, fill_value=0.0)
@@ -254,6 +276,7 @@ def _snapshot_features_for_year(
     donors: Optional[pd.DataFrame],
     donors_norm: Optional[pd.DataFrame],
     as_of: Optional[pd.Timestamp] = None,
+    include_momentum: bool = False,
 ) -> pd.DataFrame:
     """Gift-derived (and, if given, activity/donor) feature columns for one
     ``(donor_ids, fy_t)`` snapshot, everything ``build_upgrade_snapshots``
@@ -263,6 +286,10 @@ def _snapshot_features_for_year(
     ``activities_to_features`` window) to a date inside a still-open fiscal
     year, for scoring a "current", not-yet-resolved FY; it defaults to the
     end of ``fy_t`` (``build_upgrade_snapshots``'s own, always-resolved case).
+
+    ``include_momentum`` is off by default so the column set stays exactly
+    what every existing caller (including the shipped upgrade model) already
+    sees; see ``build_upgrade_snapshots``.
     """
     snap = pd.DataFrame(index=donor_ids)
     snap.index.name = "donor_id"
@@ -281,8 +308,22 @@ def _snapshot_features_for_year(
     last_gift = df[df["_fy"] <= fy_t].groupby("donor_id")["_date"].max().reindex(donor_ids)
     snap["months_since_last_gift"] = ((cutoff - last_gift).dt.days / 30.0).round(2)
 
+    if include_momentum:
+        snap["fy_total_growth_ratio"] = (snap["fy_total"] + 1.0) / (snap["fy_total_prior1"] + 1.0)
+        data_start = df["_date"].min() if len(df) else cutoff
+        for value_col, agg, prefix in (
+            ("_amount", "sum", "fy_total"), ("_amount", "count", "gift_count"), ("_amount", "max", "largest_gift"),
+        ):
+            momentum = trailing_slope_features(
+                df, donor_ids, cutoff, date_col="_date", value_col=value_col, agg=agg,
+                prefix=prefix, donor_col="donor_id", data_start=data_start,
+            )
+            snap = snap.join(momentum, how="left")
+
     if activities is not None:
-        act_feats = activities_to_features(activities, as_of=cutoff, donors=donors)
+        act_feats = activities_to_features(
+            activities, as_of=cutoff, donors=donors, include_momentum=include_momentum,
+        )
         snap = snap.join(act_feats, how="left")
 
     if donors_norm is not None:

@@ -1,0 +1,135 @@
+"""Tests for the "What the model looks at" snippet renderer in
+scripts/make_results_pages.py (E.11i's pasted spec).
+
+These do not re-fit any model (that part moves with the BLAS/sklearn build,
+the same reason tests/test_benchmark_models.py uses a tolerance band rather
+than an exact match): they lock the *rendering* step, which is a pure
+function of a ``results[...]["features"]`` dict, so a template change that
+breaks the reader-facing rules (plain language above the fold, raw column
+names only inside the collapsed analyst note, every tab ending with the same
+disclaimer) is caught without depending on a fitted model's exact numbers.
+"""
+
+import importlib.util
+import sys
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SCRIPT = REPO_ROOT / "scripts" / "make_results_pages.py"
+
+
+@pytest.fixture(scope="module")
+def mrp():
+    spec = importlib.util.spec_from_file_location("make_results_pages", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _fake_entry(mrp, with_ablation: bool):
+    extra_sets = None
+    if with_ablation:
+        extra_sets = [
+            {
+                "id": "full", "label": mrp.FEATURE_SET_LABELS["full"], "columns": ["total", "n", "recent", "streak"],
+                "chosen": False, "top1pct": {"value": 30.0, "lo": 28.0, "hi": 32.0},
+                "top5pct": {"value": 46.0, "lo": 44.0, "hi": 48.0}, "top10pct": {"value": 46.0, "lo": 44.0, "hi": 48.0},
+            }
+        ]
+    drivers = [
+        {"column": "total", "label": "lifetime giving", "group": "giving_history", "importance": 0.10, "lo": 0.08, "hi": 0.12, "direction": "+"},
+        {"column": "years_since_last", "label": "years since last gift", "group": "recency", "importance": 0.05, "lo": None, "hi": None, "direction": "-"},
+        {"column": "streak", "label": "giving streak", "group": "momentum", "importance": 0.02, "lo": None, "hi": None, "direction": "mixed"},
+    ]
+    return mrp._features_entry(
+        ("total", "years_since_last", "streak"), drivers, scoring="roc_auc", split="walk-forward",
+        extra_sets=extra_sets,
+    )
+
+
+def test_snippet_has_plain_language_sections_and_disclaimer(mrp, tmp_path):
+    results = {
+        "demo_synthetic": {
+            "top1pct": {"model": 40.0, "rule": 20.0}, "top5pct": {"model": 35.0, "rule": 22.0},
+            "top10pct": {"model": 30.0, "rule": 18.0},
+            "features": _fake_entry(mrp, with_ablation=False),
+        }
+    }
+    mrp.MODEL_DATASET_TABS = {"demo": [("Sample data", "demo_synthetic")]}
+    mrp.render_feature_snippets(results, tmp_path)
+
+    text = (tmp_path / "demo__demo_synthetic.md").read_text()
+    assert text.startswith('=== "Sample data"')
+    assert "On this file the model looks at 3 things about each donor" in text
+    assert "lifetime giving" in text and "▲ raises the score" in text
+    assert "years since last gift" in text and "▼ lowers the score" in text
+    assert "giving streak" in text and "● depends" in text
+    assert text.rstrip().endswith("Results on your own file will differ.")
+    # No raw column name outside the collapsed analyst note.
+    before_note = text.split('??? note')[0]
+    assert "`total`" not in before_note and "`years_since_last`" not in before_note
+    assert "`total`" in text  # it does appear inside the analyst note
+
+
+def test_absent_feature_groups_are_called_out(mrp, tmp_path):
+    results = {
+        "demo_synthetic": {
+            "top1pct": {"model": 40.0, "rule": 20.0}, "top5pct": {"model": 35.0, "rule": 22.0},
+            "top10pct": {"model": 30.0, "rule": 18.0},
+            "features": _fake_entry(mrp, with_ablation=False),
+        }
+    }
+    mrp.MODEL_DATASET_TABS = {"demo": [("Sample data", "demo_synthetic")]}
+    mrp.render_feature_snippets(results, tmp_path)
+    text = (tmp_path / "demo__demo_synthetic.md").read_text()
+    assert "not used here" in text
+    assert "engagement" in text.lower()
+    assert "wealth" in text.lower()
+
+
+def test_ablation_table_only_appears_when_a_second_feature_set_exists(mrp, tmp_path):
+    no_ablation = {
+        "demo_synthetic": {
+            "top1pct": {"model": 40.0, "rule": 20.0}, "top5pct": {"model": 35.0, "rule": 22.0},
+            "top10pct": {"model": 30.0, "rule": 18.0},
+            "features": _fake_entry(mrp, with_ablation=False),
+        }
+    }
+    with_ablation = {
+        "demo_synthetic": {
+            "top1pct": {"model": 40.0, "rule": 20.0}, "top5pct": {"model": 35.0, "rule": 22.0},
+            "top10pct": {"model": 30.0, "rule": 18.0},
+            "features": _fake_entry(mrp, with_ablation=True),
+        }
+    }
+    mrp.MODEL_DATASET_TABS = {"demo": [("Sample data", "demo_synthetic")]}
+
+    mrp.render_feature_snippets(no_ablation, tmp_path)
+    assert "What adding information did" not in (tmp_path / "demo__demo_synthetic.md").read_text()
+
+    mrp.render_feature_snippets(with_ablation, tmp_path)
+    text = (tmp_path / "demo__demo_synthetic.md").read_text()
+    assert "What adding information did" in text
+    assert "the best simple rule (for comparison)" in text
+
+
+def test_missing_dataset_key_is_skipped_not_errored(mrp, tmp_path):
+    mrp.MODEL_DATASET_TABS = {"demo": [("Sample data", "demo_synthetic"), ("KDD Cup 1998", "demo_kdd98")]}
+    mrp.render_feature_snippets({}, tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_feature_info_covers_every_declared_feature_set(mrp):
+    """A column used by a real driver function but missing from FEATURE_INFO
+    raises a KeyError at generation time (not silently mislabeled); this
+    locks that every column this module actually feeds a model has a plain
+    label and a group before it ships."""
+    declared = set(mrp.UPGRADE_FEATURE_COLS) | set(mrp.KDD_FEATURE_COLS) | {
+        "total", "n", "recent", "streak", "years_since_last", "prev_recent", "max_gift", "tenure",
+        "recency", "frequency", "monetary",
+    }
+    missing = declared - set(mrp.FEATURE_INFO)
+    assert not missing, f"FEATURE_INFO is missing plain labels for: {sorted(missing)}"

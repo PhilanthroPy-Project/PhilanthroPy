@@ -25,12 +25,13 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 import subprocess
 import sys
 import textwrap
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Sequence
 
 import matplotlib
 
@@ -39,12 +40,14 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas  # noqa: E402
 import sklearn  # noqa: E402
+from sklearn.inspection import partial_dependence  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 import benchmark_models_vs_baselines as bm  # noqa: E402
 
 from philanthropy.datasets import make_donor_panel  # noqa: E402
+from philanthropy.inspection import donor_feature_importance  # noqa: E402
 from philanthropy.models import PlannedGivingIntentScorer, score_upgrade_prospects  # noqa: E402
 
 
@@ -567,6 +570,559 @@ def upgrade_decile_average(seeds) -> Dict[str, Any]:
     }
 
 
+# --------------------------------------------------------------------------- #
+# "What the model looks at": plain-language feature groups, labels and
+# driver computation for the second tab group on every results page
+# (E.11i; the feature-level schema is new, everything else about the page
+# follows the same reader/writing/chart rules as the rest of this script).
+# --------------------------------------------------------------------------- #
+GROUP_ORDER = ("giving_history", "recency", "momentum", "engagement", "wealth", "mailing")
+GROUP_LABELS = {
+    "giving_history": "Giving history",
+    "recency": "Recency",
+    "momentum": "Momentum",
+    "engagement": "Engagement",
+    "wealth": "Wealth & demographics",
+    "mailing": "Mailing history",
+}
+GROUP_MEANINGS = {
+    "giving_history": "how much and how often they have given in total",
+    "recency": "how recently they gave",
+    "momentum": "whether their giving has been rising over the last few years",
+    "engagement": "events, volunteering and other non-gift contact",
+    "wealth": "wealth screening and demographic data",
+    "mailing": "how they have responded to past mailings",
+}
+
+# Column -> (plain label, group). Every feature any bench_* function in
+# scripts/benchmark_models_vs_baselines.py actually feeds a model, across
+# every dataset this script scores. A column missing here is a bug, not a
+# silent default: the renderer raises on an unmapped column.
+FEATURE_INFO = {
+    # synthetic as-of panel (_period_panel / PARITY_FEATURES)
+    "total": ("lifetime giving", "giving_history"),
+    "n": ("number of gifts", "giving_history"),
+    "recent": ("this year's gift", "recency"),
+    "streak": ("giving streak", "momentum"),
+    "years_since_last": ("years since last gift", "recency"),
+    "prev_recent": ("last year's gift", "recency"),
+    "max_gift": ("biggest single gift", "giving_history"),
+    "tenure": ("years as a donor", "giving_history"),
+    # synthetic upgrade snapshots (build_upgrade_snapshots)
+    "fiscal_year": ("which fiscal year", "giving_history"),
+    "fy_total": ("this year's giving", "recency"),
+    "fy_total_prior1": ("last year's giving", "recency"),
+    "fy_total_prior2": ("giving two years ago", "recency"),
+    "fy_trend": ("giving trend, this year vs last", "momentum"),
+    "largest_gift": ("largest gift this year", "giving_history"),
+    "gift_count": ("number of gifts this year", "giving_history"),
+    "consecutive_years_given": ("consecutive years given", "momentum"),
+    "months_since_last_gift": ("months since last gift", "recency"),
+    # KDD Cup 1998 (_kdd_feature_frame)
+    "AGE": ("donor's age", "wealth"),
+    "INCOME": ("household income bracket", "wealth"),
+    "WEALTH1": ("wealth rating (source 1)", "wealth"),
+    "WEALTH2": ("wealth rating (source 2)", "wealth"),
+    "NUMCHLD": ("number of children", "wealth"),
+    "HOMEOWNER": ("owns their home", "wealth"),
+    "RAMNTALL": ("lifetime giving", "giving_history"),
+    "NGIFTALL": ("lifetime number of gifts", "giving_history"),
+    "LASTGIFT": ("last gift amount", "recency"),
+    "AVGGIFT": ("average gift amount", "giving_history"),
+    "MAXRAMNT": ("largest gift ever", "giving_history"),
+    "MINRAMNT": ("smallest gift ever", "giving_history"),
+    "TIMELAG": ("days between past mailings and gifts", "mailing"),
+    "rfm_recency": ("months since last gift", "recency"),
+    "rfm_frequency": ("number of gifts", "giving_history"),
+    "rfm_monetary": ("lifetime giving", "giving_history"),
+    "rfm_tenure": ("years as a donor", "giving_history"),
+    # KDD Cup 1998 response model (_kdd_response_frame: unprefixed RFM)
+    "recency": ("months since last gift", "recency"),
+    "frequency": ("number of gifts", "giving_history"),
+    "monetary": ("lifetime giving", "giving_history"),
+}
+
+# _kdd_feature_frame's column set (AskAmountRecommender, cost-aware mailing):
+# _KDD_BASE_COLS plus the engineered HOMEOWNER flag and the rfm_-prefixed
+# recency/frequency/monetary/tenure columns.
+KDD_FEATURE_COLS = tuple(bm._KDD_BASE_COLS) + ("HOMEOWNER", "rfm_recency", "rfm_frequency", "rfm_monetary", "rfm_tenure")
+
+FEATURE_SET_LABELS = {
+    "current": "only what the model uses today",
+    "full": "plus giving streak, time since last gift, last year's gift, biggest gift and tenure",
+}
+
+_DIRECTION_WORD = {"+": "raises the score", "-": "lowers the score", "mixed": "depends"}
+_DIRECTION_SYMBOL = {"+": "▲", "-": "▼", "mixed": "●"}
+
+
+def _pd_direction(estimator, X, feature_idx: int) -> str:
+    """Overall trend of the partial-dependence curve for one feature: '+' if
+    the model's score rises as the feature rises, '-' if it falls, 'mixed' if
+    neither trend is consistent (E.11i item 6). Uses the curve's Spearman
+    rank correlation against the grid order rather than requiring every step
+    to point the same way: a calibrated/boosted estimator's curve almost
+    never is perfectly monotone even when the real trend is one-directional
+    (isotonic calibration and a coarse grid both add small local wiggles), so
+    a strict sign-of-every-diff check calls nearly everything "mixed"."""
+    try:
+        # grid_resolution=10 (not sklearn's default 100): only the overall
+        # trend is used, and a coarser grid is an order of magnitude cheaper
+        # on the gradient-boosted/calibrated estimators this runs against (a
+        # 5-seed x many-feature loop would otherwise be the single slowest
+        # part of this script).
+        result = partial_dependence(estimator, X, [feature_idx], kind="average", grid_resolution=10)
+    except Exception:
+        return "mixed"
+    avg = np.asarray(result["average"]).reshape(-1)
+    if len(avg) < 2:
+        return "mixed"
+    with warnings.catch_warnings():
+        # A perfectly flat curve (the model is fully saturated over this
+        # feature's observed range) makes scipy's constant-input warning
+        # fire; corr is NaN either way, already handled below.
+        warnings.simplefilter("ignore")
+        corr = pandas.Series(avg).corr(pandas.Series(np.arange(len(avg))), method="spearman")
+    if corr is None or np.isnan(corr):
+        return "mixed"
+    if corr >= 0.5:
+        return "+"
+    if corr <= -0.5:
+        return "-"
+    return "mixed"
+
+
+def _top_drivers(
+    make_model, seeds, build_fn, feature_cols: Sequence[str], scoring: str, top_k: int = 5,
+) -> List[Dict[str, Any]]:
+    """Fits ``make_model(seed)`` (an unfitted estimator or pipeline) on
+    ``build_fn(seed)`` (returning ``(Xtr, ytr, Xte, yte)``) for each seed, and
+    averages permutation importance and partial-dependence direction across
+    seeds (a 5-seed range, the same convention the rest of this script uses
+    for synthetic rows). A single-seed ``build_fn`` (one fit) still works;
+    the range then collapses to a single point (``lo``/``hi`` are ``None``)."""
+    importances: Dict[str, List[float]] = {f: [] for f in feature_cols}
+    directions: Dict[str, List[str]] = {f: [] for f in feature_cols}
+    for seed in seeds:
+        Xtr, ytr, Xte, yte = build_fn(seed)
+        model = make_model(seed).fit(Xtr, ytr)
+        fi = donor_feature_importance(
+            model, Xte, yte, feature_names=list(feature_cols), random_state=seed, scoring=scoring,
+        )
+        for _, row in fi.iterrows():
+            importances[row["feature"]].append(float(row["importance_mean"]))
+        for i, f in enumerate(feature_cols):
+            directions[f].append(_pd_direction(model, Xte, i))
+
+    drivers = []
+    for f in feature_cols:
+        vals = importances[f]
+        label, group = FEATURE_INFO[f]
+        # Majority vote across seeds, not unanimous agreement: one seed's
+        # curve landing just under the +/- correlation threshold should not
+        # by itself override four seeds that agree.
+        direction, _n_votes = Counter(directions[f]).most_common(1)[0]
+        drivers.append(
+            {
+                "column": f,
+                "label": label,
+                "group": group,
+                "importance": float(np.mean(vals)),
+                "lo": float(min(vals)) if len(vals) > 1 else None,
+                "hi": float(max(vals)) if len(vals) > 1 else None,
+                "direction": direction,
+            }
+        )
+    drivers.sort(key=lambda d: d["importance"], reverse=True)
+    return drivers[:top_k]
+
+
+def _features_entry(
+    feature_cols: Sequence[str], drivers: List[Dict[str, Any]], scoring: str, split: str,
+    extra_sets: List[Dict[str, Any]] | None = None,
+) -> Dict[str, Any]:
+    """Builds the ``"features"`` block the schema in E.11i's pasted spec
+    describes, with one ``"current"`` feature-set row (what the benchmarked
+    model actually saw) plus any additional ablation rows the caller
+    computed (e.g. the full-parity feature set). ``scoring`` and ``split``
+    are recorded for the page's collapsed analyst note, not shown above it."""
+    sets = [
+        {
+            "id": "current", "label": FEATURE_SET_LABELS["current"],
+            "columns": list(feature_cols), "chosen": True,
+        }
+    ] + (extra_sets or [])
+    return {
+        "sets": sets, "drivers": drivers, "scoring": scoring, "split": split,
+        "n_configs": 1, "git_sha": _git_sha(),
+    }
+
+
+def _reused_features(features: Dict[str, Any], note: str) -> Dict[str, Any]:
+    """Points a dataset tab at another tab's already-computed drivers (e.g.
+    cup98VAL reusing the KDD Cup 1998 tab's model and columns) instead of
+    re-fitting on a second large download for the same feature set."""
+    return {**features, "reused_from_note": note}
+
+
+def _topn_pct_block(rows, model_name: str) -> Dict[str, Dict[str, float]]:
+    out = {}
+    for p in (1, 5, 10):
+        row = _row(rows, model_name, f"top{p}pct_hit_rate")
+        out[f"top{p}pct"] = {"value": row.value * 100, "lo": _ci(row)[0] if _ci(row) else None, "hi": _ci(row)[1] if _ci(row) else None}
+    return out
+
+
+def response_drivers_synthetic(seeds, n_donors, n_years) -> Dict[str, Any]:
+    feature_cols = ("total", "n", "recent")
+
+    def build(seed):
+        train, test = bm._train_test_periods(bm._period_panel(n_donors, n_years, seed))
+        return (
+            train[list(feature_cols)].to_numpy(), train["y_response"].to_numpy(),
+            test[list(feature_cols)].to_numpy(), test["y_response"].to_numpy(),
+        )
+
+    drivers = _top_drivers(lambda seed: bm.MajorGiftClassifier(random_state=seed), seeds, build, feature_cols, scoring="roc_auc")
+    full_rows = bm.bench_response(seeds, n_donors, n_years, feature_cols=bm.PARITY_FEATURES)
+    full_set = {
+        "id": "full", "label": FEATURE_SET_LABELS["full"], "columns": list(bm.PARITY_FEATURES), "chosen": False,
+        **_topn_pct_block(full_rows, "MajorGiftClassifier"),
+    }
+    return _features_entry(feature_cols, drivers, scoring="roc_auc", split=bm.SYNTHETIC_SPLIT, extra_sets=[full_set])
+
+
+def lapse_drivers_synthetic(seeds, n_donors, n_years) -> Dict[str, Any]:
+    feature_cols = ("total", "n", "recent")
+
+    def build(seed):
+        train, test = bm._train_test_periods(bm._period_panel(n_donors, n_years, seed))
+        return (
+            train[list(feature_cols)].to_numpy(), 1 - train["y_response"].to_numpy(),
+            test[list(feature_cols)].to_numpy(), 1 - test["y_response"].to_numpy(),
+        )
+
+    drivers = _top_drivers(lambda seed: bm.LapsePredictor(random_state=seed), seeds, build, feature_cols, scoring="roc_auc")
+    full_rows = bm.bench_lapse(seeds, n_donors, n_years, feature_cols=bm.PARITY_FEATURES)
+    full_set = {
+        "id": "full", "label": FEATURE_SET_LABELS["full"], "columns": list(bm.PARITY_FEATURES), "chosen": False,
+        **_topn_pct_block(full_rows, "LapsePredictor"),
+    }
+    return _features_entry(feature_cols, drivers, scoring="roc_auc", split=bm.SYNTHETIC_SPLIT, extra_sets=[full_set])
+
+
+def ask_drivers_synthetic(seeds, n_donors, n_years) -> Dict[str, Any]:
+    feature_cols = ("total", "n", "recent")
+
+    def build(seed):
+        train, test = bm._train_test_periods(bm._period_panel(n_donors, n_years, seed))
+        train_resp, test_resp = train[train["y_response"] == 1], test[test["y_response"] == 1]
+        return (
+            train_resp[list(feature_cols)].to_numpy(), train_resp["y_amount"].to_numpy(),
+            test_resp[list(feature_cols)].to_numpy(), test_resp["y_amount"].to_numpy(),
+        )
+
+    drivers = _top_drivers(lambda seed: bm.AskAmountRecommender(random_state=seed), seeds, build, feature_cols, scoring="neg_mean_absolute_error")
+    return _features_entry(feature_cols, drivers, scoring="neg_mean_absolute_error", split=bm.SYNTHETIC_SPLIT)
+
+
+# build_upgrade_snapshots always returns this fixed numeric column set (no
+# activities/donors frame is passed in bench_upgrade, so no engagement or
+# wealth columns ever appear here; see _features_entry's "not used" note).
+UPGRADE_FEATURE_COLS = (
+    "fiscal_year", "fy_total", "fy_total_prior1", "fy_total_prior2", "fy_trend",
+    "largest_gift", "gift_count", "consecutive_years_given", "months_since_last_gift",
+)
+
+
+def upgrade_drivers_synthetic(seeds, n_donors, n_years, threshold=1000.0, band=(100.0, 999.0)) -> Dict[str, Any]:
+    feature_cols = UPGRADE_FEATURE_COLS
+
+    def build(seed):
+        panel = make_donor_panel(n_donors=n_donors, n_years=n_years, random_state=seed)
+        years = sorted(panel["gifts"]["fiscal_year"].unique())
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            snaps = bm.build_upgrade_snapshots(panel["gifts"], fiscal_years=years[:-1], threshold=threshold, band=band)
+        X = snaps[list(feature_cols)].to_numpy(dtype="float64")
+        y = snaps["target"].to_numpy()
+        fy = snaps["fiscal_year"].to_numpy()
+        splitter = bm.FiscalYearGroupedSplitter(n_splits=1, drop_repeat_donors=False)
+        train_idx, test_idx = list(splitter.split(X, groups=fy))[-1]
+        return X[train_idx], y[train_idx], X[test_idx], y[test_idx]
+
+    drivers = _top_drivers(lambda seed: bm.MajorGiftClassifier(random_state=seed), seeds, build, feature_cols, scoring="roc_auc")
+    return _features_entry(feature_cols, drivers, scoring="roc_auc", split="walk-forward (FiscalYearGroupedSplitter, last split)")
+
+
+def planned_giving_drivers_synthetic(seeds, n_donors, n_years) -> Dict[str, Any]:
+    feature_cols = ("total", "n", "recent")
+
+    def build(seed):
+        train, test = bm._train_test_periods(bm._period_panel(n_donors, n_years, seed))
+        return (
+            train[list(feature_cols)].to_numpy(), train["y_response"].to_numpy(),
+            test[list(feature_cols)].to_numpy(), test["y_response"].to_numpy(),
+        )
+
+    drivers = _top_drivers(lambda seed: PlannedGivingIntentScorer(random_state=seed), seeds, build, feature_cols, scoring="roc_auc")
+    return _features_entry(feature_cols, drivers, scoring="roc_auc", split=bm.SYNTHETIC_SPLIT)
+
+
+# --------------------------------------------------------------------------- #
+# KDD Cup 1998 driver functions: same `_top_drivers` helper, one real fitted
+# model (KDD_SEED, no 5-seed range: one real file has no second draw), the
+# same feature construction each bench_kdd_* function above already uses.
+# --------------------------------------------------------------------------- #
+def response_drivers_kdd98(seed) -> Dict[str, Any]:
+    feature_cols = ("recency", "frequency", "monetary", "tenure")
+
+    def build(_seed):
+        X_rfm, donors_idx = bm._kdd_response_frame(bm.fetch_kdd98_donors())
+        y = donors_idx["TARGET_B"].to_numpy()
+        idx_train, _idx_val, idx_test = bm._split_55_15_30(len(y), y, seed)
+        Xtr, Xte = X_rfm.iloc[idx_train][list(feature_cols)], X_rfm.iloc[idx_test][list(feature_cols)]
+        return Xtr.to_numpy(), y[idx_train], Xte.to_numpy(), y[idx_test]
+
+    drivers = _top_drivers(lambda s: bm.MajorGiftClassifier(random_state=s), [seed], build, feature_cols, scoring="roc_auc")
+    return _features_entry(feature_cols, drivers, scoring="roc_auc", split=bm.KDD_SPLIT)
+
+
+def lapse_drivers_kdd98(seed) -> Dict[str, Any]:
+    feature_cols = ("total", "n", "recent")
+
+    def build(_seed):
+        panel = bm._kdd_lapse_panel(bm.fetch_kdd98_donors())
+        last_period = panel["period"].max()
+        val_period = last_period - 1
+        train_p = panel[panel["period"] < val_period]
+        test_p = panel[panel["period"] == last_period]
+        return (
+            train_p[list(feature_cols)].to_numpy(), train_p["lapsed"].to_numpy(),
+            test_p[list(feature_cols)].to_numpy(), test_p["lapsed"].to_numpy(),
+        )
+
+    drivers = _top_drivers(
+        lambda s: bm.LapsePredictor(n_estimators=100, max_depth=10, random_state=s),
+        [seed], build, feature_cols, scoring="roc_auc",
+    )
+    return _features_entry(feature_cols, drivers, scoring="roc_auc", split="walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N)")
+
+
+def ask_drivers_kdd98(seed) -> Dict[str, Any]:
+    feature_cols = KDD_FEATURE_COLS
+
+    def build(_seed):
+        donors = bm.fetch_kdd98_donors()
+        rfm = bm._kdd_rfm(bm._kdd_gift_log(donors))
+        Xd_train, _Xd_val, Xd_test, yd_train, _yd_val, yd_test = bm._kdd_ask_design(donors, rfm, seed)
+        resp_train, resp_test = yd_train > 0, yd_test > 0
+        # Kept as a DataFrame (not `.to_numpy()`): WealthScreeningImputer
+        # matches `wealth_cols` by column name and silently skips them on a
+        # bare array, which would leave WEALTH1/WEALTH2/INCOME unimputed.
+        return (
+            Xd_train.loc[resp_train, list(feature_cols)].astype("float64"), yd_train[resp_train].to_numpy(),
+            Xd_test.loc[resp_test, list(feature_cols)].astype("float64"), yd_test[resp_test].to_numpy(),
+        )
+
+    make_model = lambda s: bm.make_pipeline(  # noqa: E731
+        bm.WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]), bm.AskAmountRecommender(random_state=s),
+    )
+    drivers = _top_drivers(make_model, [seed], build, feature_cols, scoring="neg_mean_absolute_error")
+    return _features_entry(feature_cols, drivers, scoring="neg_mean_absolute_error", split=bm.KDD_SPLIT)
+
+
+def upgrade_drivers_kdd98(seed, threshold=50.0, band=(5.0, 49.0)) -> Dict[str, Any]:
+    feature_cols = UPGRADE_FEATURE_COLS[1:]  # bench_kdd_upgrade drops "fiscal_year"
+
+    def build(_seed):
+        donors = bm.fetch_kdd98_donors()
+        gifts = bm._kdd_gift_log(donors)
+        train_fy, test_fy = 1994, 1995
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            snaps = bm.build_upgrade_snapshots(
+                gifts, fiscal_years=[train_fy, test_fy], threshold=threshold, band=band, fiscal_year_start=7,
+            )
+        train, test = snaps[snaps["fiscal_year"] == train_fy], snaps[snaps["fiscal_year"] == test_fy]
+        return (
+            train[list(feature_cols)].to_numpy(dtype="float64"), train["target"].to_numpy(),
+            test[list(feature_cols)].to_numpy(dtype="float64"), test["target"].to_numpy(),
+        )
+
+    drivers = _top_drivers(lambda s: bm.MajorGiftClassifier(random_state=s), [seed], build, feature_cols, scoring="roc_auc")
+    return _features_entry(feature_cols, drivers, scoring="roc_auc", split="walk-forward by fiscal year (train FY1994, test FY1995)")
+
+
+def who_to_mail_drivers_kdd98(seed) -> Dict[str, Any]:
+    """Drivers for the response half of the mail/no-mail decision only: "mail
+    if E[gift] > cost" multiplies a response probability by a suggested gift
+    (:data:`ask_drivers_kdd98` has that half's own drivers), so there is no
+    single feature-scored ranking to attribute as one model."""
+    feature_cols = KDD_FEATURE_COLS
+
+    def build(_seed):
+        donors = bm.fetch_kdd98_donors()
+        rfm = bm._kdd_rfm(bm._kdd_gift_log(donors))
+        Xd_train, _Xd_val, Xd_test, yd_train, _yd_val, yd_test = bm._kdd_ask_design(donors, rfm, seed)
+        ytr, yte = (yd_train > 0).astype(int).to_numpy(), (yd_test > 0).astype(int).to_numpy()
+        # Kept as a DataFrame, same reason as ask_drivers_kdd98 above.
+        return Xd_train[list(feature_cols)].astype("float64"), ytr, Xd_test[list(feature_cols)].astype("float64"), yte
+
+    make_model = lambda s: bm.make_pipeline(  # noqa: E731
+        bm.WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]), bm.MajorGiftClassifier(random_state=s),
+    )
+    drivers = _top_drivers(make_model, [seed], build, feature_cols, scoring="roc_auc")
+    return _features_entry(feature_cols, drivers, scoring="roc_auc", split=bm.KDD_SPLIT)
+
+
+# --------------------------------------------------------------------------- #
+# "What the model looks at" tab group: one markdown snippet per model,
+# included into its results page with pymdownx.snippets (E.11i pasted spec).
+# One tab per dataset the model has a "features" entry for, in the order
+# each page already presents that dataset.
+# --------------------------------------------------------------------------- #
+MODEL_DATASET_TABS = {
+    "upgrade": [
+        ("Sample data", "upgrade_synthetic"),
+        ("KDD Cup 1998 (real donor file)", "upgrade_kdd98"),
+    ],
+    "response": [
+        ("KDD Cup 1998 (real donor file)", "response_kdd98"),
+        ("cup98VAL (real donor file, never seen by the model)", "response_cup98val"),
+        ("Sample data (checks the code runs, not that the model works)", "response_synthetic"),
+    ],
+    "lapse": [
+        ("KDD Cup 1998 (real donor file)", "lapse_kdd98"),
+    ],
+    "ask": [
+        ("KDD Cup 1998 (real donor file)", "ask_kdd98"),
+        ("Sample data", "ask_synthetic"),
+    ],
+    "planned_giving": [
+        ("Sample data", "planned_giving_synthetic"),
+    ],
+    "who_to_mail": [
+        ("KDD Cup 1998 (real donor file)", "who_to_mail_kdd98"),
+        ("cup98VAL (real donor file, never seen by the model)", "who_to_mail_cup98val"),
+    ],
+}
+
+
+def _fmt_pct_range(block: Dict[str, Any]) -> str:
+    v = block["value"] if "value" in block else block
+    lo, hi = block.get("lo"), block.get("hi")
+    base = f"{v:.0f} of 100"
+    if lo is not None and hi is not None:
+        base += f" (between {lo:.0f} and {hi:.0f})"
+    return base
+
+
+def _render_group_table(columns: Sequence[str]) -> List[str]:
+    present = sorted({FEATURE_INFO[c][1] for c in columns}, key=GROUP_ORDER.index)
+    lines = ["    | What it knows | What that means |", "    |---|---|"]
+    for g in present:
+        lines.append(f"    | {GROUP_LABELS[g]} | {GROUP_MEANINGS[g]} |")
+    absent = [g for g in GROUP_ORDER if g not in present]
+    if absent:
+        names = ", ".join(GROUP_LABELS[g].lower() for g in absent)
+        lines.append("")
+        lines.append(f"    This file has no {names} records, so {'it is' if len(absent) == 1 else 'they are'} not used here.")
+    return lines
+
+
+def _render_driver_table(drivers: List[Dict[str, Any]]) -> List[str]:
+    lines = ["    | What raises or lowers the score | |", "    |---|---|"]
+    for d in drivers:
+        symbol, word = _DIRECTION_SYMBOL[d["direction"]], _DIRECTION_WORD[d["direction"]]
+        lines.append(f"    | {d['label']} | {symbol} {word} |")
+    return lines
+
+
+def _render_ablation_table(entry: Dict[str, Any], result_block: Dict[str, Any]) -> List[str] | None:
+    extra = [s for s in entry["sets"] if not s["chosen"]]
+    if not extra:
+        return None
+    lines = [
+        "    ### What adding information did", "",
+        "    | What the model saw | Top 1% | Top 5% | Top 10% |", "    |---|---|---|---|",
+        f"    | {FEATURE_SET_LABELS['current']} | "
+        + " | ".join(f"{result_block[f'top{p}pct']['model']:.0f} of 100" for p in (1, 5, 10)) + " |",
+    ]
+    for s in extra:
+        lines.append(f"    | {s['label']} | " + " | ".join(_fmt_pct_range(s[f"top{p}pct"]) for p in (1, 5, 10)) + " |")
+    lines.append(
+        "    | the best simple rule (for comparison) | "
+        + " | ".join(f"{result_block[f'top{p}pct']['rule']:.0f} of 100" for p in (1, 5, 10)) + " |"
+    )
+    cur10, full10 = result_block["top10pct"]["model"], extra[0]["top10pct"]["value"]
+    gap = full10 - cur10
+    if abs(gap) < 1.5:
+        takeaway = "The extra signals made about the same difference at the top of the list."
+    elif gap > 0:
+        takeaway = f"The extra signals raised the top-10% hit rate from {cur10:.0f} of 100 to {full10:.0f} of 100."
+    else:
+        takeaway = f"The extra signals lowered the top-10% hit rate, from {cur10:.0f} of 100 to {full10:.0f} of 100."
+    lines += ["", f"    {takeaway}"]
+    return lines
+
+
+def _render_analyst_note(entry: Dict[str, Any]) -> List[str]:
+    current = entry["sets"][0]
+    lines = ['    ??? note "For analysts"']
+    lines.append(f"        Columns: {', '.join(f'`{c}`' for c in current['columns'])}")
+    lines.append("")
+    lines.append("        | Column | Importance | Direction |")
+    lines.append("        |---|---|---|")
+    for d in entry["drivers"]:
+        imp = f"{d['importance']:.3f}"
+        if d["lo"] is not None and d["hi"] is not None:
+            imp += f" (range {d['lo']:.3f} to {d['hi']:.3f})"
+        lines.append(f"        | `{d['column']}` | {imp} | {d['direction']} |")
+    lines.append("")
+    lines.append(
+        f"        Method: permutation importance (`{entry['scoring']}`), partial-dependence sign for direction "
+        f"(\"mixed\" if it changes sign). Split: {entry['split']}. Configurations compared: {entry['n_configs']}. "
+        f"Git SHA: `{entry['git_sha']}`."
+    )
+    if "reused_from_note" in entry:
+        lines.append(f"        {entry['reused_from_note']}")
+    return lines
+
+
+def render_feature_snippets(results: Dict[str, Any], out_dir: Path) -> None:
+    """Writes one self-contained tab block per (model, dataset) to
+    ``docs/results/_features/<model>__<dataset_key>.md``, split per dataset
+    rather than one file per model, so the page's tab group drops in a whole
+    number of tabs: a fast synthetic-only regeneration (no KDD download)
+    never has to touch, and so can never accidentally drop, an already
+    real-data tab it did not recompute. Each model's results page lists its
+    tabs' files with consecutive ``--8<--`` includes, in the same order as
+    :data:`MODEL_DATASET_TABS`, which pymdownx.tabbed reads as one group."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for model, tabs in MODEL_DATASET_TABS.items():
+        for label, key in tabs:
+            if key not in results or "features" not in results[key]:
+                continue
+            result_block, entry = results[key], results[key]["features"]
+            n = len(entry["sets"][0]["columns"])
+            lines = [f'=== "{label}"', ""]
+            lines.append(f"    On this file the model looks at {n} things about each donor; these matter most.")
+            lines.append("")
+            lines += _render_group_table(entry["sets"][0]["columns"])
+            lines.append("")
+            lines += _render_driver_table(entry["drivers"])
+            ablation = _render_ablation_table(entry, result_block)
+            if ablation:
+                lines.append("")
+                lines += ablation
+            lines.append("")
+            lines += _render_analyst_note(entry)
+            lines.append("")
+            lines.append("    Results on your own file will differ.")
+            (out_dir / f"{model}__{key}.md").write_text("\n".join(lines).rstrip() + "\n")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--with-kdd98", action="store_true", help="Also run the KDD Cup 1998 section (downloads ~36MB).")
@@ -592,6 +1148,7 @@ def main() -> None:
         for p in (1, 5, 10)
     }
     results["response_synthetic"]["verdict"] = resp_row_by_p[10].verdict
+    results["response_synthetic"]["features"] = response_drivers_synthetic(SEEDS, N_DONORS, N_YEARS)
     r10 = results["response_synthetic"]["top10pct"]
     _render_themed(
         _hbar_chart,
@@ -624,6 +1181,7 @@ def main() -> None:
         for p in (1, 5, 10)
     }
     results["lapse_synthetic"]["verdict"] = _row(lapse_rows, "LapsePredictor", "top10pct_hit_rate").verdict
+    results["lapse_synthetic"]["features"] = lapse_drivers_synthetic(SEEDS, N_DONORS, N_YEARS)
 
     # --- synthetic: ask -------------------------------------------------
     ask_rows = bm.bench_ask(SEEDS, N_DONORS, N_YEARS)
@@ -632,6 +1190,7 @@ def main() -> None:
         "within25pct_model": within.value * 100,
         "within25pct_last_gift": within.baseline * 100,
         "verdict": within.verdict,
+        "features": ask_drivers_synthetic(SEEDS, N_DONORS, N_YEARS),
     }
 
     # --- synthetic: $1K upgrade (bench_upgrade) ------------------------------
@@ -649,6 +1208,7 @@ def main() -> None:
         for p in (1, 5, 10)
     }
     results["upgrade_synthetic"]["verdict"] = upg_row_by_p[10].verdict
+    results["upgrade_synthetic"]["features"] = upgrade_drivers_synthetic(SEEDS, N_DONORS, N_YEARS)
     u10 = results["upgrade_synthetic"]["top10pct"]
     _render_themed(
         _hbar_chart,
@@ -674,6 +1234,7 @@ def main() -> None:
     # bequest intent, so a bar chart of it would misrepresent the model as
     # tested on planned giving. See docs/results/planned_giving.md.
     results["planned_giving_synthetic"] = planned_giving_hit_rates()
+    results["planned_giving_synthetic"]["features"] = planned_giving_drivers_synthetic(SEEDS, N_DONORS, N_YEARS)
 
     # --- $1K upgrade worked example ------------------------------------------
     ex = upgrade_worked_example(SEEDS[0])
@@ -711,6 +1272,7 @@ def main() -> None:
             for p in (1, 5, 10)
         }
         results["response_kdd98"]["verdict"] = resp_kdd_row_by_p[10].verdict
+        results["response_kdd98"]["features"] = response_drivers_kdd98(seed)
         rk10 = results["response_kdd98"]["top10pct"]
         _render_themed(
             _hbar_chart,
@@ -739,6 +1301,7 @@ def main() -> None:
             for p in (1, 5, 10)
         }
         results["upgrade_kdd98"]["verdict"] = upg_kdd_row_by_p[10].verdict
+        results["upgrade_kdd98"]["features"] = upgrade_drivers_kdd98(seed)
         uk10 = results["upgrade_kdd98"]["top10pct"]
         _render_themed(
             _hbar_chart,
@@ -765,6 +1328,7 @@ def main() -> None:
             "verdict": lapse_top[10].verdict,
             **{f"top{p}pct": {"model": r.value * 100, "rule": r.baseline * 100} for p, r in lapse_top.items()},
         }
+        results["lapse_kdd98"]["features"] = lapse_drivers_kdd98(seed)
         _render_themed(
             _neartie_dot_chart,
             OUT_DIR / "lapse_kdd98.png",
@@ -820,6 +1384,7 @@ def main() -> None:
             "within25pct_model": ask_row.value * 100,
             "within25pct_last_gift": ask_row.baseline * 100,
             "verdict": ask_row.verdict,
+            "features": ask_drivers_kdd98(seed),
         }
         _render_themed(
             _hbar_chart,
@@ -843,6 +1408,7 @@ def main() -> None:
             "net_revenue_mail_everyone": net_row.baseline,
             "verdict": net_row.verdict,
             "note": net_row.note,
+            "features": who_to_mail_drivers_kdd98(seed),
         }
         curve = bm.kdd_mail_profit_curve(seed)
         results["who_to_mail_kdd98"]["curve"] = curve
@@ -867,6 +1433,11 @@ def main() -> None:
                 "net_revenue_mail_everyone": net_row_val.baseline,
                 "verdict": net_row_val.verdict,
                 "note": net_row_val.note,
+                "features": _reused_features(
+                    results["who_to_mail_kdd98"]["features"],
+                    "Same response model and features as the KDD Cup 1998 tab; cup98VAL supplies new test "
+                    "donors on the same columns, not new columns.",
+                ),
             }
             curve_val = bm.kdd_mail_profit_curve_val(seed)
             results["who_to_mail_cup98val"]["curve"] = curve_val
@@ -893,6 +1464,11 @@ def main() -> None:
                 for p in (1, 5, 10)
             }
             results["response_cup98val"]["verdict"] = val_row_by_p[10].verdict
+            results["response_cup98val"]["features"] = _reused_features(
+                results["response_kdd98"]["features"],
+                "Same model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the "
+                "same columns, not new columns.",
+            )
             rv10 = results["response_cup98val"]["top10pct"]
             _render_themed(
                 _hbar_chart,
@@ -939,6 +1515,7 @@ def main() -> None:
     }
     with open(OUT_DIR / "results.json", "w") as fh:
         json.dump(results, fh, indent=2)
+    render_feature_snippets(results, ROOT / "docs" / "results" / "_features")
     print(f"Wrote {OUT_DIR / 'results.json'} and PNGs to {OUT_DIR}")
 
 

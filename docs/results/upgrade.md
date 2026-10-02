@@ -67,3 +67,9 @@ Sample (synthetic) donor panel, five random draws averaged, is the only file whe
 wins today. KDD Cup 1998 is the only real file we can test the $1,000 upgrade question on at all
 (its gifts are too small to test the real $1,000 threshold, so the threshold above is rescaled;
 see the tab). Results on your own file, at your own dollar threshold, will differ from both.
+
+## What the model looks at
+
+--8<-- "results/_features/upgrade__upgrade_synthetic.md"
+
+--8<-- "results/_features/upgrade__upgrade_kdd98.md"

@@ -12,15 +12,19 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
-# One entry per PSID wave actually present in a "Current Year Heads
-# Individual Data" cross-year extract built like the one this reader was
-# developed against (PSID Data Center job 365729, IND domain, 483
-# variables, 2001-2023). Every ER/S variable number below was read off that
-# job's own .do (variable labels) and cross-checked against its codebook
-# HTML, not typed from memory or an external index. A different PSID
-# extract (different job, different selected variables) will not have
-# these exact ER numbers; build a new table from that extract's own .do
-# file rather than assuming this one applies.
+# One entry per PSID wave read by this reader, built from a "Current Year
+# Heads Individual Data" cross-year extract (PSID Data Center job 365729,
+# IND domain, 483 variables, 2001-2023). Every ER/S variable number below
+# was read off that job's own .do (variable labels) and cross-checked
+# against its codebook HTML, not typed from memory or an external index.
+# ER/S numbers are fixed, study-wide PSID identifiers: ER20047 names the
+# same variable in any job that selects it. A job with a smaller variable
+# selection than 365729 simply lacks some of these columns; a wave whose
+# relation_var is entirely absent is skipped (see load_psid_philanthropy),
+# while a wave whose relation_var is present but another of its variables
+# below is missing raises KeyError rather than silently misreading a
+# column, since that combination means this table and the extract disagree
+# about what was selected.
 _WAVES = [
     {
         "year": 2001,
@@ -47,6 +51,19 @@ _WAVES = [
         "wealth1_var": "S616", "wealth2_var": "S617", "itemized_var": "ER22535",
         "volunteer_head_hours_var": None, "volunteer_spouse_hours_var": None,
         "hours_kind": None,
+        # Annual hours "regularly" volunteered, asked once per organization
+        # type (up to 14 slots: M15I, M18I, M21H, ..., M43H) rather than
+        # once per head/spouse like 2001's T8A/T10A or 2017+'s F1E. The
+        # codebook's compact label index has no question text or universe
+        # note distinguishing head from spouse here, and 2003/2005 have no
+        # parallel head-only/spouse-only battery the way 2011 onward do;
+        # treat this as one household-level total, not a head or spouse
+        # figure, and never merge it with head_volunteer_hours_annual.
+        "regular_org_hours_vars": [
+            "ER23563", "ER23573", "ER23582", "ER23591", "ER23600", "ER23609",
+            "ER23618", "ER23627", "ER23636", "ER23645", "ER23654", "ER23663",
+            "ER23673", "ER23683",
+        ],
         "giving": {
             "religious": "ER23483", "combo": "ER23489", "needy": "ER23495",
             "health": "ER23501", "education": "ER23507", "youth": "ER23513",
@@ -60,6 +77,11 @@ _WAVES = [
         "wealth1_var": "S716", "wealth2_var": "S717", "itemized_var": "ER26516",
         "volunteer_head_hours_var": None, "volunteer_spouse_hours_var": None,
         "hours_kind": None,
+        "regular_org_hours_vars": [
+            "ER27533", "ER27543", "ER27552", "ER27561", "ER27570", "ER27579",
+            "ER27588", "ER27597", "ER27606", "ER27615", "ER27624", "ER27633",
+            "ER27643", "ER27653",
+        ],
         "giving": {
             "religious": "ER27451", "combo": "ER27457", "needy": "ER27463",
             "health": "ER27469", "education": "ER27475", "youth": "ER27481",
@@ -195,7 +217,8 @@ _INFIX_PATTERN = re.compile(r"(?:long |double |str\d* )?(\S+)\s+(\d+)\s*-\s*(\d+
 
 
 def _parse_infix(do_path: str) -> Dict[str, "tuple[int, int]"]:
-    text = open(do_path, encoding="latin-1").read()
+    with open(do_path, encoding="latin-1") as fh:
+        text = fh.read()
     start = text.index("infix")
     end = text.index("using", start)
     block = text[start:end]
@@ -231,16 +254,19 @@ def load_psid_philanthropy(data_path: str, do_path: str) -> pd.DataFrame:
     row/person level, to this repository or its docs; aggregate statistics
     only.
 
-    This reader is built against one specific PSID Data Center job's
-    variable selection (a "Current Year Heads Individual Data" extract:
-    one row per person who was Head/Reference Person in at least one
-    selected wave, every ER/S variable number read from that job's own
-    ``.do`` file and cross-checked against its codebook, covering 2001 to
-    2023). A different job, with a different variable selection, will use
-    different ER numbers for the same concepts; this function will raise a
-    plain ``KeyError`` on such a file rather than silently reading the
-    wrong column, since it looks its variables up in the table above by
-    name.
+    This reader is built against a fixed list of PSID ER/S variables (read
+    from PSID Data Center job 365729's own ``.do`` file and cross-checked
+    against its codebook, covering 2001 to 2023 "Current Year Heads
+    Individual Data": one row per person who was Head/Reference Person in
+    at least one selected wave). ER/S variable numbers are fixed, study-wide
+    PSID identifiers, not job-specific, so a differently-selected extract
+    that still includes these variables reads identically. An extract with
+    a *smaller* variable selection than job 365729 simply omits some
+    columns: a wave whose Head/Reference-person variable is entirely
+    absent is skipped outright, while a wave whose Head/Reference-person
+    variable is present but another of its variables is missing raises a
+    plain ``KeyError``, since that combination means this table and the
+    extract disagree about what was selected.
 
     For each wave, a person counts as that household's Head only when their
     relation-to-head/reference-person code is 10; sequence number is not
@@ -248,25 +274,34 @@ def load_psid_philanthropy(data_path: str, do_path: str) -> pd.DataFrame:
     person number (``ER30001 * 1000 + ER30002``), which identifies them
     (and so their household, while they are its Head) across every wave.
 
-    Giving amounts, family income, wealth, and volunteering hours all use
+    Giving amounts, itemized contributions, and volunteering hours all use
     PSID's standard missing-data convention for a field of width *w*: a
     value of *w* nines means Not Applicable/Refused and *w* nines with a
     trailing 8 means Don't Know; both are recoded to ``NaN`` here rather
-    than left as large sentinel integers. ``total_giving`` sums whatever
-    per-category amounts a wave actually asked (``NaN`` only when every
-    category for that wave is ``NaN``, so a few Don't-Know categories do
-    not blank the whole total); the categories themselves differ by wave,
-    most notably 2001 (five categories plus one combined "checkpoint"
-    amount for the rest) and 2021 onward (no "community" category).
+    than left as large sentinel integers. ``family_income``, ``wealth1``,
+    and ``wealth2`` are PSID-generated/imputed totals, not raw survey
+    responses, and were directly checked against the real data for this
+    convention: they carry no such sentinel values, so this reader leaves
+    them unrecoded (a large value there, e.g. a 7-digit income, is real).
+    ``total_giving`` sums whatever per-category amounts a wave actually
+    asked (``NaN`` only when every category for that wave is ``NaN``, so a
+    few Don't-Know categories do not blank the whole total); the categories
+    themselves differ by wave, most notably 2001 (five categories plus one
+    combined "checkpoint" amount for the rest) and 2021 onward (no
+    "community" category).
 
-    Volunteering hours are **two different measures that must never be
-    combined into one series**: 2001 asks hours volunteered *last year*;
-    2017, 2019, 2021 and 2023 ask hours volunteered in a *typical week*.
-    No wave between 2003 and 2015 has an hours measure in this extract at
-    all (only whether-volunteered flags, which this reader does not
-    return). The two measures are returned as separate column pairs,
-    ``NaN`` in every wave they do not apply to, so a caller cannot
-    accidentally splice them into a single trend.
+    Volunteering hours are **three different measures that must never be
+    combined into one series**: 2001 asks hours volunteered *last year*,
+    split by head and spouse; 2003 and 2005 ask hours volunteered
+    "regularly," one battery of up to 14 slots (one per organization type)
+    that is not split by head/spouse at all, so this reader returns it as
+    a single household-level total; 2017, 2019, 2021 and 2023 ask hours
+    volunteered in a *typical week*, again split by head and spouse. 2007
+    through 2015 have no hours amount in this extract (only
+    whether-volunteered flags, which this reader does not return). The
+    three measures are returned as separate columns, ``NaN`` in every wave
+    they do not apply to, so a caller cannot accidentally splice them into
+    a single trend.
 
     Parameters
     ----------
@@ -288,6 +323,7 @@ def load_psid_philanthropy(data_path: str, do_path: str) -> pd.DataFrame:
         G102A, tax itemizers only), ``family_income``, ``wealth1``
         (without home equity), ``wealth2`` (with home equity),
         ``head_volunteer_hours_annual``, ``spouse_volunteer_hours_annual``,
+        ``household_volunteer_hours_regular`` (2003 and 2005 only),
         ``head_volunteer_hours_typical_week``,
         ``spouse_volunteer_hours_typical_week``.
 
@@ -311,6 +347,7 @@ def load_psid_philanthropy(data_path: str, do_path: str) -> pd.DataFrame:
             if wave[key] is not None:
                 needed_vars.add(wave[key])
         needed_vars.update(wave["giving"].values())
+        needed_vars.update(wave.get("regular_org_hours_vars", []))
 
     ordered_vars = [v for v in needed_vars if v in spans]
     colspecs = [(spans[v][0] - 1, spans[v][1]) for v in ordered_vars]
@@ -333,10 +370,12 @@ def load_psid_philanthropy(data_path: str, do_path: str) -> pd.DataFrame:
             "year": wave["year"],
         })
 
-        def _amount(var: Optional[str]):
+        def _amount(var: Optional[str], recode: bool = True):
             if var is None:
                 return float("nan")
             col = raw.loc[is_head, var].astype("float64")
+            if not recode:
+                return col.to_numpy()
             width = spans[var][1] - spans[var][0] + 1
             return _recode_missing(col, width).to_numpy()
 
@@ -346,9 +385,13 @@ def load_psid_philanthropy(data_path: str, do_path: str) -> pd.DataFrame:
             axis=1, skipna=True, min_count=1
         )
         frame["itemized_charitable_contrib_amount"] = _amount(wave["itemized_var"])
-        frame["family_income"] = _amount(wave["income_var"])
-        frame["wealth1"] = _amount(wave["wealth1_var"])
-        frame["wealth2"] = _amount(wave["wealth2_var"])
+        # family_income/wealth1/wealth2 are PSID-generated/imputed totals,
+        # not raw survey responses; direct inspection of the real data
+        # found zero occurrences of the 9s-sentinel convention on these
+        # fields, so (unlike giving/itemized/hours) they are left unrecoded.
+        frame["family_income"] = _amount(wave["income_var"], recode=False)
+        frame["wealth1"] = _amount(wave["wealth1_var"], recode=False)
+        frame["wealth2"] = _amount(wave["wealth2_var"], recode=False)
 
         for who, var_key in (("head", "volunteer_head_hours_var"), ("spouse", "volunteer_spouse_hours_var")):
             annual_col = f"{who}_volunteer_hours_annual"
@@ -362,6 +405,15 @@ def load_psid_philanthropy(data_path: str, do_path: str) -> pd.DataFrame:
             else:
                 frame[annual_col] = float("nan")
                 frame[typical_col] = float("nan")
+
+        regular_vars = wave.get("regular_org_hours_vars")
+        if regular_vars:
+            slots = pd.DataFrame({v: _amount(v) for v in regular_vars})
+            frame["household_volunteer_hours_regular"] = slots.sum(
+                axis=1, skipna=True, min_count=1
+            ).to_numpy()
+        else:
+            frame["household_volunteer_hours_regular"] = float("nan")
 
         frames.append(frame)
 

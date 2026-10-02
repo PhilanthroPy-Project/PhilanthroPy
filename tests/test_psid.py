@@ -25,13 +25,18 @@ _WAVE_1_2001 = [
     ("S516", 7), ("S517", 7),  # wealth1, wealth2
     ("ER20089", 4), ("ER20097", 4),  # head/spouse annual volunteer hours
 ]
+_WAVE_2003_REGULAR_HOURS_VARS = [
+    "ER23563", "ER23573", "ER23582", "ER23591", "ER23600", "ER23609",
+    "ER23618", "ER23627", "ER23636", "ER23645", "ER23654", "ER23663",
+    "ER23673", "ER23683",
+]
 _WAVE_2003 = [
     ("ER33703", 2),
     ("ER23483", 6), ("ER23489", 6), ("ER23495", 6), ("ER23501", 6),
     ("ER23507", 6), ("ER23513", 6), ("ER23519", 6), ("ER23525", 6),
     ("ER23531", 6), ("ER23537", 6), ("ER23543", 6),
     ("ER22535", 6), ("ER24099", 7), ("S616", 7), ("S617", 7),
-]
+] + [(var, 5) for var in _WAVE_2003_REGULAR_HOURS_VARS]
 _WAVE_2017 = [
     ("ER34503", 2),
     ("ER71042", 6), ("ER71044", 6), ("ER71046", 6), ("ER71048", 6),
@@ -85,6 +90,7 @@ def test_returns_expected_columns(tmp_path):
     assert "total_giving" in df.columns
     assert "giving_religious" in df.columns
     assert "head_volunteer_hours_annual" in df.columns
+    assert "household_volunteer_hours_regular" in df.columns
     assert "head_volunteer_hours_typical_week" in df.columns
 
 
@@ -165,6 +171,39 @@ def test_volunteer_hours_kept_as_separate_measures(tmp_path):
     assert pd.isna(row_2003["head_volunteer_hours_typical_week"])
     assert pd.isna(row_2017["head_volunteer_hours_annual"])
     assert row_2017["head_volunteer_hours_typical_week"] == 5
+
+
+def test_regular_volunteer_hours_summed_for_2003_only(tmp_path):
+    rows = [{
+        "ER30001": 1, "ER30002": 1, "ER33603": 10, "ER33703": 10, "ER34503": 10,
+        "ER23563": 10, "ER23573": 5, "ER23582": _sentinel(5, dk=True),
+    }]
+    data_path, do_path = _build_fixture(tmp_path, rows)
+
+    df = load_psid_philanthropy(data_path, do_path)
+    row_2001 = df[df["year"] == 2001].iloc[0]
+    row_2003 = df[df["year"] == 2003].iloc[0]
+    row_2017 = df[df["year"] == 2017].iloc[0]
+
+    assert row_2003["household_volunteer_hours_regular"] == 15  # DK slot excluded, not zeroed
+    assert pd.isna(row_2001["household_volunteer_hours_regular"])
+    assert pd.isna(row_2017["household_volunteer_hours_regular"])
+
+
+def test_family_income_not_recoded_as_missing(tmp_path):
+    # A legitimate 7-digit income that happens to equal the giving-field
+    # sentinel pattern must stay a real number: family_income has no
+    # missing-code convention, unlike giving/itemized/hours amounts.
+    rows = [{
+        "ER30001": 1, "ER30002": 1, "ER33603": 10,
+        "ER20456": 9999999,
+    }]
+    data_path, do_path = _build_fixture(tmp_path, rows)
+
+    df = load_psid_philanthropy(data_path, do_path)
+    row_2001 = df[df["year"] == 2001].iloc[0]
+
+    assert row_2001["family_income"] == 9999999
 
 
 def test_wave_missing_from_extract_is_skipped(tmp_path):

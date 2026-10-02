@@ -115,13 +115,16 @@ def trailing_slope_features(
 
     out = {}
     for k in ks:
-        # bins[0] is the most recent period; chronological order is oldest first.
-        window_vals = bins[k - 1::-1]
         n_observed = int(observed[:k].sum())
         if n_observed < 2:
             slope = np.full(len(donor_ids), np.nan)
             rel_slope = np.full(len(donor_ids), np.nan)
         else:
+            # observed periods are the most recent n_observed bins (bin 0 is
+            # most recent); chronological order is oldest first. Bins before
+            # data_start are excluded entirely rather than treated as zero,
+            # so a short history never reads as a fabricated trend.
+            window_vals = bins[n_observed - 1::-1]
             slope = _ols_slope(window_vals)
             rel_slope = slope / (window_vals.mean(axis=0) + 1.0)
         out[f"{prefix}_slope_{k}y"] = slope

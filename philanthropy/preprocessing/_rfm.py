@@ -193,6 +193,13 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
             * ``tenure`` : int64
                 *Optional, present only if ``include_tenure=True``.*
                 Days from each donor's first gift to the frozen ``reference_date_``.
+            * ``monetary_slope_3y``, ``monetary_rel_slope_3y``, ``monetary_slope_5y``,
+              ``monetary_rel_slope_5y``, and the same for ``frequency`` and
+              ``max_gift`` : float64
+                *Optional, present only if ``include_momentum=True``.* Trailing
+                3- and 5-year OLS slope and relative slope per base series; NaN
+                with fewer than 2 observed years in the window. See
+                :func:`philanthropy.utils._momentum.trailing_slope_features`.
         Raises
         ------
         sklearn.exceptions.NotFittedError

@@ -40,6 +40,26 @@ def test_counts_within_and_outside_windows():
     assert feats.loc["1", "event_distinct"] == 3
 
 
+def test_momentum_off_by_default_matches_pre_momentum_columns():
+    rows = [
+        _row("1", "2020-06-30", "event"), _row("1", "2021-06-30", "event"),
+        _row("1", "2022-06-30", "event"),
+    ]
+    default_cols = set(activities_to_features(rows, as_of="2022-12-31").columns)
+    assert not any(c.endswith(("_slope_3y", "_slope_5y", "_rel_slope_3y", "_rel_slope_5y")) for c in default_cols)
+
+
+def test_include_momentum_adds_expected_slope_columns():
+    rows = [
+        _row("1", "2020-06-30", "event"), _row("1", "2021-06-30", "event"),
+        _row("1", "2022-06-30", "event"),
+    ]
+    feats = activities_to_features(rows, as_of="2022-12-31", include_momentum=True)
+    for stat in ("slope", "rel_slope"):
+        for k in (3, 5):
+            assert f"event_count_{stat}_{k}y" in feats.columns
+
+
 def test_days_since_last_measured_from_as_of():
     rows = [_row("1", "2024-01-01", "event")]
     feats = activities_to_features(rows, as_of="2024-01-11")

@@ -121,14 +121,14 @@ def build_upgrade_snapshots(
         ``gift_count`` (within FY T); ``consecutive_years_given`` (count of
         unbroken prior fiscal years, ending at and including T, with positive
         giving); ``months_since_last_gift`` (from the donor's most recent
-        gift on or before the end of FY T); for each of ``fy_total``,
-        ``gift_count`` and ``largest_gift``, a trailing 3- and 5-year OLS
-        slope and relative slope (``<base>_slope_3y``, ``<base>_rel_slope_3y``,
-        ``<base>_slope_5y``, ``<base>_rel_slope_5y``; NaN with fewer than 2
-        observed years in the window, see
-        :func:`philanthropy.utils._momentum.trailing_slope_features`); any
-        ``activities_to_features`` columns, including its own momentum
-        columns (always requested here); any ``donors`` columns; and
+        gift on or before the end of FY T); when ``include_momentum=True``,
+        for each of ``fy_total``, ``gift_count`` and ``largest_gift``, a
+        trailing 3- and 5-year OLS slope and relative slope
+        (``<base>_slope_3y``, ``<base>_rel_slope_3y``, ``<base>_slope_5y``,
+        ``<base>_rel_slope_5y``; NaN with fewer than 2 observed years in the
+        window, see :func:`philanthropy.utils._momentum.trailing_slope_features`);
+        any ``activities_to_features`` columns, including its own momentum
+        columns when ``include_momentum=True``; any ``donors`` columns; and
         ``target``. A fiscal year with no
         qualifying donors contributes no rows. Returns an empty, columnless
         frame (index name ``donor_id``) if no year has any.

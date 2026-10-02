@@ -366,3 +366,27 @@ def test_dataframe_and_iterable_of_mappings_both_accepted():
     from_df = build_upgrade_snapshots(pd.DataFrame(rows), fiscal_years=[2020])
     from_iter = build_upgrade_snapshots(rows, fiscal_years=[2020])
     pd.testing.assert_frame_equal(from_df, from_iter)
+
+
+# --------------------------------------------------------------------------- #
+# Momentum (opt-in)
+# --------------------------------------------------------------------------- #
+def test_momentum_off_by_default_matches_pre_momentum_columns():
+    gifts = _gifts([
+        ("1", FY2018, 500), ("1", FY2019, 500), ("1", FY2020, 500),
+    ])
+    snaps = build_upgrade_snapshots(gifts, fiscal_years=[2020])
+    assert "fy_total_growth_ratio" not in snaps.columns
+    assert not any(c.endswith(("_slope_3y", "_slope_5y", "_rel_slope_3y", "_rel_slope_5y")) for c in snaps.columns)
+
+
+def test_include_momentum_adds_expected_columns():
+    gifts = _gifts([
+        ("1", FY2018, 500), ("1", FY2019, 500), ("1", FY2020, 500),
+    ])
+    snaps = build_upgrade_snapshots(gifts, fiscal_years=[2020], include_momentum=True)
+    assert "fy_total_growth_ratio" in snaps.columns
+    for base in ("fy_total", "gift_count", "largest_gift"):
+        for stat in ("slope", "rel_slope"):
+            for k in (3, 5):
+                assert f"{base}_{stat}_{k}y" in snaps.columns

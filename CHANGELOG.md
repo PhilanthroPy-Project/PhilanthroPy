@@ -19,6 +19,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   freeze. Leakage-safe: every window is anchored at the caller's own as-of
   cutoff and a window with fewer than two observed periods returns `NaN`
   rather than fabricating a trend from one point.
+- `scripts/benchmark_models_vs_baselines.py` and `scripts/make_results_pages.py`
+  gain opt-in `--donorschoose-path` / `--psid-data` + `--psid-do` flags:
+  upgrade, lapse (plus a retention read), and ask vs the same rule sets
+  already used for the synthetic panel and KDD98, on real DonorsChoose
+  (ICPSR 37898) and PSID giving history, with and without momentum
+  features. CI never needs either file; both sections are skipped entirely
+  when the paths are not given. Response, who-to-mail, and planned-giving
+  have no mailing/appeal or bequest data in either file, so those sections
+  are left out with a one-line reason instead. Aggregate numbers and fold
+  metadata (subsample fraction and seed, fold years/waves, n per fold,
+  base rate) only; no donor- or household-level rows anywhere.
 
 ### Fixed
 - `scripts/benchmark_models_vs_baselines.py`'s synthetic `$1K upgrade` bench

@@ -75,6 +75,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `ValueError`, matching the existing negative-amount check.
 
 ### Added
+- `philanthropy.datasets.load_psid_philanthropy`: reads a user-downloaded
+  PSID (Panel Study of Income Dynamics) individual-level cross-year extract
+  into a long household giving/volunteering table (`household_key`, `year`,
+  `total_giving`, per-category giving, family income, wealth, and three
+  separate volunteering-hours measures: annual (head/spouse split), asked
+  in 2001; a household-level "regularly volunteered" total, asked in 2003
+  and 2005; and typical week (head/spouse split), asked 2017 onward; these
+  are never combined into one series).
+  Never downloads or redistributes PSID data; the file stays on the user's
+  own machine, fetched under their own PSID Data Center registration.
 - `philanthropy.datasets.load_donorschoose`: reads a user-downloaded
   DonorsChoose Open Data Donations file (ICPSR 37898, DS0001) into a gift
   table (`donor_id`, `gift_date`, `gift_amount`, plus `donor_type` and three

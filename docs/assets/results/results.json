@@ -15,7 +15,84 @@
       "rule": 79.2,
       "random": 44.18666666666667
     },
-    "verdict": "loses"
+    "verdict": "loses",
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "total",
+            "n",
+            "recent"
+          ],
+          "chosen": true
+        },
+        {
+          "id": "full",
+          "label": "plus giving streak, time since last gift, last year's gift, biggest gift and tenure",
+          "columns": [
+            "total",
+            "n",
+            "recent",
+            "streak",
+            "years_since_last",
+            "prev_recent",
+            "max_gift",
+            "tenure"
+          ],
+          "chosen": false,
+          "top1pct": {
+            "value": 84.66666666666667,
+            "lo": 73.33333333333333,
+            "hi": 96.66666666666667
+          },
+          "top5pct": {
+            "value": 80.0,
+            "lo": 76.0,
+            "hi": 85.33333333333334
+          },
+          "top10pct": {
+            "value": 75.6,
+            "lo": 70.66666666666667,
+            "hi": 79.66666666666666
+          }
+        }
+      ],
+      "drivers": [
+        {
+          "column": "total",
+          "label": "lifetime giving",
+          "group": "giving_history",
+          "importance": 0.1732793306348173,
+          "lo": 0.11261982054642601,
+          "hi": 0.20458641759111224,
+          "direction": "+"
+        },
+        {
+          "column": "recent",
+          "label": "this year's gift",
+          "group": "recency",
+          "importance": 0.01952417774824582,
+          "lo": 0.008219633935878868,
+          "hi": 0.030117486830849673,
+          "direction": "+"
+        },
+        {
+          "column": "n",
+          "label": "number of gifts",
+          "group": "giving_history",
+          "importance": 0.0017936119566814867,
+          "lo": -0.0016767504278188405,
+          "hi": 0.007192044482463677,
+          "direction": "-"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "walk-forward (train on fiscal years < T, test on T)",
+      "n_configs": 1,
+      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+    }
   },
   "lapse_synthetic": {
     "top1pct": {
@@ -33,12 +110,136 @@
       "rule": 83.13333333333333,
       "random": 55.81333333333334
     },
-    "verdict": "loses"
+    "verdict": "loses",
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "total",
+            "n",
+            "recent"
+          ],
+          "chosen": true
+        },
+        {
+          "id": "full",
+          "label": "plus giving streak, time since last gift, last year's gift, biggest gift and tenure",
+          "columns": [
+            "total",
+            "n",
+            "recent",
+            "streak",
+            "years_since_last",
+            "prev_recent",
+            "max_gift",
+            "tenure"
+          ],
+          "chosen": false,
+          "top1pct": {
+            "value": 97.33333333333334,
+            "lo": 93.33333333333333,
+            "hi": 100.0
+          },
+          "top5pct": {
+            "value": 97.06666666666666,
+            "lo": 94.66666666666667,
+            "hi": 98.0
+          },
+          "top10pct": {
+            "value": 94.39999999999999,
+            "lo": 92.66666666666666,
+            "hi": 95.33333333333334
+          }
+        }
+      ],
+      "drivers": [
+        {
+          "column": "total",
+          "label": "lifetime giving",
+          "group": "giving_history",
+          "importance": 0.13034775992993725,
+          "lo": 0.1118631759038315,
+          "hi": 0.15399350513836282,
+          "direction": "-"
+        },
+        {
+          "column": "recent",
+          "label": "this year's gift",
+          "group": "recency",
+          "importance": 0.015364999521323766,
+          "lo": 0.002210752725246801,
+          "hi": 0.034127870333149644,
+          "direction": "mixed"
+        },
+        {
+          "column": "n",
+          "label": "number of gifts",
+          "group": "giving_history",
+          "importance": 0.012164003858767126,
+          "lo": -0.007131476067255904,
+          "hi": 0.030713423076992874,
+          "direction": "mixed"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "walk-forward (train on fiscal years < T, test on T)",
+      "n_configs": 1,
+      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+    }
   },
   "ask_synthetic": {
     "within25pct_model": 23.11009415644001,
     "within25pct_last_gift": 23.657446585915693,
-    "verdict": "loses"
+    "verdict": "loses",
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "total",
+            "n",
+            "recent"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "total",
+          "label": "lifetime giving",
+          "group": "giving_history",
+          "importance": 25.692004217492485,
+          "lo": 14.15066452695894,
+          "hi": 37.33786598672059,
+          "direction": "+"
+        },
+        {
+          "column": "recent",
+          "label": "this year's gift",
+          "group": "recency",
+          "importance": 5.181207599572838,
+          "lo": 1.1012909304608798,
+          "hi": 9.046601273007843,
+          "direction": "mixed"
+        },
+        {
+          "column": "n",
+          "label": "number of gifts",
+          "group": "giving_history",
+          "importance": 0.4622371990152635,
+          "lo": -2.433988533649017,
+          "hi": 3.683080191644018,
+          "direction": "-"
+        }
+      ],
+      "scoring": "neg_mean_absolute_error",
+      "split": "walk-forward (train on fiscal years < T, test on T)",
+      "n_configs": 1,
+      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+    }
   },
   "upgrade_synthetic": {
     "top1pct": {
@@ -56,7 +257,77 @@
       "rule": 17.744123451670617,
       "random": 12.469678378527826
     },
-    "verdict": "wins"
+    "verdict": "wins",
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "fy_total",
+            "fy_total_prior1",
+            "fy_total_prior2",
+            "fy_trend",
+            "largest_gift",
+            "gift_count",
+            "consecutive_years_given",
+            "months_since_last_gift"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "fy_total_prior1",
+          "label": "last year's giving",
+          "group": "recency",
+          "importance": 0.04709427162335041,
+          "lo": 0.02305000660215417,
+          "hi": 0.07521130221130232,
+          "direction": "+"
+        },
+        {
+          "column": "fy_total",
+          "label": "this year's giving",
+          "group": "recency",
+          "importance": 0.02775894367706084,
+          "lo": -0.0014974860941755041,
+          "hi": 0.04931859131859142,
+          "direction": "+"
+        },
+        {
+          "column": "fy_total_prior2",
+          "label": "giving two years ago",
+          "group": "recency",
+          "importance": 0.01759071866161273,
+          "lo": -0.000172065107479491,
+          "hi": 0.03362817362817372,
+          "direction": "mixed"
+        },
+        {
+          "column": "consecutive_years_given",
+          "label": "consecutive years given",
+          "group": "momentum",
+          "importance": 0.014517218365657827,
+          "lo": 0.002645029816092226,
+          "hi": 0.031181974232735322,
+          "direction": "+"
+        },
+        {
+          "column": "fy_trend",
+          "label": "giving trend, this year vs last",
+          "group": "momentum",
+          "importance": 0.0003975887091779073,
+          "lo": -0.006689829121218782,
+          "hi": 0.010778941187983193,
+          "direction": "mixed"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "walk-forward (FiscalYearGroupedSplitter, last split)",
+      "n_configs": 1,
+      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+    }
   },
   "planned_giving_synthetic": {
     "n_test": 3000,
@@ -69,6 +340,53 @@
       "0.01": 0.4418666666666667,
       "0.05": 0.4418666666666667,
       "0.1": 0.4418666666666667
+    },
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "total",
+            "n",
+            "recent"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "total",
+          "label": "lifetime giving",
+          "group": "giving_history",
+          "importance": 0.18214047423030033,
+          "lo": 0.15535389992270726,
+          "hi": 0.21508706701658603,
+          "direction": "+"
+        },
+        {
+          "column": "recent",
+          "label": "this year's gift",
+          "group": "recency",
+          "importance": 0.017002718821069445,
+          "lo": 0.0005163520505876651,
+          "hi": 0.049766129395344694,
+          "direction": "-"
+        },
+        {
+          "column": "n",
+          "label": "number of gifts",
+          "group": "giving_history",
+          "importance": 0.001291395891578886,
+          "lo": -0.00347147449899744,
+          "hi": 0.005428193228005762,
+          "direction": "-"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "walk-forward (train on fiscal years < T, test on T)",
+      "n_configs": 1,
+      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
     }
   },
   "upgrade_worked_example": {
@@ -207,7 +525,64 @@
       "model": 8.874912648497554,
       "rule": 8.280922431865829
     },
-    "verdict": "modest"
+    "verdict": "modest",
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "recency",
+            "frequency",
+            "monetary",
+            "tenure"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "frequency",
+          "label": "number of gifts",
+          "group": "giving_history",
+          "importance": 0.07294382398261089,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "recency",
+          "label": "months since last gift",
+          "group": "recency",
+          "importance": 0.00877785115770192,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "monetary",
+          "label": "lifetime giving",
+          "group": "giving_history",
+          "importance": 0.008401593506983584,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "tenure",
+          "label": "years as a donor",
+          "group": "giving_history",
+          "importance": 0.005198934696756119,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "55/15/30 stratified (train/validation/test)",
+      "n_configs": 1,
+      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+    }
   },
   "upgrade_kdd98": {
     "top1pct": {
@@ -222,7 +597,77 @@
       "model": 10.98473044562169,
       "rule": 12.153318790900594
     },
-    "verdict": "loses"
+    "verdict": "loses",
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "fy_total",
+            "fy_total_prior1",
+            "fy_total_prior2",
+            "fy_trend",
+            "largest_gift",
+            "gift_count",
+            "consecutive_years_given",
+            "months_since_last_gift"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "largest_gift",
+          "label": "largest gift this year",
+          "group": "giving_history",
+          "importance": 0.10133596842298953,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "fy_total",
+          "label": "this year's giving",
+          "group": "recency",
+          "importance": 0.07989268435168162,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "months_since_last_gift",
+          "label": "months since last gift",
+          "group": "recency",
+          "importance": 0.04830497580437535,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "fy_total_prior1",
+          "label": "last year's giving",
+          "group": "recency",
+          "importance": 0.0,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        },
+        {
+          "column": "fy_total_prior2",
+          "label": "giving two years ago",
+          "group": "recency",
+          "importance": 0.0,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "walk-forward by fiscal year (train FY1994, test FY1995)",
+      "n_configs": 1,
+      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+    }
   },
   "lapse_kdd98": {
     "base_rate_pct": 94.92411855951033,
@@ -238,6 +683,53 @@
     "top10pct": {
       "model": 96.26873493344513,
       "rule": 96.59364846452154
+    },
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "total",
+            "n",
+            "recent"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "n",
+          "label": "number of gifts",
+          "group": "giving_history",
+          "importance": 0.0724950488362552,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        },
+        {
+          "column": "total",
+          "label": "lifetime giving",
+          "group": "giving_history",
+          "importance": 0.02173306868975363,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "recent",
+          "label": "this year's gift",
+          "group": "recency",
+          "importance": 0.0026883149772445993,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N)",
+      "n_configs": 1,
+      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
     }
   },
   "lapse_kdd98_retention": {
@@ -258,13 +750,171 @@
   "ask_kdd98": {
     "within25pct_model": 64.96902959394356,
     "within25pct_last_gift": 67.44666207845836,
-    "verdict": "loses"
+    "verdict": "loses",
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "AGE",
+            "INCOME",
+            "WEALTH1",
+            "WEALTH2",
+            "NUMCHLD",
+            "RAMNTALL",
+            "NGIFTALL",
+            "LASTGIFT",
+            "AVGGIFT",
+            "MAXRAMNT",
+            "MINRAMNT",
+            "TIMELAG",
+            "HOMEOWNER",
+            "rfm_recency",
+            "rfm_frequency",
+            "rfm_monetary",
+            "rfm_tenure"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "LASTGIFT",
+          "label": "last gift amount",
+          "group": "recency",
+          "importance": 2.7332013002681768,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "AVGGIFT",
+          "label": "average gift amount",
+          "group": "giving_history",
+          "importance": 0.7949585945615979,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "rfm_frequency",
+          "label": "number of gifts",
+          "group": "giving_history",
+          "importance": 0.22879022850942618,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "rfm_monetary",
+          "label": "lifetime giving",
+          "group": "giving_history",
+          "importance": 0.21295040416969507,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "MAXRAMNT",
+          "label": "largest gift ever",
+          "group": "giving_history",
+          "importance": 0.13329901591195226,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        }
+      ],
+      "scoring": "neg_mean_absolute_error",
+      "split": "55/15/30 stratified (train/validation/test)",
+      "n_configs": 1,
+      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+    }
   },
   "who_to_mail_kdd98": {
     "net_revenue_model": 4541.98,
     "net_revenue_mail_everyone": 3149.0499999999993,
     "verdict": "wins",
     "note": "mail if E[gift]>$0.68; pieces=18704/28624",
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "AGE",
+            "INCOME",
+            "WEALTH1",
+            "WEALTH2",
+            "NUMCHLD",
+            "RAMNTALL",
+            "NGIFTALL",
+            "LASTGIFT",
+            "AVGGIFT",
+            "MAXRAMNT",
+            "MINRAMNT",
+            "TIMELAG",
+            "HOMEOWNER",
+            "rfm_recency",
+            "rfm_frequency",
+            "rfm_monetary",
+            "rfm_tenure"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "LASTGIFT",
+          "label": "last gift amount",
+          "group": "recency",
+          "importance": 0.02566058206009535,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "NGIFTALL",
+          "label": "lifetime number of gifts",
+          "group": "giving_history",
+          "importance": 0.008253801476478995,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "rfm_frequency",
+          "label": "number of gifts",
+          "group": "giving_history",
+          "importance": 0.006823359020866093,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "AGE",
+          "label": "donor's age",
+          "group": "wealth",
+          "importance": 0.006058361280141966,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        },
+        {
+          "column": "rfm_recency",
+          "label": "months since last gift",
+          "group": "recency",
+          "importance": 0.005268140298666157,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "55/15/30 stratified (train/validation/test)",
+      "n_configs": 1,
+      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+    },
     "curve": {
       "mailed": [
         0,
@@ -361,6 +1011,86 @@
     "net_revenue_mail_everyone": 10560.079999999994,
     "verdict": "wins",
     "note": "mail if E[gift]>$0.68; pieces=62703/96367; model fit on cup98LRN's own 55% train split only, scored on KDD98's own held-out validation file (cup98VAL+valtargt), reported next to bench_kdd_cost_aware's random-split number, not replacing it",
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "AGE",
+            "INCOME",
+            "WEALTH1",
+            "WEALTH2",
+            "NUMCHLD",
+            "RAMNTALL",
+            "NGIFTALL",
+            "LASTGIFT",
+            "AVGGIFT",
+            "MAXRAMNT",
+            "MINRAMNT",
+            "TIMELAG",
+            "HOMEOWNER",
+            "rfm_recency",
+            "rfm_frequency",
+            "rfm_monetary",
+            "rfm_tenure"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "LASTGIFT",
+          "label": "last gift amount",
+          "group": "recency",
+          "importance": 0.02566058206009535,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "NGIFTALL",
+          "label": "lifetime number of gifts",
+          "group": "giving_history",
+          "importance": 0.008253801476478995,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "rfm_frequency",
+          "label": "number of gifts",
+          "group": "giving_history",
+          "importance": 0.006823359020866093,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "AGE",
+          "label": "donor's age",
+          "group": "wealth",
+          "importance": 0.006058361280141966,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        },
+        {
+          "column": "rfm_recency",
+          "label": "months since last gift",
+          "group": "recency",
+          "importance": 0.005268140298666157,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "55/15/30 stratified (train/validation/test)",
+      "n_configs": 1,
+      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970",
+      "reused_from_note": "Same response model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
+    },
     "curve": {
       "mailed": [
         0,
@@ -465,10 +1195,68 @@
       "model": 8.934315658399917,
       "rule": 7.398568019093078
     },
-    "verdict": "wins"
+    "verdict": "wins",
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "recency",
+            "frequency",
+            "monetary",
+            "tenure"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "frequency",
+          "label": "number of gifts",
+          "group": "giving_history",
+          "importance": 0.07294382398261089,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "recency",
+          "label": "months since last gift",
+          "group": "recency",
+          "importance": 0.00877785115770192,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "monetary",
+          "label": "lifetime giving",
+          "group": "giving_history",
+          "importance": 0.008401593506983584,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "tenure",
+          "label": "years as a donor",
+          "group": "giving_history",
+          "importance": 0.005198934696756119,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "55/15/30 stratified (train/validation/test)",
+      "n_configs": 1,
+      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970",
+      "reused_from_note": "Same model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
+    }
   },
   "_env": {
-    "git_sha": "fc5b61047663274deb522e370c66af1aea975beb",
+    "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

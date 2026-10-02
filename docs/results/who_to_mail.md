@@ -44,3 +44,15 @@ Real file: [KDD Cup 1998](https://kdd.ics.uci.edu/databases/kddcup98/kddcup98.ht
 a 1990s direct-mail history; gift sizes there are small (a few dollars to a
 few hundred), so its dollar figures will not resemble a major-gift program.
 Results on your own file, and at your own mailing cost, will differ.
+
+## What the model looks at
+
+"Mail if expected gift beats the cost" multiplies a response model's score by
+a suggested gift amount, so there is no single ranking to attribute to one
+feature list. The drivers below are for the response half of that decision
+only; see [Suggested ask](ask.md#what-the-model-looks-at) for the amount
+half's own drivers.
+
+--8<-- "results/_features/who_to_mail__who_to_mail_kdd98.md"
+
+--8<-- "results/_features/who_to_mail__who_to_mail_cup98val.md"

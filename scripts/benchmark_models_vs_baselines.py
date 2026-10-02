@@ -541,7 +541,10 @@ def bench_upgrade(
             )
         if snaps.empty or snaps["fiscal_year"].nunique() < 2:
             continue
-        feature_cols = [c for c in snaps.columns if c != "target" and pd.api.types.is_numeric_dtype(snaps[c])]
+        feature_cols = [
+            c for c in snaps.columns
+            if c not in ("target", "fiscal_year") and pd.api.types.is_numeric_dtype(snaps[c])
+        ]
         X = snaps[feature_cols].to_numpy(dtype="float64")
         y = snaps["target"].to_numpy()
         fy = snaps["fiscal_year"].to_numpy()

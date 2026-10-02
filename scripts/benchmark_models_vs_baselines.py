@@ -92,6 +92,7 @@ from philanthropy.datasets import fetch_kdd98_donors, fetch_kdd98_val_donors, ma
 from philanthropy.ingest import build_upgrade_snapshots
 from philanthropy.metrics import fundraising_roi
 from philanthropy.model_selection import FiscalYearGroupedSplitter
+from philanthropy.utils._momentum import trailing_slope_features
 from philanthropy.models import (
     AskAmountRecommender,
     DonorPropensityModel,
@@ -113,6 +114,9 @@ PARITY_FEATURES: Tuple[str, ...] = (
     "total", "n", "recent", "streak", "years_since_last", "prev_recent", "max_gift", "tenure",
 )
 KDD_SEED = 42
+MOMENTUM_COLS: Tuple[str, ...] = tuple(
+    f"fy_total_{stat}_{k}y" for stat in ("slope", "rel_slope") for k in (3, 5)
+)
 KDD_AS_OF = "1997-06-01"
 WIN_RATIO = 1.15
 COVERAGE_TOL = 0.03
@@ -346,7 +350,7 @@ def _within_pct(pred: np.ndarray, y_true: np.ndarray, pct: float = 0.25) -> floa
 # --------------------------------------------------------------------------- #
 # Synthetic donor panel (make_donor_panel)
 # --------------------------------------------------------------------------- #
-def _period_panel(n_donors: int, n_years: int, seed: int) -> pd.DataFrame:
+def _period_panel(n_donors: int, n_years: int, seed: int, include_momentum: bool = False) -> pd.DataFrame:
     """As-of donor-period panel, one row per (donor, fiscal year).
 
     Mirrors ``scripts/real_data_leakage_experiment.py``'s panel: ``total``/``n``
@@ -378,6 +382,14 @@ def _period_panel(n_donors: int, n_years: int, seed: int) -> pd.DataFrame:
     gave = amount > 0
     first_gift_fy = donors.set_index("donor_id")["first_gift_fy"].reindex(donor_ids).to_numpy()
 
+    if include_momentum:
+        # Ad hoc scratch reuse of the shared helper: treat each fiscal year
+        # as a Dec-31 year-end bin so trailing_slope_features's 12-month
+        # bins line up with this panel's integer fiscal years.
+        long = amount.reset_index().melt(id_vars="donor_id", var_name="fy", value_name="gift_amount")
+        long["gift_date"] = pd.to_datetime(long["fy"].astype(int).astype(str) + "-12-31")
+        data_start = pd.Timestamp(f"{years[0]}-12-31")
+
     rows = []
     cum_total = np.zeros(len(donor_ids))
     cum_n = np.zeros(len(donor_ids))
@@ -397,17 +409,22 @@ def _period_panel(n_donors: int, n_years: int, seed: int) -> pd.DataFrame:
         next_fy = years[i + 1]
         y_response = gave[next_fy].to_numpy().astype(int)
         y_amount = np.where(y_response == 1, amount[next_fy].to_numpy(), np.nan)
-        rows.append(
-            pd.DataFrame(
-                {
-                    "donor_id": donor_ids, "fy": fy,
-                    "total": cum_total.copy(), "n": cum_n.copy(), "recent": recent,
-                    "streak": streak.copy(), "years_since_last": years_since_last.copy(),
-                    "prev_recent": prev_recent.copy(), "max_gift": max_gift.copy(), "tenure": tenure,
-                    "y_response": y_response, "y_amount": y_amount,
-                }
-            )
-        )
+        row = {
+            "donor_id": donor_ids, "fy": fy,
+            "total": cum_total.copy(), "n": cum_n.copy(), "recent": recent,
+            "streak": streak.copy(), "years_since_last": years_since_last.copy(),
+            "prev_recent": prev_recent.copy(), "max_gift": max_gift.copy(), "tenure": tenure,
+            "y_response": y_response, "y_amount": y_amount,
+        }
+        if include_momentum:
+            cutoff = pd.Timestamp(f"{fy}-12-31")
+            momentum = trailing_slope_features(
+                long, pd.Index(donor_ids), cutoff, date_col="gift_date", value_col="gift_amount",
+                agg="sum", prefix="fy_total", donor_col="donor_id", data_start=data_start,
+            ).reindex(donor_ids)
+            for col in momentum.columns:
+                row[col] = momentum[col].to_numpy()
+        rows.append(pd.DataFrame(row))
         prev_recent = recent
     return pd.concat(rows, ignore_index=True)
 
@@ -420,6 +437,7 @@ def _train_test_periods(panel: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame
 def bench_response(
     seeds: Sequence[int], n_donors: int, n_years: int,
     feature_cols: Sequence[str] = ("total", "n", "recent"), dataset: str = "synthetic_panel",
+    include_momentum: bool = False,
 ) -> List[Row]:
     """DonorPropensityModel / MajorGiftClassifier vs the response rule set
     (E.11a rule 3): lifetime monetary, RFM cell score.
@@ -427,11 +445,13 @@ def bench_response(
     ``feature_cols`` defaults to the 3 features the rules are not fed
     (E.12b's "feature parity probe"); pass :data:`PARITY_FEATURES` for the
     same comparison on the full 8 as-of columns."""
+    if include_momentum:
+        feature_cols = tuple(feature_cols) + MOMENTUM_COLS
     seed_rows = []
     for seed in seeds:
-        train, test = _train_test_periods(_period_panel(n_donors, n_years, seed))
-        Xtr = train[list(feature_cols)].to_numpy()
-        Xte = test[list(feature_cols)].to_numpy()
+        train, test = _train_test_periods(_period_panel(n_donors, n_years, seed, include_momentum=include_momentum))
+        Xtr = train[list(feature_cols)].fillna(0.0).to_numpy()
+        Xte = test[list(feature_cols)].fillna(0.0).to_numpy()
         ytr, yte = train["y_response"].to_numpy(), test["y_response"].to_numpy()
         rules = {
             "lifetime monetary": test["total"].to_numpy(),
@@ -451,6 +471,7 @@ def bench_response(
 def bench_lapse(
     seeds: Sequence[int], n_donors: int, n_years: int,
     feature_cols: Sequence[str] = ("total", "n", "recent"), dataset: str = "synthetic_panel",
+    include_momentum: bool = False,
 ) -> List[Row]:
     """LapsePredictor vs the lapse rule set (E.11a rule 3): LYBUNT/SYBUNT
     flag, years since last gift, shortest giving streak, gave nothing last
@@ -459,11 +480,13 @@ def bench_lapse(
     ``feature_cols`` defaults to the 3 features the rules are not fed
     (E.12b's "feature parity probe"); pass :data:`PARITY_FEATURES` for the
     same comparison on the full 8 as-of columns."""
+    if include_momentum:
+        feature_cols = tuple(feature_cols) + MOMENTUM_COLS
     seed_rows = []
     for seed in seeds:
-        train, test = _train_test_periods(_period_panel(n_donors, n_years, seed))
-        Xtr = train[list(feature_cols)].to_numpy()
-        Xte = test[list(feature_cols)].to_numpy()
+        train, test = _train_test_periods(_period_panel(n_donors, n_years, seed, include_momentum=include_momentum))
+        Xtr = train[list(feature_cols)].fillna(0.0).to_numpy()
+        Xte = test[list(feature_cols)].fillna(0.0).to_numpy()
         ytr, yte = 1 - train["y_response"].to_numpy(), 1 - test["y_response"].to_numpy()
         rules = {
             "LYBUNT/SYBUNT flag": ((test["recent"].to_numpy() == 0) & (test["prev_recent"].to_numpy() > 0)).astype(float),
@@ -479,17 +502,19 @@ def bench_lapse(
     return _aggregate(seed_rows)
 
 
-def bench_ask(seeds: Sequence[int], n_donors: int, n_years: int) -> List[Row]:
+def bench_ask(seeds: Sequence[int], n_donors: int, n_years: int, include_momentum: bool = False) -> List[Row]:
     """AskAmountRecommender vs the ask rule set (E.11a rule 3): last gift,
     max(last gift, average gift), median training gift."""
+    base_cols = ("total", "n", "recent")
+    feature_cols = base_cols + MOMENTUM_COLS if include_momentum else base_cols
     seed_rows = []
     for seed in seeds:
-        train, test = _train_test_periods(_period_panel(n_donors, n_years, seed))
+        train, test = _train_test_periods(_period_panel(n_donors, n_years, seed, include_momentum=include_momentum))
         train_resp, test_resp = train[train["y_response"] == 1], test[test["y_response"] == 1]
         if len(train_resp) < 20 or len(test_resp) < 5:
             continue
-        Xtr = train_resp[["total", "n", "recent"]].to_numpy()
-        Xte = test_resp[["total", "n", "recent"]].to_numpy()
+        Xtr = train_resp[list(feature_cols)].fillna(0.0).to_numpy()
+        Xte = test_resp[list(feature_cols)].fillna(0.0).to_numpy()
         ytr, yte = train_resp["y_amount"].to_numpy(), test_resp["y_amount"].to_numpy()
 
         model = AskAmountRecommender(random_state=seed).fit(Xtr, ytr)
@@ -525,6 +550,7 @@ def bench_ask(seeds: Sequence[int], n_donors: int, n_years: int) -> List[Row]:
 def bench_upgrade(
     seeds: Sequence[int], n_donors: int, n_years: int,
     threshold: float = 1000.0, band: Tuple[float, float] = (100.0, 999.0),
+    include_momentum: bool = False,
 ) -> List[Row]:
     """Upgrade model (build_upgrade_snapshots + MajorGiftClassifier) vs the
     upgrade rule set (E.11a rule 3): this-year total, previous-year total
@@ -538,6 +564,7 @@ def bench_upgrade(
             warnings.simplefilter("ignore", UserWarning)
             snaps = build_upgrade_snapshots(
                 panel["gifts"], fiscal_years=years[:-1], threshold=threshold, band=band,
+                include_momentum=include_momentum,
             )
         if snaps.empty or snaps["fiscal_year"].nunique() < 2:
             continue
@@ -771,7 +798,10 @@ def _kdd_ask_design(
     )
 
 
-def bench_kdd_upgrade(seed: int, threshold: float = 50.0, band: Tuple[float, float] = (5.0, 49.0)) -> List[Row]:
+def bench_kdd_upgrade(
+    seed: int, threshold: float = 50.0, band: Tuple[float, float] = (5.0, 49.0),
+    include_momentum: bool = False,
+) -> List[Row]:
     """Upgrade model on KDD98, threshold rescaled from the $1000/$100-999
     defaults: this file's per-donor annual giving tops out far lower than a
     major-gift program's, so $50/$5-49 keeps the same shape (threshold is
@@ -797,6 +827,7 @@ def bench_kdd_upgrade(seed: int, threshold: float = 50.0, band: Tuple[float, flo
         warnings.simplefilter("ignore", UserWarning)
         snaps = build_upgrade_snapshots(
             gifts, fiscal_years=[train_fy, test_fy], threshold=threshold, band=band, fiscal_year_start=7,
+            include_momentum=include_momentum,
         )
     feature_cols = [
         c for c in snaps.columns

@@ -6,6 +6,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `scripts/make_results_pages.py --with-momentum`: runs each synthetic model
+  (and KDD98's upgrade model, with `--with-kdd98`) a second time with
+  `include_momentum=True`, writing a `<key>_momentum` entry next to the
+  existing one in `results.json` (five-seed range included for synthetic
+  rows, a plain-language `method` string for the docs to quote). Every
+  existing key and default number is untouched; verified byte-identical
+  except `_env.git_sha`. On the sample panel, momentum moves the upgrade
+  model's top-10% hit rate from 21.6% to 25.4%, inside the five-seed noise
+  band rather than clearly outside it; on KDD98's real gift history it makes
+  no difference at all (verified: 90.9% of the KDD98 momentum values are
+  real, non-NaN numbers with genuine spread, but `donor_feature_importance`
+  gives momentum, and several of the model's existing columns, exactly 0.0
+  permutation importance on that file). Response, lapse and ask get the
+  same momentum columns applied to this script's own per-donor annual
+  panel (not the shipped `RFMTransformer`/`activities_to_features` path);
+  none of their verdicts change either.
 - `philanthropy.utils.trailing_slope_features`, a shared as-of trailing-window
   OLS slope/relative-slope helper over annual (or other evenly-spaced) bins
   of a donor time series. `RFMTransformer(include_momentum=True)` and

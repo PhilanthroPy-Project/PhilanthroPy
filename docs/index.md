@@ -225,7 +225,7 @@ A comprehensive suite of tools, easy to understand and use:
 <div class="ap-ledger-row" markdown>
 **Multi-source uploads, one upgrade model.** Maps and folds any number of tagged CRM/engagement exports (gifts, event attendance, volunteer hours, ...) into one donor table, then trains and scores who is likely to move from mid-level giving to your leadership threshold next fiscal year, all cut at an `as_of` date so nothing dated after it can leak in.
 
-`build_upgrade_snapshots`, `score_upgrade_prospects`
+`build_leadership_snapshots`, `score_leadership_prospects`
 </div>
 
 </div>

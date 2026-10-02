@@ -47,7 +47,7 @@ open-ended set of activity types discovered from the data itself.
 NPSP reader-and-aggregator pair by name, for a caller working with more than
 one CRM export format.
 
-``build_upgrade_snapshots`` builds a per-donor, per-fiscal-year training
+``build_leadership_snapshots`` builds a per-donor, per-fiscal-year training
 table for an upgrade model: one row per (donor, fiscal year T) for every
 donor whose FY T giving falls in a mid-level band, features computed only
 from data through the end of T, and a target reading whether FY T+1 crossed
@@ -85,7 +85,7 @@ from ._raisers_edge import (
     read_raisers_edge_gifts,
 )
 from ._read_gifts import GIFT_SOURCES, read_gifts
-from ._upgrade_snapshots import build_upgrade_snapshots
+from ._upgrade_snapshots import build_leadership_snapshots
 
 __all__ = [
     "DEFAULT_EXCLUDED_ENTRY_TYPES",
@@ -95,7 +95,7 @@ __all__ = [
     "GIFT_SOURCES",
     "activities_to_features",
     "bloomerang_transactions_to_features",
-    "build_upgrade_snapshots",
+    "build_leadership_snapshots",
     "civicrm_contributions_to_features",
     "constituent_events_to_features",
     "donorperfect_gifts_to_features",

@@ -5,8 +5,8 @@ Fit-and-score entry point for the mid-level-to-leadership "upgrade" model:
 which currently mid-level donors are most likely to cross the leadership
 ``threshold`` next fiscal year?
 
-``score_upgrade_prospects`` is the one-call version of the workflow
-:func:`~philanthropy.ingest.build_upgrade_snapshots` sets up: every
+``score_leadership_prospects`` is the one-call version of the workflow
+:func:`~philanthropy.ingest.build_leadership_snapshots` sets up: every
 fully-resolved historical ``(donor, fiscal year)`` pair becomes a training
 row, a :class:`~philanthropy.models.MajorGiftClassifier` is fit on the stack
 with a walk-forward, fiscal-year-aware validation split, and the CURRENT
@@ -14,10 +14,10 @@ band-qualifying donors (an unlabelled snapshot as of ``as_of``) are scored
 with a model refit on every historical row.
 
 This lives in ``philanthropy.models``, not ``philanthropy.ingest`` where
-``build_upgrade_snapshots`` lives: unlike that function, which only reshapes
+``build_leadership_snapshots`` lives: unlike that function, which only reshapes
 tables (no estimator involved, by that module's own design), this function's
 work is mostly a model-selection split, a classifier fit, and a permutation-
-importance call. It still calls ``build_upgrade_snapshots`` directly for the
+importance call. It still calls ``build_leadership_snapshots`` directly for the
 historical half rather than re-deriving the same target/leakage logic, the
 same reasoning that function gives for reusing ``activities_to_features``.
 """
@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score
 
-from philanthropy.ingest import build_upgrade_snapshots
+from philanthropy.ingest import build_leadership_snapshots
 from philanthropy.ingest._upgrade_snapshots import (
     _column,
     _fy_end,
@@ -44,7 +44,7 @@ from philanthropy.utils._validation import fiscal_year_for
 
 from ._propensity import MajorGiftClassifier
 
-__all__ = ["score_upgrade_prospects"]
+__all__ = ["score_leadership_prospects"]
 
 _TOP_REASONS = 3
 _LOW_DATA_ROWS = 500
@@ -56,7 +56,7 @@ _LOW_DATA_ROWS = 500
 _MIN_TRAINING_ROWS = 5
 
 
-def score_upgrade_prospects(
+def score_leadership_prospects(
     gifts: Union[Iterable[Mapping], pd.DataFrame],
     *,
     activities: Optional[Union[Iterable[Mapping], pd.DataFrame]] = None,
@@ -74,7 +74,7 @@ def score_upgrade_prospects(
 
     Every fiscal year ``T`` where both ``T`` and ``T+1`` are fully resolved as
     of ``as_of`` is a labelled training row (via
-    :func:`~philanthropy.ingest.build_upgrade_snapshots`); a
+    :func:`~philanthropy.ingest.build_leadership_snapshots`); a
     :class:`~philanthropy.models.MajorGiftClassifier` is fit on the stack of
     those years and evaluated on the most recent
     :class:`~philanthropy.model_selection.FiscalYearGroupedSplitter` fold, an
@@ -88,11 +88,11 @@ def score_upgrade_prospects(
     ----------
     gifts : iterable of mapping, or DataFrame
         Gift-level rows with ``donor_id``, ``gift_date`` and ``gift_amount``,
-        the same shape :func:`~philanthropy.ingest.build_upgrade_snapshots`
+        the same shape :func:`~philanthropy.ingest.build_leadership_snapshots`
         takes.
     activities : iterable of mapping, or DataFrame, optional
         A long activity log, forwarded to
-        :func:`~philanthropy.ingest.build_upgrade_snapshots` for the
+        :func:`~philanthropy.ingest.build_leadership_snapshots` for the
         historical years and to the same feature logic for the current row.
     donors : DataFrame, optional
         Static donor attributes, indexed by donor id. Forwarded the same way.
@@ -103,7 +103,7 @@ def score_upgrade_prospects(
         The leadership-giving level an upgrade crosses into.
     band : (float, float), default=(100.0, 999.0)
         Inclusive bounds on FY giving that define the upgrade-candidate
-        population, exactly as in ``build_upgrade_snapshots``.
+        population, exactly as in ``build_leadership_snapshots``.
     fiscal_year_start : int, default=7
         Month (1-12) the fiscal year begins.
     as_of : str or datetime-like, optional
@@ -127,7 +127,7 @@ def score_upgrade_prospects(
         Seed forwarded to the classifier fits and to the permutation
         importance call, for reproducible scores and reasons.
     include_momentum : bool, default=False
-        Forwarded to :func:`~philanthropy.ingest.build_upgrade_snapshots`:
+        Forwarded to :func:`~philanthropy.ingest.build_leadership_snapshots`:
         trains and scores on trailing-slope momentum features too, not just
         the current feature set. Off by default so this function's output
         stays unchanged for existing callers.
@@ -230,7 +230,7 @@ def score_upgrade_prospects(
 
     **Suggested ask.** ``AskAmountRecommender`` needs its own ask-amount
     label (what a gift officer actually asked for, or a realistic proxy for
-    it); nothing in ``build_upgrade_snapshots``'s output is that. Training it
+    it); nothing in ``build_leadership_snapshots``'s output is that. Training it
     on, say, the FY T+1 amount actually given would train on the very
     quantity the upgrade label is derived from, an honesty problem, not a
     convenience one. ``suggested_ask`` is left ``NaN``, out of scope for this
@@ -244,7 +244,7 @@ def score_upgrade_prospects(
     cross ``threshold`` are still band-qualifying "today" (FY2025):
 
     >>> import pandas as pd
-    >>> from philanthropy.models import score_upgrade_prospects
+    >>> from philanthropy.models import score_leadership_prospects
     >>> years = ["2020-08-01", "2021-08-01", "2022-08-01", "2023-08-01", "2024-08-01"]
     >>> archetypes = {
     ...     "flat_high": [900, 900, 900, 900, 900],
@@ -259,7 +259,7 @@ def score_upgrade_prospects(
     ...     for year, amount in zip(years, amounts)
     ... ]
     >>> gifts = pd.DataFrame(rows)
-    >>> scores, report = score_upgrade_prospects(gifts, random_state=0)
+    >>> scores, report = score_leadership_prospects(gifts, random_state=0)
     >>> list(scores.columns)
     ['fiscal_year', 'affinity_score', 'rank', 'decile', 'top_reasons', 'suggested_ask']
     >>> len(scores)
@@ -310,7 +310,7 @@ def score_upgrade_prospects(
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        historical_snap = build_upgrade_snapshots(
+        historical_snap = build_leadership_snapshots(
             df, fiscal_years=historical_years, threshold=threshold, band=band,
             fiscal_year_start=fiscal_year_start, activities=activities, donors=donors,
             include_momentum=include_momentum,
@@ -499,7 +499,7 @@ def score_upgrade_prospects(
 def _check_min_rows(n_rows: int, as_of_ts: pd.Timestamp) -> None:
     """Raise a clear ``ValueError`` instead of letting a too-small training
     set crash inside ``MajorGiftClassifier``'s internal
-    ``CalibratedClassifierCV(cv=5)``. See ``score_upgrade_prospects``'s
+    ``CalibratedClassifierCV(cv=5)``. See ``score_leadership_prospects``'s
     ``Raises`` section."""
     if n_rows < _MIN_TRAINING_ROWS:
         raise ValueError(
@@ -517,7 +517,7 @@ def _check_two_classes(classes: np.ndarray, as_of_ts: pd.Timestamp, scope: str) 
     """Raise a clear ``ValueError`` instead of letting a single-class fit
     crash a caller's later ``predict_proba(...)[:, 1]`` (a single-class fit
     succeeds, but its ``predict_proba`` only has one column). See
-    ``score_upgrade_prospects``'s ``Raises`` section."""
+    ``score_leadership_prospects``'s ``Raises`` section."""
     if classes.size < 2:
         outcome = "an upgrade (target=1)" if classes[0] == 1 else "not an upgrade (target=0)"
         raise ValueError(
@@ -532,7 +532,7 @@ def _check_two_classes(classes: np.ndarray, as_of_ts: pd.Timestamp, scope: str) 
 def _decile_report(proba: np.ndarray, y_true: np.ndarray) -> list:
     """Ten dicts, one per predicted-score decile of a held-out fold (1 =
     highest-scored 10%, 10 = lowest), each with ``decile``, ``n``,
-    ``actual_rate`` and ``mean_predicted``. See ``score_upgrade_prospects``'s
+    ``actual_rate`` and ``mean_predicted``. See ``score_leadership_prospects``'s
     ``Returns`` section."""
     n = len(proba)
     ranks = np.empty(n, dtype="int64")
@@ -556,7 +556,7 @@ def _top_reasons(
     X: pd.DataFrame, importance_df: pd.DataFrame, top_k: int = _TOP_REASONS
 ) -> list:
     """Per-donor top-``top_k`` ``(feature, value)`` reasons; see the
-    "Top reasons" note on :func:`score_upgrade_prospects`."""
+    "Top reasons" note on :func:`score_leadership_prospects`."""
     weights = (
         importance_df.set_index("feature")["importance_mean"]
         .reindex(X.columns)

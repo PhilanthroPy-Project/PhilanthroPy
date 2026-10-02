@@ -186,16 +186,16 @@ philanthropy features --source raisers_edge --data gifts.csv \
   --as-of 2025-06-30 --out features.csv
 ```
 
-And `train --task upgrade` skips the "define your own label" step entirely for one specific, common question: which of your current $100–999 donors is likely to cross $1,000 next fiscal year? It reads the raw gift export directly, trains and validates on your fiscal-year history, and writes a scored, ranked CSV with a suggested next ask:
+And `train --task leadership` skips the "define your own label" step entirely for one specific, common question: which of your current $100–999 donors is likely to cross $1,000 next fiscal year? It reads the raw gift export directly, trains and validates on your fiscal-year history, and writes a scored, ranked CSV with a suggested next ask:
 
 ```bash
-philanthropy train --task upgrade --source raisers_edge --data gifts.csv \
+philanthropy train --task leadership --source raisers_edge --data gifts.csv \
   --activity event=events.csv --donors donors.csv \
   --threshold 1000 --band 100 999 --fiscal-year-start 7 \
   --out upgrade_scores.csv
 ```
 
-The recipe behind it (`philanthropy.models.score_upgrade_prospects`) is walked through end to end, on synthetic data, in **[`05_leadership_upgrade.ipynb`](examples/notebooks/05_leadership_upgrade.ipynb)**.
+The recipe behind it (`philanthropy.models.score_leadership_prospects`) is walked through end to end, on synthetic data, in **[`05_leadership_upgrade.ipynb`](examples/notebooks/05_leadership_upgrade.ipynb)**.
 
 ### Your data never leaves your machine
 
@@ -229,7 +229,7 @@ All three gift bridges are also reachable through one function, `philanthropy.in
 
 A no-code upload flow rarely gets one clean CRM export; it gets a gift file, an events file, a volunteer-hours file, each with its own headers. `philanthropy.ingest.map_columns()` renames whatever headers a user picked to the canonical names the bridges above expect, raising one error that lists every column still missing rather than failing on the first. `philanthropy.ingest.activities_to_features()` then folds any number of tagged activity files (event attendance, volunteer shifts, email clicks, ...) into one donor-level table, per-type, per-cutoff, so a new activity type never needs new model code.
 
-`philanthropy.ingest.build_upgrade_snapshots()` and `philanthropy.models.score_upgrade_prospects()` build directly on that: given a gift log (plus, optionally, an activity log and static donor attributes), they train and validate a `MajorGiftClassifier` on your own fiscal-year history and score which of today's mid-level donors is likely to upgrade next year, everything cut at an `as_of` date so nothing dated after it can leak in. See **[the CLI walkthrough](docs/how-to/use_the_cli.md)** for the no-Python version, or **[`05_leadership_upgrade.ipynb`](examples/notebooks/05_leadership_upgrade.ipynb)** for the Python one.
+`philanthropy.ingest.build_leadership_snapshots()` and `philanthropy.models.score_leadership_prospects()` build directly on that: given a gift log (plus, optionally, an activity log and static donor attributes), they train and validate a `MajorGiftClassifier` on your own fiscal-year history and score which of today's mid-level donors is likely to upgrade next year, everything cut at an `as_of` date so nothing dated after it can leak in. See **[the CLI walkthrough](docs/how-to/use_the_cli.md)** for the no-Python version, or **[`05_leadership_upgrade.ipynb`](examples/notebooks/05_leadership_upgrade.ipynb)** for the Python one.
 
 ---
 
@@ -288,8 +288,8 @@ Full parameter documentation for every symbol below is rendered in the [API refe
 | `read_gifts` | `ingest` | One entry point over the CiviCRM / Raiser's Edge / NPSP presets (`GIFT_SOURCES`) |
 | `map_columns` | `ingest` | Renames a user-mapped header set to the canonical names the bridges expect |
 | `activities_to_features` | `ingest` | Long, multi-source activity log (events, volunteering, ...) → per-donor, per-type engagement features |
-| `build_upgrade_snapshots` | `ingest` | Per-donor, per-fiscal-year training table for a mid-level-to-leadership upgrade model |
-| `score_upgrade_prospects` | `models` | Trains, validates, and scores the upgrade model in one call; powers `train --task upgrade` |
+| `build_leadership_snapshots` | `ingest` | Per-donor, per-fiscal-year training table for a mid-level-to-leadership upgrade model |
+| `score_leadership_prospects` | `models` | Trains, validates, and scores the upgrade model in one call; powers `train --task leadership` |
 | `generate_synthetic_donor_data`, `load_ciob_fundraising` | `datasets` | Synthetic pool and a real CIOB series |
 | `make_donor_dataset`, `save_model`, `load_model` | `utils` | Labelled fixtures and pipeline persistence |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Matplotlib is imported lazily, per function |

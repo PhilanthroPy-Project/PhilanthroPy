@@ -20,9 +20,9 @@ alongside the gift features (see `activities_to_features`).
 `train` saves a self-describing bundle (the fitted model, the feature list, and
 the scikit-learn / philanthropy versions used); `score` and `validate` reuse the
 feature list stored in that bundle unless you override it with `--features`.
-`train --task upgrade` is a different shape entirely: it reads a raw gift
+`train --task leadership` is a different shape entirely: it reads a raw gift
 export (not a pre-built features CSV) and calls
-`philanthropy.models.score_upgrade_prospects` directly, which trains on
+`philanthropy.models.score_leadership_prospects` directly, which trains on
 history and scores today's prospects in one call, so `--out` there is a
 scored CSV, not a saved model bundle.
 """
@@ -121,8 +121,8 @@ def _read_activities(activity_specs: Sequence[str]) -> pd.DataFrame:
 
 def _read_raw_gifts(source: str, path: str) -> pd.DataFrame:
     """Read a raw CRM gift export and normalise it to ``donor_id`` /
-    ``gift_date`` / ``gift_amount``, the shape ``score_upgrade_prospects``
-    (via ``build_upgrade_snapshots``) needs.
+    ``gift_date`` / ``gift_amount``, the shape ``score_leadership_prospects``
+    (via ``build_leadership_snapshots``) needs.
 
     Reuses each source's own header-canonicalisation function (the same one
     its ``*_to_features`` aggregator calls internally) rather than
@@ -204,8 +204,8 @@ def _neutralise_csv_injection(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _cmd_train(args: argparse.Namespace) -> None:
-    if args.task == "upgrade":
-        _cmd_train_upgrade(args)
+    if args.task == "leadership":
+        _cmd_train_leadership(args)
         return
 
     features = _split_features(args.features)
@@ -227,11 +227,11 @@ def _cmd_train(args: argparse.Namespace) -> None:
     print(f"Trained {args.model} on {len(df)} rows; saved to {args.out}")
 
 
-def _cmd_train_upgrade(args: argparse.Namespace) -> None:
+def _cmd_train_leadership(args: argparse.Namespace) -> None:
     if not args.source:
-        raise SystemExit("train --task upgrade requires --source.")
+        raise SystemExit("train --task leadership requires --source.")
 
-    from .models import score_upgrade_prospects
+    from .models import score_leadership_prospects
 
     gifts = _read_raw_gifts(args.source, args.data)
     activities = _read_activities(args.activity) if args.activity else None
@@ -245,7 +245,7 @@ def _cmd_train_upgrade(args: argparse.Namespace) -> None:
             )
         donors = donors.set_index("donor_id")
 
-    scores, report = score_upgrade_prospects(
+    scores, report = score_leadership_prospects(
         gifts,
         activities=activities,
         donors=donors,
@@ -439,31 +439,31 @@ def _build_parser() -> argparse.ArgumentParser:
     features.set_defaults(func=_cmd_features)
 
     train = sub.add_parser("train", help="Train a model from a labelled CSV and save it.")
-    train.add_argument("--task", choices=("plain", "upgrade"), default="plain",
+    train.add_argument("--task", choices=("plain", "leadership"), default="plain",
                         help="'plain': fit --model on --features/--target (default). "
-                        "'upgrade': read a raw gift export via --source and call "
-                        "score_upgrade_prospects, writing scored donors to --out.")
-    train.add_argument("--data", required=True, help="labelled CSV (plain) or raw gift export (upgrade)")
+                        "'leadership': read a raw gift export via --source and call "
+                        "score_leadership_prospects, writing scored donors to --out.")
+    train.add_argument("--data", required=True, help="labelled CSV (plain) or raw gift export (leadership)")
     train.add_argument("--target", default=None, help="name of the label column (plain)")
     train.add_argument("--features", default=None, help="comma-separated feature columns (plain)")
     train.add_argument("--model", default="DonorPropensityModel", choices=_MODEL_CHOICES)
-    train.add_argument("--out", required=True, help="output model bundle (plain) or scored CSV (upgrade)")
+    train.add_argument("--out", required=True, help="output model bundle (plain) or scored CSV (leadership)")
     train.add_argument("--random-state", type=int, default=0, dest="random_state")
     train.add_argument("--source", default=None, choices=_FEATURE_SOURCES,
-                        help="which CRM the gift export came from (upgrade)")
+                        help="which CRM the gift export came from (leadership)")
     train.add_argument("--threshold", type=float, default=1000.0,
-                        help="leadership-giving level an upgrade crosses into (upgrade)")
+                        help="leadership-giving level an upgrade crosses into (leadership)")
     train.add_argument("--band", type=float, nargs=2, default=(100.0, 999.0),
                         metavar=("LOW", "HIGH"),
-                        help="upgrade-candidate FY-total band (upgrade)")
+                        help="upgrade-candidate FY-total band (leadership)")
     train.add_argument("--fiscal-year-start", type=int, default=7, dest="fiscal_year_start",
-                        help="month (1-12) the fiscal year begins (upgrade)")
+                        help="month (1-12) the fiscal year begins (leadership)")
     train.add_argument("--activity", action="append", default=[], metavar="TYPE=PATH",
-                        help="an activity log CSV tagged with its type; repeatable (upgrade)")
+                        help="an activity log CSV tagged with its type; repeatable (leadership)")
     train.add_argument("--donors", default=None,
-                        help="optional donor-attributes CSV with a donor_id column (upgrade)")
+                        help="optional donor-attributes CSV with a donor_id column (leadership)")
     train.add_argument("--as-of", default=None, dest="as_of",
-                        help="scoring cutoff (default: the latest gift date) (upgrade)")
+                        help="scoring cutoff (default: the latest gift date) (leadership)")
     train.set_defaults(func=_cmd_train)
 
     score = sub.add_parser("score", help="Score a CSV with a saved model.")

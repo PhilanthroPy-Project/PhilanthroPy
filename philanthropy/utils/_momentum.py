@@ -3,8 +3,8 @@ philanthropy.utils._momentum
 =============================
 Shared, as-of trailing-window slope features for an annual (or other
 evenly-spaced) time series, used by :class:`~philanthropy.preprocessing.RFMTransformer`,
-:func:`~philanthropy.ingest.build_upgrade_snapshots` /
-:func:`~philanthropy.models.score_upgrade_prospects`, and
+:func:`~philanthropy.ingest.build_leadership_snapshots` /
+:func:`~philanthropy.models.score_leadership_prospects`, and
 :func:`~philanthropy.ingest.activities_to_features`, so every caller computes
 "momentum" the same way.
 

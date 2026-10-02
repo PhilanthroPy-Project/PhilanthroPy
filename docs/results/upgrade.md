@@ -10,7 +10,7 @@ try it on your own file before trusting either number.**
     what mid-level donors actually did in fiscal year 2022 (1 July 2021 to 30 June 2022),
     specifically which of them crossed $1,000 for the first time.
 
-    Of our top 10% of picks, 25 out of every 100 crossed $1,000. Ranking by this year's giving
+    Of our top 10% of picks, 22 out of every 100 crossed $1,000. Ranking by this year's giving
     total alone found 18 out of every 100. Picking at random finds about 12 out of every 100.
 
     ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/upgrade_topn.png#only-light)
@@ -27,7 +27,7 @@ try it on your own file before trusting either number.**
     total giving instead would *also* have found 21 at this particular draw, a tie. Picking 104
     of them at random would find about 14.
 
-    **Why this number is not the 25-vs-18 headline above.** The chart above is the average of
+    **Why this number is not the 22-vs-18 headline above.** The chart above is the average of
     five draws, scored with the benchmark's own feature set built specifically to compare against
     the rule; this worked example runs the actual public `score_upgrade_prospects` function
     end to end on one of those same five draws (the first), which has its own feature set and

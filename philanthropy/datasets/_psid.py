@@ -8,7 +8,7 @@ volunteering history (PSID Data Center individual-level cross-year extract).
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
@@ -25,7 +25,7 @@ import pandas as pd
 # below is missing raises KeyError rather than silently misreading a
 # column, since that combination means this table and the extract disagree
 # about what was selected.
-_WAVES = [
+_WAVES: List[Dict[str, Any]] = [
     {
         "year": 2001,
         "relation_var": "ER33603",
@@ -370,7 +370,7 @@ def load_psid_philanthropy(data_path: str, do_path: str) -> pd.DataFrame:
             "year": wave["year"],
         })
 
-        def _amount(var: Optional[str], recode: bool = True):
+        def _amount(var: Optional[str], recode: bool = True) -> Any:
             if var is None:
                 return float("nan")
             col = raw.loc[is_head, var].astype("float64")

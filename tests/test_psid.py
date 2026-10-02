@@ -8,7 +8,6 @@ Center download, but with fabricated households and fabricated values.
 """
 
 import pandas as pd
-import pytest
 
 from philanthropy.datasets import load_psid_philanthropy
 

@@ -68,6 +68,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `make_donor_panel` | `datasets` | The returned dict may gain keys (pledges, appeals, soft credits) as more of the library needs panel-shaped fixtures; existing keys and their columns will not change silently. |
 | `load_donorschoose` | `datasets` | Reads the ICPSR 37898 DS0001 variable names (`DONOR_ID`, `AMOUNT`, `CREATED_MONTH`, ...); may grow a configurable column mapping if a later ICPSR version renames them. |
 | `GiftIntervalCalibrator`, `GiftInterval` | `models` | The conformity-score menu is expected to grow (conformalised quantile regression is not shipped), which adds `score` values rather than changing existing ones. |
+| `trailing_slope_features` | `utils` | New, off-by-default helper; the bin width, window set and NaN threshold are a starting recipe and may be refined. |
 
 ### Tier 3: Experimental
 

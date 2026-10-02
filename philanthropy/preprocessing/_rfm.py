@@ -9,6 +9,8 @@ from sklearn.base import TransformerMixin, BaseEstimator
 from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted
 
+from philanthropy.utils._momentum import trailing_slope_features
+
 from ._encounters import _apply_as_of_cutoff
 
 _Self = TypeVar("_Self", bound="RFMTransformer")
@@ -52,6 +54,16 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         [Fader, Hardie and Lee 2005]; ``tenure`` is that T. Defaults to False so
         the output shape does not change under existing callers, and will become
         the default in the next major release.
+    include_momentum : bool, default=False
+        Also emit, for each of ``monetary``, ``frequency`` and
+        ``max_gift`` (the largest single gift, a column that otherwise only
+        exists here, not among the always-on output), a trailing 3- and
+        5-year OLS slope and relative slope over annual (12-month trailing,
+        anchored at ``reference_date_``) bins: ``<base>_slope_3y``,
+        ``<base>_rel_slope_3y``, ``<base>_slope_5y``, ``<base>_rel_slope_5y``.
+        NaN with fewer than 2 observed years in the window. See
+        :func:`philanthropy.utils._momentum.trailing_slope_features`. Off by
+        default so the output shape does not change under existing callers.
 
     Notes
     -----
@@ -76,11 +88,13 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         agg_func: Any = 'sum',
         include_tenure: bool = False,
         as_of: Any = None,
+        include_momentum: bool = False,
     ) -> None:
         self.reference_date = reference_date
         self.agg_func = agg_func
         self.include_tenure = include_tenure
         self.as_of = as_of
+        self.include_momentum = include_momentum
 
     def fit(self: _Self, X: Any, y: Any = None) -> _Self:
         """Fit the transformer by validating input and freezing the reference date.
@@ -139,6 +153,12 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
             self.reference_date_ = pd.to_datetime(self.reference_date)
         else:
             self.reference_date_ = X_cut["gift_date"].max()
+        # Frozen alongside reference_date_: the earliest training-fold gift,
+        # the "has this donor's whole window been observed" cutoff momentum
+        # features need. Computed once in fit, reused in every transform, so
+        # a later, shorter-history transform batch cannot make a window look
+        # more "observed" than training data actually supports.
+        self.data_start_ = X_cut["gift_date"].min() if len(X_cut) else self.reference_date_
         return self
 
     def transform(self, X: Any) -> pd.DataFrame:
@@ -173,6 +193,13 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
             * ``tenure`` : int64
                 *Optional, present only if ``include_tenure=True``.*
                 Days from each donor's first gift to the frozen ``reference_date_``.
+            * ``monetary_slope_3y``, ``monetary_rel_slope_3y``, ``monetary_slope_5y``,
+              ``monetary_rel_slope_5y``, and the same for ``frequency`` and
+              ``max_gift`` : float64
+                *Optional, present only if ``include_momentum=True``.* Trailing
+                3- and 5-year OLS slope and relative slope per base series; NaN
+                with fewer than 2 observed years in the window. See
+                :func:`philanthropy.utils._momentum.trailing_slope_features`.
         Raises
         ------
         sklearn.exceptions.NotFittedError
@@ -247,6 +274,24 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
             first_gift = grouped['gift_date'].min()
             rfm_df['tenure'] = (ref_date - first_gift).dt.days.values
 
+        if self.include_momentum:
+            donor_ids = recency.index
+            valid_gifts = X_df[has_amount]
+            momentum = trailing_slope_features(
+                valid_gifts, donor_ids, ref_date, date_col='gift_date', value_col='gift_amount',
+                agg='sum', prefix='monetary', donor_col='donor_id', data_start=self.data_start_,
+            )
+            momentum = momentum.join(trailing_slope_features(
+                valid_gifts, donor_ids, ref_date, date_col='gift_date', value_col='gift_amount',
+                agg='count', prefix='frequency', donor_col='donor_id', data_start=self.data_start_,
+            ))
+            momentum = momentum.join(trailing_slope_features(
+                valid_gifts, donor_ids, ref_date, date_col='gift_date', value_col='gift_amount',
+                agg='max', prefix='max_gift', donor_col='donor_id', data_start=self.data_start_,
+            ))
+            for col in momentum.columns:
+                rfm_df[col] = momentum[col].to_numpy()
+
         return rfm_df
         
     def _cut(self, X: Any) -> pd.DataFrame:
@@ -299,7 +344,9 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         -------
         feature_names_out : ndarray of str
             ``["donor_id", "recency", "frequency", "monetary"]``, plus
-            ``"tenure"`` when ``include_tenure=True``.
+            ``"tenure"`` when ``include_tenure=True``, plus the
+            ``monetary_``/``frequency_``/``max_gift_`` slope and rel_slope
+            columns when ``include_momentum=True``.
 
         Raises
         ------
@@ -310,6 +357,11 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
         names = ['donor_id', 'recency', 'frequency', 'monetary']
         if self.include_tenure:
             names.append('tenure')
+        if self.include_momentum:
+            for base in ('monetary', 'frequency', 'max_gift'):
+                for k in (3, 5):
+                    names.append(f'{base}_slope_{k}y')
+                    names.append(f'{base}_rel_slope_{k}y')
         return np.array(names, dtype=object)
 
     def __sklearn_tags__(self) -> Tags:

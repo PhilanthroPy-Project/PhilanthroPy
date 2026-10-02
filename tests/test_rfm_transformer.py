@@ -30,6 +30,25 @@ def test_output_columns_present(sample_transactions):
     assert 'donor_id' in rfm.columns
 
 
+def test_momentum_off_by_default_matches_pre_momentum_columns(sample_transactions):
+    t = RFMTransformer(reference_date='2024-01-01')
+    rfm = t.fit_transform(sample_transactions)
+    assert set(rfm.columns) == {'donor_id', 'recency', 'frequency', 'monetary'}
+
+
+def test_include_momentum_adds_expected_columns_matching_feature_names_out(sample_transactions):
+    t = RFMTransformer(reference_date='2024-01-01', include_momentum=True)
+    rfm = t.fit_transform(sample_transactions)
+    expected_extra = {
+        f'{base}_{stat}_{k}y'
+        for base in ('monetary', 'frequency', 'max_gift')
+        for stat in ('slope', 'rel_slope')
+        for k in (3, 5)
+    }
+    assert expected_extra <= set(rfm.columns)
+    assert list(rfm.columns) == list(t.get_feature_names_out())
+
+
 def test_recency_non_negative(sample_transactions):
     t = RFMTransformer(reference_date='2024-01-01')
     rfm = t.fit_transform(sample_transactions)

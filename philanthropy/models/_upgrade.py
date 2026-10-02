@@ -68,6 +68,7 @@ def score_upgrade_prospects(
     top_n: Optional[int] = None,
     baseline_giving_threshold: Optional[float] = None,
     random_state: Optional[int] = None,
+    include_momentum: bool = False,
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """Fit an upgrade model on history, then score today's band-qualifying donors.
 
@@ -125,6 +126,11 @@ def score_upgrade_prospects(
     random_state : int, optional
         Seed forwarded to the classifier fits and to the permutation
         importance call, for reproducible scores and reasons.
+    include_momentum : bool, default=False
+        Forwarded to :func:`~philanthropy.ingest.build_upgrade_snapshots`:
+        trains and scores on trailing-slope momentum features too, not just
+        the current feature set. Off by default so this function's output
+        stays unchanged for existing callers.
 
     Returns
     -------
@@ -307,13 +313,14 @@ def score_upgrade_prospects(
         historical_snap = build_upgrade_snapshots(
             df, fiscal_years=historical_years, threshold=threshold, band=band,
             fiscal_year_start=fiscal_year_start, activities=activities, donors=donors,
+            include_momentum=include_momentum,
         )
         current_snap = None
         if not current_candidates.empty:
             current_snap = _snapshot_features_for_year(
                 df, pivot_sum, pivot_max, pivot_count, current_candidates.index,
                 current_fy, fiscal_year_start, activities, donors, donors_norm,
-                as_of=as_of_ts,
+                as_of=as_of_ts, include_momentum=include_momentum,
             )
     activity_id_match_warnings = [str(w.message) for w in caught]
 

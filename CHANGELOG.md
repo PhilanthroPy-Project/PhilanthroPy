@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added
+- `philanthropy.utils.trailing_slope_features`, a shared as-of trailing-window
+  OLS slope/relative-slope helper over annual (or other evenly-spaced) bins
+  of a donor time series. `RFMTransformer(include_momentum=True)` and
+  `activities_to_features(..., include_momentum=True)` both opt in to add
+  slope columns for their base series (giving total, gift count, largest
+  gift; activity count/hours/amount), and `build_upgrade_snapshots`/
+  `score_upgrade_prospects(..., include_momentum=True)` add the same slopes
+  plus `fy_total_growth_ratio`. All three default to `False`: the feature
+  is new, additive, and off by default so it does not change any shipped
+  estimator's default training features ahead of the JOSS submission
+  freeze. Leakage-safe: every window is anchored at the caller's own as-of
+  cutoff and a window with fewer than two observed periods returns `NaN`
+  rather than fabricating a trend from one point.
+
 ### Fixed
 - `scripts/benchmark_models_vs_baselines.py`'s synthetic `$1K upgrade` bench
   (`bench_upgrade`) trained `MajorGiftClassifier` on every numeric snapshot

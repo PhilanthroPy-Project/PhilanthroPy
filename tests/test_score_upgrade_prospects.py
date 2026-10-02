@@ -392,3 +392,20 @@ def test_two_named_baselines_and_lifts_reported():
         assert report[rate_key] is None or 0.0 <= report[rate_key] <= 1.0
     for lift_key in ("lift_topn_fy_total", "lift_over_gave_threshold"):
         assert report[lift_key] is None or report[lift_key] >= 0.0
+
+
+# --------------------------------------------------------------------------- #
+# Momentum (opt-in)
+# --------------------------------------------------------------------------- #
+def test_momentum_off_by_default_no_slope_features_in_top_reasons():
+    scores, _ = score_upgrade_prospects(_archetype_gifts(), random_state=0)
+    for reasons in scores["top_reasons"]:
+        assert all("_slope_" not in feature for feature, _ in reasons)
+
+
+def test_include_momentum_runs_without_excluded_features_in_top_reasons():
+    scores, _ = score_upgrade_prospects(
+        _archetype_gifts(), include_momentum=True, random_state=0
+    )
+    for reasons in scores["top_reasons"]:
+        assert all(feature != "fiscal_year" for feature, _ in reasons)

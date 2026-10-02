@@ -580,7 +580,13 @@ GROUP_ORDER = ("giving_history", "recency", "momentum", "engagement", "wealth", 
 GROUP_LABELS = {
     "giving_history": "Giving history",
     "recency": "Recency",
-    "momentum": "Momentum",
+    # Labeled "Year-over-year change", not "Momentum": the columns in this
+    # group (fy_trend, streak, consecutive_years_given) are a one-year
+    # difference and a years-given count, not the multi-year trailing-slope
+    # "momentum" features from philanthropy.utils._momentum, which no
+    # benchmark here uses - "Momentum" is reserved for those *_slope_*/
+    # *_rel_slope_* columns, should a benchmark ever use them.
+    "momentum": "Year-over-year change",
     "engagement": "Engagement",
     "wealth": "Wealth & demographics",
     "mailing": "Mailing history",
@@ -588,12 +594,7 @@ GROUP_LABELS = {
 GROUP_MEANINGS = {
     "giving_history": "how much and how often they have given in total",
     "recency": "how recently they gave",
-    # Deliberately not "rising over the last few years": the columns in this
-    # group (fy_trend, streak, consecutive_years_given) are a one-year
-    # difference and a years-given count, not the multi-year trailing-slope
-    # "momentum" features from philanthropy.utils._momentum, which no
-    # benchmark here uses.
-    "momentum": "whether their giving is trending up or down",
+    "momentum": "whether this year's giving is up or down from last year",
     "engagement": "events, volunteering and other non-gift contact",
     "wealth": "wealth screening and demographic data",
     "mailing": "how they have responded to past mailings",
@@ -602,9 +603,12 @@ GROUP_MEANINGS = {
 # Groups each dataset's underlying file could plausibly report, regardless of
 # whether the benchmarked model is actually given them (E.11i's "What the
 # model looks at" must not claim a file lacks data it has but a given model
-# simply isn't fed; see _render_group_table).
+# simply isn't fed; see _render_group_table). "momentum" is deliberately
+# absent from every value here: it isn't a record type a file "has" or
+# "lacks" the way wealth or mailing history is, it's a computed column, so it
+# is excluded from that sentence entirely rather than asserted either way.
 DATASET_GROUPS_AVAILABLE = {
-    "synthetic": frozenset({"giving_history", "recency", "momentum"}),
+    "synthetic": frozenset({"giving_history", "recency"}),
     "kdd98": frozenset({"giving_history", "recency", "wealth", "mailing"}),
     "cup98val": frozenset({"giving_history", "recency", "wealth", "mailing"}),
 }
@@ -1069,8 +1073,13 @@ def _render_group_table(columns: Sequence[str], dataset_category: str) -> List[s
     for g in present:
         lines.append(f"    | {GROUP_LABELS[g]} | {GROUP_MEANINGS[g]} |")
     available = DATASET_GROUPS_AVAILABLE[dataset_category]
-    truly_absent = [g for g in GROUP_ORDER if g not in present and g not in available]
-    available_unused = [g for g in GROUP_ORDER if g not in present and g in available]
+    # "momentum" is a computed year-over-year comparison, not a record type a
+    # file has or lacks (and the KDD98 upgrade tab already uses it on the
+    # same file other KDD98 tabs would otherwise call "absent"), so it is
+    # never part of this file-coverage sentence either way.
+    candidates = [g for g in GROUP_ORDER if g not in present and g != "momentum"]
+    truly_absent = [g for g in candidates if g not in available]
+    available_unused = [g for g in candidates if g in available]
     # Two different, non-overlapping claims: a group this dataset's file
     # never has at all (truly_absent) versus one the file does have but this
     # particular benchmarked model isn't fed (available_unused) - conflating

@@ -6,7 +6,7 @@
     |---|---|
     | Giving history | how much and how often they have given in total |
     | Recency | how recently they gave |
-    | Momentum | whether their giving is trending up or down |
+    | Year-over-year change | whether this year's giving is up or down from last year |
 
     This file has no engagement, wealth & demographics, and mailing history records, so they are not used here.
 

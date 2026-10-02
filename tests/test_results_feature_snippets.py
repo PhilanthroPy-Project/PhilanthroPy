@@ -145,15 +145,37 @@ def test_available_but_unused_group_is_not_called_truly_absent(mrp, tmp_path):
     assert "wealth & demographics" in text.lower() and "mailing history" in text.lower()
     # engagement really is absent from KDD98 (no event/volunteer data), so
     # that claim is still the "truly absent" one.
-    assert "this file has no momentum and engagement" in text.lower()
+    assert "this file has no engagement" in text.lower()
+    # "momentum" is a computed comparison, not a record type a file has or
+    # lacks, so it must never appear in this sentence either way.
+    assert "momentum" not in text.lower()
 
 
-def test_momentum_group_does_not_overclaim_multi_year_trend(mrp):
+def test_momentum_group_is_relabeled_year_over_year_change(mrp, tmp_path):
     """fy_trend/streak/consecutive_years_given are a one-year diff and a
     years-given count, not the trailing-slope 'momentum' features from
-    philanthropy.utils._momentum (unused by every benchmark); the group
-    description must not claim a multi-year trend it doesn't compute."""
-    assert "last few years" not in mrp.GROUP_MEANINGS["momentum"].lower()
+    philanthropy.utils._momentum (unused by every benchmark). The group must
+    not be labeled or described as "momentum" - that name is reserved for the
+    *_slope_*/*_rel_slope_* columns - and the "file has no X" sentence must
+    never mention it, since the KDD98 upgrade tab already uses this group on
+    the same file other KDD98 tabs would otherwise call it absent from."""
+    assert mrp.GROUP_LABELS["momentum"] != "Momentum"
+    assert "momentum" not in mrp.GROUP_MEANINGS["momentum"].lower()
+    drivers = [
+        {"column": "fy_trend", "label": "giving trend, this year vs last", "group": "momentum", "importance": 0.10, "lo": None, "hi": None, "direction": "+"},
+    ]
+    entry = mrp._features_entry(("fy_trend",), drivers, scoring="roc_auc", split="walk-forward")
+    results = {
+        "demo_kdd98": {
+            "top1pct": {"model": 40.0, "rule": 20.0}, "top5pct": {"model": 35.0, "rule": 22.0},
+            "top10pct": {"model": 30.0, "rule": 18.0}, "features": entry,
+        }
+    }
+    mrp.MODEL_DATASET_TABS = {"demo": [("KDD Cup 1998 (real donor file)", "demo_kdd98")]}
+    mrp.render_feature_snippets(results, tmp_path)
+    text = (tmp_path / "demo__demo_kdd98.md").read_text()
+    assert "| Momentum |" not in text
+    assert "Year-over-year change" in text
 
 
 def test_zero_effect_drivers_are_hidden_from_the_visible_table(mrp, tmp_path):

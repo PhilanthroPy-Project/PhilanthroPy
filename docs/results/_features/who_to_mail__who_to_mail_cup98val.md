@@ -9,7 +9,7 @@
     | Wealth & demographics | wealth screening and demographic data |
     | Mailing history | how they have responded to past mailings |
 
-    This file has no momentum and engagement records, so they are not used here.
+    This file has no engagement records, so it is not used here.
 
     These matter most:
 

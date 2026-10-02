@@ -8,7 +8,6 @@
     | Recency | how recently they gave |
 
     This file has no engagement, wealth & demographics, and mailing history records, so they are not used here.
-    Momentum is in this file, but this model is not given it here.
 
     These matter most:
 

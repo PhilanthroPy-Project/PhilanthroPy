@@ -836,7 +836,7 @@ UPGRADE_FEATURE_COLS = (
 
 
 def upgrade_drivers_synthetic(seeds, n_donors, n_years, threshold=1000.0, band=(100.0, 999.0)) -> Dict[str, Any]:
-    feature_cols = UPGRADE_FEATURE_COLS
+    feature_cols = UPGRADE_FEATURE_COLS[1:]  # bench_upgrade drops "fiscal_year" too (#283)
 
     def build(seed):
         panel = make_donor_panel(n_donors=n_donors, n_years=n_years, random_state=seed)

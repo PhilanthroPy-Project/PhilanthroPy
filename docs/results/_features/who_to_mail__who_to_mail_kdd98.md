@@ -14,22 +14,22 @@
     | What raises or lowers the score | |
     |---|---|
     | last gift amount | ▼ lowers the score |
-    | number of gifts | ▲ raises the score |
     | lifetime number of gifts | ▲ raises the score |
-    | household income bracket | ▲ raises the score |
+    | number of gifts | ▲ raises the score |
     | donor's age | ● depends |
+    | months since last gift | ▼ lowers the score |
 
     ??? note "For analysts"
         Columns: `AGE`, `INCOME`, `WEALTH1`, `WEALTH2`, `NUMCHLD`, `RAMNTALL`, `NGIFTALL`, `LASTGIFT`, `AVGGIFT`, `MAXRAMNT`, `MINRAMNT`, `TIMELAG`, `HOMEOWNER`, `rfm_recency`, `rfm_frequency`, `rfm_monetary`, `rfm_tenure`
 
         | Column | Importance | Direction |
         |---|---|---|
-        | `LASTGIFT` | 0.024 | - |
+        | `LASTGIFT` | 0.026 | - |
+        | `NGIFTALL` | 0.008 | + |
         | `rfm_frequency` | 0.007 | + |
-        | `NGIFTALL` | 0.006 | + |
-        | `INCOME` | 0.005 | + |
-        | `AGE` | 0.005 | mixed |
+        | `AGE` | 0.006 | mixed |
+        | `rfm_recency` | 0.005 | - |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Configurations compared: 1. Git SHA: `fc5b61047663274deb522e370c66af1aea975beb`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Configurations compared: 1. Git SHA: `69d1bad4d885b21936de2b47872bdf05ca765970`.
 
     Results on your own file will differ.

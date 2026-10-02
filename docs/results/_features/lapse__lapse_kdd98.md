@@ -24,6 +24,6 @@
         | `total` | 0.022 | + |
         | `recent` | 0.003 | mixed |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N). Configurations compared: 1. Git SHA: `fc5b61047663274deb522e370c66af1aea975beb`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N). Configurations compared: 1. Git SHA: `69d1bad4d885b21936de2b47872bdf05ca765970`.
 
     Results on your own file will differ.

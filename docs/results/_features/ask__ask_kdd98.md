@@ -24,12 +24,12 @@
 
         | Column | Importance | Direction |
         |---|---|---|
-        | `LASTGIFT` | 2.879 | + |
-        | `AVGGIFT` | 0.834 | + |
-        | `rfm_frequency` | 0.176 | - |
-        | `rfm_monetary` | 0.134 | + |
-        | `MAXRAMNT` | 0.130 | + |
+        | `LASTGIFT` | 2.733 | + |
+        | `AVGGIFT` | 0.795 | + |
+        | `rfm_frequency` | 0.229 | - |
+        | `rfm_monetary` | 0.213 | + |
+        | `MAXRAMNT` | 0.133 | + |
 
-        Method: permutation importance (`neg_mean_absolute_error`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Configurations compared: 1. Git SHA: `fc5b61047663274deb522e370c66af1aea975beb`.
+        Method: permutation importance (`neg_mean_absolute_error`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Configurations compared: 1. Git SHA: `69d1bad4d885b21936de2b47872bdf05ca765970`.
 
     Results on your own file will differ.

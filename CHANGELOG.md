@@ -50,9 +50,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 - `philanthropy.datasets.load_donorschoose`: reads a user-downloaded
-  DonorsChoose Open Data export (ICPSR 37898) into the gift-table shape
-  `build_upgrade_snapshots` and `RFMTransformer` expect (`donor_id`,
-  `gift_date`, `gift_amount`). It never downloads or redistributes the
+  DonorsChoose Open Data Donations file (ICPSR 37898, DS0001) into a gift
+  table (`donor_id`, `gift_date`, `gift_amount`, plus `donor_type` and three
+  payment-source flags). `gift_date` is month-resolution only, matching the
+  source's `CREATED_MONTH` field. It never downloads or redistributes the
   dataset; the file stays on the user's own machine, fetched under their own
   ICPSR account.
 - `philanthropy.metrics.demographic_parity_difference`: `max(selection_rate)

@@ -6,6 +6,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Fixed
+- `scripts/benchmark_models_vs_baselines.py`'s synthetic `$1K upgrade` bench
+  (`bench_upgrade`) trained `MajorGiftClassifier` on every numeric snapshot
+  column including the raw `fiscal_year` label, unlike the KDD98 upgrade
+  bench and `score_upgrade_prospects`, both of which already drop it. The
+  model could partly key on which split a row came from rather than who
+  upgrades. `fiscal_year` is now excluded there too. Regenerated
+  `docs/assets/results/results.json` and the upgrade results page: the
+  synthetic $1K upgrade top-10% hit rate moves from 24.9% to 21.6% model
+  (rule stays 17.7%, random 12.5%); still a win, just a smaller one. The
+  KDD98 upgrade numbers are unchanged, since that bench already excluded
+  `fiscal_year`.
 - Results-page charts (`docs/results/*.md`, the homepage, Start Here) were
   baked as light-background PNGs only, so on the site's default dark theme
   each one rendered as a bright rectangle. `scripts/make_results_pages.py`

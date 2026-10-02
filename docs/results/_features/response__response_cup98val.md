@@ -1,13 +1,16 @@
 === "cup98VAL (real donor file, never seen by the model)"
 
-    On this file the model looks at 4 things about each donor; these matter most.
+    On this file the model looks at 4 things about each donor.
 
     | What it knows | What that means |
     |---|---|
     | Giving history | how much and how often they have given in total |
     | Recency | how recently they gave |
 
-    This file has no momentum, engagement, wealth & demographics, mailing history records, so they are not used here.
+    This file has no momentum and engagement records, so they are not used here.
+    Wealth & demographics and mailing history are in this file, but this model is not given them here.
+
+    These matter most:
 
     | What raises or lowers the score | |
     |---|---|
@@ -26,7 +29,7 @@
         | `monetary` | 0.008 | - |
         | `tenure` | 0.005 | - |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Configurations compared: 1. Git SHA: `69d1bad4d885b21936de2b47872bdf05ca765970`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Git SHA: `69d1bad4d885b21936de2b47872bdf05ca765970`.
         Same model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns.
 
     Results on your own file will differ.

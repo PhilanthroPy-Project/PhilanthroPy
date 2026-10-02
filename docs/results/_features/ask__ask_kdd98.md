@@ -1,6 +1,6 @@
 === "KDD Cup 1998 (real donor file)"
 
-    On this file the model looks at 17 things about each donor; these matter most.
+    On this file the model looks at 17 things about each donor.
 
     | What it knows | What that means |
     |---|---|
@@ -9,15 +9,17 @@
     | Wealth & demographics | wealth screening and demographic data |
     | Mailing history | how they have responded to past mailings |
 
-    This file has no momentum, engagement records, so they are not used here.
+    This file has no momentum and engagement records, so they are not used here.
 
-    | What raises or lowers the score | |
+    These matter most:
+
+    | What raises or lowers the suggested ask | |
     |---|---|
-    | last gift amount | ▲ raises the score |
-    | average gift amount | ▲ raises the score |
-    | number of gifts | ▼ lowers the score |
-    | lifetime giving | ▲ raises the score |
-    | largest gift ever | ▲ raises the score |
+    | last gift amount | ▲ raises the suggested ask |
+    | average gift amount | ▲ raises the suggested ask |
+    | number of gifts | ▼ lowers the suggested ask |
+    | lifetime giving | ▲ raises the suggested ask |
+    | largest gift ever | ▲ raises the suggested ask |
 
     ??? note "For analysts"
         Columns: `AGE`, `INCOME`, `WEALTH1`, `WEALTH2`, `NUMCHLD`, `RAMNTALL`, `NGIFTALL`, `LASTGIFT`, `AVGGIFT`, `MAXRAMNT`, `MINRAMNT`, `TIMELAG`, `HOMEOWNER`, `rfm_recency`, `rfm_frequency`, `rfm_monetary`, `rfm_tenure`
@@ -30,6 +32,6 @@
         | `rfm_monetary` | 0.213 | + |
         | `MAXRAMNT` | 0.133 | + |
 
-        Method: permutation importance (`neg_mean_absolute_error`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Configurations compared: 1. Git SHA: `69d1bad4d885b21936de2b47872bdf05ca765970`.
+        Method: permutation importance (`neg_mean_absolute_error`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Git SHA: `69d1bad4d885b21936de2b47872bdf05ca765970`.
 
     Results on your own file will differ.

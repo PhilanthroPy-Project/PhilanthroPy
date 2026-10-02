@@ -31,7 +31,7 @@ import sys
 import textwrap
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Sequence, Tuple
 
 import matplotlib
 
@@ -588,11 +588,42 @@ GROUP_LABELS = {
 GROUP_MEANINGS = {
     "giving_history": "how much and how often they have given in total",
     "recency": "how recently they gave",
-    "momentum": "whether their giving has been rising over the last few years",
+    # Deliberately not "rising over the last few years": the columns in this
+    # group (fy_trend, streak, consecutive_years_given) are a one-year
+    # difference and a years-given count, not the multi-year trailing-slope
+    # "momentum" features from philanthropy.utils._momentum, which no
+    # benchmark here uses.
+    "momentum": "whether their giving is trending up or down",
     "engagement": "events, volunteering and other non-gift contact",
     "wealth": "wealth screening and demographic data",
     "mailing": "how they have responded to past mailings",
 }
+
+# Groups each dataset's underlying file could plausibly report, regardless of
+# whether the benchmarked model is actually given them (E.11i's "What the
+# model looks at" must not claim a file lacks data it has but a given model
+# simply isn't fed; see _render_group_table).
+DATASET_GROUPS_AVAILABLE = {
+    "synthetic": frozenset({"giving_history", "recency", "momentum"}),
+    "kdd98": frozenset({"giving_history", "recency", "wealth", "mailing"}),
+    "cup98val": frozenset({"giving_history", "recency", "wealth", "mailing"}),
+}
+
+
+def _dataset_category(key: str) -> str:
+    for suffix in ("_synthetic", "_cup98val", "_kdd98"):
+        if key.endswith(suffix):
+            return suffix[1:]
+    raise ValueError(f"unrecognized dataset key: {key!r}")
+
+
+def _join_english(items: Sequence[str]) -> str:
+    items = list(items)
+    if len(items) <= 1:
+        return items[0] if items else ""
+    if len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    return ", ".join(items[:-1]) + f", and {items[-1]}"
 
 # Column -> (plain label, group). Every feature any bench_* function in
 # scripts/benchmark_models_vs_baselines.py actually feeds a model, across
@@ -652,8 +683,18 @@ FEATURE_SET_LABELS = {
     "full": "plus giving streak, time since last gift, last year's gift, biggest gift and tenure",
 }
 
-_DIRECTION_WORD = {"+": "raises the score", "-": "lowers the score", "mixed": "depends"}
 _DIRECTION_SYMBOL = {"+": "▲", "-": "▼", "mixed": "●"}
+
+
+def _direction_phrase(direction: str, target_label: str) -> str:
+    """'score' for a classifier's probability, but a regressor (e.g. the ask
+    amount) doesn't have a 'score' a reader would recognize; callers pass the
+    actual predicted quantity's name instead."""
+    if direction == "+":
+        return f"raises the {target_label}"
+    if direction == "-":
+        return f"lowers the {target_label}"
+    return "depends"
 
 
 def _pd_direction(estimator, X, feature_idx: int) -> str:
@@ -739,7 +780,7 @@ def _top_drivers(
 
 def _features_entry(
     feature_cols: Sequence[str], drivers: List[Dict[str, Any]], scoring: str, split: str,
-    extra_sets: List[Dict[str, Any]] | None = None,
+    extra_sets: List[Dict[str, Any]] | None = None, target_label: str = "score",
 ) -> Dict[str, Any]:
     """Builds the ``"features"`` block the schema in E.11i's pasted spec
     describes, with one ``"current"`` feature-set row (what the benchmarked
@@ -754,7 +795,7 @@ def _features_entry(
     ] + (extra_sets or [])
     return {
         "sets": sets, "drivers": drivers, "scoring": scoring, "split": split,
-        "n_configs": 1, "git_sha": _git_sha(),
+        "n_configs": 1, "git_sha": _git_sha(), "target_label": target_label,
     }
 
 
@@ -823,7 +864,9 @@ def ask_drivers_synthetic(seeds, n_donors, n_years) -> Dict[str, Any]:
         )
 
     drivers = _top_drivers(lambda seed: bm.AskAmountRecommender(random_state=seed), seeds, build, feature_cols, scoring="neg_mean_absolute_error")
-    return _features_entry(feature_cols, drivers, scoring="neg_mean_absolute_error", split=bm.SYNTHETIC_SPLIT)
+    return _features_entry(
+        feature_cols, drivers, scoring="neg_mean_absolute_error", split=bm.SYNTHETIC_SPLIT, target_label="suggested ask",
+    )
 
 
 # build_upgrade_snapshots always returns this fixed numeric column set (no
@@ -929,7 +972,9 @@ def ask_drivers_kdd98(seed) -> Dict[str, Any]:
         bm.WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]), bm.AskAmountRecommender(random_state=s),
     )
     drivers = _top_drivers(make_model, [seed], build, feature_cols, scoring="neg_mean_absolute_error")
-    return _features_entry(feature_cols, drivers, scoring="neg_mean_absolute_error", split=bm.KDD_SPLIT)
+    return _features_entry(
+        feature_cols, drivers, scoring="neg_mean_absolute_error", split=bm.KDD_SPLIT, target_label="suggested ask",
+    )
 
 
 def upgrade_drivers_kdd98(seed, threshold=50.0, band=(5.0, 49.0)) -> Dict[str, Any]:
@@ -1018,25 +1063,54 @@ def _fmt_pct_range(block: Dict[str, Any]) -> str:
     return base
 
 
-def _render_group_table(columns: Sequence[str]) -> List[str]:
+def _render_group_table(columns: Sequence[str], dataset_category: str) -> List[str]:
     present = sorted({FEATURE_INFO[c][1] for c in columns}, key=GROUP_ORDER.index)
     lines = ["    | What it knows | What that means |", "    |---|---|"]
     for g in present:
         lines.append(f"    | {GROUP_LABELS[g]} | {GROUP_MEANINGS[g]} |")
-    absent = [g for g in GROUP_ORDER if g not in present]
-    if absent:
-        names = ", ".join(GROUP_LABELS[g].lower() for g in absent)
+    available = DATASET_GROUPS_AVAILABLE[dataset_category]
+    truly_absent = [g for g in GROUP_ORDER if g not in present and g not in available]
+    available_unused = [g for g in GROUP_ORDER if g not in present and g in available]
+    # Two different, non-overlapping claims: a group this dataset's file
+    # never has at all (truly_absent) versus one the file does have but this
+    # particular benchmarked model isn't fed (available_unused) - conflating
+    # them would say, falsely, that e.g. KDD98 has no wealth data.
+    if truly_absent or available_unused:
         lines.append("")
-        lines.append(f"    This file has no {names} records, so {'it is' if len(absent) == 1 else 'they are'} not used here.")
+    if truly_absent:
+        names = _join_english([GROUP_LABELS[g].lower() for g in truly_absent])
+        verb = "it is" if len(truly_absent) == 1 else "they are"
+        lines.append(f"    This file has no {names} records, so {verb} not used here.")
+    if available_unused:
+        names = _join_english([GROUP_LABELS[g].lower() for g in available_unused])
+        verb, pron = ("is", "it") if len(available_unused) == 1 else ("are", "them")
+        lines.append(f"    {names.capitalize()} {verb} in this file, but this model is not given {pron} here.")
     return lines
 
 
-def _render_driver_table(drivers: List[Dict[str, Any]]) -> List[str]:
-    lines = ["    | What raises or lowers the score | |", "    |---|---|"]
-    for d in drivers:
-        symbol, word = _DIRECTION_SYMBOL[d["direction"]], _DIRECTION_WORD[d["direction"]]
-        lines.append(f"    | {d['label']} | {symbol} {word} |")
-    return lines
+def _render_driver_table(drivers: List[Dict[str, Any]], target_label: str) -> Tuple[List[str], str | None]:
+    # Only features with a measurable effect (importance, or for a multi-seed
+    # range its lower bound, strictly above zero) are shown as "drivers" - a
+    # 0.000 permutation importance is noise, not something that "raises or
+    # lowers" anything, and showing it as a ranked driver overstates it. The
+    # full, unfiltered list (including zero-effect features) stays in the
+    # analyst note.
+    visible = [d for d in drivers if (d["lo"] if d["lo"] is not None else d["importance"]) > 0]
+    if not visible:
+        return (
+            ["    No single feature here had a measurable effect on its own; see the analyst note below for the full list."],
+            None,
+        )
+    lines = [f"    | What raises or lowers the {target_label} | |", "    |---|---|"]
+    for d in visible:
+        symbol = _DIRECTION_SYMBOL[d["direction"]]
+        phrase = _direction_phrase(d["direction"], target_label)
+        lines.append(f"    | {d['label']} | {symbol} {phrase} |")
+    note = None
+    if len(visible) < len(drivers):
+        noun = "feature" if len(visible) == 1 else "features"
+        note = f"    Only {len(visible)} {noun} had a measurable effect; the rest are in the analyst note below."
+    return lines, note
 
 
 def _render_ablation_table(entry: Dict[str, Any], result_block: Dict[str, Any]) -> List[str] | None:
@@ -1080,11 +1154,15 @@ def _render_analyst_note(entry: Dict[str, Any]) -> List[str]:
             imp += f" (range {d['lo']:.3f} to {d['hi']:.3f})"
         lines.append(f"        | `{d['column']}` | {imp} | {d['direction']} |")
     lines.append("")
-    lines.append(
-        f"        Method: permutation importance (`{entry['scoring']}`), partial-dependence sign for direction "
-        f"(\"mixed\" if it changes sign). Split: {entry['split']}. Configurations compared: {entry['n_configs']}. "
-        f"Git SHA: `{entry['git_sha']}`."
-    )
+    note_parts = [
+        f"Method: permutation importance (`{entry['scoring']}`), partial-dependence sign for direction "
+        '("mixed" if it changes sign).',
+        f"Split: {entry['split']}.",
+    ]
+    if entry["n_configs"] != 1:
+        note_parts.append(f"Configurations compared: {entry['n_configs']}.")
+    note_parts.append(f"Git SHA: `{entry['git_sha']}`.")
+    lines.append("        " + " ".join(note_parts))
     if "reused_from_note" in entry:
         lines.append(f"        {entry['reused_from_note']}")
     return lines
@@ -1106,12 +1184,23 @@ def render_feature_snippets(results: Dict[str, Any], out_dir: Path) -> None:
                 continue
             result_block, entry = results[key], results[key]["features"]
             n = len(entry["sets"][0]["columns"])
+            dataset_category = _dataset_category(key)
             lines = [f'=== "{label}"', ""]
-            lines.append(f"    On this file the model looks at {n} things about each donor; these matter most.")
+            lines.append(f"    On this file the model looks at {n} things about each donor.")
             lines.append("")
-            lines += _render_group_table(entry["sets"][0]["columns"])
+            lines += _render_group_table(entry["sets"][0]["columns"], dataset_category)
             lines.append("")
-            lines += _render_driver_table(entry["drivers"])
+            lines.append("    These matter most:")
+            lines.append("")
+            # Fall back to the model name when re-rendering an already-stored
+            # results.json entry that predates the "target_label" field (a
+            # snippets-only regeneration reuses the committed numbers as-is).
+            target_label = entry.get("target_label") or ("suggested ask" if model == "ask" else "score")
+            driver_lines, driver_note = _render_driver_table(entry["drivers"], target_label)
+            lines += driver_lines
+            if driver_note:
+                lines.append("")
+                lines.append(driver_note)
             ablation = _render_ablation_table(entry, result_block)
             if ablation:
                 lines.append("")

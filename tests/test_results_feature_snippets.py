@@ -122,6 +122,85 @@ def test_missing_dataset_key_is_skipped_not_errored(mrp, tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
+def test_available_but_unused_group_is_not_called_truly_absent(mrp, tmp_path):
+    """A kdd98 dataset tab must not claim 'this file has no wealth' when the
+    model simply isn't given WEALTH1/INCOME/etc columns that file does have
+    (bug: the group-absence sentence used to be keyed only off the model's
+    own feature list, with no notion of what the underlying file contains)."""
+    drivers = [
+        {"column": "recency", "label": "months since last gift", "group": "recency", "importance": 0.10, "lo": None, "hi": None, "direction": "-"},
+    ]
+    entry = mrp._features_entry(("recency",), drivers, scoring="roc_auc", split="walk-forward")
+    results = {
+        "demo_kdd98": {
+            "top1pct": {"model": 40.0, "rule": 20.0}, "top5pct": {"model": 35.0, "rule": 22.0},
+            "top10pct": {"model": 30.0, "rule": 18.0}, "features": entry,
+        }
+    }
+    mrp.MODEL_DATASET_TABS = {"demo": [("KDD Cup 1998 (real donor file)", "demo_kdd98")]}
+    mrp.render_feature_snippets(results, tmp_path)
+    text = (tmp_path / "demo__demo_kdd98.md").read_text()
+    assert "this file has no wealth" not in text.lower()
+    assert "this model is not given" in text.lower()
+    assert "wealth & demographics" in text.lower() and "mailing history" in text.lower()
+    # engagement really is absent from KDD98 (no event/volunteer data), so
+    # that claim is still the "truly absent" one.
+    assert "this file has no momentum and engagement" in text.lower()
+
+
+def test_momentum_group_does_not_overclaim_multi_year_trend(mrp):
+    """fy_trend/streak/consecutive_years_given are a one-year diff and a
+    years-given count, not the trailing-slope 'momentum' features from
+    philanthropy.utils._momentum (unused by every benchmark); the group
+    description must not claim a multi-year trend it doesn't compute."""
+    assert "last few years" not in mrp.GROUP_MEANINGS["momentum"].lower()
+
+
+def test_zero_effect_drivers_are_hidden_from_the_visible_table(mrp, tmp_path):
+    drivers = [
+        {"column": "total", "label": "lifetime giving", "group": "giving_history", "importance": 0.10, "lo": 0.08, "hi": 0.12, "direction": "+"},
+        {"column": "fy_trend", "label": "giving trend, this year vs last", "group": "momentum", "importance": 0.0, "lo": -0.007, "hi": 0.011, "direction": "mixed"},
+    ]
+    entry = mrp._features_entry(("total", "fy_trend"), drivers, scoring="roc_auc", split="walk-forward")
+    results = {
+        "demo_synthetic": {
+            "top1pct": {"model": 40.0, "rule": 20.0}, "top5pct": {"model": 35.0, "rule": 22.0},
+            "top10pct": {"model": 30.0, "rule": 18.0}, "features": entry,
+        }
+    }
+    mrp.MODEL_DATASET_TABS = {"demo": [("Sample data", "demo_synthetic")]}
+    mrp.render_feature_snippets(results, tmp_path)
+    text = (tmp_path / "demo__demo_synthetic.md").read_text()
+    before_note = text.split("??? note")[0]
+    assert "lifetime giving" in before_note
+    assert "giving trend, this year vs last" not in before_note
+    assert "Only 1 feature had a measurable effect" in text
+    # the zero-effect driver still appears, in the analyst note.
+    assert "giving trend, this year vs last" not in text.split("??? note")[1] or "`fy_trend`" in text
+
+
+def test_regressor_driver_wording_uses_its_own_target_not_score(mrp, tmp_path):
+    """The ask model predicts a dollar amount, not a classifier probability;
+    'raises the score' is meaningless there."""
+    drivers = [
+        {"column": "AVGGIFT", "label": "average gift amount", "group": "giving_history", "importance": 0.80, "lo": None, "hi": None, "direction": "+"},
+    ]
+    entry = mrp._features_entry(
+        ("AVGGIFT",), drivers, scoring="neg_mean_absolute_error", split="walk-forward", target_label="suggested ask",
+    )
+    results = {
+        "demo_kdd98": {
+            "top1pct": {"model": 40.0, "rule": 20.0}, "top5pct": {"model": 35.0, "rule": 22.0},
+            "top10pct": {"model": 30.0, "rule": 18.0}, "features": entry,
+        }
+    }
+    mrp.MODEL_DATASET_TABS = {"demo": [("KDD Cup 1998 (real donor file)", "demo_kdd98")]}
+    mrp.render_feature_snippets(results, tmp_path)
+    text = (tmp_path / "demo__demo_kdd98.md").read_text()
+    assert "raises the suggested ask" in text
+    assert "raises the score" not in text
+
+
 def test_feature_info_covers_every_declared_feature_set(mrp):
     """A column used by a real driver function but missing from FEATURE_INFO
     raises a KeyError at generation time (not silently mislabeled); this

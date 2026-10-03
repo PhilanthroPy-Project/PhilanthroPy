@@ -352,7 +352,7 @@ def _profit_curve_chart(
 
 
 _SCOREBOARD_X = {"loses": 0.15, "modest": 0.5, "wins": 0.85}
-_SCOREBOARD_MARKERS = {"Sample data": "o", "KDD Cup 1998": "s", "cup98VAL": "^"}
+_SCOREBOARD_MARKERS = {"Sample data": "o", "KDD Cup 1998": "s", "cup98VAL": "^", "DonorsChoose": "D", "PSID": "P"}
 
 
 def _scoreboard_chart(path: Path, rows: List[tuple], theme: dict) -> None:
@@ -657,11 +657,15 @@ DATASET_GROUPS_AVAILABLE = {
     "synthetic": frozenset({"giving_history", "recency", "wealth"}),
     "kdd98": frozenset({"giving_history", "recency", "wealth", "mailing"}),
     "cup98val": frozenset({"giving_history", "recency", "wealth", "mailing"}),
+    # DonorsChoose's Donations file (load_donorschoose) has only donor_id,
+    # gift date/amount, donor_type and payment-method flags: no wealth
+    # screening, demographics, or mailing/solicitation history at all.
+    "donorschoose": frozenset({"giving_history", "recency"}),
 }
 
 
 def _dataset_category(key: str) -> str:
-    for suffix in ("_synthetic", "_cup98val", "_kdd98"):
+    for suffix in ("_synthetic", "_cup98val", "_kdd98", "_donorschoose"):
         if key.endswith(suffix):
             return suffix[1:]
     raise ValueError(f"unrecognized dataset key: {key!r}")
@@ -1072,6 +1076,53 @@ def who_to_mail_drivers_kdd98(seed) -> Dict[str, Any]:
 
 
 # --------------------------------------------------------------------------- #
+# DonorsChoose driver functions: same columns as the synthetic/KDD98 upgrade
+# snapshots (_gift_log_period_snapshots reuses build_leadership_snapshots'
+# internals), one real fitted model on the last walk-forward fold (no 5-seed
+# range: one real file has no second draw, same convention as KDD98 above).
+# --------------------------------------------------------------------------- #
+def _drivers_donorschoose(path: str, seed: int, kind: str, make_model, scoring: str, target_label: str = "score") -> Dict[str, Any]:
+    """Shared body for upgrade/lapse/ask DonorsChoose driver functions below:
+    same columns (``_gift_log_period_snapshots`` reuses
+    ``build_leadership_snapshots``' internals), same last-walk-forward-fold
+    fit, differing only in ``kind``, the estimator, and the scoring metric."""
+    feature_cols = UPGRADE_FEATURE_COLS[1:]
+    target_dtype = "float64" if kind == "ask" else None
+
+    def build(_seed):
+        gifts = bm._donorschoose_gift_log(path, bm.DONORSCHOOSE_SUBSAMPLE, bm.DONORSCHOOSE_SEED)
+        snap = bm._gift_log_period_snapshots(gifts, 7, kind, False, 1000.0, (100.0, 999.0))
+        t = bm._walk_forward_test_periods(snap, "fiscal_year", bm.DONORSCHOOSE_N_FOLDS)[-1]
+        train, test = snap[snap["fiscal_year"] < t], snap[snap["fiscal_year"] == t]
+        return (
+            train[list(feature_cols)].to_numpy("float64"), train["target"].to_numpy(target_dtype),
+            test[list(feature_cols)].to_numpy("float64"), test["target"].to_numpy(target_dtype),
+        )
+
+    drivers = _top_drivers(make_model, [seed], build, feature_cols, scoring=scoring)
+    return _features_entry(
+        feature_cols, drivers, scoring=scoring,
+        split=f"walk-forward (subsample={bm.DONORSCHOOSE_SUBSAMPLE}, seed={bm.DONORSCHOOSE_SEED}, last fiscal-year fold)",
+        target_label=target_label,
+    )
+
+
+def upgrade_drivers_donorschoose(path: str, seed: int) -> Dict[str, Any]:
+    return _drivers_donorschoose(path, seed, "upgrade", lambda s: bm.MajorGiftClassifier(random_state=s), scoring="roc_auc")
+
+
+def lapse_drivers_donorschoose(path: str, seed: int) -> Dict[str, Any]:
+    return _drivers_donorschoose(path, seed, "lapse", lambda s: bm.LapsePredictor(random_state=s), scoring="roc_auc")
+
+
+def ask_drivers_donorschoose(path: str, seed: int) -> Dict[str, Any]:
+    return _drivers_donorschoose(
+        path, seed, "ask", lambda s: bm.AskAmountRecommender(random_state=s),
+        scoring="neg_mean_absolute_error", target_label="suggested ask",
+    )
+
+
+# --------------------------------------------------------------------------- #
 # "What the model looks at" tab group: one markdown snippet per model,
 # included into its results page with pymdownx.snippets (E.11i pasted spec).
 # One tab per dataset the model has a "features" entry for, in the order
@@ -1081,6 +1132,7 @@ MODEL_DATASET_TABS = {
     "upgrade": [
         ("Sample data", "upgrade_synthetic"),
         ("KDD Cup 1998 (real donor file)", "upgrade_kdd98"),
+        ("DonorsChoose (real donor file)", "upgrade_donorschoose"),
     ],
     "response": [
         ("KDD Cup 1998 (real donor file)", "response_kdd98"),
@@ -1089,10 +1141,12 @@ MODEL_DATASET_TABS = {
     ],
     "lapse": [
         ("KDD Cup 1998 (real donor file)", "lapse_kdd98"),
+        ("DonorsChoose (real donor file)", "lapse_donorschoose"),
     ],
     "ask": [
         ("KDD Cup 1998 (real donor file)", "ask_kdd98"),
         ("Sample data", "ask_synthetic"),
+        ("DonorsChoose (real donor file)", "ask_donorschoose"),
     ],
     "planned_giving": [
         ("Sample data", "planned_giving_synthetic"),
@@ -1734,11 +1788,15 @@ def main() -> None:
             up = bm.bench_upgrade_donorschoose(args.donorschoose_path, include_momentum=momentum)
             entry = _classifier_entry(up, "upgrade_model (MajorGiftClassifier)", momentum, upgrade_meta)
             if entry:
+                if not momentum:
+                    entry["features"] = upgrade_drivers_donorschoose(args.donorschoose_path, bm.DONORSCHOOSE_SEED)
                 results[f"upgrade_donorschoose{suffix}"] = entry
 
             lap = bm.bench_lapse_donorschoose(args.donorschoose_path, include_momentum=momentum)
             entry = _classifier_entry(lap, "LapsePredictor", momentum, {**lapse_meta, "note": "84% base rate; see the retention read for the useful list"})
             if entry:
+                if not momentum:
+                    entry["features"] = lapse_drivers_donorschoose(args.donorschoose_path, bm.DONORSCHOOSE_SEED)
                 results[f"lapse_donorschoose{suffix}"] = entry
 
             ret = bm.bench_lapse_donorschoose_retention(args.donorschoose_path, include_momentum=momentum)
@@ -1751,7 +1809,82 @@ def main() -> None:
                 **ask_meta, "target": "next fiscal-year total, given they give again",
             })
             if entry:
+                if not momentum:
+                    entry["features"] = ask_drivers_donorschoose(args.donorschoose_path, bm.DONORSCHOOSE_SEED)
                 results[f"ask_donorschoose{suffix}"] = entry
+
+        if "upgrade_donorschoose" in results:
+            dcu10 = results["upgrade_donorschoose"]["top10pct"]
+            _render_themed(
+                _hbar_chart,
+                OUT_DIR / "upgrade_donorschoose.png",
+                ["Top 1%", "Top 5%", "Top 10%"],
+                {
+                    "Model": [results["upgrade_donorschoose"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
+                    "Best simple rule": [results["upgrade_donorschoose"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
+                },
+                {"Model": "model", "Best simple rule": "rule"},
+                title=_takeaway(dcu10["model"], dcu10["rule"], "The model", "the best simple rule"),
+                subtitle="DonorsChoose, a 10% random sample of citizen donors, test fiscal years "
+                f"{upgrade_meta['fold_years'][0]}-{upgrade_meta['fold_years'][-1]}.",
+            )
+
+        if "lapse_donorschoose" in results:
+            _render_themed(
+                _neartie_dot_chart,
+                OUT_DIR / "lapse_donorschoose.png",
+                ["Top 1%", "Top 5%", "Top 10%"],
+                {
+                    "Model": [results["lapse_donorschoose"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
+                    "Best simple rule": [results["lapse_donorschoose"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
+                },
+                {"Model": "model", "Best simple rule": "rule"},
+                base_rate=lapse_meta["base_rate_pct"],
+                title="Most donors here give once, so lapsing is the norm, not a signal",
+                subtitle="DonorsChoose, a 10% random sample of citizen donors. Lapsed next fiscal year, out of every 100 picked.",
+            )
+
+        if "lapse_donorschoose_retention" in results:
+            dcr10 = results["lapse_donorschoose_retention"]["top10pct"]
+            retention_base_rate = 100.0 - lapse_meta["base_rate_pct"]
+            rt_gap = abs(dcr10["model"] - dcr10["rule"])
+            if rt_gap < 1.5:
+                rt_title = "The model and the rule find about the same retained group here"
+            elif dcr10["model"] > dcr10["rule"]:
+                rt_title = f"The model's least-likely-to-lapse 10% retains better: {dcr10['model']:.0f} of 100 vs {dcr10['rule']:.0f} of 100"
+            else:
+                rt_title = f"The rule still finds a better group: {dcr10['rule']:.0f} of 100 vs {dcr10['model']:.0f} of 100"
+            _render_themed(
+                _hbar_chart,
+                OUT_DIR / "lapse_donorschoose_retention.png",
+                ["Top 1%", "Top 5%", "Top 10%"],
+                {
+                    "Model": [results["lapse_donorschoose_retention"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
+                    "Best simple rule": [results["lapse_donorschoose_retention"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
+                },
+                {"Model": "model", "Best simple rule": "rule"},
+                title=rt_title,
+                subtitle="DonorsChoose, the 10% least likely to lapse by model score. Gave again, out of every 100 in that group.",
+                base_rate=retention_base_rate,
+                base_rate_label=f"everyone: {retention_base_rate:.0f} of 100",
+            )
+
+        if "ask_donorschoose" in results:
+            _render_themed(
+                _hbar_chart,
+                OUT_DIR / "ask_donorschoose.png",
+                ["Suggested ask"],
+                {
+                    "Model": [results["ask_donorschoose"]["within25pct_model"]],
+                    "Best simple rule": [results["ask_donorschoose"]["within25pct_last_gift"]],
+                },
+                {"Model": "model", "Best simple rule": "rule"},
+                title=_takeaway(
+                    results["ask_donorschoose"]["within25pct_model"], results["ask_donorschoose"]["within25pct_last_gift"],
+                    "The model", "the best simple rule",
+                ),
+                subtitle="DonorsChoose, next fiscal-year total given they give again. Suggested amounts landing within 25% of what the donor actually gave.",
+            )
 
     if args.psid_data and args.psid_do:
         upgrade_meta = _psid_fold_meta("upgrade")
@@ -1795,16 +1928,36 @@ def main() -> None:
         return [(label, results[key]["verdict"]) for label, key in pairs if key in results]
 
     scoreboard_rows = [
-        ("Leadership upgrade", _dots(("Sample data", "upgrade_synthetic"), ("KDD Cup 1998", "upgrade_kdd98"))),
+        (
+            "Leadership upgrade", _dots(
+                ("Sample data", "upgrade_synthetic"), ("KDD Cup 1998", "upgrade_kdd98"),
+                ("DonorsChoose", "upgrade_donorschoose"), ("PSID", "upgrade_psid"),
+            ),
+        ),
         (
             "Response", _dots(
                 ("Sample data", "response_synthetic"), ("KDD Cup 1998", "response_kdd98"),
                 ("cup98VAL", "response_cup98val"),
             ),
         ),
-        ("Lapse", _dots(("Sample data", "lapse_synthetic"), ("KDD Cup 1998", "lapse_kdd98"))),
-        ("Lapse (retention read)", _dots(("KDD Cup 1998", "lapse_kdd98_retention"))),
-        ("Suggested ask", _dots(("Sample data", "ask_synthetic"), ("KDD Cup 1998", "ask_kdd98"))),
+        (
+            "Lapse", _dots(
+                ("Sample data", "lapse_synthetic"), ("KDD Cup 1998", "lapse_kdd98"),
+                ("DonorsChoose", "lapse_donorschoose"), ("PSID", "lapse_psid"),
+            ),
+        ),
+        (
+            "Lapse (retention read)", _dots(
+                ("KDD Cup 1998", "lapse_kdd98_retention"), ("DonorsChoose", "lapse_donorschoose_retention"),
+                ("PSID", "lapse_psid_retention"),
+            ),
+        ),
+        (
+            "Suggested ask", _dots(
+                ("Sample data", "ask_synthetic"), ("KDD Cup 1998", "ask_kdd98"),
+                ("DonorsChoose", "ask_donorschoose"), ("PSID", "ask_psid"),
+            ),
+        ),
         ("Who to mail", _dots(("KDD Cup 1998", "who_to_mail_kdd98"), ("cup98VAL", "who_to_mail_cup98val"))),
         ("Planned giving", [("Sample data", None)]),
     ]

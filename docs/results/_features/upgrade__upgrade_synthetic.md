@@ -31,6 +31,6 @@
         | `consecutive_years_given` | 0.015 (range 0.003 to 0.031) | + |
         | `fy_trend` | 0.000 (range -0.007 to 0.011) | mixed |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (FiscalYearGroupedSplitter, last split). Git SHA: `69d1bad4d885b21936de2b47872bdf05ca765970`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (FiscalYearGroupedSplitter, last split). Git SHA: `169aea3cdb71091fa4bb31f877c89bc3b0342e20`.
 
     Results on your own file will differ.

@@ -32,6 +32,6 @@
         | `fy_total_prior1` | 0.000 | mixed |
         | `fy_total_prior2` | 0.000 | mixed |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward by fiscal year (train FY1994, test FY1995). Git SHA: `69d1bad4d885b21936de2b47872bdf05ca765970`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward by fiscal year (train FY1994, test FY1995). Git SHA: `169aea3cdb71091fa4bb31f877c89bc3b0342e20`.
 
     Results on your own file will differ.

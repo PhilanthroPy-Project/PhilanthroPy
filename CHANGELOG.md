@@ -46,6 +46,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   are left out with a one-line reason instead. Aggregate numbers and fold
   metadata (subsample fraction and seed, fold years/waves, n per fold,
   base rate) only; no donor- or household-level rows anywhere.
+- Results pages now show DonorsChoose on the leadership upgrade, lapse, and
+  suggested-ask pages: a headline sentence, a top-1/5/10% chart, a verdict,
+  and a "What the model looks at" tab, alongside the existing sample-data
+  and KDD98 tabs. Lapse covers both the plain lapse read and the "who gives
+  again" retention read, with the ~84% base rate spelled out in plain
+  words. Response, who-to-mail, and planned giving each gain a one-line
+  "not testable on DonorsChoose or PSID" note quoting the actual reason
+  (`results.json`'s `*_donorschoose_note`/`*_psid_note` strings). Every page
+  with a momentum variant now states, in prose, whether adding this year's
+  giving trend as its own feature moved the top-10% hit rate outside the
+  normal run-to-run range, including the KDD98 upgrade case where the
+  numbers are identical with and without it (the model gives those columns
+  zero weight on that file, not "no data"). `docs/results/index.md` and the
+  home page's scoreboard chart now show a models x datasets matrix (Sample
+  data, KDD Cup 1998, cup98VAL, DonorsChoose, PSID), using "can't test
+  (reason)" where a file structurally cannot answer a question and
+  "pending: data not on hand" for PSID, which is wired into the benchmark
+  script but not yet run in this environment. `scripts/make_results_pages.py`
+  gains `upgrade_drivers_donorschoose`/`lapse_drivers_donorschoose`/
+  `ask_drivers_donorschoose` and a `"donorschoose"` entry in
+  `DATASET_GROUPS_AVAILABLE` (giving history and recency only: the
+  DonorsChoose Donations file has no wealth, demographic, or mailing-history
+  columns at all).
 
 ### Fixed
 - `scripts/benchmark_models_vs_baselines.py`'s synthetic `$1K upgrade` bench

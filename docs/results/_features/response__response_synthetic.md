@@ -24,7 +24,7 @@
     | What the model saw | Top 1% | Top 5% | Top 10% |
     |---|---|---|---|
     | only what the model uses today | 82 of 100 | 80 of 100 | 77 of 100 |
-    | plus giving streak, time since last gift, last year's gift, biggest gift and tenure | 85 of 100 (between 73 and 97) | 80 of 100 (between 76 and 85) | 76 of 100 (between 71 and 80) |
+    | plus giving streak, time since last gift, last year's gift, biggest gift and tenure | 80 of 100 (between 70 and 87) | 81 of 100 (between 77 and 85) | 77 of 100 (between 75 and 81) |
     | the best simple rule (for comparison) | 91 of 100 | 84 of 100 | 79 of 100 |
 
     The extra signals made about the same difference at the top of the list.
@@ -38,6 +38,6 @@
         | `recent` | 0.020 (range 0.008 to 0.030) | + |
         | `n` | 0.002 (range -0.002 to 0.007) | - |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (train on fiscal years < T, test on T). Git SHA: `69d1bad4d885b21936de2b47872bdf05ca765970`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (train on fiscal years < T, test on T). Git SHA: `169aea3cdb71091fa4bb31f877c89bc3b0342e20`.
 
     Results on your own file will differ.

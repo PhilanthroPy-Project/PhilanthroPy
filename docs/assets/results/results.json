@@ -43,19 +43,19 @@
           ],
           "chosen": false,
           "top1pct": {
-            "value": 84.66666666666667,
-            "lo": 73.33333333333333,
-            "hi": 96.66666666666667
+            "value": 80.0,
+            "lo": 70.0,
+            "hi": 86.66666666666667
           },
           "top5pct": {
-            "value": 80.0,
-            "lo": 76.0,
-            "hi": 85.33333333333334
+            "value": 81.2,
+            "lo": 77.33333333333333,
+            "hi": 84.66666666666667
           },
           "top10pct": {
-            "value": 75.6,
-            "lo": 70.66666666666667,
-            "hi": 79.66666666666666
+            "value": 76.8,
+            "lo": 75.33333333333333,
+            "hi": 81.0
           }
         }
       ],
@@ -91,7 +91,8 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "score"
     }
   },
   "response_synthetic_momentum": {
@@ -160,19 +161,19 @@
           ],
           "chosen": false,
           "top1pct": {
-            "value": 97.33333333333334,
-            "lo": 93.33333333333333,
-            "hi": 100.0
+            "value": 82.0,
+            "lo": 73.33333333333333,
+            "hi": 93.33333333333333
           },
           "top5pct": {
-            "value": 97.06666666666666,
-            "lo": 94.66666666666667,
-            "hi": 98.0
+            "value": 77.86666666666666,
+            "lo": 73.33333333333333,
+            "hi": 82.66666666666667
           },
           "top10pct": {
-            "value": 94.39999999999999,
-            "lo": 92.66666666666666,
-            "hi": 95.33333333333334
+            "value": 76.4,
+            "lo": 72.66666666666667,
+            "hi": 81.0
           }
         }
       ],
@@ -208,7 +209,8 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "score"
     }
   },
   "lapse_synthetic_momentum": {
@@ -282,7 +284,8 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "suggested ask"
     }
   },
   "ask_synthetic_momentum": {
@@ -375,7 +378,8 @@
       "scoring": "roc_auc",
       "split": "walk-forward (FiscalYearGroupedSplitter, last split)",
       "n_configs": 1,
-      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "score"
     }
   },
   "upgrade_synthetic_momentum": {
@@ -457,7 +461,8 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "score"
     }
   },
   "upgrade_worked_example": {
@@ -652,7 +657,8 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "score"
     }
   },
   "upgrade_kdd98": {
@@ -737,7 +743,8 @@
       "scoring": "roc_auc",
       "split": "walk-forward by fiscal year (train FY1994, test FY1995)",
       "n_configs": 1,
-      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "score"
     }
   },
   "upgrade_kdd98_momentum": {
@@ -822,7 +829,8 @@
       "scoring": "roc_auc",
       "split": "walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N)",
       "n_configs": 1,
-      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "score"
     }
   },
   "lapse_kdd98_retention": {
@@ -921,7 +929,8 @@
       "scoring": "neg_mean_absolute_error",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "suggested ask"
     }
   },
   "who_to_mail_kdd98": {
@@ -1006,7 +1015,8 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "score"
     },
     "curve": {
       "mailed": [
@@ -1181,7 +1191,8 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970",
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "score",
       "reused_from_note": "Same response model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     },
     "curve": {
@@ -1344,12 +1355,490 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970",
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "score",
       "reused_from_note": "Same model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     }
   },
+  "upgrade_donorschoose": {
+    "top1pct": {
+      "model": 27.540666604886788,
+      "rule": 19.61409199023878
+    },
+    "top5pct": {
+      "model": 13.269024846984722,
+      "rule": 13.027147834241603
+    },
+    "top10pct": {
+      "model": 8.951565909774356,
+      "rule": 8.295008680068968
+    },
+    "verdict": "modest",
+    "roc_auc": 0.8829083891164378,
+    "metadata": {
+      "momentum": false,
+      "subsample": 0.1,
+      "seed": 42,
+      "fold_years": [
+        2015,
+        2016,
+        2017,
+        2018
+      ],
+      "n_per_fold": [
+        8771,
+        9981,
+        10859,
+        10809
+      ],
+      "base_rate_pct": 1.343394359228105
+    },
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "fy_total",
+            "fy_total_prior1",
+            "fy_total_prior2",
+            "fy_trend",
+            "largest_gift",
+            "gift_count",
+            "consecutive_years_given",
+            "months_since_last_gift"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "fy_total",
+          "label": "this year's giving",
+          "group": "recency",
+          "importance": 0.09047421951318796,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "fy_total_prior1",
+          "label": "last year's giving",
+          "group": "recency",
+          "importance": 0.0212428514734615,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "months_since_last_gift",
+          "label": "months since last gift",
+          "group": "recency",
+          "importance": 0.013446836331813839,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "fy_trend",
+          "label": "giving trend, this year vs last",
+          "group": "momentum",
+          "importance": 0.0069397946515793564,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "largest_gift",
+          "label": "largest gift this year",
+          "group": "giving_history",
+          "importance": 0.0051290041924455295,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
+      "n_configs": 1,
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "score"
+    }
+  },
+  "lapse_donorschoose": {
+    "top1pct": {
+      "model": 87.71967261669961,
+      "rule": 90.38270359988341
+    },
+    "top5pct": {
+      "model": 86.95873388099767,
+      "rule": 89.90205251798189
+    },
+    "top10pct": {
+      "model": 88.3451465405215,
+      "rule": 89.75774118662304
+    },
+    "verdict": "loses",
+    "roc_auc": 0.6975368983662188,
+    "metadata": {
+      "momentum": false,
+      "subsample": 0.1,
+      "seed": 42,
+      "fold_years": [
+        2015,
+        2016,
+        2017,
+        2018
+      ],
+      "n_per_fold": [
+        35372,
+        43591,
+        49523,
+        52052
+      ],
+      "base_rate_pct": 83.58406540451317,
+      "note": "84% base rate; see the retention read for the useful list"
+    },
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "fy_total",
+            "fy_total_prior1",
+            "fy_total_prior2",
+            "fy_trend",
+            "largest_gift",
+            "gift_count",
+            "consecutive_years_given",
+            "months_since_last_gift"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "fy_total",
+          "label": "this year's giving",
+          "group": "recency",
+          "importance": 0.09088747959140767,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "largest_gift",
+          "label": "largest gift this year",
+          "group": "giving_history",
+          "importance": 0.0676425361007559,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "fy_trend",
+          "label": "giving trend, this year vs last",
+          "group": "momentum",
+          "importance": 0.057446141873625046,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "months_since_last_gift",
+          "label": "months since last gift",
+          "group": "recency",
+          "importance": 0.029172083952879603,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "fy_total_prior2",
+          "label": "giving two years ago",
+          "group": "recency",
+          "importance": 0.009773390887971667,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
+      "n_configs": 1,
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "score"
+    }
+  },
+  "lapse_donorschoose_retention": {
+    "top1pct": {
+      "model": 83.35147227661325,
+      "rule": 74.10593835796324
+    },
+    "top5pct": {
+      "model": 61.208560677871525,
+      "rule": 57.59773886489042
+    },
+    "top10pct": {
+      "model": 50.09322048671865,
+      "rule": 45.25527493395457
+    },
+    "verdict": "modest",
+    "roc_auc": 0.6975368983662187,
+    "metadata": {
+      "momentum": false,
+      "subsample": 0.1,
+      "seed": 42,
+      "fold_years": [
+        2015,
+        2016,
+        2017,
+        2018
+      ],
+      "n_per_fold": [
+        35372,
+        43591,
+        49523,
+        52052
+      ],
+      "base_rate_pct": 83.58406540451317
+    }
+  },
+  "ask_donorschoose": {
+    "within25pct_model": 30.025343419661294,
+    "within25pct_last_gift": 31.864551498708877,
+    "mae_model": 210.39943270586866,
+    "mae_rule": 209.6484487807661,
+    "verdict": "loses",
+    "metadata": {
+      "momentum": false,
+      "subsample": 0.1,
+      "seed": 42,
+      "fold_years": [
+        2015,
+        2016,
+        2017,
+        2018
+      ],
+      "n_per_fold": [
+        5933,
+        6608,
+        7841,
+        9255
+      ],
+      "base_rate_pct": null,
+      "target": "next fiscal-year total, given they give again"
+    },
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "fy_total",
+            "fy_total_prior1",
+            "fy_total_prior2",
+            "fy_trend",
+            "largest_gift",
+            "gift_count",
+            "consecutive_years_given",
+            "months_since_last_gift"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "fy_total",
+          "label": "this year's giving",
+          "group": "recency",
+          "importance": 68.44393842204126,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "largest_gift",
+          "label": "largest gift this year",
+          "group": "giving_history",
+          "importance": 14.646563557109172,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "gift_count",
+          "label": "number of gifts this year",
+          "group": "giving_history",
+          "importance": 13.858854988448618,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "fy_total_prior1",
+          "label": "last year's giving",
+          "group": "recency",
+          "importance": 12.700998869121197,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "fy_total_prior2",
+          "label": "giving two years ago",
+          "group": "recency",
+          "importance": 1.903138126945268,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        }
+      ],
+      "scoring": "neg_mean_absolute_error",
+      "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
+      "n_configs": 1,
+      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "target_label": "suggested ask"
+    }
+  },
+  "upgrade_donorschoose_momentum": {
+    "top1pct": {
+      "model": 25.3442143143978,
+      "rule": 19.61409199023878
+    },
+    "top5pct": {
+      "model": 12.835762786241272,
+      "rule": 13.027147834241603
+    },
+    "top10pct": {
+      "model": 8.873456474883373,
+      "rule": 8.295008680068968
+    },
+    "verdict": "modest",
+    "roc_auc": 0.8840302762122928,
+    "metadata": {
+      "momentum": true,
+      "subsample": 0.1,
+      "seed": 42,
+      "fold_years": [
+        2015,
+        2016,
+        2017,
+        2018
+      ],
+      "n_per_fold": [
+        8771,
+        9981,
+        10859,
+        10809
+      ],
+      "base_rate_pct": 1.343394359228105
+    }
+  },
+  "lapse_donorschoose_momentum": {
+    "top1pct": {
+      "model": 87.60367487830261,
+      "rule": 90.38270359988341
+    },
+    "top5pct": {
+      "model": 87.06537890643939,
+      "rule": 89.90205251798189
+    },
+    "top10pct": {
+      "model": 88.1254679482646,
+      "rule": 89.75774118662304
+    },
+    "verdict": "loses",
+    "roc_auc": 0.7010827249312469,
+    "metadata": {
+      "momentum": true,
+      "subsample": 0.1,
+      "seed": 42,
+      "fold_years": [
+        2015,
+        2016,
+        2017,
+        2018
+      ],
+      "n_per_fold": [
+        35372,
+        43591,
+        49523,
+        52052
+      ],
+      "base_rate_pct": 83.58406540451317,
+      "note": "84% base rate; see the retention read for the useful list"
+    }
+  },
+  "lapse_donorschoose_retention_momentum": {
+    "top1pct": {
+      "model": 82.90879652286588,
+      "rule": 74.10593835796324
+    },
+    "top5pct": {
+      "model": 61.47463374355871,
+      "rule": 57.59773886489042
+    },
+    "top10pct": {
+      "model": 50.532089181277826,
+      "rule": 45.25527493395457
+    },
+    "verdict": "modest",
+    "roc_auc": 0.7010827249312469,
+    "metadata": {
+      "momentum": true,
+      "subsample": 0.1,
+      "seed": 42,
+      "fold_years": [
+        2015,
+        2016,
+        2017,
+        2018
+      ],
+      "n_per_fold": [
+        35372,
+        43591,
+        49523,
+        52052
+      ],
+      "base_rate_pct": 83.58406540451317
+    }
+  },
+  "ask_donorschoose_momentum": {
+    "within25pct_model": 30.496896025294873,
+    "within25pct_last_gift": 31.864551498708877,
+    "mae_model": 211.50918732314187,
+    "mae_rule": 209.6484487807661,
+    "verdict": "loses",
+    "metadata": {
+      "momentum": true,
+      "subsample": 0.1,
+      "seed": 42,
+      "fold_years": [
+        2015,
+        2016,
+        2017,
+        2018
+      ],
+      "n_per_fold": [
+        5933,
+        6608,
+        7841,
+        9255
+      ],
+      "base_rate_pct": null,
+      "target": "next fiscal-year total, given they give again"
+    }
+  },
+  "response_donorschoose_note": "No mailing/appeal log in this file, so a response model has nothing to predict response to.",
+  "response_psid_note": "No mailing/appeal log in this extract, so a response model has nothing to predict response to.",
+  "who_to_mail_donorschoose_note": "No per-contact mailing cost in this file, so cost-aware selection has no cost side to weigh.",
+  "who_to_mail_psid_note": "No per-contact mailing cost in this extract, so cost-aware selection has no cost side to weigh.",
+  "planned_giving_donorschoose_note": "No bequest/estate-intent signal in this file.",
+  "planned_giving_psid_note": "No bequest/estate-intent signal in this extract.",
   "_env": {
-    "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970",
+    "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

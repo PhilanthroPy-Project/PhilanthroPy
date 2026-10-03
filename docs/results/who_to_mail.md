@@ -45,6 +45,9 @@ a 1990s direct-mail history; gift sizes there are small (a few dollars to a
 few hundred), so its dollar figures will not resemble a major-gift program.
 Results on your own file, and at your own mailing cost, will differ.
 
+**Not testable on DonorsChoose or PSID.** Neither file records a per-contact mailing cost, so
+cost-aware selection has no cost side to weigh.
+
 ## What the model looks at
 
 "Mail if expected gift beats the cost" multiplies a response model's score by

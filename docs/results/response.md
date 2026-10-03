@@ -51,6 +51,10 @@ sample data.** Which one you should expect on your own file depends on your data
 
 Results on your own file will differ from both of these.
 
+**Not testable on DonorsChoose or PSID.** DonorsChoose Open Data has no mailing/appeal log, so a
+response model has nothing to predict response to; the PSID giving/volunteering extract has the
+same gap.
+
 ## What the model looks at
 
 --8<-- "results/_features/response__response_kdd98.md"

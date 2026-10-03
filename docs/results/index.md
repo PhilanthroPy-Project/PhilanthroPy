@@ -3,7 +3,9 @@
 Plain-language answers to one question: **does each model actually help you pick
 better than the simple rule your shop already uses, or than picking at random?**
 No statistics jargon here; everything is in donor counts. For the numbers behind
-these pages, see [Model Validation & Benchmarks](../explanation/benchmarks.md).
+these pages, see [Model Validation & Benchmarks](../explanation/benchmarks.md). New
+here? Start with [How to read these pages](how_to_read.md); the files used are
+described in [The datasets behind these pages](datasets.md).
 
 ![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](../assets/results/scoreboard.png#only-light)
 ![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](../assets/results/scoreboard-dark.png#only-dark)

@@ -107,6 +107,8 @@ nav:
   - Home: index.md
   - Results:
     - results/index.md
+    - results/how_to_read.md
+    - results/datasets.md
     - results/leadership.md
     - results/response.md
     - results/lapse.md

@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Removed
+- `scripts/issue-drafts/_DISCUSSION_who_is_using_this.md`: the draft was
+  posted as Discussion #158 on 2026-09-05, and its "zero dependents" and
+  "zero usage" lines are now out of date. The Discussion itself is the record.
+
 ### Added
 - Results pages now show PSID (Panel Study of Income Dynamics) household
   survey results for leadership upgrade, lapse (both the lapse read and the

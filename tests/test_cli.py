@@ -385,7 +385,7 @@ def test_cli_features_activity_bad_spec_exits(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
-# `train --task upgrade`
+# `train --task leadership`
 # --------------------------------------------------------------------------- #
 _UPGRADE_YEARS = ["2020-08-01", "2021-08-01", "2022-08-01", "2023-08-01", "2024-08-01"]
 _UPGRADE_ARCHETYPES = {
@@ -411,7 +411,7 @@ def _make_upgrade_gift_export(tmp_path, name="upgrade_gifts.csv", n_per_group=20
 def test_cli_train_task_upgrade_writes_scored_csv_and_prints_report(tmp_path, capsys):
     data = _make_upgrade_gift_export(tmp_path)
     out_path = tmp_path / "scored.csv"
-    main(["train", "--task", "upgrade", "--source", "raisers_edge",
+    main(["train", "--task", "leadership", "--source", "raisers_edge",
           "--data", str(data), "--out", str(out_path), "--random-state", "0"])
 
     scored = pd.read_csv(out_path)
@@ -428,7 +428,7 @@ def test_cli_train_task_upgrade_writes_scored_csv_and_prints_report(tmp_path, ca
 def test_cli_train_task_upgrade_requires_source(tmp_path):
     data = _make_upgrade_gift_export(tmp_path)
     with pytest.raises(SystemExit, match="requires --source"):
-        main(["train", "--task", "upgrade", "--data", str(data),
+        main(["train", "--task", "leadership", "--data", str(data),
               "--out", str(tmp_path / "scored.csv")])
 
 
@@ -443,7 +443,7 @@ def test_cli_train_task_upgrade_npsp_source(tmp_path):
     data.write_text("".join(rows))
 
     out_path = tmp_path / "scored.csv"
-    main(["train", "--task", "upgrade", "--source", "npsp", "--data", str(data),
+    main(["train", "--task", "leadership", "--source", "npsp", "--data", str(data),
           "--out", str(out_path), "--random-state", "0"])
     scored = pd.read_csv(out_path)
     assert len(scored) == 20  # flat_high + flat_low, 10 each
@@ -457,7 +457,7 @@ def test_cli_train_task_upgrade_with_donors_csv(tmp_path):
     donors_path.write_text("".join(lines))
 
     out_path = tmp_path / "scored.csv"
-    main(["train", "--task", "upgrade", "--source", "raisers_edge",
+    main(["train", "--task", "leadership", "--source", "raisers_edge",
           "--data", str(data), "--donors", str(donors_path),
           "--out", str(out_path), "--random-state", "0"])
     assert len(pd.read_csv(out_path)) == 40
@@ -468,7 +468,7 @@ def test_cli_train_task_upgrade_donors_csv_requires_donor_id_column(tmp_path):
     donors_path = tmp_path / "donors.csv"
     donors_path.write_text("not_donor_id,wealth_rating\n1,A\n")
     with pytest.raises(SystemExit, match="donor_id"):
-        main(["train", "--task", "upgrade", "--source", "raisers_edge",
+        main(["train", "--task", "leadership", "--source", "raisers_edge",
               "--data", str(data), "--donors", str(donors_path),
               "--out", str(tmp_path / "scored.csv")])
 
@@ -484,11 +484,11 @@ def test_cli_train_plain_task_unaffected_by_new_flags(tmp_path):
 
 
 def test_python_and_cli_upgrade_paths_produce_identical_scores(tmp_path):
-    """The brief's acceptance test: score_upgrade_prospects called directly
-    on the parsed raw export must match `train --task upgrade`'s CLI output
+    """The brief's acceptance test: score_leadership_prospects called directly
+    on the parsed raw export must match `train --task leadership`'s CLI output
     for the same three CSVs, to floating-point tolerance."""
     from philanthropy.cli import _read_activities, _read_raw_gifts
-    from philanthropy.models import score_upgrade_prospects
+    from philanthropy.models import score_leadership_prospects
 
     data = _make_upgrade_gift_export(tmp_path)
     activity_path = tmp_path / "activities.csv"
@@ -506,13 +506,13 @@ def test_python_and_cli_upgrade_paths_produce_identical_scores(tmp_path):
     gifts = _read_raw_gifts("raisers_edge", str(data))
     activities = _read_activities([f"event={activity_path}"])
     donors = pd.read_csv(donors_path).set_index("donor_id")
-    direct_scores, direct_report = score_upgrade_prospects(
+    direct_scores, direct_report = score_leadership_prospects(
         gifts, activities=activities, donors=donors, random_state=0
     )
 
     scored_path = tmp_path / "scored.csv"
     main([
-        "train", "--task", "upgrade", "--source", "raisers_edge",
+        "train", "--task", "leadership", "--source", "raisers_edge",
         "--data", str(data), "--activity", f"event={activity_path}",
         "--donors", str(donors_path), "--out", str(scored_path),
         "--random-state", "0",

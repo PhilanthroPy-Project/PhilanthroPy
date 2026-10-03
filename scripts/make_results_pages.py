@@ -9,7 +9,7 @@ reproducible model-vs-baseline benchmark), adds a "random pick" baseline for
 each hit-rate comparison (the expected hit rate of picking that many donors
 uniformly at random, which is just the fold's own positive rate, computed
 from the same train/test construction), and runs one worked example of
-``score_upgrade_prospects`` on ``make_donor_panel(random_state=0)`` for the
+``score_leadership_prospects`` on ``make_donor_panel(random_state=0)`` for the
 $1K-upgrade page's donor counts and decile chart.
 
 Writes ``docs/assets/results/results.json`` (every number, for the docs pages
@@ -48,7 +48,7 @@ import benchmark_models_vs_baselines as bm  # noqa: E402
 
 from philanthropy.datasets import make_donor_panel  # noqa: E402
 from philanthropy.inspection import donor_feature_importance  # noqa: E402
-from philanthropy.models import PlannedGivingIntentScorer, score_upgrade_prospects  # noqa: E402
+from philanthropy.models import PlannedGivingIntentScorer, score_leadership_prospects  # noqa: E402
 
 
 def _git_sha() -> str:
@@ -435,6 +435,42 @@ def _row(rows, model, metric):
     return None
 
 
+MOMENTUM_METHOD_UPGRADE = (
+    "momentum = build_leadership_snapshots(include_momentum=True): trailing 3y/5y OLS "
+    "slope and relative slope per base series (fy_total, gift_count, largest_gift), "
+    "plus fy_total_growth_ratio. The shipped, opt-in feature set score_leadership_prospects "
+    "itself can use."
+)
+MOMENTUM_METHOD_PANEL = (
+    "momentum = trailing slope of yearly giving, added to the benchmark's own feature "
+    "panel (philanthropy.utils.trailing_slope_features applied to this script's own "
+    "per-donor annual series, not the shipped RFMTransformer/activities_to_features path)."
+)
+
+
+def _momentum_summary(rows, model: str, method: str) -> Dict[str, Any]:
+    """Top1/5/10pct model hit rate (in percentage points) plus verdict, for a
+    bench run with ``include_momentum=True``. No baseline/random columns: this
+    is a comparison against the model's own default-feature row (``_row``
+    callers diff the two "model" numbers), not a new baseline. Carries each
+    row's own ``lo``/``hi`` (a 5-seed min/max range for synthetic rows, a
+    bootstrap interval for KDD98) and ``n_seeds``, plus a plain-language
+    ``method`` string the docs can quote directly."""
+    row_by_p = {p: _row(rows, model, f"top{p}pct_hit_rate") for p in (1, 5, 10)}
+    out = {
+        f"top{p}pct": {
+            "model": row_by_p[p].value * 100,
+            "lo": row_by_p[p].lo * 100 if row_by_p[p].lo is not None else None,
+            "hi": row_by_p[p].hi * 100 if row_by_p[p].hi is not None else None,
+            "n_seeds": row_by_p[p].n_seeds,
+        }
+        for p in (1, 5, 10)
+    }
+    out["verdict"] = row_by_p[10].verdict
+    out["method"] = method
+    return out
+
+
 def _ci(row) -> tuple[float, float] | None:
     """A row's `(lo, hi)` interval in percentage points: a 5-seed min/max
     range for synthetic rows, a bootstrap 95% interval for KDD98 single-split
@@ -473,7 +509,7 @@ def random_rate_upgrade(threshold: float = 1000.0, band=(100.0, 999.0)) -> float
         years = sorted(panel["gifts"]["fiscal_year"].unique())
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
-            snaps = bm.build_upgrade_snapshots(
+            snaps = bm.build_leadership_snapshots(
                 panel["gifts"], fiscal_years=years[:-1], threshold=threshold, band=band,
             )
         if snaps.empty or snaps["fiscal_year"].nunique() < 2:
@@ -516,10 +552,10 @@ def planned_giving_hit_rates() -> Dict[str, Any]:
 
 
 # --------------------------------------------------------------------------- #
-# $1K upgrade worked example: score_upgrade_prospects on a fixed seeded panel
+# $1K upgrade worked example: score_leadership_prospects on a fixed seeded panel
 # --------------------------------------------------------------------------- #
 def upgrade_worked_example(seed: int) -> Dict[str, Any]:
-    """One seed's worth of the public `score_upgrade_prospects` API, for the
+    """One seed's worth of the public `score_leadership_prospects` API, for the
     donor-count narrative on the Upgrade page. Uses the first of `SEEDS`
     (the same seeds `bench_upgrade`'s 5-seed average uses) rather than an
     unrelated fixed seed, so the worked example is traceable to the same
@@ -529,7 +565,7 @@ def upgrade_worked_example(seed: int) -> Dict[str, Any]:
     panel = make_donor_panel(n_donors=N_DONORS, n_years=N_YEARS, random_state=seed)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
-        _, report = score_upgrade_prospects(panel["gifts"], random_state=seed)
+        _, report = score_leadership_prospects(panel["gifts"], random_state=seed)
     return {
         "validation_fiscal_year": report["validation_fiscal_year"],
         "n_validation_rows": report["n_validation_rows"],
@@ -543,7 +579,7 @@ def upgrade_worked_example(seed: int) -> Dict[str, Any]:
 
 
 def upgrade_decile_average(seeds) -> Dict[str, Any]:
-    """Averages `score_upgrade_prospects`'s per-decile upgrade rate across
+    """Averages `score_leadership_prospects`'s per-decile upgrade rate across
     all of `seeds` (min/max kept as a range), instead of reading the decile
     breakdown off a single seed the way the page used to. A one-seed decile
     chart can show a step that is just that seed's noise (E.13a finding 5);
@@ -554,7 +590,7 @@ def upgrade_decile_average(seeds) -> Dict[str, Any]:
         panel = make_donor_panel(n_donors=N_DONORS, n_years=N_YEARS, random_state=seed)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
-            _, report = score_upgrade_prospects(panel["gifts"], random_state=seed)
+            _, report = score_leadership_prospects(panel["gifts"], random_state=seed)
         overall_rates.append(report["overall_upgrade_rate"] * 100)
         for d in report["deciles"]:
             if d["actual_rate"] is not None:
@@ -653,7 +689,7 @@ FEATURE_INFO = {
     "prev_recent": ("last year's gift", "recency"),
     "max_gift": ("biggest single gift", "giving_history"),
     "tenure": ("years as a donor", "giving_history"),
-    # synthetic upgrade snapshots (build_upgrade_snapshots)
+    # synthetic upgrade snapshots (build_leadership_snapshots)
     "fiscal_year": ("which fiscal year", "giving_history"),
     "fy_total": ("this year's giving", "recency"),
     "fy_total_prior1": ("last year's giving", "recency"),
@@ -883,7 +919,7 @@ def ask_drivers_synthetic(seeds, n_donors, n_years) -> Dict[str, Any]:
     )
 
 
-# build_upgrade_snapshots always returns this fixed numeric column set (no
+# build_leadership_snapshots always returns this fixed numeric column set (no
 # activities/donors frame is passed in bench_upgrade, so no engagement or
 # wealth columns ever appear here; see _features_entry's "not used" note).
 UPGRADE_FEATURE_COLS = (
@@ -900,7 +936,7 @@ def upgrade_drivers_synthetic(seeds, n_donors, n_years, threshold=1000.0, band=(
         years = sorted(panel["gifts"]["fiscal_year"].unique())
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
-            snaps = bm.build_upgrade_snapshots(panel["gifts"], fiscal_years=years[:-1], threshold=threshold, band=band)
+            snaps = bm.build_leadership_snapshots(panel["gifts"], fiscal_years=years[:-1], threshold=threshold, band=band)
         X = snaps[list(feature_cols)].to_numpy(dtype="float64")
         y = snaps["target"].to_numpy()
         fy = snaps["fiscal_year"].to_numpy()
@@ -1000,7 +1036,7 @@ def upgrade_drivers_kdd98(seed, threshold=50.0, band=(5.0, 49.0)) -> Dict[str, A
         train_fy, test_fy = 1994, 1995
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
-            snaps = bm.build_upgrade_snapshots(
+            snaps = bm.build_leadership_snapshots(
                 gifts, fiscal_years=[train_fy, test_fy], threshold=threshold, band=band, fiscal_year_start=7,
             )
         train, test = snaps[snaps["fiscal_year"] == train_fy], snaps[snaps["fiscal_year"] == test_fy]
@@ -1240,6 +1276,12 @@ def main() -> None:
         "(a second ~37MB download; opt-in). No effect without --with-kdd98.",
     )
     parser.add_argument(
+        "--with-momentum", action="store_true",
+        help="Also run each synthetic model (and KDD98 upgrade, with --with-kdd98) with "
+        "include_momentum=True, writing a '<key>_momentum' results.json entry next to the "
+        "default-feature one. Does not change any existing key or chart.",
+    )
+    parser.add_argument(
         "--donorschoose-path", type=str, default=None,
         help="Path to a user-obtained ICPSR 37898 DS0001 Donations file (.tsv or .dta); "
         "skipped entirely when not given.",
@@ -1270,6 +1312,9 @@ def main() -> None:
         for p in (1, 5, 10)
     }
     results["response_synthetic"]["verdict"] = resp_row_by_p[10].verdict
+    if args.with_momentum:
+        resp_mom_rows = bm.bench_response(SEEDS, N_DONORS, N_YEARS, include_momentum=True)
+        results["response_synthetic_momentum"] = _momentum_summary(resp_mom_rows, "MajorGiftClassifier", MOMENTUM_METHOD_PANEL)
     results["response_synthetic"]["features"] = response_drivers_synthetic(SEEDS, N_DONORS, N_YEARS)
     r10 = results["response_synthetic"]["top10pct"]
     _render_themed(
@@ -1303,6 +1348,9 @@ def main() -> None:
         for p in (1, 5, 10)
     }
     results["lapse_synthetic"]["verdict"] = _row(lapse_rows, "LapsePredictor", "top10pct_hit_rate").verdict
+    if args.with_momentum:
+        lapse_mom_rows = bm.bench_lapse(SEEDS, N_DONORS, N_YEARS, include_momentum=True)
+        results["lapse_synthetic_momentum"] = _momentum_summary(lapse_mom_rows, "LapsePredictor", MOMENTUM_METHOD_PANEL)
     results["lapse_synthetic"]["features"] = lapse_drivers_synthetic(SEEDS, N_DONORS, N_YEARS)
 
     # --- synthetic: ask -------------------------------------------------
@@ -1314,6 +1362,14 @@ def main() -> None:
         "verdict": within.verdict,
         "features": ask_drivers_synthetic(SEEDS, N_DONORS, N_YEARS),
     }
+    if args.with_momentum:
+        ask_mom_rows = bm.bench_ask(SEEDS, N_DONORS, N_YEARS, include_momentum=True)
+        within_mom = _row(ask_mom_rows, "AskAmountRecommender", "within25pct")
+        results["ask_synthetic_momentum"] = {
+            "within25pct_model": within_mom.value * 100,
+            "verdict": within_mom.verdict,
+            "method": MOMENTUM_METHOD_PANEL,
+        }
 
     # --- synthetic: $1K upgrade (bench_upgrade) ------------------------------
     upgrade_rows = bm.bench_upgrade(SEEDS, N_DONORS, N_YEARS)
@@ -1330,6 +1386,9 @@ def main() -> None:
         for p in (1, 5, 10)
     }
     results["upgrade_synthetic"]["verdict"] = upg_row_by_p[10].verdict
+    if args.with_momentum:
+        upg_mom_rows = bm.bench_upgrade(SEEDS, N_DONORS, N_YEARS, include_momentum=True)
+        results["upgrade_synthetic_momentum"] = _momentum_summary(upg_mom_rows, "upgrade_model (MajorGiftClassifier)", MOMENTUM_METHOD_UPGRADE)
     results["upgrade_synthetic"]["features"] = upgrade_drivers_synthetic(SEEDS, N_DONORS, N_YEARS)
     u10 = results["upgrade_synthetic"]["top10pct"]
     _render_themed(
@@ -1423,6 +1482,11 @@ def main() -> None:
             for p in (1, 5, 10)
         }
         results["upgrade_kdd98"]["verdict"] = upg_kdd_row_by_p[10].verdict
+        if args.with_momentum:
+            kdd_upg_mom_rows = bm.bench_kdd_upgrade(seed, include_momentum=True)
+            results["upgrade_kdd98_momentum"] = _momentum_summary(
+                kdd_upg_mom_rows, "upgrade_model (MajorGiftClassifier)", MOMENTUM_METHOD_UPGRADE
+            )
         results["upgrade_kdd98"]["features"] = upgrade_drivers_kdd98(seed)
         uk10 = results["upgrade_kdd98"]["top10pct"]
         _render_themed(
@@ -1731,7 +1795,7 @@ def main() -> None:
         return [(label, results[key]["verdict"]) for label, key in pairs if key in results]
 
     scoreboard_rows = [
-        ("$1K upgrade", _dots(("Sample data", "upgrade_synthetic"), ("KDD Cup 1998", "upgrade_kdd98"))),
+        ("Leadership upgrade", _dots(("Sample data", "upgrade_synthetic"), ("KDD Cup 1998", "upgrade_kdd98"))),
         (
             "Response", _dots(
                 ("Sample data", "response_synthetic"), ("KDD Cup 1998", "response_kdd98"),

@@ -6,13 +6,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `scripts/make_results_pages.py --with-momentum`: runs each synthetic model
+  (and KDD98's upgrade model, with `--with-kdd98`) a second time with
+  `include_momentum=True`, writing a `<key>_momentum` entry next to the
+  existing one in `results.json` (five-seed range included for synthetic
+  rows, a plain-language `method` string for the docs to quote). Every
+  existing key and default number is untouched; verified byte-identical
+  except `_env.git_sha`. On the sample panel, momentum moves the upgrade
+  model's top-10% hit rate from 21.6% to 25.4%, inside the five-seed noise
+  band rather than clearly outside it; on KDD98's real gift history it makes
+  no difference at all (verified: 90.9% of the KDD98 momentum values are
+  real, non-NaN numbers with genuine spread, but `donor_feature_importance`
+  gives momentum, and several of the model's existing columns, exactly 0.0
+  permutation importance on that file). Response, lapse and ask get the
+  same momentum columns applied to this script's own per-donor annual
+  panel (not the shipped `RFMTransformer`/`activities_to_features` path);
+  none of their verdicts change either.
 - `philanthropy.utils.trailing_slope_features`, a shared as-of trailing-window
   OLS slope/relative-slope helper over annual (or other evenly-spaced) bins
   of a donor time series. `RFMTransformer(include_momentum=True)` and
   `activities_to_features(..., include_momentum=True)` both opt in to add
   slope columns for their base series (giving total, gift count, largest
-  gift; activity count/hours/amount), and `build_upgrade_snapshots`/
-  `score_upgrade_prospects(..., include_momentum=True)` add the same slopes
+  gift; activity count/hours/amount), and `build_leadership_snapshots`/
+  `score_leadership_prospects(..., include_momentum=True)` add the same slopes
   plus `fy_total_growth_ratio`. All three default to `False`: the feature
   is new, additive, and off by default so it does not change any shipped
   estimator's default training features ahead of the JOSS submission
@@ -35,7 +51,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `scripts/benchmark_models_vs_baselines.py`'s synthetic `$1K upgrade` bench
   (`bench_upgrade`) trained `MajorGiftClassifier` on every numeric snapshot
   column including the raw `fiscal_year` label, unlike the KDD98 upgrade
-  bench and `score_upgrade_prospects`, both of which already drop it. The
+  bench and `score_leadership_prospects`, both of which already drop it. The
   model could partly key on which split a row came from rather than who
   upgrades. `fiscal_year` is now excluded there too. Regenerated
   `docs/assets/results/results.json` and the upgrade results page: the
@@ -56,8 +72,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   2024 came out as FY2025 instead of FY2024). Every other start month was
   already correct. **Behaviour change** for `fiscal_year_start=1` users: the
   fiscal year now equals the calendar year, matching the class docs. The
-  same off-by-one existed in `score_upgrade_prospects`'s current-fiscal-year
-  calculation and in `build_upgrade_snapshots`'s `_fy_end` cutoff; both now
+  same off-by-one existed in `score_leadership_prospects`'s current-fiscal-year
+  calculation and in `build_leadership_snapshots`'s `_fy_end` cutoff; both now
   share the corrected, vectorised `philanthropy.utils._validation.
   fiscal_year_and_quarter`/`fiscal_year_for` helpers instead of duplicating
   the formula (and a per-row `.apply`) in four places.
@@ -120,6 +136,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   method details stay in a collapsed "For analysts" note.
 
 ### Changed
+- Renamed the unreleased upgrade model before its first release, so the name
+  says what it predicts (a mid-level donor reaching the leadership-giving
+  level, $1,000 by default): `score_leadership_prospects` is now
+  `score_leadership_prospects`, `build_leadership_snapshots` is now
+  `build_leadership_snapshots`, and `philanthropy train --task upgrade` is now
+  `--task leadership`. The Results page moved from `results/upgrade/` to
+  `results/leadership/`; the old address keeps a stub linking to the new one.
+  No deprecation aliases, since none of these shipped in 0.8.0.
 - `scripts/benchmark_models_vs_baselines.py` now checks `GiftIntervalCalibrator`
   coverage over 10 seeds at 80/90/95% requested levels instead of 5 seeds at
   90% only. Attained coverage is 0.784/0.9045/0.9539, all within 2 points of
@@ -238,7 +262,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `scripts/make_results_pages.py` generates every number and chart these
   pages cite (`docs/assets/results/`), by running
   `scripts/benchmark_models_vs_baselines.py` and one worked example of
-  `score_upgrade_prospects`, so nothing on the pages is typed by hand.
+  `score_leadership_prospects`, so nothing on the pages is typed by hand.
 - `scripts/benchmark_models_vs_baselines.py`: pairs every estimator with the simple domain rule it is meant to replace (rank by last year's total, predict last gift, mail everyone) and evaluates both on held-out, walk-forward splits: top-1%/5%/10% hit rate and lift, ROC-AUC, average precision and decile calibration for classifiers; MAE and within-25% for amount predictions; net revenue/ROI for cost-aware mail selection. Runs on the synthetic donor panel (five seeds, mean and min-max) by default; `--skip-kdd98` stays fully offline, `--fast` gives a one-seed smoke run, and `--out` writes the results table to JSON and CSV. Separate from the existing `scripts/benchmark_models.py` per-model accuracy table, which this does not replace or touch.
 - `philanthropy.ingest.map_columns(df, mapping, *, required=...)`: renames a
   user-supplied export's headers to canonical names and raises one
@@ -266,7 +290,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   format. Keyword arguments other than `source` pass straight through to the
   matched aggregator, so `include_stages`, `exclude_gift_types` and `statuses`
   all still work.
-- `philanthropy.ingest.build_upgrade_snapshots(gifts, *, fiscal_years,
+- `philanthropy.ingest.build_leadership_snapshots(gifts, *, fiscal_years,
   threshold=1000, band=(100, 999), fiscal_year_start=7, activities=None,
   donors=None)`: builds a per-donor, per-fiscal-year training table for an
   upgrade model, one row per donor whose fiscal-year-T giving lands in the
@@ -277,10 +301,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   Everything but `target` is computed from data through the end of T; the
   output's `fiscal_year` and donor-id columns feed directly into
   `FiscalYearGroupedSplitter`.
-- `philanthropy.models.score_upgrade_prospects(gifts, *, activities=None,
+- `philanthropy.models.score_leadership_prospects(gifts, *, activities=None,
   donors=None, threshold=1000.0, band=(100.0, 999.0), fiscal_year_start=7,
   as_of=None, top_n=None, baseline_giving_threshold=None, random_state=None)`:
-  the fit-and-score entry point over `build_upgrade_snapshots`. Trains a
+  the fit-and-score entry point over `build_leadership_snapshots`. Trains a
   `MajorGiftClassifier` on every fully-resolved historical fiscal year
   (excluding `fiscal_year` itself from the feature set), validated with a
   walk-forward `FiscalYearGroupedSplitter` fold, then scores today's
@@ -294,11 +318,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   the held-out fold (`deciles`), `roc_auc`/`average_precision`, and two
   named-baseline upgrade rates and lifts ("gave >= X last FY" and "top N by
   FY total", `top_n` defaulting to ~10% of the fold). Wired into the CLI as
-  `philanthropy train --task upgrade`; `philanthropy features` gained
+  `philanthropy train --task leadership`; `philanthropy features` gained
   repeated `--activity TYPE=PATH` and `--as-of` flags to fold engagement
   data into the feature table the same way.
 - `examples/notebooks/05_leadership_upgrade.ipynb`: a leadership annual-giving
-  upgrade model, `build_upgrade_snapshots` plus a synthetic activity log into
+  upgrade model, `build_leadership_snapshots` plus a synthetic activity log into
   `MajorGiftClassifier`, validated with a fiscal-year walk-forward split and
   compared against a naive "gave $500+ last FY" rule on top-N upgrade rate.
 - `philanthropy validate` now reports average precision and a 10-row decile
@@ -441,15 +465,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   matches the accurate note already on `predict_affinity_score`.
 
 ### Fixed
-- `score_upgrade_prospects` no longer crashes on a single-class historical
+- `score_leadership_prospects` no longer crashes on a single-class historical
   target (no donor ever upgraded, or every one did) or on a training set too
   small for its internal 5-fold calibrated classifier; both now raise a
   clear `ValueError` instead of an opaque one from deep inside
   `CalibratedClassifierCV`.
-- `score_upgrade_prospects` dropped `fiscal_year` from the model's own
+- `score_leadership_prospects` dropped `fiscal_year` from the model's own
   feature columns (it isn't donor-specific, and the scored row's year always
   sits outside the training range); it's still returned as an output column.
-- `score_upgrade_prospects`'s validation report no longer uses a fixed
+- `score_leadership_prospects`'s validation report no longer uses a fixed
   top-10 count, which read as a 1.0 lift on a large real validation year
   whose true top-1% lift was 2.24x. `top_n` is now a parameter (default
   ~10% of the held-out fold), and the report adds `deciles`, `roc_auc`,

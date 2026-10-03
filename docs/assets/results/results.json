@@ -94,6 +94,28 @@
       "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
     }
   },
+  "response_synthetic_momentum": {
+    "top1pct": {
+      "model": 85.33333333333334,
+      "lo": 80.0,
+      "hi": 93.33333333333333,
+      "n_seeds": 5
+    },
+    "top5pct": {
+      "model": 81.73333333333333,
+      "lo": 76.66666666666667,
+      "hi": 90.0,
+      "n_seeds": 5
+    },
+    "top10pct": {
+      "model": 76.99999999999999,
+      "lo": 76.0,
+      "hi": 78.33333333333333,
+      "n_seeds": 5
+    },
+    "verdict": "loses",
+    "method": "momentum = trailing slope of yearly giving, added to the benchmark's own feature panel (philanthropy.utils.trailing_slope_features applied to this script's own per-donor annual series, not the shipped RFMTransformer/activities_to_features path)."
+  },
   "lapse_synthetic": {
     "top1pct": {
       "model": 77.33333333333331,
@@ -189,6 +211,28 @@
       "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
     }
   },
+  "lapse_synthetic_momentum": {
+    "top1pct": {
+      "model": 76.66666666666667,
+      "lo": 66.66666666666666,
+      "hi": 86.66666666666667,
+      "n_seeds": 5
+    },
+    "top5pct": {
+      "model": 75.2,
+      "lo": 71.33333333333334,
+      "hi": 79.33333333333333,
+      "n_seeds": 5
+    },
+    "top10pct": {
+      "model": 74.33333333333333,
+      "lo": 69.66666666666667,
+      "hi": 78.66666666666666,
+      "n_seeds": 5
+    },
+    "verdict": "loses",
+    "method": "momentum = trailing slope of yearly giving, added to the benchmark's own feature panel (philanthropy.utils.trailing_slope_features applied to this script's own per-donor annual series, not the shipped RFMTransformer/activities_to_features path)."
+  },
   "ask_synthetic": {
     "within25pct_model": 23.11009415644001,
     "within25pct_last_gift": 23.657446585915693,
@@ -240,6 +284,11 @@
       "n_configs": 1,
       "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
     }
+  },
+  "ask_synthetic_momentum": {
+    "within25pct_model": 22.845302937912233,
+    "verdict": "loses",
+    "method": "momentum = trailing slope of yearly giving, added to the benchmark's own feature panel (philanthropy.utils.trailing_slope_features applied to this script's own per-donor annual series, not the shipped RFMTransformer/activities_to_features path)."
   },
   "upgrade_synthetic": {
     "top1pct": {
@@ -328,6 +377,28 @@
       "n_configs": 1,
       "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
     }
+  },
+  "upgrade_synthetic_momentum": {
+    "top1pct": {
+      "model": 37.45454545454545,
+      "lo": 18.181818181818183,
+      "hi": 63.63636363636363,
+      "n_seeds": 5
+    },
+    "top5pct": {
+      "model": 27.490924768552798,
+      "lo": 22.448979591836736,
+      "hi": 37.735849056603776,
+      "n_seeds": 5
+    },
+    "top10pct": {
+      "model": 25.38115423560167,
+      "lo": 20.408163265306122,
+      "hi": 30.18867924528302,
+      "n_seeds": 5
+    },
+    "verdict": "wins",
+    "method": "momentum = build_leadership_snapshots(include_momentum=True): trailing 3y/5y OLS slope and relative slope per base series (fy_total, gift_count, largest_gift), plus fy_total_growth_ratio. The shipped, opt-in feature set score_leadership_prospects itself can use."
   },
   "planned_giving_synthetic": {
     "n_test": 3000,
@@ -668,6 +739,28 @@
       "n_configs": 1,
       "git_sha": "69d1bad4d885b21936de2b47872bdf05ca765970"
     }
+  },
+  "upgrade_kdd98_momentum": {
+    "top1pct": {
+      "model": 17.445482866043612,
+      "lo": null,
+      "hi": null,
+      "n_seeds": 1
+    },
+    "top5pct": {
+      "model": 14.334683702087878,
+      "lo": null,
+      "hi": null,
+      "n_seeds": 1
+    },
+    "top10pct": {
+      "model": 10.98473044562169,
+      "lo": 10.26760673106887,
+      "hi": 11.794951698348395,
+      "n_seeds": 1
+    },
+    "verdict": "loses",
+    "method": "momentum = build_leadership_snapshots(include_momentum=True): trailing 3y/5y OLS slope and relative slope per base series (fy_total, gift_count, largest_gift), plus fy_total_growth_ratio. The shipped, opt-in feature set score_leadership_prospects itself can use."
   },
   "lapse_kdd98": {
     "base_rate_pct": 94.92411855951033,

@@ -436,9 +436,9 @@ def _row(rows, model, metric):
 
 
 MOMENTUM_METHOD_UPGRADE = (
-    "momentum = build_upgrade_snapshots(include_momentum=True): trailing 3y/5y OLS "
+    "momentum = build_leadership_snapshots(include_momentum=True): trailing 3y/5y OLS "
     "slope and relative slope per base series (fy_total, gift_count, largest_gift), "
-    "plus fy_total_growth_ratio. The shipped, opt-in feature set score_upgrade_prospects "
+    "plus fy_total_growth_ratio. The shipped, opt-in feature set score_leadership_prospects "
     "itself can use."
 )
 MOMENTUM_METHOD_PANEL = (

@@ -127,8 +127,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Changed
 - Renamed the unreleased upgrade model before its first release, so the name
   says what it predicts (a mid-level donor reaching the leadership-giving
-  level, $1,000 by default): `score_upgrade_prospects` is now
-  `score_leadership_prospects`, `build_upgrade_snapshots` is now
+  level, $1,000 by default): `score_leadership_prospects` is now
+  `score_leadership_prospects`, `build_leadership_snapshots` is now
   `build_leadership_snapshots`, and `philanthropy train --task upgrade` is now
   `--task leadership`. The Results page moved from `results/upgrade/` to
   `results/leadership/`; the old address keeps a stub linking to the new one.

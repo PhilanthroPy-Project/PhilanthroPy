@@ -80,6 +80,7 @@ import urllib.request
 import warnings
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -88,11 +89,18 @@ from sklearn.metrics import average_precision_score, mean_absolute_error, roc_au
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 
-from philanthropy.datasets import fetch_kdd98_donors, fetch_kdd98_val_donors, make_donor_panel
+from philanthropy.datasets import (
+    fetch_kdd98_donors,
+    fetch_kdd98_val_donors,
+    load_donorschoose,
+    load_psid_philanthropy,
+    make_donor_panel,
+)
 from philanthropy.ingest import build_leadership_snapshots
+from philanthropy.ingest._upgrade_snapshots import _column, _prepare_gifts, _snapshot_features_for_year
 from philanthropy.metrics import fundraising_roi
 from philanthropy.model_selection import FiscalYearGroupedSplitter
-from philanthropy.utils._momentum import trailing_slope_features
+from philanthropy.utils import trailing_slope_features
 from philanthropy.models import (
     AskAmountRecommender,
     DonorPropensityModel,
@@ -124,6 +132,11 @@ N_BOOTSTRAP = 1000
 BOOTSTRAP_METRICS = ("top10pct_hit_rate", "roc_auc")
 KDD_SPLIT = "55/15/30 stratified (train/validation/test)"
 SYNTHETIC_SPLIT = "walk-forward (train on fiscal years < T, test on T)"
+DONORSCHOOSE_SEED = 42
+DONORSCHOOSE_SUBSAMPLE = 0.10
+DONORSCHOOSE_N_FOLDS = 4
+PSID_SEED = 42
+PSID_N_FOLDS = 4
 
 CSV_FIELDS = ("dataset", "model", "metric", "value", "baseline", "lo", "hi", "n_seeds", "verdict", "note")
 
@@ -713,6 +726,510 @@ def bench_forecast(seeds: Sequence[int], n_donors: int, n_years: int, horizon: i
                 )
         seed_rows.append(rows)
     return _aggregate(seed_rows)
+
+
+# --------------------------------------------------------------------------- #
+# DonorsChoose (opt-in, local file; see load_donorschoose)
+#
+# ICPSR 37898 (DonorsChoose Open Data, United States, doi:10.3886/ICPSR37898.v1).
+# Never downloaded or redistributed by this script; the caller points
+# --donorschoose-path at a file obtained under their own ICPSR account, and
+# only aggregate statistics are ever printed or written out.
+# --------------------------------------------------------------------------- #
+@lru_cache(maxsize=None)
+def _donorschoose_gift_log(path: str, subsample_fraction: float, seed: int) -> pd.DataFrame:
+    """Citizen donors, positive amounts, subsampled to ``subsample_fraction``
+    of distinct donors (seed ``seed``): the full file has ~3.1M distinct
+    citizen donors, too many for build_leadership_snapshots' own per-donor
+    streak loop (``_consecutive_years_given``) to finish in reasonable time
+    for the lapse/ask population (anyone who gave, not just the $100-999
+    upgrade band). Cached: the ~1.6 GB TSV would otherwise get re-parsed
+    once per (bench function, momentum setting) call in the same process,
+    and every caller only reads the returned frame."""
+    gifts = load_donorschoose(path)
+    gifts = gifts[(gifts["donor_type"] == "citizen donor") & (gifts["gift_amount"] > 0)].copy()
+    rng = np.random.RandomState(seed)
+    donors = gifts["donor_id"].unique()
+    keep = set(rng.choice(donors, size=int(len(donors) * subsample_fraction), replace=False))
+    return gifts[gifts["donor_id"].isin(keep)].copy()
+
+
+def _gift_log_period_snapshots(
+    gifts: pd.DataFrame, fiscal_year_start: int, kind: str, include_momentum: bool,
+    threshold: float, band: Tuple[float, float],
+) -> pd.DataFrame:
+    """Shared donor x fiscal-year feature table for a gift-level log (any
+    dataset in :func:`~philanthropy.ingest.build_leadership_snapshots`'s own
+    shape), reusing that function's internals
+    (``philanthropy.ingest._upgrade_snapshots``) for ``kind`` other than
+    ``"upgrade"``, which it does not itself support:
+
+    - ``"upgrade"``: candidates are donors whose FY T total falls in
+      ``band`` (below ``threshold``); target is 1 if FY T+1 reaches
+      ``threshold``.
+    - ``"lapse"``: candidates are donors who gave anything (>0) in FY T;
+      target is 1 if FY T+1 total is 0.
+    - ``"ask"``: candidates are donors who gave in FY T *and* FY T+1; the
+      (non-target) rows are the same feature columns, and ``target`` is the
+      FY T+1 total (continuous), i.e. "next fiscal-year total, given they
+      give again" (matching the synthetic ask bench's own yearly target).
+
+    Only fiscal years with a resolvable T+1 (observed in the file) are
+    included, so "gave nothing" and "year not in file" are never conflated.
+    """
+    df, pivot_sum, pivot_max, pivot_count = _prepare_gifts(gifts, fiscal_year_start)
+    if df.empty:
+        return pd.DataFrame(index=pd.Index([], name="donor_id"))
+    all_years = sorted(int(y) for y in df["_fy"].unique())
+    candidate_years = [y for y in all_years if y < max(all_years)]
+
+    rows = []
+    for fy in candidate_years:
+        totals_t = _column(pivot_sum, fy)
+        if totals_t.empty:
+            continue
+        next_totals = _column(pivot_sum, fy + 1)
+        if kind == "upgrade":
+            cand = totals_t[(totals_t >= band[0]) & (totals_t <= band[1]) & (totals_t < threshold)]
+        else:
+            cand = totals_t[totals_t > 0]
+        if cand.empty:
+            continue
+        donor_ids = cand.index
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            snap = _snapshot_features_for_year(
+                df, pivot_sum, pivot_max, pivot_count, donor_ids, fy, fiscal_year_start,
+                activities=None, donors=None, donors_norm=None, include_momentum=include_momentum,
+            )
+        nxt = next_totals.reindex(donor_ids, fill_value=0.0)
+        if kind == "upgrade":
+            snap["target"] = (nxt >= threshold).astype("int64")
+        elif kind == "lapse":
+            snap["target"] = (nxt <= 0).astype("int64")
+        elif kind == "ask":
+            keep = (nxt > 0).to_numpy()
+            snap = snap[keep]
+            snap["target"] = nxt.to_numpy()[keep]
+        else:
+            raise ValueError(kind)
+        rows.append(snap)
+
+    if not rows:
+        return pd.DataFrame(index=pd.Index([], name="donor_id"))
+    out = pd.concat(rows)
+    return out.reset_index().sort_values(["fiscal_year", "donor_id"], kind="stable")
+
+
+def _snapshot_feature_cols(snap: pd.DataFrame, id_col: str) -> List[str]:
+    return [
+        c for c in snap.columns
+        if c not in ("target", "fiscal_year", "wave", id_col) and pd.api.types.is_numeric_dtype(snap[c])
+    ]
+
+
+def _walk_forward_test_periods(snap: pd.DataFrame, period_col: str, n_folds: int) -> List[int]:
+    periods = sorted(int(p) for p in snap[period_col].unique())
+    return periods[-n_folds:]
+
+
+def bench_upgrade_donorschoose(
+    path: str, seed: int = DONORSCHOOSE_SEED, include_momentum: bool = False,
+    subsample_fraction: float = DONORSCHOOSE_SUBSAMPLE, n_test_folds: int = DONORSCHOOSE_N_FOLDS,
+    threshold: float = 1000.0, band: Tuple[float, float] = (100.0, 999.0),
+) -> List[Row]:
+    """Upgrade model vs the upgrade rule set (E.11a rule 3) on real
+    DonorsChoose giving history: citizen donors, positive amounts, fiscal
+    years Jul-Jun. Walk-forward, train on fiscal years < T, test on T, for
+    the last ``n_test_folds`` fiscal years with a resolvable T+1 target."""
+    gifts = _donorschoose_gift_log(path, subsample_fraction, seed)
+    snap = _gift_log_period_snapshots(gifts, 7, "upgrade", include_momentum, threshold, band)
+    if snap.empty:
+        return []
+    cols = _snapshot_feature_cols(snap, "donor_id")
+    test_years = _walk_forward_test_periods(snap, "fiscal_year", n_test_folds)
+
+    seed_rows = []
+    for t in test_years:
+        train, test = snap[snap["fiscal_year"] < t], snap[snap["fiscal_year"] == t]
+        if train.empty or test.empty or test["target"].nunique() < 2:
+            continue
+        model = MajorGiftClassifier(random_state=seed).fit(
+            train[cols].to_numpy("float64"), train["target"].to_numpy()
+        )
+        proba = model.predict_proba(test[cols].to_numpy("float64"))[:, 1]
+        rules = {
+            "this-year total": test["fy_total"].to_numpy(),
+            "previous-year total plus this-year growth": (test["fy_total"] + test["fy_trend"]).to_numpy(),
+            "largest single gift in band": test["largest_gift"].to_numpy(),
+        }
+        seed_rows.append(_classifier_rows(
+            "donorschoose", "upgrade_model (MajorGiftClassifier)",
+            test["target"].to_numpy(), proba, rules,
+            f"walk-forward (subsample={subsample_fraction}, seed={seed}, fold=FY{t}, momentum={include_momentum})",
+        ))
+    return _aggregate(seed_rows)
+
+
+def _donorschoose_lapse_fold(
+    gifts: pd.DataFrame, seed: int, include_momentum: bool, n_test_folds: int, retention: bool,
+) -> List[Row]:
+    snap = _gift_log_period_snapshots(gifts, 7, "lapse", include_momentum, threshold=1000.0, band=(100.0, 999.0))
+    if snap.empty:
+        return []
+    cols = _snapshot_feature_cols(snap, "donor_id")
+    test_years = _walk_forward_test_periods(snap, "fiscal_year", n_test_folds)
+
+    seed_rows = []
+    for t in test_years:
+        train, test = snap[snap["fiscal_year"] < t], snap[snap["fiscal_year"] == t]
+        if train.empty or test.empty or test["target"].nunique() < 2:
+            continue
+        model = LapsePredictor(random_state=seed).fit(
+            train[cols].to_numpy("float64"), train["target"].to_numpy()
+        )
+        lapse_score = model.predict_lapse_score(test[cols].to_numpy("float64")) / 100.0
+        rules = {
+            "months since last gift": test["months_since_last_gift"].to_numpy(),
+            "shortest giving streak (negated)": -test["consecutive_years_given"].to_numpy(),
+            "declining trend (negated growth)": -test["fy_trend"].to_numpy(),
+        }
+        y_lapsed = test["target"].to_numpy()
+        split = f"walk-forward (seed={seed}, fold=FY{t}, momentum={include_momentum})"
+        if not retention:
+            seed_rows.append(_classifier_rows("donorschoose", "LapsePredictor", y_lapsed, lapse_score, rules, split))
+        else:
+            retained = 1 - y_lapsed
+            inv_rules = {name: -score for name, score in rules.items()}
+            seed_rows.append(_classifier_rows(
+                "donorschoose", "LapsePredictor", retained, -lapse_score, inv_rules,
+                split + "; bottom decile by lapse score (retention read)",
+            ))
+    return _aggregate(seed_rows)
+
+
+def bench_lapse_donorschoose(
+    path: str, seed: int = DONORSCHOOSE_SEED, include_momentum: bool = False,
+    subsample_fraction: float = DONORSCHOOSE_SUBSAMPLE, n_test_folds: int = DONORSCHOOSE_N_FOLDS,
+) -> List[Row]:
+    """LapsePredictor vs the lapse rule set on real DonorsChoose giving
+    history: gave in FY T, $0 in FY T+1. Most donors here are one-and-done
+    (base rate ~84% lapsed), so see :func:`bench_lapse_donorschoose_retention`
+    for the more useful "who keeps giving" read."""
+    gifts = _donorschoose_gift_log(path, subsample_fraction, seed)
+    return _donorschoose_lapse_fold(gifts, seed, include_momentum, n_test_folds, retention=False)
+
+
+def bench_lapse_donorschoose_retention(
+    path: str, seed: int = DONORSCHOOSE_SEED, include_momentum: bool = False,
+    subsample_fraction: float = DONORSCHOOSE_SUBSAMPLE, n_test_folds: int = DONORSCHOOSE_N_FOLDS,
+) -> List[Row]:
+    """The useful list on a file where most donors lapse: not the top decile
+    by lapse score, but the bottom decile (least likely to lapse), with the
+    label flipped to "retained" (base rate ~16%). Same fit, same rules, same
+    split as :func:`bench_lapse_donorschoose`, ranked in the opposite
+    direction."""
+    gifts = _donorschoose_gift_log(path, subsample_fraction, seed)
+    return _donorschoose_lapse_fold(gifts, seed, include_momentum, n_test_folds, retention=True)
+
+
+def bench_ask_donorschoose(
+    path: str, seed: int = DONORSCHOOSE_SEED, include_momentum: bool = False,
+    subsample_fraction: float = DONORSCHOOSE_SUBSAMPLE, n_test_folds: int = DONORSCHOOSE_N_FOLDS,
+) -> List[Row]:
+    """AskAmountRecommender vs the ask rule set on real DonorsChoose giving
+    history: predicts "next fiscal-year total, given they give again" (gift
+    dates in this file are month-resolution, so a true next-single-gift
+    amount is not well defined; this matches the synthetic ask bench's own
+    yearly target instead). Rules: last period's total, max(last period,
+    average next-gift amount in train), median training next-gift amount."""
+    gifts = _donorschoose_gift_log(path, subsample_fraction, seed)
+    snap = _gift_log_period_snapshots(gifts, 7, "ask", include_momentum, threshold=1000.0, band=(100.0, 999.0))
+    if snap.empty:
+        return []
+    cols = _snapshot_feature_cols(snap, "donor_id")
+    test_years = _walk_forward_test_periods(snap, "fiscal_year", n_test_folds)
+
+    rows: List[Row] = []
+    for t in test_years:
+        train, test = snap[snap["fiscal_year"] < t], snap[snap["fiscal_year"] == t]
+        if len(train) < 20 or len(test) < 5:
+            continue
+        ytr, yte = train["target"].to_numpy("float64"), test["target"].to_numpy("float64")
+        model = AskAmountRecommender(random_state=seed).fit(train[cols].to_numpy("float64"), ytr)
+        pred = model.predict(test[cols].to_numpy("float64"))
+        last_total = test["fy_total"].to_numpy()
+        avg_next_gift = float(ytr.mean())
+        median_next_gift = np.full_like(yte, float(np.median(ytr)))
+        rules = {
+            "last period's total": last_total,
+            "max(last period, average next-gift in train)": np.maximum(last_total, avg_next_gift),
+            "median training next-gift": median_next_gift,
+        }
+        best_name, best_score, _ = _best_ask_baseline(yte, rules)
+        header = f"rule_set={best_name} (best of {len(rules)}); walk-forward (seed={seed}, fold=FY{t}, momentum={include_momentum})"
+        rows.append(Row(
+            "donorschoose", "AskAmountRecommender", "mae",
+            mean_absolute_error(yte, pred), mean_absolute_error(yte, best_score),
+            lower_is_better=True, note=header,
+        ))
+        rows.append(Row(
+            "donorschoose", "AskAmountRecommender", "within25pct",
+            _within_pct(pred, yte), _within_pct(best_score, yte), note=header,
+        ))
+    return _aggregate([rows]) if rows else []
+
+
+# --------------------------------------------------------------------------- #
+# PSID (opt-in, local file; see load_psid_philanthropy)
+#
+# Panel Study of Income Dynamics, public use dataset, produced and
+# distributed by the Survey Research Center, Institute for Social Research,
+# University of Michigan, Ann Arbor, MI. Never downloaded or redistributed by
+# this script; the caller points --psid-data/--psid-do at files obtained
+# themselves from the PSID Data Center, and only aggregate statistics are
+# ever printed or written out.
+# --------------------------------------------------------------------------- #
+@lru_cache(maxsize=None)
+def _psid_long_table(data_path: str, do_path: str) -> pd.DataFrame:
+    """Cached wrapper around :func:`load_psid_philanthropy`: the extract
+    would otherwise get re-parsed once per (bench function, momentum
+    setting) call in the same process, and every caller only reads the
+    returned frame."""
+    return load_psid_philanthropy(data_path, do_path)
+
+
+def _psid_wave_period_snapshots(
+    data_path: str, do_path: str, kind: str, include_momentum: bool,
+    threshold: float, band: Tuple[float, float],
+) -> pd.DataFrame:
+    """Household x wave feature table from :func:`load_psid_philanthropy`'s
+    own long table (one row per household per wave already): waves are
+    biennial and not every household appears in every wave, so "next wave"
+    is the next wave *year actually present in the file*, not year+2
+    arithmetic. Same three ``kind`` values as
+    :func:`_gift_log_period_snapshots`, scored on ``total_giving`` instead of
+    a gift-level pivot.
+
+    A household is only ever labelled from a next wave it was actually
+    observed in with a resolvable (non-NaN) ``total_giving``: attrition
+    (death, no longer Head, dropped from the extract) and a wave where every
+    giving category came back Don't-Know/NA (``total_giving`` itself NaN)
+    both mean "unknown", not "gave $0", and are excluded from that fold
+    rather than counted as a lapse or a missed upgrade."""
+    long_df = _psid_long_table(data_path, do_path)
+    waves = sorted(int(w) for w in long_df["year"].unique())
+    if len(waves) < 2:
+        return pd.DataFrame(index=pd.Index([], name="household_key"))
+    next_wave = {w: waves[i + 1] for i, w in enumerate(waves[:-1])}
+    giving_cols = [c for c in long_df.columns if c.startswith("giving_")]
+    carry_cols = [
+        "total_giving", "itemized_charitable_contrib_amount", "family_income", "wealth1", "wealth2",
+        "head_volunteer_hours_annual", "spouse_volunteer_hours_annual", "household_volunteer_hours_regular",
+        "head_volunteer_hours_typical_week", "spouse_volunteer_hours_typical_week",
+    ] + giving_cols
+
+    # Household x wave pivot of total_giving, for the streak walk below:
+    # O(households x waves) via vectorised cumulative-run logic instead of
+    # the O(households x waves x rows) row-filtering a per-household loop
+    # over `long_df` would do.
+    pivot_total = long_df.pivot(index="household_key", columns="year", values="total_giving")
+    gave = (pivot_total[waves].fillna(0.0) > 0)
+    streak_by_wave = pd.DataFrame(index=gave.index, columns=waves, dtype="int64")
+    running = pd.Series(0, index=gave.index, dtype="int64")
+    for w in waves:
+        running = (running + 1).where(gave[w], 0)
+        streak_by_wave[w] = running
+
+    long_df = long_df.copy()
+    long_df["_date"] = pd.to_datetime(long_df["year"].astype(str) + "-12-31")
+    data_start = long_df["_date"].min()
+
+    rows = []
+    for w in waves:
+        if w not in next_wave:
+            continue
+        cur = long_df[long_df["year"] == w].set_index("household_key")
+        nxt_observed = long_df[long_df["year"] == next_wave[w]].set_index("household_key")["total_giving"].dropna()
+
+        if kind == "upgrade":
+            cand = cur[(cur["total_giving"] >= band[0]) & (cur["total_giving"] <= band[1]) & (cur["total_giving"] < threshold)]
+        else:
+            cand = cur[cur["total_giving"] > 0]
+        cand = cand[cand.index.isin(nxt_observed.index)]
+        if cand.empty:
+            continue
+        household_ids = cand.index
+
+        snap = cand[carry_cols].copy()
+        snap["wave"] = w
+        snap["largest_giving_category"] = cand[giving_cols].max(axis=1)
+
+        prior_idx = waves.index(w) - 1
+        if prior_idx >= 0:
+            prior_total = long_df[long_df["year"] == waves[prior_idx]].set_index("household_key")["total_giving"]
+        else:
+            prior_total = pd.Series(dtype="float64")
+        snap["prior_wave_total"] = prior_total.reindex(household_ids)
+        snap["trend"] = snap["total_giving"] - snap["prior_wave_total"]
+        snap["waves_given_streak"] = streak_by_wave.loc[household_ids, w].to_numpy()
+
+        if include_momentum:
+            momentum = trailing_slope_features(
+                long_df[["household_key", "_date", "total_giving"]].rename(columns={"total_giving": "_amount"}),
+                household_ids, pd.Timestamp(f"{w}-12-31"), date_col="_date", value_col="_amount", agg="sum",
+                prefix="total_giving", donor_col="household_key", period_months=24, data_start=data_start,
+            )
+            snap = snap.join(momentum, how="left")
+
+        nxt = nxt_observed.reindex(household_ids)
+        if kind == "upgrade":
+            snap["target"] = (nxt >= threshold).astype("int64")
+        elif kind == "lapse":
+            snap["target"] = (nxt <= 0).astype("int64")
+        elif kind == "ask":
+            keep = (nxt > 0).to_numpy()
+            snap = snap[keep]
+            snap["target"] = nxt.to_numpy()[keep]
+        else:
+            raise ValueError(kind)
+        rows.append(snap)
+
+    if not rows:
+        return pd.DataFrame(index=pd.Index([], name="household_key"))
+    out = pd.concat(rows)
+    return out.reset_index().sort_values(["wave", "household_key"], kind="stable")
+
+
+def bench_upgrade_psid(
+    data_path: str, do_path: str, seed: int = PSID_SEED, include_momentum: bool = False,
+    n_test_folds: int = PSID_N_FOLDS, threshold: float = 1000.0, band: Tuple[float, float] = (100.0, 999.0),
+) -> List[Row]:
+    """Upgrade model vs the upgrade rule set on real PSID household giving:
+    band $100-999 in wave W, crossing $1,000 in the next observed wave.
+    Walk-forward over the last ``n_test_folds`` wave-pairs with a resolvable
+    next-wave target."""
+    snap = _psid_wave_period_snapshots(data_path, do_path, "upgrade", include_momentum, threshold, band)
+    if snap.empty:
+        return []
+    cols = _snapshot_feature_cols(snap, "household_key")
+    test_waves = _walk_forward_test_periods(snap, "wave", n_test_folds)
+
+    seed_rows = []
+    for w in test_waves:
+        train, test = snap[snap["wave"] < w], snap[snap["wave"] == w]
+        if train.empty or test.empty or test["target"].nunique() < 2:
+            continue
+        model = MajorGiftClassifier(random_state=seed).fit(
+            train[cols].to_numpy("float64"), train["target"].to_numpy()
+        )
+        proba = model.predict_proba(test[cols].to_numpy("float64"))[:, 1]
+        rules = {
+            "this-wave total": test["total_giving"].to_numpy(),
+            "previous-wave total plus this-wave growth": (test["total_giving"] + test["trend"]).to_numpy(),
+            "largest giving category in band": test["largest_giving_category"].to_numpy(),
+        }
+        seed_rows.append(_classifier_rows(
+            "psid", "upgrade_model (MajorGiftClassifier)", test["target"].to_numpy(), proba, rules,
+            f"walk-forward (seed={seed}, fold=wave{w}, momentum={include_momentum})",
+        ))
+    return _aggregate(seed_rows)
+
+
+def _psid_lapse_fold(
+    data_path: str, do_path: str, seed: int, include_momentum: bool, n_test_folds: int, retention: bool,
+) -> List[Row]:
+    snap = _psid_wave_period_snapshots(data_path, do_path, "lapse", include_momentum, threshold=1000.0, band=(100.0, 999.0))
+    if snap.empty:
+        return []
+    cols = _snapshot_feature_cols(snap, "household_key")
+    test_waves = _walk_forward_test_periods(snap, "wave", n_test_folds)
+
+    seed_rows = []
+    for w in test_waves:
+        train, test = snap[snap["wave"] < w], snap[snap["wave"] == w]
+        if train.empty or test.empty or test["target"].nunique() < 2:
+            continue
+        model = LapsePredictor(random_state=seed).fit(train[cols].to_numpy("float64"), train["target"].to_numpy())
+        lapse_score = model.predict_lapse_score(test[cols].to_numpy("float64")) / 100.0
+        rules = {
+            "shortest giving streak (negated)": -test["waves_given_streak"].to_numpy(),
+            "declining trend (negated growth)": -test["trend"].to_numpy(),
+        }
+        y_lapsed = test["target"].to_numpy()
+        split = f"walk-forward (seed={seed}, fold=wave{w}, momentum={include_momentum})"
+        if not retention:
+            seed_rows.append(_classifier_rows("psid", "LapsePredictor", y_lapsed, lapse_score, rules, split))
+        else:
+            retained = 1 - y_lapsed
+            inv_rules = {name: -score for name, score in rules.items()}
+            seed_rows.append(_classifier_rows(
+                "psid", "LapsePredictor", retained, -lapse_score, inv_rules,
+                split + "; bottom decile by lapse score (retention read)",
+            ))
+    return _aggregate(seed_rows)
+
+
+def bench_lapse_psid(
+    data_path: str, do_path: str, seed: int = PSID_SEED, include_momentum: bool = False,
+    n_test_folds: int = PSID_N_FOLDS,
+) -> List[Row]:
+    """LapsePredictor vs the lapse rule set on real PSID household giving:
+    gave in wave W, $0 in the next observed wave."""
+    return _psid_lapse_fold(data_path, do_path, seed, include_momentum, n_test_folds, retention=False)
+
+
+def bench_lapse_psid_retention(
+    data_path: str, do_path: str, seed: int = PSID_SEED, include_momentum: bool = False,
+    n_test_folds: int = PSID_N_FOLDS,
+) -> List[Row]:
+    """The bottom-decile-by-lapse-score, label-flipped "retained" read of
+    :func:`bench_lapse_psid`, for whichever PSID waves lapse dominates."""
+    return _psid_lapse_fold(data_path, do_path, seed, include_momentum, n_test_folds, retention=True)
+
+
+def bench_ask_psid(
+    data_path: str, do_path: str, seed: int = PSID_SEED, include_momentum: bool = False,
+    n_test_folds: int = PSID_N_FOLDS,
+) -> List[Row]:
+    """AskAmountRecommender vs the ask rule set on real PSID household
+    giving: predicts next-wave total, given the household gives again.
+    Rules: last wave's total, max(last wave, average next-wave amount in
+    train), median training next-wave amount."""
+    snap = _psid_wave_period_snapshots(data_path, do_path, "ask", include_momentum, threshold=1000.0, band=(100.0, 999.0))
+    if snap.empty:
+        return []
+    cols = _snapshot_feature_cols(snap, "household_key")
+    test_waves = _walk_forward_test_periods(snap, "wave", n_test_folds)
+
+    rows: List[Row] = []
+    for w in test_waves:
+        train, test = snap[snap["wave"] < w], snap[snap["wave"] == w]
+        if len(train) < 20 or len(test) < 5:
+            continue
+        ytr, yte = train["target"].to_numpy("float64"), test["target"].to_numpy("float64")
+        model = AskAmountRecommender(random_state=seed).fit(train[cols].to_numpy("float64"), ytr)
+        pred = model.predict(test[cols].to_numpy("float64"))
+        last_total = test["total_giving"].to_numpy()
+        avg_next = float(ytr.mean())
+        rules = {
+            "last wave's total": last_total,
+            "max(last wave, average next-wave in train)": np.maximum(last_total, avg_next),
+            "median training next-wave": np.full_like(yte, float(np.median(ytr))),
+        }
+        best_name, best_score, _ = _best_ask_baseline(yte, rules)
+        header = f"rule_set={best_name} (best of {len(rules)}); walk-forward (seed={seed}, fold=wave{w}, momentum={include_momentum})"
+        rows.append(Row(
+            "psid", "AskAmountRecommender", "mae",
+            mean_absolute_error(yte, pred), mean_absolute_error(yte, best_score),
+            lower_is_better=True, note=header,
+        ))
+        rows.append(Row(
+            "psid", "AskAmountRecommender", "within25pct",
+            _within_pct(pred, yte), _within_pct(best_score, yte), note=header,
+        ))
+    return _aggregate([rows]) if rows else []
 
 
 # --------------------------------------------------------------------------- #
@@ -1538,6 +2055,20 @@ def main() -> None:
         "donors, ~12 KB download, CC BY 4.0; opt-in).",
     )
     parser.add_argument("--fast", action="store_true", help="One seed and a small synthetic panel: a smoke run, not a benchmark.")
+    parser.add_argument(
+        "--donorschoose-path", type=str, default=None,
+        help="Path to a user-obtained ICPSR 37898 DS0001 Donations file (.tsv or .dta); "
+        "skipped entirely when not given.",
+    )
+    parser.add_argument(
+        "--psid-data", type=str, default=None,
+        help="Path to a user-obtained PSID Data Center fixed-width extract (.txt). Requires "
+        "--psid-do too; skipped entirely when either is missing.",
+    )
+    parser.add_argument(
+        "--psid-do", type=str, default=None,
+        help="Path to the PSID extract's accompanying Stata .do file. Requires --psid-data too.",
+    )
     parser.add_argument("--out", type=str, default=None, help="Path prefix; also writes <out>.json and <out>.csv.")
     args = parser.parse_args()
 
@@ -1581,6 +2112,20 @@ def main() -> None:
 
     if args.with_blood:
         rows += bench_blood(seeds)
+
+    if args.donorschoose_path:
+        for momentum in (False, True):
+            rows += bench_upgrade_donorschoose(args.donorschoose_path, include_momentum=momentum)
+            rows += bench_lapse_donorschoose(args.donorschoose_path, include_momentum=momentum)
+            rows += bench_lapse_donorschoose_retention(args.donorschoose_path, include_momentum=momentum)
+            rows += bench_ask_donorschoose(args.donorschoose_path, include_momentum=momentum)
+
+    if args.psid_data and args.psid_do:
+        for momentum in (False, True):
+            rows += bench_upgrade_psid(args.psid_data, args.psid_do, include_momentum=momentum)
+            rows += bench_lapse_psid(args.psid_data, args.psid_do, include_momentum=momentum)
+            rows += bench_lapse_psid_retention(args.psid_data, args.psid_do, include_momentum=momentum)
+            rows += bench_ask_psid(args.psid_data, args.psid_do, include_momentum=momentum)
 
     runtime = time.time() - start
     _print_table(rows)

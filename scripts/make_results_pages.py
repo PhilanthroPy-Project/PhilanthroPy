@@ -1281,6 +1281,20 @@ def main() -> None:
         "include_momentum=True, writing a '<key>_momentum' results.json entry next to the "
         "default-feature one. Does not change any existing key or chart.",
     )
+    parser.add_argument(
+        "--donorschoose-path", type=str, default=None,
+        help="Path to a user-obtained ICPSR 37898 DS0001 Donations file (.tsv or .dta); "
+        "skipped entirely when not given.",
+    )
+    parser.add_argument(
+        "--psid-data", type=str, default=None,
+        help="Path to a user-obtained PSID Data Center fixed-width extract (.txt). Requires "
+        "--psid-do too; skipped entirely when either is missing.",
+    )
+    parser.add_argument(
+        "--psid-do", type=str, default=None,
+        help="Path to the PSID extract's accompanying Stata .do file. Requires --psid-data too.",
+    )
     args = parser.parse_args()
 
     results: Dict[str, Any] = {}
@@ -1658,6 +1672,123 @@ def main() -> None:
                     "Best simple rule": [None, None, None],
                 },
             )
+
+    # --- DonorsChoose / PSID (opt-in, local files; numbers only, no charts
+    # or nav wiring here, those are handled separately) ----------------------
+    def _classifier_entry(rows: List, model: str, momentum: bool, extra_meta: Dict[str, Any]):
+        row_by_p = {p: _row(rows, model, f"top{p}pct_hit_rate") for p in (1, 5, 10)}
+        if row_by_p[10] is None:
+            return None
+        entry = {
+            f"top{p}pct": {"model": row_by_p[p].value * 100, "rule": row_by_p[p].baseline * 100}
+            for p in (1, 5, 10)
+        }
+        entry["verdict"] = row_by_p[10].verdict
+        entry["roc_auc"] = _row(rows, model, "roc_auc").value
+        entry["metadata"] = {"momentum": momentum, **extra_meta}
+        return entry
+
+    def _ask_entry(rows: List, model: str, momentum: bool, extra_meta: Dict[str, Any]):
+        within_row = _row(rows, model, "within25pct")
+        if within_row is None:
+            return None
+        mae_row = _row(rows, model, "mae")
+        return {
+            "within25pct_model": within_row.value * 100, "within25pct_last_gift": within_row.baseline * 100,
+            "mae_model": mae_row.value, "mae_rule": mae_row.baseline,
+            "verdict": within_row.verdict,
+            "metadata": {"momentum": momentum, **extra_meta},
+        }
+
+    def _donorschoose_fold_meta(kind: str, threshold: float = 1000.0, band: tuple = (100.0, 999.0)) -> Dict[str, Any]:
+        gifts = bm._donorschoose_gift_log(args.donorschoose_path, bm.DONORSCHOOSE_SUBSAMPLE, bm.DONORSCHOOSE_SEED)
+        snap = bm._gift_log_period_snapshots(gifts, 7, kind, False, threshold, band)
+        if snap.empty:
+            return {"subsample": bm.DONORSCHOOSE_SUBSAMPLE, "seed": bm.DONORSCHOOSE_SEED, "fold_years": [], "n_per_fold": [], "base_rate_pct": None}
+        test_years = bm._walk_forward_test_periods(snap, "fiscal_year", bm.DONORSCHOOSE_N_FOLDS)
+        test = snap[snap["fiscal_year"].isin(test_years)]
+        return {
+            "subsample": bm.DONORSCHOOSE_SUBSAMPLE, "seed": bm.DONORSCHOOSE_SEED,
+            "fold_years": test_years, "n_per_fold": [int((test["fiscal_year"] == t).sum()) for t in test_years],
+            "base_rate_pct": float(test["target"].mean()) * 100 if kind != "ask" else None,
+        }
+
+    def _psid_fold_meta(kind: str, threshold: float = 1000.0, band: tuple = (100.0, 999.0)) -> Dict[str, Any]:
+        snap = bm._psid_wave_period_snapshots(args.psid_data, args.psid_do, kind, False, threshold, band)
+        if snap.empty:
+            return {"seed": bm.PSID_SEED, "fold_waves": [], "n_per_fold": [], "base_rate_pct": None}
+        test_waves = bm._walk_forward_test_periods(snap, "wave", bm.PSID_N_FOLDS)
+        test = snap[snap["wave"].isin(test_waves)]
+        return {
+            "seed": bm.PSID_SEED, "fold_waves": test_waves,
+            "n_per_fold": [int((test["wave"] == w).sum()) for w in test_waves],
+            "base_rate_pct": float(test["target"].mean()) * 100 if kind != "ask" else None,
+        }
+
+    if args.donorschoose_path:
+        upgrade_meta = _donorschoose_fold_meta("upgrade")
+        lapse_meta = _donorschoose_fold_meta("lapse")
+        ask_meta = _donorschoose_fold_meta("ask")
+        for momentum in (False, True):
+            suffix = "_momentum" if momentum else ""
+            up = bm.bench_upgrade_donorschoose(args.donorschoose_path, include_momentum=momentum)
+            entry = _classifier_entry(up, "upgrade_model (MajorGiftClassifier)", momentum, upgrade_meta)
+            if entry:
+                results[f"upgrade_donorschoose{suffix}"] = entry
+
+            lap = bm.bench_lapse_donorschoose(args.donorschoose_path, include_momentum=momentum)
+            entry = _classifier_entry(lap, "LapsePredictor", momentum, {**lapse_meta, "note": "84% base rate; see the retention read for the useful list"})
+            if entry:
+                results[f"lapse_donorschoose{suffix}"] = entry
+
+            ret = bm.bench_lapse_donorschoose_retention(args.donorschoose_path, include_momentum=momentum)
+            entry = _classifier_entry(ret, "LapsePredictor", momentum, lapse_meta)
+            if entry:
+                results[f"lapse_donorschoose_retention{suffix}"] = entry
+
+            ask = bm.bench_ask_donorschoose(args.donorschoose_path, include_momentum=momentum)
+            entry = _ask_entry(ask, "AskAmountRecommender", momentum, {
+                **ask_meta, "target": "next fiscal-year total, given they give again",
+            })
+            if entry:
+                results[f"ask_donorschoose{suffix}"] = entry
+
+    if args.psid_data and args.psid_do:
+        upgrade_meta = _psid_fold_meta("upgrade")
+        lapse_meta = _psid_fold_meta("lapse")
+        ask_meta = _psid_fold_meta("ask")
+        for momentum in (False, True):
+            suffix = "_momentum" if momentum else ""
+            up = bm.bench_upgrade_psid(args.psid_data, args.psid_do, include_momentum=momentum)
+            entry = _classifier_entry(up, "upgrade_model (MajorGiftClassifier)", momentum, upgrade_meta)
+            if entry:
+                results[f"upgrade_psid{suffix}"] = entry
+
+            lap = bm.bench_lapse_psid(args.psid_data, args.psid_do, include_momentum=momentum)
+            entry = _classifier_entry(lap, "LapsePredictor", momentum, lapse_meta)
+            if entry:
+                results[f"lapse_psid{suffix}"] = entry
+
+            ret = bm.bench_lapse_psid_retention(args.psid_data, args.psid_do, include_momentum=momentum)
+            entry = _classifier_entry(ret, "LapsePredictor", momentum, lapse_meta)
+            if entry:
+                results[f"lapse_psid_retention{suffix}"] = entry
+
+            ask = bm.bench_ask_psid(args.psid_data, args.psid_do, include_momentum=momentum)
+            entry = _ask_entry(ask, "AskAmountRecommender", momentum, {
+                **ask_meta, "target": "next-wave total, given the household gives again",
+            })
+            if entry:
+                results[f"ask_psid{suffix}"] = entry
+
+    # Models this benchmark cannot honestly answer on either real dataset:
+    # neither file has mailing-cost or planned-giving/bequest data.
+    results["response_donorschoose_note"] = "No mailing/appeal log in this file, so a response model has nothing to predict response to."
+    results["response_psid_note"] = "No mailing/appeal log in this extract, so a response model has nothing to predict response to."
+    results["who_to_mail_donorschoose_note"] = "No per-contact mailing cost in this file, so cost-aware selection has no cost side to weigh."
+    results["who_to_mail_psid_note"] = "No per-contact mailing cost in this extract, so cost-aware selection has no cost side to weigh."
+    results["planned_giving_donorschoose_note"] = "No bequest/estate-intent signal in this file."
+    results["planned_giving_psid_note"] = "No bequest/estate-intent signal in this extract."
 
     # --- scoreboard: one row per question, one dot per dataset -------------
     def _dots(*pairs):

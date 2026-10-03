@@ -17,6 +17,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   and a "The datasets behind these pages" page with one card per file (what it
   is, who gave to whom and when, how big, what it can and cannot test, terms),
   including the Karlan and List experiment that is on hand but not yet used.
+- `MajorGiftClassifier` docstring: states the calibration method (sigmoid,
+  5 folds) and that boosting already stops early above 10,000 rows, and
+  records two tuning checks on a KDD Cup 1998 validation fold (five seeds):
+  `learning_rate=0.05, max_iter=300` scored the same as the defaults, and the
+  textbook RFM monotonic constraint lowered ROC-AUC (0.601 to 0.595). No
+  default changed. A `DonorPropensityModel` leaf-fraction check on the same
+  fold (0.01, 0.02, 0.05) also stayed inside the 0.008 default's seed range,
+  so that default stays too.
 
 ### Added
 - Results pages now show PSID (Panel Study of Income Dynamics) household

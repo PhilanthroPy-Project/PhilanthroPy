@@ -11,7 +11,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   no-code page and a Python user apply the same cutoff before fitting. The
   floors (`LABEL_FLOORS`: 100 in the rarer class for lapse, 800 for major
   gift) come from validation-fold learning curves on DonorsChoose and KDD
-  Cup 1998, ten seeds each; the test splits were not used.
+  Cup 1998, ten seeds each; the test splits were not used. Below the floor,
+  at least one training draw in ten scored below the simple rule on held-out
+  data (lapse), or most did (major gift).
+
+### Fixed
+- `check_label_floor` raises a `ValueError` on missing (NaN or None) labels
+  instead of counting them as a class, which let a file of non-lapses and
+  blank outcomes pass the lapse floor with zero lapses.
 
 ### Removed
 - `scripts/issue-drafts/_DISCUSSION_who_is_using_this.md`: the draft was

@@ -2,7 +2,7 @@
 tests/test_momentum.py
 Tests for philanthropy.utils._momentum.trailing_slope_features, the shared
 as-of slope/rel_slope helper behind RFMTransformer(include_momentum=True),
-build_upgrade_snapshots, and activities_to_features(include_momentum=True).
+build_leadership_snapshots, and activities_to_features(include_momentum=True).
 """
 
 import numpy as np

@@ -398,7 +398,7 @@
       "n_seeds": 5
     },
     "verdict": "wins",
-    "method": "momentum = build_upgrade_snapshots(include_momentum=True): trailing 3y/5y OLS slope and relative slope per base series (fy_total, gift_count, largest_gift), plus fy_total_growth_ratio. The shipped, opt-in feature set score_upgrade_prospects itself can use."
+    "method": "momentum = build_leadership_snapshots(include_momentum=True): trailing 3y/5y OLS slope and relative slope per base series (fy_total, gift_count, largest_gift), plus fy_total_growth_ratio. The shipped, opt-in feature set score_leadership_prospects itself can use."
   },
   "planned_giving_synthetic": {
     "n_test": 3000,
@@ -760,7 +760,7 @@
       "n_seeds": 1
     },
     "verdict": "loses",
-    "method": "momentum = build_upgrade_snapshots(include_momentum=True): trailing 3y/5y OLS slope and relative slope per base series (fy_total, gift_count, largest_gift), plus fy_total_growth_ratio. The shipped, opt-in feature set score_upgrade_prospects itself can use."
+    "method": "momentum = build_leadership_snapshots(include_momentum=True): trailing 3y/5y OLS slope and relative slope per base series (fy_total, gift_count, largest_gift), plus fy_total_growth_ratio. The shipped, opt-in feature set score_leadership_prospects itself can use."
   },
   "lapse_kdd98": {
     "base_rate_pct": 94.92411855951033,

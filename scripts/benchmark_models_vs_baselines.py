@@ -89,7 +89,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 
 from philanthropy.datasets import fetch_kdd98_donors, fetch_kdd98_val_donors, make_donor_panel
-from philanthropy.ingest import build_upgrade_snapshots
+from philanthropy.ingest import build_leadership_snapshots
 from philanthropy.metrics import fundraising_roi
 from philanthropy.model_selection import FiscalYearGroupedSplitter
 from philanthropy.utils._momentum import trailing_slope_features
@@ -552,7 +552,7 @@ def bench_upgrade(
     threshold: float = 1000.0, band: Tuple[float, float] = (100.0, 999.0),
     include_momentum: bool = False,
 ) -> List[Row]:
-    """Upgrade model (build_upgrade_snapshots + MajorGiftClassifier) vs the
+    """Upgrade model (build_leadership_snapshots + MajorGiftClassifier) vs the
     upgrade rule set (E.11a rule 3): this-year total, previous-year total
     plus this-year growth projected forward one more year, largest single
     gift in band."""
@@ -562,7 +562,7 @@ def bench_upgrade(
         years = sorted(panel["gifts"]["fiscal_year"].unique())
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
-            snaps = build_upgrade_snapshots(
+            snaps = build_leadership_snapshots(
                 panel["gifts"], fiscal_years=years[:-1], threshold=threshold, band=band,
                 include_momentum=include_momentum,
             )
@@ -825,7 +825,7 @@ def bench_kdd_upgrade(
     train_fy, test_fy = 1994, 1995
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
-        snaps = build_upgrade_snapshots(
+        snaps = build_leadership_snapshots(
             gifts, fiscal_years=[train_fy, test_fy], threshold=threshold, band=band, fiscal_year_start=7,
             include_momentum=include_momentum,
         )

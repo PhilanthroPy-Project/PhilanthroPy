@@ -5,7 +5,7 @@ Build a per-donor, per-fiscal-year training table for an upgrade model: will
 a donor currently giving in a mid-level band move up to a leadership level
 next year?
 
-``build_upgrade_snapshots`` turns a gift log (optionally joined with an
+``build_leadership_snapshots`` turns a gift log (optionally joined with an
 activity log and static donor attributes) into one row per
 ``(donor, fiscal year T)`` for every donor whose FY T giving falls inside the
 "upgrade band", plus a ``target`` column: did that donor cross ``threshold``
@@ -34,12 +34,12 @@ from philanthropy.utils._momentum import trailing_slope_features
 
 from ._activities import activities_to_features
 
-__all__ = ["build_upgrade_snapshots"]
+__all__ = ["build_leadership_snapshots"]
 
 _REQUIRED = ("donor_id", "gift_date", "gift_amount")
 
 
-def build_upgrade_snapshots(
+def build_leadership_snapshots(
     gifts: Union[Iterable[Mapping], pd.DataFrame],
     *,
     fiscal_years: Iterable[int],
@@ -104,7 +104,7 @@ def build_upgrade_snapshots(
         slope (and, when ``activities`` is given, the same for each activity
         type's count/hours/amount), plus ``fy_total_growth_ratio``. Off by
         default so existing callers, including the shipped
-        :func:`~philanthropy.models.score_upgrade_prospects` model, see an
+        :func:`~philanthropy.models.score_leadership_prospects` model, see an
         unchanged feature set; opt in explicitly once you want the model
         trained on momentum too. See
         :func:`philanthropy.utils._momentum.trailing_slope_features`.
@@ -145,14 +145,14 @@ def build_upgrade_snapshots(
     Examples
     --------
     >>> import pandas as pd
-    >>> from philanthropy.ingest import build_upgrade_snapshots
+    >>> from philanthropy.ingest import build_leadership_snapshots
     >>> gifts = pd.DataFrame({
     ...     "donor_id": ["1", "1", "1", "1", "2"],
     ...     "gift_date": ["2017-08-01", "2018-08-01", "2019-08-01",
     ...                   "2020-08-01", "2019-08-01"],
     ...     "gift_amount": [200, 300, 500, 1500, 5000],
     ... })
-    >>> snaps = build_upgrade_snapshots(gifts, fiscal_years=[2020])
+    >>> snaps = build_leadership_snapshots(gifts, fiscal_years=[2020])
     >>> list(snaps.index)
     ['1']
     >>> int(snaps.loc["1", "fiscal_year"])
@@ -215,7 +215,7 @@ def build_upgrade_snapshots(
 #
 # ``_prepare_gifts`` and ``_snapshot_features_for_year`` are also imported
 # directly (via ``philanthropy.ingest._upgrade_snapshots``) by
-# ``philanthropy.models.score_upgrade_prospects``, which needs the same
+# ``philanthropy.models.score_leadership_prospects``, which needs the same
 # donor/fiscal-year feature logic for an unlabelled "current" row that this
 # function's target computation (reading FY T+1) does not apply to.
 # --------------------------------------------------------------------------- #
@@ -279,17 +279,17 @@ def _snapshot_features_for_year(
     include_momentum: bool = False,
 ) -> pd.DataFrame:
     """Gift-derived (and, if given, activity/donor) feature columns for one
-    ``(donor_ids, fy_t)`` snapshot, everything ``build_upgrade_snapshots``
+    ``(donor_ids, fy_t)`` snapshot, everything ``build_leadership_snapshots``
     computes except ``target``.
 
     ``as_of`` clips the recency cutoff (``months_since_last_gift`` and the
     ``activities_to_features`` window) to a date inside a still-open fiscal
     year, for scoring a "current", not-yet-resolved FY; it defaults to the
-    end of ``fy_t`` (``build_upgrade_snapshots``'s own, always-resolved case).
+    end of ``fy_t`` (``build_leadership_snapshots``'s own, always-resolved case).
 
     ``include_momentum`` is off by default so the column set stays exactly
     what every existing caller (including the shipped upgrade model) already
-    sees; see ``build_upgrade_snapshots``.
+    sees; see ``build_leadership_snapshots``.
     """
     snap = pd.DataFrame(index=donor_ids)
     snap.index.name = "donor_id"

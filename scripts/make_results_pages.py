@@ -435,6 +435,42 @@ def _row(rows, model, metric):
     return None
 
 
+MOMENTUM_METHOD_UPGRADE = (
+    "momentum = build_upgrade_snapshots(include_momentum=True): trailing 3y/5y OLS "
+    "slope and relative slope per base series (fy_total, gift_count, largest_gift), "
+    "plus fy_total_growth_ratio. The shipped, opt-in feature set score_upgrade_prospects "
+    "itself can use."
+)
+MOMENTUM_METHOD_PANEL = (
+    "momentum = trailing slope of yearly giving, added to the benchmark's own feature "
+    "panel (philanthropy.utils.trailing_slope_features applied to this script's own "
+    "per-donor annual series, not the shipped RFMTransformer/activities_to_features path)."
+)
+
+
+def _momentum_summary(rows, model: str, method: str) -> Dict[str, Any]:
+    """Top1/5/10pct model hit rate (in percentage points) plus verdict, for a
+    bench run with ``include_momentum=True``. No baseline/random columns: this
+    is a comparison against the model's own default-feature row (``_row``
+    callers diff the two "model" numbers), not a new baseline. Carries each
+    row's own ``lo``/``hi`` (a 5-seed min/max range for synthetic rows, a
+    bootstrap interval for KDD98) and ``n_seeds``, plus a plain-language
+    ``method`` string the docs can quote directly."""
+    row_by_p = {p: _row(rows, model, f"top{p}pct_hit_rate") for p in (1, 5, 10)}
+    out = {
+        f"top{p}pct": {
+            "model": row_by_p[p].value * 100,
+            "lo": row_by_p[p].lo * 100 if row_by_p[p].lo is not None else None,
+            "hi": row_by_p[p].hi * 100 if row_by_p[p].hi is not None else None,
+            "n_seeds": row_by_p[p].n_seeds,
+        }
+        for p in (1, 5, 10)
+    }
+    out["verdict"] = row_by_p[10].verdict
+    out["method"] = method
+    return out
+
+
 def _ci(row) -> tuple[float, float] | None:
     """A row's `(lo, hi)` interval in percentage points: a 5-seed min/max
     range for synthetic rows, a bootstrap 95% interval for KDD98 single-split
@@ -1239,6 +1275,12 @@ def main() -> None:
         help="Also score who-to-mail on KDD98's own held-out cup98VAL+valtargt file "
         "(a second ~37MB download; opt-in). No effect without --with-kdd98.",
     )
+    parser.add_argument(
+        "--with-momentum", action="store_true",
+        help="Also run each synthetic model (and KDD98 upgrade, with --with-kdd98) with "
+        "include_momentum=True, writing a '<key>_momentum' results.json entry next to the "
+        "default-feature one. Does not change any existing key or chart.",
+    )
     args = parser.parse_args()
 
     results: Dict[str, Any] = {}
@@ -1256,6 +1298,9 @@ def main() -> None:
         for p in (1, 5, 10)
     }
     results["response_synthetic"]["verdict"] = resp_row_by_p[10].verdict
+    if args.with_momentum:
+        resp_mom_rows = bm.bench_response(SEEDS, N_DONORS, N_YEARS, include_momentum=True)
+        results["response_synthetic_momentum"] = _momentum_summary(resp_mom_rows, "MajorGiftClassifier", MOMENTUM_METHOD_PANEL)
     results["response_synthetic"]["features"] = response_drivers_synthetic(SEEDS, N_DONORS, N_YEARS)
     r10 = results["response_synthetic"]["top10pct"]
     _render_themed(
@@ -1289,6 +1334,9 @@ def main() -> None:
         for p in (1, 5, 10)
     }
     results["lapse_synthetic"]["verdict"] = _row(lapse_rows, "LapsePredictor", "top10pct_hit_rate").verdict
+    if args.with_momentum:
+        lapse_mom_rows = bm.bench_lapse(SEEDS, N_DONORS, N_YEARS, include_momentum=True)
+        results["lapse_synthetic_momentum"] = _momentum_summary(lapse_mom_rows, "LapsePredictor", MOMENTUM_METHOD_PANEL)
     results["lapse_synthetic"]["features"] = lapse_drivers_synthetic(SEEDS, N_DONORS, N_YEARS)
 
     # --- synthetic: ask -------------------------------------------------
@@ -1300,6 +1348,14 @@ def main() -> None:
         "verdict": within.verdict,
         "features": ask_drivers_synthetic(SEEDS, N_DONORS, N_YEARS),
     }
+    if args.with_momentum:
+        ask_mom_rows = bm.bench_ask(SEEDS, N_DONORS, N_YEARS, include_momentum=True)
+        within_mom = _row(ask_mom_rows, "AskAmountRecommender", "within25pct")
+        results["ask_synthetic_momentum"] = {
+            "within25pct_model": within_mom.value * 100,
+            "verdict": within_mom.verdict,
+            "method": MOMENTUM_METHOD_PANEL,
+        }
 
     # --- synthetic: $1K upgrade (bench_upgrade) ------------------------------
     upgrade_rows = bm.bench_upgrade(SEEDS, N_DONORS, N_YEARS)
@@ -1316,6 +1372,9 @@ def main() -> None:
         for p in (1, 5, 10)
     }
     results["upgrade_synthetic"]["verdict"] = upg_row_by_p[10].verdict
+    if args.with_momentum:
+        upg_mom_rows = bm.bench_upgrade(SEEDS, N_DONORS, N_YEARS, include_momentum=True)
+        results["upgrade_synthetic_momentum"] = _momentum_summary(upg_mom_rows, "upgrade_model (MajorGiftClassifier)", MOMENTUM_METHOD_UPGRADE)
     results["upgrade_synthetic"]["features"] = upgrade_drivers_synthetic(SEEDS, N_DONORS, N_YEARS)
     u10 = results["upgrade_synthetic"]["top10pct"]
     _render_themed(
@@ -1409,6 +1468,11 @@ def main() -> None:
             for p in (1, 5, 10)
         }
         results["upgrade_kdd98"]["verdict"] = upg_kdd_row_by_p[10].verdict
+        if args.with_momentum:
+            kdd_upg_mom_rows = bm.bench_kdd_upgrade(seed, include_momentum=True)
+            results["upgrade_kdd98_momentum"] = _momentum_summary(
+                kdd_upg_mom_rows, "upgrade_model (MajorGiftClassifier)", MOMENTUM_METHOD_UPGRADE
+            )
         results["upgrade_kdd98"]["features"] = upgrade_drivers_kdd98(seed)
         uk10 = results["upgrade_kdd98"]["top10pct"]
         _render_themed(

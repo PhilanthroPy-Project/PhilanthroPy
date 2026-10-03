@@ -4,9 +4,10 @@ Which donors giving $100 to $999 this fiscal year will give $1,000 or more next 
 $1,000 is the default leadership level; set your own with `threshold=` and `band=` in
 `score_leadership_prospects` (or `--threshold` / `--band` on the command line).
 
-**Beats the simple rule on our sample data. On the one real file we can test it on today (KDD Cup
-1998, at a threshold rescaled to that file's much smaller gifts) it loses. Depends on your data;
-try it on your own file before trusting either number.**
+**Beats the simple rule on our sample data. On the two real files we can test it on today it is
+mixed: it loses on KDD Cup 1998 (threshold rescaled to that file's much smaller gifts) and is
+about the same as the rule on DonorsChoose, clearly ahead only at the very top of the list.
+Depends on your data; try it on your own file before trusting any of these numbers.**
 
 === "Sample data"
 
@@ -65,15 +66,51 @@ try it on your own file before trusting either number.**
     **Loses here.** On this file, at this threshold, ranking by the size of a donor's biggest
     eligible gift beats the model, especially for the very top of the list.
 
+    Adding this year's giving trend vs. last year's as its own feature made no difference here at
+    all: the model's top 1/5/10% hit rates (17, 14, and 11 out of 100) are identical with and
+    without it, down to the last fraction of a percent. On this file the model gives those extra
+    columns zero weight, not "no data to add": the columns are there, the fit just never uses
+    them.
+
+=== "DonorsChoose (real donor file)"
+
+    [DonorsChoose Open Data](https://www.icpsr.umich.edu/web/ICPSR/studies/37898) (ICPSR 37898,
+    doi:10.3886/ICPSR37898.v1) is a real giving history for an education-crowdfunding platform,
+    far larger than KDD Cup 1998. We used a random 10% sample of individual ("citizen") donors
+    (about 40,000 donor-year rows across the test years) and tested fiscal years 2015 through
+    2018 in turn, training on every earlier year each time.
+
+    Of the model's top 10% of picks, 9 out of every 100 crossed $1,000 the following fiscal year.
+    The best rule (this year's total plus this year's growth) found 8 out of every 100. At the
+    very top of the list the model is clearly ahead: its top 1% found 28 in 100 against 20 in 100
+    for the rule. Upgrading to $1,000+ is rare in this file: only about 1 in 100 donors in the
+    test years did it at all.
+
+    ![Model vs. best simple rule, top 1/5/10% of picks, DonorsChoose](../assets/results/upgrade_donorschoose.png#only-light)
+    ![Model vs. best simple rule, top 1/5/10% of picks, DonorsChoose](../assets/results/upgrade_donorschoose-dark.png#only-dark)
+
+    **About the same as the rule overall**, though clearly ahead at the very top of the list.
+
+    Adding this year's giving trend vs. last year's as its own feature made essentially no
+    difference here either: the model's top 10% hit rate is 9 out of 100 with it, 9 without --
+    the small shift at the top (28 to 25 out of 100 for the top 1%) sits inside the normal
+    run-to-run range for a single fitted model, not a meaningful gain.
+
+    Never a donor ID or single-donor example here: every number above is an aggregate over the
+    sampled donor population.
+
 ## Which data
 
 Sample (synthetic) donor panel, five random draws averaged, is the only file where this model
-wins today. KDD Cup 1998 is the only real file we can test the $1,000 upgrade question on at all
-(its gifts are too small to test the real $1,000 threshold, so the threshold above is rescaled;
-see the tab). Results on your own file, at your own dollar threshold, will differ from both.
+wins today. KDD Cup 1998 and DonorsChoose are the two real files we can test the $1,000 upgrade
+question on (KDD98's gifts are too small to test the real $1,000 threshold, so the threshold on
+that tab is rescaled; DonorsChoose's gifts are large enough to use $1,000 as-is). Results on your
+own file, at your own dollar threshold, will differ from all three.
 
 ## What the model looks at
 
 --8<-- "results/_features/upgrade__upgrade_synthetic.md"
 
 --8<-- "results/_features/upgrade__upgrade_kdd98.md"
+
+--8<-- "results/_features/upgrade__upgrade_donorschoose.md"

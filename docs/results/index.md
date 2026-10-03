@@ -18,14 +18,21 @@ these pages, see [Model Validation & Benchmarks](../explanation/benchmarks.md).
   file; a dot to the left means the simple rule you already run for free
   did better. Losses are shown as often as wins on this page.
 
-| Model | Question it answers | Verdict |
-|---|---|---|
-| [Leadership upgrade ($1,000+)](leadership.md) | Which mid-level donors are about to become $1,000+ donors? | Beats the simple rule on our sample data; loses on the one real file we can test it on. Depends on your data |
-| [Response](response.md) | Who is most likely to give again next year? | Beats the simple rule for the top picks on a real donor file, twice; does not beat it on our sample data. Depends on your data |
-| [Lapse](lapse.md) | Which donors are about to stop giving? | Does not beat the simple rule on our sample data; about the same as random on a real donor file. Turned around, the model's most-confident non-lapse picks are slightly ahead of the rule as a retention list |
-| [Suggested ask](ask.md) | How much should we ask a donor for? | Does not beat the simple rule; use the rule instead |
-| [Planned giving](planned_giving.md) | Which donors look like bequest prospects? | Not yet tested on real bequest data |
-| [Who to mail](who_to_mail.md) | Is it worth mailing this donor at all? | Beats mailing everyone |
+Each cell below is that model's verdict on that dataset: **beats the rule**, **about the same as
+the rule**, **does not beat the rule**, or, where the file structurally cannot answer the
+question, **can't test (reason)**. "—" means that pairing was never run (either the dataset
+doesn't fit the question, or there's nothing new it would show). "pending: data not on hand" means
+the question is answerable in principle but we have not yet run it on that file in this
+environment.
+
+| Model | Question it answers | Sample data | KDD Cup 1998 | cup98VAL | DonorsChoose | PSID |
+|---|---|---|---|---|---|---|
+| [Leadership upgrade ($1,000+)](leadership.md) | Which mid-level donors are about to become $1,000+ donors? | Beats the rule | Loses | — | About the same as the rule, ahead at the very top | pending: data not on hand |
+| [Response](response.md) | Who is most likely to give again next year? | Does not beat the rule | About the same as the rule | Beats the rule | can't test (no mailing/appeal log) | can't test (no mailing/appeal log) |
+| [Lapse](lapse.md) | Which donors are about to stop giving? | Does not beat the rule | About the same as random | — | Loses, small margin (retention read: about the same, ahead at the top) | pending: data not on hand |
+| [Suggested ask](ask.md) | How much should we ask a donor for? | Does not beat the rule | Does not beat the rule | — | Does not beat the rule | pending: data not on hand |
+| [Planned giving](planned_giving.md) | Which donors look like bequest prospects? | Not yet tested on real bequest data | can't test (no bequest-intent label) | — | can't test (no bequest-intent signal) | can't test (no bequest-intent signal) |
+| [Who to mail](who_to_mail.md) | Is it worth mailing this donor at all? | — | Beats mailing everyone | Beats mailing everyone | can't test (no per-contact mailing cost) | can't test (no per-contact mailing cost) |
 
 ## How we tested each one
 
@@ -34,10 +41,15 @@ up to that date, and then checked what the same donors actually did in the
 following fiscal year. Every model is compared against a simple rule a
 fundraising shop already uses without any model (rank by past giving, ask for
 what they gave last time, mail everyone) and against picking at random. We ran
-this on two kinds of data: a synthetic sample donor panel we generate
-ourselves (five different random draws, averaged, so one lucky sample can't
-flatter the numbers), and a real public file, [KDD Cup
+this on a synthetic sample donor panel we generate ourselves (five different
+random draws, averaged, so one lucky sample can't flatter the numbers), and
+two real public files: [KDD Cup
 1998](https://kdd.ics.uci.edu/databases/kddcup98/kddcup98.html), a 1990s
-direct-mail history from a real nonprofit. Every number on these pages is
+direct-mail history from a real nonprofit, and DonorsChoose Open Data (ICPSR
+37898, doi:10.3886/ICPSR37898.v1), a real giving history for an
+education-crowdfunding platform (a random 10% sample of individual donors,
+walk-forward by fiscal year). A third real file, a PSID household
+giving/volunteering extract, is wired into the benchmark script but not yet
+run in this environment ("pending" above). Every number on these pages is
 produced by `scripts/make_results_pages.py`, committed alongside its output in
 `docs/assets/results/`, so anyone can regenerate them.

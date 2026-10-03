@@ -6,6 +6,9 @@ report here yet: no accuracy number, no chart. Anything we showed here would
 be scoring the model against a stand-in for bequest intent, not bequest
 intent itself, and would look like proof it isn't.
 
+**Not testable on DonorsChoose or PSID either.** Neither real file we test other models on
+records a bequest/estate-intent signal, so this gap is not specific to the synthetic data above.
+
 ## What the model would need
 
 `PlannedGivingIntentScorer` needs a training file where donors are labelled

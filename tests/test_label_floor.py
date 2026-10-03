@@ -26,3 +26,13 @@ def test_bad_task_and_multiclass_raise():
         check_label_floor([0, 1], "upgrade")
     with pytest.raises(ValueError, match="binary"):
         check_label_floor([0, 1, 2], "lapse")
+
+
+@pytest.mark.parametrize("y", [
+    [0] * 500 + [np.nan] * 500,
+    [0, 1, np.nan],
+    np.array([0, 1, None], dtype=object),
+])
+def test_missing_labels_raise(y):
+    with pytest.raises(ValueError, match="missing labels"):
+        check_label_floor(y, "lapse")

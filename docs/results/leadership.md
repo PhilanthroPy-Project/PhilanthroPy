@@ -4,10 +4,12 @@ Which donors giving $100 to $999 this fiscal year will give $1,000 or more next 
 $1,000 is the default leadership level; set your own with `threshold=` and `band=` in
 `score_leadership_prospects` (or `--threshold` / `--band` on the command line).
 
-**Beats the simple rule on our sample data. On the two real files we can test it on today it is
-mixed: it loses on KDD Cup 1998 (threshold rescaled to that file's much smaller gifts) and is
-about the same as the rule on DonorsChoose, clearly ahead only at the very top of the list.
-Depends on your data; try it on your own file before trusting any of these numbers.**
+**Depends on your data.** It beats the simple rule on our sample data, and on the three real
+files we can test it on today the results split: it beats the rule on PSID household survey
+data, is about the same as the rule on DonorsChoose (ahead only at the very top of the list), and
+loses on KDD Cup 1998 (threshold rescaled to that file's much smaller gifts). One real win next
+to a real loss is not enough to say it beats the rule in general; try it on your own file before
+trusting any of these numbers.
 
 === "Sample data"
 
@@ -100,13 +102,49 @@ Depends on your data; try it on your own file before trusting any of these numbe
     Never a donor ID or single-donor example here: every number above is an aggregate over the
     sampled donor population.
 
+=== "PSID (household survey)"
+
+    The [Panel Study of Income Dynamics](https://psidonline.isr.umich.edu/) (PSID) is a
+    long-running survey of US households, interviewed every two years (one "wave" every two
+    years). Each wave asks the household head how much the household gave to all charities over
+    the past year, broken down by cause. So these are self-reported household totals across every
+    charity, not one organization's donor file. We took households that gave $100 to $999 in a
+    wave and checked which of them reported $1,000 or more in the next wave. We tested the 2015,
+    2017, 2019 and 2021 waves in turn, training on every earlier wave back to 2001 each time:
+    between 1,315 and 1,751 households per test wave, and about 16 in 100 of them crossed $1,000.
+
+    Of the model's top 10% of picks, 41 out of every 100 crossed $1,000 by the next wave. The
+    best of the 3 simple rules checked here (this wave's total alone, the winner in all 4 test
+    waves) found 32 out of every 100. The model was ahead at the top 10% in every test wave,
+    though only barely in 2019 (37 vs 36). At the top 5% it found 45 against 35.
+
+    The top 1% looks even better for the model (48 in 100 against 23 for the rule), but that
+    group is only 13 to 18 households per test wave, so treat it as a hint, not a measurement.
+
+    ![Model vs. best simple rule, top 1/5/10% of picks, PSID](../assets/results/upgrade_psid.png#only-light)
+    ![Model vs. best simple rule, top 1/5/10% of picks, PSID](../assets/results/upgrade_psid-dark.png#only-dark)
+
+    **Beats the rule here**, judged on the top 10% of the list.
+
+    Adding the giving trend between waves as its own feature moved the top 10% from 41 to 42
+    out of 100, too small to call a change. The top 1% moved from 48 to 62, but on 13 to 18
+    households per wave that is a few households either way, so it is not evidence of anything.
+
+    Only aggregates are shown here: no household IDs, no single-household examples. PSID data are
+    not redistributed with this project; to rerun these numbers, download your own extract from
+    the PSID Data Center.
+
+    Panel Study of Income Dynamics, public use dataset. Produced and distributed by the Survey
+    Research Center, Institute for Social Research, University of Michigan, Ann Arbor, MI.
+
 ## Which data
 
-Sample (synthetic) donor panel, five random draws averaged, is the only file where this model
-wins today. KDD Cup 1998 and DonorsChoose are the two real files we can test the $1,000 upgrade
-question on (KDD98's gifts are too small to test the real $1,000 threshold, so the threshold on
-that tab is rescaled; DonorsChoose's gifts are large enough to use $1,000 as-is). Results on your
-own file, at your own dollar threshold, will differ from all three.
+Sample (synthetic) donor panel, five random draws averaged, and PSID are the two files where
+this model beats the rule today. KDD Cup 1998, DonorsChoose and PSID are the three real files we
+can test the $1,000 upgrade question on (KDD98's gifts are too small to test the real $1,000
+threshold, so the threshold on that tab is rescaled; DonorsChoose's and PSID's amounts are large
+enough to use $1,000 as-is). Results on your own file, at your own dollar threshold, will differ
+from all four.
 
 ## What the model looks at
 
@@ -115,3 +153,5 @@ own file, at your own dollar threshold, will differ from all three.
 --8<-- "results/_features/upgrade__upgrade_kdd98.md"
 
 --8<-- "results/_features/upgrade__upgrade_donorschoose.md"
+
+--8<-- "results/_features/upgrade__upgrade_psid.md"

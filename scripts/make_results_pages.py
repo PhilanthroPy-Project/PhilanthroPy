@@ -405,11 +405,11 @@ def _scoreboard_chart(path: Path, rows: List[tuple], theme: dict) -> None:
     ax.tick_params(colors=theme["ink2"], length=0)
 
     legend_handles = [
-        plt.Line2D([0], [0], marker=_SCOREBOARD_MARKERS.get(ds, "o"), color="w", markerfacecolor=theme["model"],
+        plt.Line2D([0], [0], marker=_SCOREBOARD_MARKERS.get(ds, "o"), linestyle="none", markerfacecolor=theme["model"],
                    markeredgecolor=theme["surface"], markersize=9, label=ds)
         for ds in seen_datasets
     ] + [
-        plt.Line2D([0], [0], marker="o", color="w", markerfacecolor="none", markeredgecolor=theme["random"],
+        plt.Line2D([0], [0], marker="o", linestyle="none", markerfacecolor="none", markeredgecolor=theme["random"],
                    markersize=9, label="Not yet tested")
     ]
 
@@ -419,6 +419,9 @@ def _scoreboard_chart(path: Path, rows: List[tuple], theme: dict) -> None:
     fig.legend(
         handles=legend_handles, loc="center", bbox_to_anchor=(0.5, 1 - (_LEGEND_Y_IN + extra_in) / fig_h),
         ncol=len(legend_handles), frameon=False, labelcolor=theme["ink2"], fontsize=9,
+        # Tighter than matplotlib's default spacing so six entries (five
+        # datasets plus "Not yet tested") fit the figure width unclipped.
+        columnspacing=1.0, handletextpad=0.3,
     )
     fig.suptitle(
         wrapped_title, x=0.015, ha="left", y=1 - _TITLE_Y_IN / fig_h, fontsize=12, fontweight="bold",
@@ -661,11 +664,26 @@ DATASET_GROUPS_AVAILABLE = {
     # gift date/amount, donor_type and payment-method flags: no wealth
     # screening, demographics, or mailing/solicitation history at all.
     "donorschoose": frozenset({"giving_history", "recency"}),
+    # PSID (load_psid_philanthropy): household giving by cause, family
+    # income, wealth with and without home equity, and volunteer hours; no
+    # mailing/solicitation history.
+    "psid": frozenset({"giving_history", "recency", "wealth", "engagement"}),
+}
+
+# Who one row of each dataset is, for "the model looks at N things about each
+# <noun>"; datasets not listed here are donor files.
+DATASET_SUBJECT_NOUN = {"psid": "household"}
+
+# Per-dataset replacements for GROUP_MEANINGS where the generic wording would
+# be wrong for that file (PSID's wealth columns are survey answers, not a
+# wealth screen).
+DATASET_GROUP_MEANINGS = {
+    "psid": {"wealth": "self-reported household income and wealth (survey answers, not a wealth screen)"},
 }
 
 
 def _dataset_category(key: str) -> str:
-    for suffix in ("_synthetic", "_cup98val", "_kdd98", "_donorschoose"):
+    for suffix in ("_synthetic", "_cup98val", "_kdd98", "_donorschoose", "_psid"):
         if key.endswith(suffix):
             return suffix[1:]
     raise ValueError(f"unrecognized dataset key: {key!r}")
@@ -725,6 +743,33 @@ FEATURE_INFO = {
     "recency": ("months since last gift", "recency"),
     "frequency": ("number of gifts", "giving_history"),
     "monetary": ("lifetime giving", "giving_history"),
+    # PSID household x wave snapshots (bm._psid_wave_period_snapshots)
+    "total_giving": ("this wave's giving", "recency"),
+    "prior_wave_total": ("last wave's giving", "recency"),
+    "trend": ("giving trend, this wave vs last", "momentum"),
+    "waves_given_streak": ("consecutive waves given", "momentum"),
+    "largest_giving_category": ("largest single cause this wave", "giving_history"),
+    "itemized_charitable_contrib_amount": ("charitable deduction claimed on taxes", "giving_history"),
+    "giving_checkpoint_other_2001": ("giving to other causes (2001 only)", "giving_history"),
+    "giving_combo": ("giving to combined-purpose charities", "giving_history"),
+    "giving_community": ("giving to community causes", "giving_history"),
+    "giving_cultural": ("giving to arts and culture", "giving_history"),
+    "giving_education": ("giving to education", "giving_history"),
+    "giving_environment": ("giving to the environment", "giving_history"),
+    "giving_health": ("giving to health causes", "giving_history"),
+    "giving_international": ("giving to international aid", "giving_history"),
+    "giving_needy": ("giving to help people in need", "giving_history"),
+    "giving_other": ("giving to other causes", "giving_history"),
+    "giving_religious": ("giving to religious causes", "giving_history"),
+    "giving_youth": ("giving to youth causes", "giving_history"),
+    "family_income": ("household income", "wealth"),
+    "wealth1": ("household wealth, not counting home equity", "wealth"),
+    "wealth2": ("household wealth, counting home equity", "wealth"),
+    "head_volunteer_hours_annual": ("head's volunteer hours last year", "engagement"),
+    "spouse_volunteer_hours_annual": ("spouse's volunteer hours last year", "engagement"),
+    "household_volunteer_hours_regular": ("household's regular volunteer hours", "engagement"),
+    "head_volunteer_hours_typical_week": ("head's volunteer hours in a typical week", "engagement"),
+    "spouse_volunteer_hours_typical_week": ("spouse's volunteer hours in a typical week", "engagement"),
 }
 
 # _kdd_feature_frame's column set (AskAmountRecommender, cost-aware mailing):
@@ -1081,27 +1126,35 @@ def who_to_mail_drivers_kdd98(seed) -> Dict[str, Any]:
 # internals), one real fitted model on the last walk-forward fold (no 5-seed
 # range: one real file has no second draw, same convention as KDD98 above).
 # --------------------------------------------------------------------------- #
-def _drivers_donorschoose(path: str, seed: int, kind: str, make_model, scoring: str, target_label: str = "score") -> Dict[str, Any]:
-    """Shared body for upgrade/lapse/ask DonorsChoose driver functions below:
-    same columns (``_gift_log_period_snapshots`` reuses
-    ``build_leadership_snapshots``' internals), same last-walk-forward-fold
-    fit, differing only in ``kind``, the estimator, and the scoring metric."""
-    feature_cols = UPGRADE_FEATURE_COLS[1:]
+def _drivers_last_fold(
+    snap, period_col: str, n_folds: int, feature_cols: Sequence[str], seed: int, kind: str,
+    make_model, scoring: str, split: str, target_label: str = "score",
+) -> Dict[str, Any]:
+    """Shared body for the real-file (DonorsChoose, PSID) driver functions:
+    one fit on the last walk-forward fold of an already-built snapshot
+    table, differing only in ``kind``, the estimator, and the scoring metric."""
     target_dtype = "float64" if kind == "ask" else None
 
     def build(_seed):
-        gifts = bm._donorschoose_gift_log(path, bm.DONORSCHOOSE_SUBSAMPLE, bm.DONORSCHOOSE_SEED)
-        snap = bm._gift_log_period_snapshots(gifts, 7, kind, False, 1000.0, (100.0, 999.0))
-        t = bm._walk_forward_test_periods(snap, "fiscal_year", bm.DONORSCHOOSE_N_FOLDS)[-1]
-        train, test = snap[snap["fiscal_year"] < t], snap[snap["fiscal_year"] == t]
+        t = bm._walk_forward_test_periods(snap, period_col, n_folds)[-1]
+        train, test = snap[snap[period_col] < t], snap[snap[period_col] == t]
         return (
             train[list(feature_cols)].to_numpy("float64"), train["target"].to_numpy(target_dtype),
             test[list(feature_cols)].to_numpy("float64"), test["target"].to_numpy(target_dtype),
         )
 
     drivers = _top_drivers(make_model, [seed], build, feature_cols, scoring=scoring)
-    return _features_entry(
-        feature_cols, drivers, scoring=scoring,
+    return _features_entry(feature_cols, drivers, scoring=scoring, split=split, target_label=target_label)
+
+
+def _drivers_donorschoose(path: str, seed: int, kind: str, make_model, scoring: str, target_label: str = "score") -> Dict[str, Any]:
+    """Same columns as the synthetic/KDD98 upgrade snapshots
+    (``_gift_log_period_snapshots`` reuses ``build_leadership_snapshots``'
+    internals)."""
+    gifts = bm._donorschoose_gift_log(path, bm.DONORSCHOOSE_SUBSAMPLE, bm.DONORSCHOOSE_SEED)
+    snap = bm._gift_log_period_snapshots(gifts, 7, kind, False, 1000.0, (100.0, 999.0))
+    return _drivers_last_fold(
+        snap, "fiscal_year", bm.DONORSCHOOSE_N_FOLDS, UPGRADE_FEATURE_COLS[1:], seed, kind, make_model, scoring,
         split=f"walk-forward (subsample={bm.DONORSCHOOSE_SUBSAMPLE}, seed={bm.DONORSCHOOSE_SEED}, last fiscal-year fold)",
         target_label=target_label,
     )
@@ -1122,6 +1175,22 @@ def ask_drivers_donorschoose(path: str, seed: int) -> Dict[str, Any]:
     )
 
 
+def drivers_psid(data_path: str, do_path: str, seed: int, kind: str) -> Dict[str, Any]:
+    """PSID counterpart of the DonorsChoose drivers above: the household x
+    wave columns bench_*_psid actually feeds the model (giving by cause,
+    income, wealth, volunteer hours), last walk-forward wave fold."""
+    make_model, scoring, target_label = {
+        "upgrade": (lambda s: bm.MajorGiftClassifier(random_state=s), "roc_auc", "score"),
+        "lapse": (lambda s: bm.LapsePredictor(random_state=s), "roc_auc", "score"),
+        "ask": (lambda s: bm.AskAmountRecommender(random_state=s), "neg_mean_absolute_error", "suggested ask"),
+    }[kind]
+    snap = bm._psid_wave_period_snapshots(data_path, do_path, kind, False, 1000.0, (100.0, 999.0))
+    return _drivers_last_fold(
+        snap, "wave", bm.PSID_N_FOLDS, bm._snapshot_feature_cols(snap, "household_key"), seed, kind, make_model, scoring,
+        split=f"walk-forward (seed={bm.PSID_SEED}, last wave fold)", target_label=target_label,
+    )
+
+
 # --------------------------------------------------------------------------- #
 # "What the model looks at" tab group: one markdown snippet per model,
 # included into its results page with pymdownx.snippets (E.11i pasted spec).
@@ -1133,6 +1202,7 @@ MODEL_DATASET_TABS = {
         ("Sample data", "upgrade_synthetic"),
         ("KDD Cup 1998 (real donor file)", "upgrade_kdd98"),
         ("DonorsChoose (real donor file)", "upgrade_donorschoose"),
+        ("PSID (household survey)", "upgrade_psid"),
     ],
     "response": [
         ("KDD Cup 1998 (real donor file)", "response_kdd98"),
@@ -1142,11 +1212,13 @@ MODEL_DATASET_TABS = {
     "lapse": [
         ("KDD Cup 1998 (real donor file)", "lapse_kdd98"),
         ("DonorsChoose (real donor file)", "lapse_donorschoose"),
+        ("PSID (household survey)", "lapse_psid"),
     ],
     "ask": [
         ("KDD Cup 1998 (real donor file)", "ask_kdd98"),
         ("Sample data", "ask_synthetic"),
         ("DonorsChoose (real donor file)", "ask_donorschoose"),
+        ("PSID (household survey)", "ask_psid"),
     ],
     "planned_giving": [
         ("Sample data", "planned_giving_synthetic"),
@@ -1170,8 +1242,9 @@ def _fmt_pct_range(block: Dict[str, Any]) -> str:
 def _render_group_table(columns: Sequence[str], dataset_category: str) -> List[str]:
     present = sorted({FEATURE_INFO[c][1] for c in columns}, key=GROUP_ORDER.index)
     lines = ["    | What it knows | What that means |", "    |---|---|"]
+    meanings = {**GROUP_MEANINGS, **DATASET_GROUP_MEANINGS.get(dataset_category, {})}
     for g in present:
-        lines.append(f"    | {GROUP_LABELS[g]} | {GROUP_MEANINGS[g]} |")
+        lines.append(f"    | {GROUP_LABELS[g]} | {meanings[g]} |")
     available = DATASET_GROUPS_AVAILABLE[dataset_category]
     # "momentum" is a computed year-over-year comparison, not a record type a
     # file has or lacks (and the KDD98 upgrade tab already uses it on the
@@ -1295,7 +1368,8 @@ def render_feature_snippets(results: Dict[str, Any], out_dir: Path) -> None:
             n = len(entry["sets"][0]["columns"])
             dataset_category = _dataset_category(key)
             lines = [f'=== "{label}"', ""]
-            lines.append(f"    On this file the model looks at {n} things about each donor.")
+            noun = DATASET_SUBJECT_NOUN.get(dataset_category, "donor")
+            lines.append(f"    On this file the model looks at {n} things about each {noun}.")
             lines.append("")
             lines += _render_group_table(entry["sets"][0]["columns"], dataset_category)
             lines.append("")
@@ -1727,8 +1801,7 @@ def main() -> None:
                 },
             )
 
-    # --- DonorsChoose / PSID (opt-in, local files; numbers only, no charts
-    # or nav wiring here, those are handled separately) ----------------------
+    # --- DonorsChoose / PSID (opt-in, local files; aggregates only) ----------
     def _classifier_entry(rows: List, model: str, momentum: bool, extra_meta: Dict[str, Any]):
         row_by_p = {p: _row(rows, model, f"top{p}pct_hit_rate") for p in (1, 5, 10)}
         if row_by_p[10] is None:
@@ -1779,6 +1852,74 @@ def main() -> None:
             "base_rate_pct": float(test["target"].mean()) * 100 if kind != "ask" else None,
         }
 
+    def _real_file_charts(
+        ds: str, upgrade_subtitle: str, lapse_subtitle: str, lapse_base_rate: float,
+        retention_subtitle: str, ask_subtitle: str, lapse_title: str | None = None,
+    ) -> None:
+        """Upgrade/lapse/retention/ask charts for one opt-in real file
+        (``ds`` is the results-key infix, e.g. "donorschoose"). A
+        ``lapse_title`` means lapse is the norm on that file, drawn as a
+        near-tie dot chart under that fixed title; otherwise lapse gets the
+        same bar chart and computed title as the other reads."""
+        def series(key):
+            return {
+                "Model": [results[key][f"top{p}pct"]["model"] for p in (1, 5, 10)],
+                "Best simple rule": [results[key][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
+            }
+
+        colors = {"Model": "model", "Best simple rule": "rule"}
+        groups = ["Top 1%", "Top 5%", "Top 10%"]
+        key = f"upgrade_{ds}"
+        if key in results:
+            u10 = results[key]["top10pct"]
+            _render_themed(
+                _hbar_chart, OUT_DIR / f"{key}.png", groups, series(key), colors,
+                title=_takeaway(u10["model"], u10["rule"], "The model", "the best simple rule"),
+                subtitle=upgrade_subtitle,
+            )
+
+        key = f"lapse_{ds}"
+        if key in results:
+            if lapse_title:
+                _render_themed(
+                    _neartie_dot_chart, OUT_DIR / f"{key}.png", groups, series(key), colors,
+                    base_rate=lapse_base_rate, title=lapse_title, subtitle=lapse_subtitle,
+                )
+            else:
+                l10 = results[key]["top10pct"]
+                _render_themed(
+                    _hbar_chart, OUT_DIR / f"{key}.png", groups, series(key), colors,
+                    title=_takeaway(l10["model"], l10["rule"], "The model", "the best simple rule"),
+                    subtitle=lapse_subtitle, base_rate=lapse_base_rate,
+                    base_rate_label=f"everyone: {lapse_base_rate:.0f} of 100",
+                )
+
+        key = f"lapse_{ds}_retention"
+        if key in results:
+            r10 = results[key]["top10pct"]
+            retention_base_rate = 100.0 - lapse_base_rate
+            if abs(r10["model"] - r10["rule"]) < 1.5:
+                rt_title = "The model and the rule find about the same retained group here"
+            elif r10["model"] > r10["rule"]:
+                rt_title = f"The model's least-likely-to-lapse 10% retains better: {r10['model']:.0f} of 100 vs {r10['rule']:.0f} of 100"
+            else:
+                rt_title = f"The rule still finds a better group: {r10['rule']:.0f} of 100 vs {r10['model']:.0f} of 100"
+            _render_themed(
+                _hbar_chart, OUT_DIR / f"{key}.png", groups, series(key), colors,
+                title=rt_title, subtitle=retention_subtitle, base_rate=retention_base_rate,
+                base_rate_label=f"everyone: {retention_base_rate:.0f} of 100",
+            )
+
+        key = f"ask_{ds}"
+        if key in results:
+            a = results[key]
+            _render_themed(
+                _hbar_chart, OUT_DIR / f"{key}.png", ["Suggested ask"],
+                {"Model": [a["within25pct_model"]], "Best simple rule": [a["within25pct_last_gift"]]}, colors,
+                title=_takeaway(a["within25pct_model"], a["within25pct_last_gift"], "The model", "the best simple rule"),
+                subtitle=ask_subtitle,
+            )
+
     if args.donorschoose_path:
         upgrade_meta = _donorschoose_fold_meta("upgrade")
         lapse_meta = _donorschoose_fold_meta("lapse")
@@ -1813,78 +1954,16 @@ def main() -> None:
                     entry["features"] = ask_drivers_donorschoose(args.donorschoose_path, bm.DONORSCHOOSE_SEED)
                 results[f"ask_donorschoose{suffix}"] = entry
 
-        if "upgrade_donorschoose" in results:
-            dcu10 = results["upgrade_donorschoose"]["top10pct"]
-            _render_themed(
-                _hbar_chart,
-                OUT_DIR / "upgrade_donorschoose.png",
-                ["Top 1%", "Top 5%", "Top 10%"],
-                {
-                    "Model": [results["upgrade_donorschoose"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
-                    "Best simple rule": [results["upgrade_donorschoose"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
-                },
-                {"Model": "model", "Best simple rule": "rule"},
-                title=_takeaway(dcu10["model"], dcu10["rule"], "The model", "the best simple rule"),
-                subtitle="DonorsChoose, a 10% random sample of citizen donors, test fiscal years "
-                f"{upgrade_meta['fold_years'][0]}-{upgrade_meta['fold_years'][-1]}.",
-            )
-
-        if "lapse_donorschoose" in results:
-            _render_themed(
-                _neartie_dot_chart,
-                OUT_DIR / "lapse_donorschoose.png",
-                ["Top 1%", "Top 5%", "Top 10%"],
-                {
-                    "Model": [results["lapse_donorschoose"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
-                    "Best simple rule": [results["lapse_donorschoose"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
-                },
-                {"Model": "model", "Best simple rule": "rule"},
-                base_rate=lapse_meta["base_rate_pct"],
-                title="Most donors here give once, so lapsing is the norm, not a signal",
-                subtitle="DonorsChoose, a 10% random sample of citizen donors. Lapsed next fiscal year, out of every 100 picked.",
-            )
-
-        if "lapse_donorschoose_retention" in results:
-            dcr10 = results["lapse_donorschoose_retention"]["top10pct"]
-            retention_base_rate = 100.0 - lapse_meta["base_rate_pct"]
-            rt_gap = abs(dcr10["model"] - dcr10["rule"])
-            if rt_gap < 1.5:
-                rt_title = "The model and the rule find about the same retained group here"
-            elif dcr10["model"] > dcr10["rule"]:
-                rt_title = f"The model's least-likely-to-lapse 10% retains better: {dcr10['model']:.0f} of 100 vs {dcr10['rule']:.0f} of 100"
-            else:
-                rt_title = f"The rule still finds a better group: {dcr10['rule']:.0f} of 100 vs {dcr10['model']:.0f} of 100"
-            _render_themed(
-                _hbar_chart,
-                OUT_DIR / "lapse_donorschoose_retention.png",
-                ["Top 1%", "Top 5%", "Top 10%"],
-                {
-                    "Model": [results["lapse_donorschoose_retention"][f"top{p}pct"]["model"] for p in (1, 5, 10)],
-                    "Best simple rule": [results["lapse_donorschoose_retention"][f"top{p}pct"]["rule"] for p in (1, 5, 10)],
-                },
-                {"Model": "model", "Best simple rule": "rule"},
-                title=rt_title,
-                subtitle="DonorsChoose, the 10% least likely to lapse by model score. Gave again, out of every 100 in that group.",
-                base_rate=retention_base_rate,
-                base_rate_label=f"everyone: {retention_base_rate:.0f} of 100",
-            )
-
-        if "ask_donorschoose" in results:
-            _render_themed(
-                _hbar_chart,
-                OUT_DIR / "ask_donorschoose.png",
-                ["Suggested ask"],
-                {
-                    "Model": [results["ask_donorschoose"]["within25pct_model"]],
-                    "Best simple rule": [results["ask_donorschoose"]["within25pct_last_gift"]],
-                },
-                {"Model": "model", "Best simple rule": "rule"},
-                title=_takeaway(
-                    results["ask_donorschoose"]["within25pct_model"], results["ask_donorschoose"]["within25pct_last_gift"],
-                    "The model", "the best simple rule",
-                ),
-                subtitle="DonorsChoose, next fiscal-year total given they give again. Suggested amounts landing within 25% of what the donor actually gave.",
-            )
+        _real_file_charts(
+            "donorschoose",
+            upgrade_subtitle="DonorsChoose, a 10% random sample of citizen donors, test fiscal years "
+            f"{upgrade_meta['fold_years'][0]}-{upgrade_meta['fold_years'][-1]}.",
+            lapse_subtitle="DonorsChoose, a 10% random sample of citizen donors. Lapsed next fiscal year, out of every 100 picked.",
+            lapse_base_rate=lapse_meta["base_rate_pct"],
+            lapse_title="Most donors here give once, so lapsing is the norm, not a signal",
+            retention_subtitle="DonorsChoose, the 10% least likely to lapse by model score. Gave again, out of every 100 in that group.",
+            ask_subtitle="DonorsChoose, next fiscal-year total given they give again. Suggested amounts landing within 25% of what the donor actually gave.",
+        )
 
     if args.psid_data and args.psid_do:
         upgrade_meta = _psid_fold_meta("upgrade")
@@ -1895,11 +1974,15 @@ def main() -> None:
             up = bm.bench_upgrade_psid(args.psid_data, args.psid_do, include_momentum=momentum)
             entry = _classifier_entry(up, "upgrade_model (MajorGiftClassifier)", momentum, upgrade_meta)
             if entry:
+                if not momentum:
+                    entry["features"] = drivers_psid(args.psid_data, args.psid_do, bm.PSID_SEED, "upgrade")
                 results[f"upgrade_psid{suffix}"] = entry
 
             lap = bm.bench_lapse_psid(args.psid_data, args.psid_do, include_momentum=momentum)
             entry = _classifier_entry(lap, "LapsePredictor", momentum, lapse_meta)
             if entry:
+                if not momentum:
+                    entry["features"] = drivers_psid(args.psid_data, args.psid_do, bm.PSID_SEED, "lapse")
                 results[f"lapse_psid{suffix}"] = entry
 
             ret = bm.bench_lapse_psid_retention(args.psid_data, args.psid_do, include_momentum=momentum)
@@ -1912,7 +1995,19 @@ def main() -> None:
                 **ask_meta, "target": "next-wave total, given the household gives again",
             })
             if entry:
+                if not momentum:
+                    entry["features"] = drivers_psid(args.psid_data, args.psid_do, bm.PSID_SEED, "ask")
                 results[f"ask_psid{suffix}"] = entry
+
+        waves = f"{upgrade_meta['fold_waves'][0]}-{upgrade_meta['fold_waves'][-1]}" if upgrade_meta["fold_waves"] else ""
+        _real_file_charts(
+            "psid",
+            upgrade_subtitle=f"PSID, household heads giving $100-$999 to charity in a survey wave, test waves {waves}.",
+            lapse_subtitle="PSID, household heads who gave in a survey wave. Gave nothing by the next wave, out of every 100 picked.",
+            lapse_base_rate=lapse_meta["base_rate_pct"],
+            retention_subtitle="PSID, the 10% least likely to lapse by model score. Gave again, out of every 100 in that group.",
+            ask_subtitle="PSID, next-wave total given the household gives again. Suggested amounts landing within 25% of what the household actually gave.",
+        )
 
     # Models this benchmark cannot honestly answer on either real dataset:
     # neither file has mailing-cost or planned-giving/bequest data.

@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added
+- `philanthropy.utils.check_label_floor(y, task)` returns `"run"` or
+  `"not enough labels"` for `task="lapse"` or `"major_gift"`, so a hosted
+  no-code page and a Python user apply the same cutoff before fitting. The
+  floors (`LABEL_FLOORS`: 100 in the rarer class for lapse, 800 for major
+  gift) come from validation-fold learning curves on DonorsChoose and KDD
+  Cup 1998, ten seeds each; the test splits were not used.
+
 ### Removed
 - `scripts/issue-drafts/_DISCUSSION_who_is_using_this.md`: the draft was
   posted as Discussion #158 on 2026-09-05, and its "zero dependents" and

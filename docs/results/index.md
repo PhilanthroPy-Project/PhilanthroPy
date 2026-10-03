@@ -20,19 +20,19 @@ these pages, see [Model Validation & Benchmarks](../explanation/benchmarks.md).
 
 Each cell below is that model's verdict on that dataset: **beats the rule**, **about the same as
 the rule**, **does not beat the rule**, or, where the file structurally cannot answer the
-question, **can't test (reason)**. "—" means that pairing was never run (either the dataset
+question, **can't test (reason)**. "not run" means that pairing was never run (either the dataset
 doesn't fit the question, or there's nothing new it would show). "pending: data not on hand" means
 the question is answerable in principle but we have not yet run it on that file in this
 environment.
 
 | Model | Question it answers | Sample data | KDD Cup 1998 | cup98VAL | DonorsChoose | PSID |
 |---|---|---|---|---|---|---|
-| [Leadership upgrade ($1,000+)](leadership.md) | Which mid-level donors are about to become $1,000+ donors? | Beats the rule | Loses | — | About the same as the rule, ahead at the very top | pending: data not on hand |
+| [Leadership upgrade ($1,000+)](leadership.md) | Which mid-level donors are about to become $1,000+ donors? | Beats the rule | Loses | not run | About the same as the rule, ahead at the very top | pending: data not on hand |
 | [Response](response.md) | Who is most likely to give again next year? | Does not beat the rule | About the same as the rule | Beats the rule | can't test (no mailing/appeal log) | can't test (no mailing/appeal log) |
-| [Lapse](lapse.md) | Which donors are about to stop giving? | Does not beat the rule | About the same as random | — | Loses, small margin (retention read: about the same, ahead at the top) | pending: data not on hand |
-| [Suggested ask](ask.md) | How much should we ask a donor for? | Does not beat the rule | Does not beat the rule | — | Does not beat the rule | pending: data not on hand |
-| [Planned giving](planned_giving.md) | Which donors look like bequest prospects? | Not yet tested on real bequest data | can't test (no bequest-intent label) | — | can't test (no bequest-intent signal) | can't test (no bequest-intent signal) |
-| [Who to mail](who_to_mail.md) | Is it worth mailing this donor at all? | — | Beats mailing everyone | Beats mailing everyone | can't test (no per-contact mailing cost) | can't test (no per-contact mailing cost) |
+| [Lapse](lapse.md) | Which donors are about to stop giving? | Does not beat the rule | About the same as random | not run | Loses, small margin (retention read: about the same, ahead at the top) | pending: data not on hand |
+| [Suggested ask](ask.md) | How much should we ask a donor for? | Does not beat the rule | Does not beat the rule | not run | Does not beat the rule | pending: data not on hand |
+| [Planned giving](planned_giving.md) | Which donors look like bequest prospects? | Not yet tested on real bequest data | can't test (no bequest-intent label) | not run | can't test (no bequest-intent signal) | can't test (no bequest-intent signal) |
+| [Who to mail](who_to_mail.md) | Is it worth mailing this donor at all? | not run | Beats mailing everyone | Beats mailing everyone | can't test (no per-contact mailing cost) | can't test (no per-contact mailing cost) |
 
 ## How we tested each one
 

@@ -25,8 +25,8 @@ random 10% sample of citizen donors, fiscal years 2015-2018 tested in turn, trai
 earlier year each time.
 
 Of every 100 suggested amounts, 30 landed within 25% of what the donor actually gave the
-following year. The best simple rule (the higher of last period's total or average next-gift
-amount in training) landed within 25% for 32 out of every 100.
+following year. The best of the 3 simple rules checked here (last period's total alone, the
+winner in all 4 test years) landed within 25% for 32 out of every 100.
 
 ![How close is the suggested ask: model vs. best simple rule, DonorsChoose](../assets/results/ask_donorschoose.png#only-light)
 ![How close is the suggested ask: model vs. best simple rule, DonorsChoose](../assets/results/ask_donorschoose-dark.png#only-dark)

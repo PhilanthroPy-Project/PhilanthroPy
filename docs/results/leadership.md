@@ -81,10 +81,10 @@ Depends on your data; try it on your own file before trusting any of these numbe
     2018 in turn, training on every earlier year each time.
 
     Of the model's top 10% of picks, 9 out of every 100 crossed $1,000 the following fiscal year.
-    The best rule (this year's total plus this year's growth) found 8 out of every 100. At the
-    very top of the list the model is clearly ahead: its top 1% found 28 in 100 against 20 in 100
-    for the rule. Upgrading to $1,000+ is rare in this file: only about 1 in 100 donors in the
-    test years did it at all.
+    The best of the 3 simple rules checked here (this year's total alone, the winner in all 4
+    test years) found 8 out of every 100. At the very top of the list the model is clearly ahead:
+    its top 1% found 28 in 100 against 20 in 100 for the rule. Upgrading to $1,000+ is rare in
+    this file: only about 1 in 100 donors in the test years did it at all.
 
     ![Model vs. best simple rule, top 1/5/10% of picks, DonorsChoose](../assets/results/upgrade_donorschoose.png#only-light)
     ![Model vs. best simple rule, top 1/5/10% of picks, DonorsChoose](../assets/results/upgrade_donorschoose-dark.png#only-dark)
@@ -92,9 +92,10 @@ Depends on your data; try it on your own file before trusting any of these numbe
     **About the same as the rule overall**, though clearly ahead at the very top of the list.
 
     Adding this year's giving trend vs. last year's as its own feature made essentially no
-    difference here either: the model's top 10% hit rate is 9 out of 100 with it, 9 without --
-    the small shift at the top (28 to 25 out of 100 for the top 1%) sits inside the normal
-    run-to-run range for a single fitted model, not a meaningful gain.
+    difference here either: the model's top 10% hit rate is 9 out of 100 with it, 9 without. The
+    top 1% shifts from 28 to 25 out of 100, but that group is only about 100 donors per test year,
+    so a 3-donor difference is too small to call a real change either way: this is a single fit on
+    one file, with no seed range to check it against.
 
     Never a donor ID or single-donor example here: every number above is an aggregate over the
     sampled donor population.

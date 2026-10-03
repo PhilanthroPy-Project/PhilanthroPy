@@ -1081,64 +1081,44 @@ def who_to_mail_drivers_kdd98(seed) -> Dict[str, Any]:
 # internals), one real fitted model on the last walk-forward fold (no 5-seed
 # range: one real file has no second draw, same convention as KDD98 above).
 # --------------------------------------------------------------------------- #
-def upgrade_drivers_donorschoose(path: str, seed: int) -> Dict[str, Any]:
+def _drivers_donorschoose(path: str, seed: int, kind: str, make_model, scoring: str, target_label: str = "score") -> Dict[str, Any]:
+    """Shared body for upgrade/lapse/ask DonorsChoose driver functions below:
+    same columns (``_gift_log_period_snapshots`` reuses
+    ``build_leadership_snapshots``' internals), same last-walk-forward-fold
+    fit, differing only in ``kind``, the estimator, and the scoring metric."""
     feature_cols = UPGRADE_FEATURE_COLS[1:]
+    target_dtype = "float64" if kind == "ask" else None
 
     def build(_seed):
         gifts = bm._donorschoose_gift_log(path, bm.DONORSCHOOSE_SUBSAMPLE, bm.DONORSCHOOSE_SEED)
-        snap = bm._gift_log_period_snapshots(gifts, 7, "upgrade", False, 1000.0, (100.0, 999.0))
+        snap = bm._gift_log_period_snapshots(gifts, 7, kind, False, 1000.0, (100.0, 999.0))
         t = bm._walk_forward_test_periods(snap, "fiscal_year", bm.DONORSCHOOSE_N_FOLDS)[-1]
         train, test = snap[snap["fiscal_year"] < t], snap[snap["fiscal_year"] == t]
         return (
-            train[list(feature_cols)].to_numpy("float64"), train["target"].to_numpy(),
-            test[list(feature_cols)].to_numpy("float64"), test["target"].to_numpy(),
+            train[list(feature_cols)].to_numpy("float64"), train["target"].to_numpy(target_dtype),
+            test[list(feature_cols)].to_numpy("float64"), test["target"].to_numpy(target_dtype),
         )
 
-    drivers = _top_drivers(lambda s: bm.MajorGiftClassifier(random_state=s), [seed], build, feature_cols, scoring="roc_auc")
+    drivers = _top_drivers(make_model, [seed], build, feature_cols, scoring=scoring)
     return _features_entry(
-        feature_cols, drivers, scoring="roc_auc",
+        feature_cols, drivers, scoring=scoring,
         split=f"walk-forward (subsample={bm.DONORSCHOOSE_SUBSAMPLE}, seed={bm.DONORSCHOOSE_SEED}, last fiscal-year fold)",
+        target_label=target_label,
     )
+
+
+def upgrade_drivers_donorschoose(path: str, seed: int) -> Dict[str, Any]:
+    return _drivers_donorschoose(path, seed, "upgrade", lambda s: bm.MajorGiftClassifier(random_state=s), scoring="roc_auc")
 
 
 def lapse_drivers_donorschoose(path: str, seed: int) -> Dict[str, Any]:
-    feature_cols = UPGRADE_FEATURE_COLS[1:]
-
-    def build(_seed):
-        gifts = bm._donorschoose_gift_log(path, bm.DONORSCHOOSE_SUBSAMPLE, bm.DONORSCHOOSE_SEED)
-        snap = bm._gift_log_period_snapshots(gifts, 7, "lapse", False, 1000.0, (100.0, 999.0))
-        t = bm._walk_forward_test_periods(snap, "fiscal_year", bm.DONORSCHOOSE_N_FOLDS)[-1]
-        train, test = snap[snap["fiscal_year"] < t], snap[snap["fiscal_year"] == t]
-        return (
-            train[list(feature_cols)].to_numpy("float64"), train["target"].to_numpy(),
-            test[list(feature_cols)].to_numpy("float64"), test["target"].to_numpy(),
-        )
-
-    drivers = _top_drivers(lambda s: bm.LapsePredictor(random_state=s), [seed], build, feature_cols, scoring="roc_auc")
-    return _features_entry(
-        feature_cols, drivers, scoring="roc_auc",
-        split=f"walk-forward (subsample={bm.DONORSCHOOSE_SUBSAMPLE}, seed={bm.DONORSCHOOSE_SEED}, last fiscal-year fold)",
-    )
+    return _drivers_donorschoose(path, seed, "lapse", lambda s: bm.LapsePredictor(random_state=s), scoring="roc_auc")
 
 
 def ask_drivers_donorschoose(path: str, seed: int) -> Dict[str, Any]:
-    feature_cols = UPGRADE_FEATURE_COLS[1:]
-
-    def build(_seed):
-        gifts = bm._donorschoose_gift_log(path, bm.DONORSCHOOSE_SUBSAMPLE, bm.DONORSCHOOSE_SEED)
-        snap = bm._gift_log_period_snapshots(gifts, 7, "ask", False, 1000.0, (100.0, 999.0))
-        t = bm._walk_forward_test_periods(snap, "fiscal_year", bm.DONORSCHOOSE_N_FOLDS)[-1]
-        train, test = snap[snap["fiscal_year"] < t], snap[snap["fiscal_year"] == t]
-        return (
-            train[list(feature_cols)].to_numpy("float64"), train["target"].to_numpy("float64"),
-            test[list(feature_cols)].to_numpy("float64"), test["target"].to_numpy("float64"),
-        )
-
-    drivers = _top_drivers(lambda s: bm.AskAmountRecommender(random_state=s), [seed], build, feature_cols, scoring="neg_mean_absolute_error")
-    return _features_entry(
-        feature_cols, drivers, scoring="neg_mean_absolute_error",
-        split=f"walk-forward (subsample={bm.DONORSCHOOSE_SUBSAMPLE}, seed={bm.DONORSCHOOSE_SEED}, last fiscal-year fold)",
-        target_label="suggested ask",
+    return _drivers_donorschoose(
+        path, seed, "ask", lambda s: bm.AskAmountRecommender(random_state=s),
+        scoring="neg_mean_absolute_error", target_label="suggested ask",
     )
 
 
@@ -1850,7 +1830,6 @@ def main() -> None:
             )
 
         if "lapse_donorschoose" in results:
-            dcl10 = results["lapse_donorschoose"]["top10pct"]
             _render_themed(
                 _neartie_dot_chart,
                 OUT_DIR / "lapse_donorschoose.png",

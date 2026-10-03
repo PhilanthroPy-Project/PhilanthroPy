@@ -10,6 +10,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   posted as Discussion #158 on 2026-09-05, and its "zero dependents" and
   "zero usage" lines are now out of date. The Discussion itself is the record.
 
+### Documentation
+- Results: a "How to read these pages" page (the simple rule per question,
+  "random", list lengths with a 10,000-donor worked example from the
+  DonorsChoose retention read, "about the same", and the five bottom lines)
+  and a "The datasets behind these pages" page with one card per file (what it
+  is, who gave to whom and when, how big, what it can and cannot test, terms),
+  including the Karlan and List experiment that is on hand but not yet used.
+
 ### Added
 - Results pages now show PSID (Panel Study of Income Dynamics) household
   survey results for leadership upgrade, lapse (both the lapse read and the

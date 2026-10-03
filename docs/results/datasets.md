@@ -20,8 +20,9 @@ household ID or a single-record example.
   upgrade question (gifts are small; the page uses a $50 stand-in) or anything
   needing event data. About 95 in 100 donors gave nothing to the held-out
   mailing, so the plain lapse question is lopsided here.
-- **Terms:** UCI Machine Learning Repository, CC BY 4.0. Cite it as "KDD Cup
-  1998"; teaching material must not name the sponsoring organisation.
+- **Terms:** UCI KDD Archive, free to download; no formal licence is stated.
+  Cite it as "KDD Cup 1998"; the original documentation asks that teaching
+  material not name the sponsoring organisation.
 
 ## cup98VAL
 

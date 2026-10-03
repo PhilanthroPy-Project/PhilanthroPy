@@ -1,6 +1,6 @@
 === "PSID (household survey)"
 
-    On this file the model looks at 26 things about each donor.
+    On this file the model looks at 26 things about each household.
 
     | What it knows | What that means |
     |---|---|
@@ -8,7 +8,7 @@
     | Recency | how recently they gave |
     | Year-over-year change | whether this year's giving is up or down from last year |
     | Engagement | events, volunteering and other non-gift contact |
-    | Wealth & demographics | wealth screening and demographic data |
+    | Wealth & demographics | self-reported household income and wealth (survey answers, not a wealth screen) |
 
     This file has no mailing history records, so it is not used here.
 

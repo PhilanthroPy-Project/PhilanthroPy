@@ -670,6 +670,17 @@ DATASET_GROUPS_AVAILABLE = {
     "psid": frozenset({"giving_history", "recency", "wealth", "engagement"}),
 }
 
+# Who one row of each dataset is, for "the model looks at N things about each
+# <noun>"; datasets not listed here are donor files.
+DATASET_SUBJECT_NOUN = {"psid": "household"}
+
+# Per-dataset replacements for GROUP_MEANINGS where the generic wording would
+# be wrong for that file (PSID's wealth columns are survey answers, not a
+# wealth screen).
+DATASET_GROUP_MEANINGS = {
+    "psid": {"wealth": "self-reported household income and wealth (survey answers, not a wealth screen)"},
+}
+
 
 def _dataset_category(key: str) -> str:
     for suffix in ("_synthetic", "_cup98val", "_kdd98", "_donorschoose", "_psid"):
@@ -1231,8 +1242,9 @@ def _fmt_pct_range(block: Dict[str, Any]) -> str:
 def _render_group_table(columns: Sequence[str], dataset_category: str) -> List[str]:
     present = sorted({FEATURE_INFO[c][1] for c in columns}, key=GROUP_ORDER.index)
     lines = ["    | What it knows | What that means |", "    |---|---|"]
+    meanings = {**GROUP_MEANINGS, **DATASET_GROUP_MEANINGS.get(dataset_category, {})}
     for g in present:
-        lines.append(f"    | {GROUP_LABELS[g]} | {GROUP_MEANINGS[g]} |")
+        lines.append(f"    | {GROUP_LABELS[g]} | {meanings[g]} |")
     available = DATASET_GROUPS_AVAILABLE[dataset_category]
     # "momentum" is a computed year-over-year comparison, not a record type a
     # file has or lacks (and the KDD98 upgrade tab already uses it on the
@@ -1356,7 +1368,8 @@ def render_feature_snippets(results: Dict[str, Any], out_dir: Path) -> None:
             n = len(entry["sets"][0]["columns"])
             dataset_category = _dataset_category(key)
             lines = [f'=== "{label}"', ""]
-            lines.append(f"    On this file the model looks at {n} things about each donor.")
+            noun = DATASET_SUBJECT_NOUN.get(dataset_category, "donor")
+            lines.append(f"    On this file the model looks at {n} things about each {noun}.")
             lines.append("")
             lines += _render_group_table(entry["sets"][0]["columns"], dataset_category)
             lines.append("")

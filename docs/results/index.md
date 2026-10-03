@@ -31,7 +31,7 @@ today, each winning on PSID and losing or tying on the donor files.
 |---|---|---|---|---|---|---|
 | [Leadership upgrade ($1,000+)](leadership.md) | Which mid-level donors are about to become $1,000+ donors? | Beats the rule | Loses | not run | About the same as the rule, ahead at the very top | Beats the rule |
 | [Response](response.md) | Who is most likely to give again next year? | Does not beat the rule | About the same as the rule | Beats the rule | can't test (no mailing/appeal log) | can't test (no mailing/appeal log) |
-| [Lapse](lapse.md) | Which donors are about to stop giving? | Does not beat the rule | About the same as random | not run | Loses, small margin (retention read: about the same, ahead at the top) | Beats the rule (retention read: about the same) |
+| [Lapse](lapse.md) | Which donors are about to stop giving? | Does not beat the rule | Does not beat the rule (about the same as random) | not run | Loses, small margin (retention read: about the same, ahead at the top) | Beats the rule (retention read: about the same) |
 | [Suggested ask](ask.md) | How much should we ask a donor for? | Does not beat the rule | Does not beat the rule | not run | Does not beat the rule | About the same as the rule |
 | [Planned giving](planned_giving.md) | Which donors look like bequest prospects? | Not yet tested on real bequest data | can't test (no bequest-intent label) | not run | can't test (no bequest-intent signal) | can't test (no bequest-intent signal) |
 | [Who to mail](who_to_mail.md) | Is it worth mailing this donor at all? | not run | Beats mailing everyone | Beats mailing everyone | can't test (no per-contact mailing cost) | can't test (no per-contact mailing cost) |

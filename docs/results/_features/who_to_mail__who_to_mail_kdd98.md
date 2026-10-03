@@ -32,6 +32,6 @@
         | `AGE` | 0.006 | mixed |
         | `rfm_recency` | 0.005 | - |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Git SHA: `169aea3cdb71091fa4bb31f877c89bc3b0342e20`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Git SHA: `b0122490e6902ce1e5c9f00e3f0d142874a1c72f`.
 
     Results on your own file will differ.

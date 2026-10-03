@@ -6,6 +6,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Results pages now show PSID (Panel Study of Income Dynamics) household
+  survey results for leadership upgrade, lapse (both the lapse read and the
+  "who gives again" retention read) and suggested ask, with a chart, verdict
+  and "What the model looks at" tab each, tested on survey waves 2015 to 2021
+  in turn. On PSID the upgrade model beats the best simple rule at the top
+  10% (41 vs 32 in 100) and so does the lapse model (59 vs 44 in 100); the
+  retention read and suggested ask come out about the same as the rule. The
+  scoreboard and the models-by-datasets table now fill the PSID column, and
+  leadership upgrade and lapse read "depends on your data": each now has one
+  real win next to a real loss or tie, short of the two real wins "beats the
+  rule" requires. PSID data are not redistributed; every PSID number is an
+  aggregate, regenerated from a user's own extract with `--psid-data` /
+  `--psid-do`. The DonorsChoose and PSID charts and driver tabs share one
+  code path in `scripts/make_results_pages.py`. The scoreboard legend is
+  spaced tighter so all six entries fit now that PSID has a marker, and its
+  markers no longer draw a stray white line in the dark theme.
 - `scripts/make_results_pages.py --with-momentum`: runs each synthetic model
   (and KDD98's upgrade model, with `--with-kdd98`) a second time with
   `include_momentum=True`, writing a `<key>_momentum` entry next to the

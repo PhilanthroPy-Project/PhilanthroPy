@@ -91,7 +91,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "score"
     }
   },
@@ -209,7 +209,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "score"
     }
   },
@@ -284,7 +284,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "suggested ask"
     }
   },
@@ -378,7 +378,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (FiscalYearGroupedSplitter, last split)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "score"
     }
   },
@@ -461,7 +461,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "score"
     }
   },
@@ -657,7 +657,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "score"
     }
   },
@@ -743,7 +743,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward by fiscal year (train FY1994, test FY1995)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "score"
     }
   },
@@ -829,7 +829,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "score"
     }
   },
@@ -929,7 +929,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "suggested ask"
     }
   },
@@ -1015,7 +1015,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "score"
     },
     "curve": {
@@ -1191,7 +1191,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "score",
       "reused_from_note": "Same response model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     },
@@ -1355,7 +1355,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "score",
       "reused_from_note": "Same model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     }
@@ -1461,7 +1461,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "score"
     }
   },
@@ -1567,7 +1567,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "score"
     }
   },
@@ -1698,7 +1698,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
       "target_label": "suggested ask"
     }
   },
@@ -1831,6 +1831,521 @@
       "target": "next fiscal-year total, given they give again"
     }
   },
+  "upgrade_psid": {
+    "top1pct": {
+      "model": 48.2112556561086,
+      "rule": 22.933163650075414
+    },
+    "top5pct": {
+      "model": 44.861533508685405,
+      "rule": 35.040104937256835
+    },
+    "top10pct": {
+      "model": 40.61391554305567,
+      "rule": 32.23606515565115
+    },
+    "verdict": "wins",
+    "roc_auc": 0.7325203516407617,
+    "metadata": {
+      "momentum": false,
+      "seed": 42,
+      "fold_waves": [
+        2015,
+        2017,
+        2019,
+        2021
+      ],
+      "n_per_fold": [
+        1751,
+        1677,
+        1571,
+        1315
+      ],
+      "base_rate_pct": 16.154577130186887
+    },
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "total_giving",
+            "itemized_charitable_contrib_amount",
+            "family_income",
+            "wealth1",
+            "wealth2",
+            "head_volunteer_hours_annual",
+            "spouse_volunteer_hours_annual",
+            "household_volunteer_hours_regular",
+            "head_volunteer_hours_typical_week",
+            "spouse_volunteer_hours_typical_week",
+            "giving_checkpoint_other_2001",
+            "giving_combo",
+            "giving_community",
+            "giving_cultural",
+            "giving_education",
+            "giving_environment",
+            "giving_health",
+            "giving_international",
+            "giving_needy",
+            "giving_other",
+            "giving_religious",
+            "giving_youth",
+            "largest_giving_category",
+            "prior_wave_total",
+            "trend",
+            "waves_given_streak"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "prior_wave_total",
+          "label": "last wave's giving",
+          "group": "recency",
+          "importance": 0.07214976787043276,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        },
+        {
+          "column": "total_giving",
+          "label": "this wave's giving",
+          "group": "recency",
+          "importance": 0.04206994010702768,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "giving_religious",
+          "label": "giving to religious causes",
+          "group": "giving_history",
+          "importance": 0.01266745224510053,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "head_volunteer_hours_typical_week",
+          "label": "head's volunteer hours in a typical week",
+          "group": "engagement",
+          "importance": 0.004221302760747092,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "wealth1",
+          "label": "household wealth, not counting home equity",
+          "group": "wealth",
+          "importance": 0.0023979338696530792,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "walk-forward (seed=42, last wave fold)",
+      "n_configs": 1,
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "target_label": "score"
+    }
+  },
+  "lapse_psid": {
+    "top1pct": {
+      "model": 67.25409862931086,
+      "rule": 43.6517951373639
+    },
+    "top5pct": {
+      "model": 63.502105231512175,
+      "rule": 43.81115996858635
+    },
+    "top10pct": {
+      "model": 58.921338813298576,
+      "rule": 43.611824499448694
+    },
+    "verdict": "wins",
+    "roc_auc": 0.742961373131938,
+    "metadata": {
+      "momentum": false,
+      "seed": 42,
+      "fold_waves": [
+        2015,
+        2017,
+        2019,
+        2021
+      ],
+      "n_per_fold": [
+        3803,
+        3702,
+        3488,
+        3109
+      ],
+      "base_rate_pct": 26.435966529570276
+    },
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "total_giving",
+            "itemized_charitable_contrib_amount",
+            "family_income",
+            "wealth1",
+            "wealth2",
+            "head_volunteer_hours_annual",
+            "spouse_volunteer_hours_annual",
+            "household_volunteer_hours_regular",
+            "head_volunteer_hours_typical_week",
+            "spouse_volunteer_hours_typical_week",
+            "giving_checkpoint_other_2001",
+            "giving_combo",
+            "giving_community",
+            "giving_cultural",
+            "giving_education",
+            "giving_environment",
+            "giving_health",
+            "giving_international",
+            "giving_needy",
+            "giving_other",
+            "giving_religious",
+            "giving_youth",
+            "largest_giving_category",
+            "prior_wave_total",
+            "trend",
+            "waves_given_streak"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "total_giving",
+          "label": "this wave's giving",
+          "group": "recency",
+          "importance": 0.04185445000113147,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        },
+        {
+          "column": "prior_wave_total",
+          "label": "last wave's giving",
+          "group": "recency",
+          "importance": 0.030976726030187217,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        },
+        {
+          "column": "waves_given_streak",
+          "label": "consecutive waves given",
+          "group": "momentum",
+          "importance": 0.009773002421307552,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "wealth2",
+          "label": "household wealth, counting home equity",
+          "group": "wealth",
+          "importance": 0.005978649498766808,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        },
+        {
+          "column": "itemized_charitable_contrib_amount",
+          "label": "charitable deduction claimed on taxes",
+          "group": "giving_history",
+          "importance": 0.005057845488900548,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "walk-forward (seed=42, last wave fold)",
+      "n_configs": 1,
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "target_label": "score"
+    }
+  },
+  "lapse_psid_retention": {
+    "top1pct": {
+      "model": 93.52070782885724,
+      "rule": 93.54132388512694
+    },
+    "top5pct": {
+      "model": 94.38842932271302,
+      "rule": 93.4007334423001
+    },
+    "top10pct": {
+      "model": 94.61315554947919,
+      "rule": 91.86865519833272
+    },
+    "verdict": "modest",
+    "roc_auc": 0.742961373131938,
+    "metadata": {
+      "momentum": false,
+      "seed": 42,
+      "fold_waves": [
+        2015,
+        2017,
+        2019,
+        2021
+      ],
+      "n_per_fold": [
+        3803,
+        3702,
+        3488,
+        3109
+      ],
+      "base_rate_pct": 26.435966529570276
+    }
+  },
+  "ask_psid": {
+    "within25pct_model": 28.80893062134209,
+    "within25pct_last_gift": 28.432754380922898,
+    "mae_model": 1878.231719343879,
+    "mae_rule": 2166.250074632968,
+    "verdict": "modest",
+    "metadata": {
+      "momentum": false,
+      "seed": 42,
+      "fold_waves": [
+        2015,
+        2017,
+        2019,
+        2021
+      ],
+      "n_per_fold": [
+        2881,
+        2773,
+        2360,
+        2360
+      ],
+      "base_rate_pct": null,
+      "target": "next-wave total, given the household gives again"
+    },
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "total_giving",
+            "itemized_charitable_contrib_amount",
+            "family_income",
+            "wealth1",
+            "wealth2",
+            "head_volunteer_hours_annual",
+            "spouse_volunteer_hours_annual",
+            "household_volunteer_hours_regular",
+            "head_volunteer_hours_typical_week",
+            "spouse_volunteer_hours_typical_week",
+            "giving_checkpoint_other_2001",
+            "giving_combo",
+            "giving_community",
+            "giving_cultural",
+            "giving_education",
+            "giving_environment",
+            "giving_health",
+            "giving_international",
+            "giving_needy",
+            "giving_other",
+            "giving_religious",
+            "giving_youth",
+            "largest_giving_category",
+            "prior_wave_total",
+            "trend",
+            "waves_given_streak"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "total_giving",
+          "label": "this wave's giving",
+          "group": "recency",
+          "importance": 821.8143249683483,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "prior_wave_total",
+          "label": "last wave's giving",
+          "group": "recency",
+          "importance": 317.6920999205135,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        },
+        {
+          "column": "giving_religious",
+          "label": "giving to religious causes",
+          "group": "giving_history",
+          "importance": 295.69395045799627,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "itemized_charitable_contrib_amount",
+          "label": "charitable deduction claimed on taxes",
+          "group": "giving_history",
+          "importance": 66.72694273168679,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        },
+        {
+          "column": "largest_giving_category",
+          "label": "largest single cause this wave",
+          "group": "giving_history",
+          "importance": 57.95256110196787,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        }
+      ],
+      "scoring": "neg_mean_absolute_error",
+      "split": "walk-forward (seed=42, last wave fold)",
+      "n_configs": 1,
+      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "target_label": "suggested ask"
+    }
+  },
+  "upgrade_psid_momentum": {
+    "top1pct": {
+      "model": 62.03179989944696,
+      "rule": 22.933163650075414
+    },
+    "top5pct": {
+      "model": 45.683838840484405,
+      "rule": 35.040104937256835
+    },
+    "top10pct": {
+      "model": 42.15388989990901,
+      "rule": 32.23606515565115
+    },
+    "verdict": "wins",
+    "roc_auc": 0.7453952463855555,
+    "metadata": {
+      "momentum": true,
+      "seed": 42,
+      "fold_waves": [
+        2015,
+        2017,
+        2019,
+        2021
+      ],
+      "n_per_fold": [
+        1751,
+        1677,
+        1571,
+        1315
+      ],
+      "base_rate_pct": 16.154577130186887
+    }
+  },
+  "lapse_psid_momentum": {
+    "top1pct": {
+      "model": 67.92693918755039,
+      "rule": 43.6517951373639
+    },
+    "top5pct": {
+      "model": 64.01871765214075,
+      "rule": 43.81115996858635
+    },
+    "top10pct": {
+      "model": 60.73783992753514,
+      "rule": 43.611824499448694
+    },
+    "verdict": "wins",
+    "roc_auc": 0.7510791934994014,
+    "metadata": {
+      "momentum": true,
+      "seed": 42,
+      "fold_waves": [
+        2015,
+        2017,
+        2019,
+        2021
+      ],
+      "n_per_fold": [
+        3803,
+        3702,
+        3488,
+        3109
+      ],
+      "base_rate_pct": 26.435966529570276
+    }
+  },
+  "lapse_psid_retention_momentum": {
+    "top1pct": {
+      "model": 95.79434090894193,
+      "rule": 93.54132388512694
+    },
+    "top5pct": {
+      "model": 94.56893123437821,
+      "rule": 93.4007334423001
+    },
+    "top10pct": {
+      "model": 94.32379379087172,
+      "rule": 91.86865519833272
+    },
+    "verdict": "modest",
+    "roc_auc": 0.7510791934994014,
+    "metadata": {
+      "momentum": true,
+      "seed": 42,
+      "fold_waves": [
+        2015,
+        2017,
+        2019,
+        2021
+      ],
+      "n_per_fold": [
+        3803,
+        3702,
+        3488,
+        3109
+      ],
+      "base_rate_pct": 26.435966529570276
+    }
+  },
+  "ask_psid_momentum": {
+    "within25pct_model": 29.452641787539964,
+    "within25pct_last_gift": 28.432754380922898,
+    "mae_model": 1867.0857655825323,
+    "mae_rule": 2166.250074632968,
+    "verdict": "modest",
+    "metadata": {
+      "momentum": true,
+      "seed": 42,
+      "fold_waves": [
+        2015,
+        2017,
+        2019,
+        2021
+      ],
+      "n_per_fold": [
+        2881,
+        2773,
+        2360,
+        2360
+      ],
+      "base_rate_pct": null,
+      "target": "next-wave total, given the household gives again"
+    }
+  },
   "response_donorschoose_note": "No mailing/appeal log in this file, so a response model has nothing to predict response to.",
   "response_psid_note": "No mailing/appeal log in this extract, so a response model has nothing to predict response to.",
   "who_to_mail_donorschoose_note": "No per-contact mailing cost in this file, so cost-aware selection has no cost side to weigh.",
@@ -1838,7 +2353,7 @@
   "planned_giving_donorschoose_note": "No bequest/estate-intent signal in this file.",
   "planned_giving_psid_note": "No bequest/estate-intent signal in this extract.",
   "_env": {
-    "git_sha": "169aea3cdb71091fa4bb31f877c89bc3b0342e20",
+    "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

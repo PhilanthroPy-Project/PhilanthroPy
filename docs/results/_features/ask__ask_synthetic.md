@@ -28,6 +28,6 @@
         | `recent` | 5.181 (range 1.101 to 9.047) | mixed |
         | `n` | 0.462 (range -2.434 to 3.683) | - |
 
-        Method: permutation importance (`neg_mean_absolute_error`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (train on fiscal years < T, test on T). Git SHA: `169aea3cdb71091fa4bb31f877c89bc3b0342e20`.
+        Method: permutation importance (`neg_mean_absolute_error`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (train on fiscal years < T, test on T). Git SHA: `b0122490e6902ce1e5c9f00e3f0d142874a1c72f`.
 
     Results on your own file will differ.

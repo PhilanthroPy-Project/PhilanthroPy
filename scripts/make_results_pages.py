@@ -1689,14 +1689,14 @@ def main() -> None:
         return entry
 
     def _ask_entry(rows: List, model: str, momentum: bool, extra_meta: Dict[str, Any]):
-        mae_row = _row(rows, model, "mae")
-        if mae_row is None:
-            return None
         within_row = _row(rows, model, "within25pct")
+        if within_row is None:
+            return None
+        mae_row = _row(rows, model, "mae")
         return {
+            "within25pct_model": within_row.value * 100, "within25pct_last_gift": within_row.baseline * 100,
             "mae_model": mae_row.value, "mae_rule": mae_row.baseline,
-            "within25pct_model": within_row.value * 100, "within25pct_rule": within_row.baseline * 100,
-            "verdict": mae_row.verdict,
+            "verdict": within_row.verdict,
             "metadata": {"momentum": momentum, **extra_meta},
         }
 

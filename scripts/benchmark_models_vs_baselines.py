@@ -80,6 +80,7 @@ import urllib.request
 import warnings
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -735,13 +736,16 @@ def bench_forecast(seeds: Sequence[int], n_donors: int, n_years: int, horizon: i
 # --donorschoose-path at a file obtained under their own ICPSR account, and
 # only aggregate statistics are ever printed or written out.
 # --------------------------------------------------------------------------- #
+@lru_cache(maxsize=None)
 def _donorschoose_gift_log(path: str, subsample_fraction: float, seed: int) -> pd.DataFrame:
     """Citizen donors, positive amounts, subsampled to ``subsample_fraction``
     of distinct donors (seed ``seed``): the full file has ~3.1M distinct
     citizen donors, too many for build_leadership_snapshots' own per-donor
     streak loop (``_consecutive_years_given``) to finish in reasonable time
     for the lapse/ask population (anyone who gave, not just the $100-999
-    upgrade band)."""
+    upgrade band). Cached: the ~1.6 GB TSV would otherwise get re-parsed
+    once per (bench function, momentum setting) call in the same process,
+    and every caller only reads the returned frame."""
     gifts = load_donorschoose(path)
     gifts = gifts[(gifts["donor_type"] == "citizen donor") & (gifts["gift_amount"] > 0)].copy()
     rng = np.random.RandomState(seed)
@@ -987,6 +991,15 @@ def bench_ask_donorschoose(
 # themselves from the PSID Data Center, and only aggregate statistics are
 # ever printed or written out.
 # --------------------------------------------------------------------------- #
+@lru_cache(maxsize=None)
+def _psid_long_table(data_path: str, do_path: str) -> pd.DataFrame:
+    """Cached wrapper around :func:`load_psid_philanthropy`: the extract
+    would otherwise get re-parsed once per (bench function, momentum
+    setting) call in the same process, and every caller only reads the
+    returned frame."""
+    return load_psid_philanthropy(data_path, do_path)
+
+
 def _psid_wave_period_snapshots(
     data_path: str, do_path: str, kind: str, include_momentum: bool,
     threshold: float, band: Tuple[float, float],
@@ -997,8 +1010,15 @@ def _psid_wave_period_snapshots(
     is the next wave *year actually present in the file*, not year+2
     arithmetic. Same three ``kind`` values as
     :func:`_gift_log_period_snapshots`, scored on ``total_giving`` instead of
-    a gift-level pivot."""
-    long_df = load_psid_philanthropy(data_path, do_path).sort_values(["household_key", "year"])
+    a gift-level pivot.
+
+    A household is only ever labelled from a next wave it was actually
+    observed in with a resolvable (non-NaN) ``total_giving``: attrition
+    (death, no longer Head, dropped from the extract) and a wave where every
+    giving category came back Don't-Know/NA (``total_giving`` itself NaN)
+    both mean "unknown", not "gave $0", and are excluded from that fold
+    rather than counted as a lapse or a missed upgrade."""
+    long_df = _psid_long_table(data_path, do_path)
     waves = sorted(int(w) for w in long_df["year"].unique())
     if len(waves) < 2:
         return pd.DataFrame(index=pd.Index([], name="household_key"))
@@ -1010,6 +1030,18 @@ def _psid_wave_period_snapshots(
         "head_volunteer_hours_typical_week", "spouse_volunteer_hours_typical_week",
     ] + giving_cols
 
+    # Household x wave pivot of total_giving, for the streak walk below:
+    # O(households x waves) via vectorised cumulative-run logic instead of
+    # the O(households x waves x rows) row-filtering a per-household loop
+    # over `long_df` would do.
+    pivot_total = long_df.pivot(index="household_key", columns="year", values="total_giving")
+    gave = (pivot_total[waves].fillna(0.0) > 0)
+    streak_by_wave = pd.DataFrame(index=gave.index, columns=waves, dtype="int64")
+    running = pd.Series(0, index=gave.index, dtype="int64")
+    for w in waves:
+        running = (running + 1).where(gave[w], 0)
+        streak_by_wave[w] = running
+
     long_df = long_df.copy()
     long_df["_date"] = pd.to_datetime(long_df["year"].astype(str) + "-12-31")
     data_start = long_df["_date"].min()
@@ -1019,12 +1051,13 @@ def _psid_wave_period_snapshots(
         if w not in next_wave:
             continue
         cur = long_df[long_df["year"] == w].set_index("household_key")
-        nxt_total = long_df[long_df["year"] == next_wave[w]].set_index("household_key")["total_giving"]
+        nxt_observed = long_df[long_df["year"] == next_wave[w]].set_index("household_key")["total_giving"].dropna()
 
         if kind == "upgrade":
             cand = cur[(cur["total_giving"] >= band[0]) & (cur["total_giving"] <= band[1]) & (cur["total_giving"] < threshold)]
         else:
             cand = cur[cur["total_giving"] > 0]
+        cand = cand[cand.index.isin(nxt_observed.index)]
         if cand.empty:
             continue
         household_ids = cand.index
@@ -1040,18 +1073,7 @@ def _psid_wave_period_snapshots(
             prior_total = pd.Series(dtype="float64")
         snap["prior_wave_total"] = prior_total.reindex(household_ids)
         snap["trend"] = snap["total_giving"] - snap["prior_wave_total"]
-
-        streak = []
-        for hh in household_ids:
-            count, j = 0, waves.index(w)
-            while j >= 0:
-                total = long_df[(long_df["household_key"] == hh) & (long_df["year"] == waves[j])]["total_giving"]
-                if total.empty or float(total.iloc[0]) <= 0:
-                    break
-                count += 1
-                j -= 1
-            streak.append(count)
-        snap["waves_given_streak"] = streak
+        snap["waves_given_streak"] = streak_by_wave.loc[household_ids, w].to_numpy()
 
         if include_momentum:
             momentum = trailing_slope_features(
@@ -1061,7 +1083,7 @@ def _psid_wave_period_snapshots(
             )
             snap = snap.join(momentum, how="left")
 
-        nxt = nxt_total.reindex(household_ids, fill_value=0.0)
+        nxt = nxt_observed.reindex(household_ids)
         if kind == "upgrade":
             snap["target"] = (nxt >= threshold).astype("int64")
         elif kind == "lapse":
@@ -1132,7 +1154,7 @@ def _psid_lapse_fold(
         model = LapsePredictor(random_state=seed).fit(train[cols].to_numpy("float64"), train["target"].to_numpy())
         lapse_score = model.predict_lapse_score(test[cols].to_numpy("float64")) / 100.0
         rules = {
-            "waves since last gift (streak proxy, negated)": -test["waves_given_streak"].to_numpy(),
+            "shortest giving streak (negated)": -test["waves_given_streak"].to_numpy(),
             "declining trend (negated growth)": -test["trend"].to_numpy(),
         }
         y_lapsed = test["target"].to_numpy()

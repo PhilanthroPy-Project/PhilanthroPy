@@ -52,6 +52,13 @@ def test_index_table_matches_results_json(mrp, tmp_path):
     )
 
 
+def test_results_json_index_matches_a_fresh_build(mrp):
+    fresh = mrp.build_index(RESULTS)
+    for question, row in RESULTS["_index"].items():
+        assert row["bottom_line"] == fresh[question]["bottom_line"], question
+        assert row["cells"] == {ds: c["text"] for ds, c in fresh[question]["cells"].items()}, question
+
+
 def test_every_out_of_100_phrase_is_in_results_json():
     known = set()
     for x in _numbers(RESULTS):
@@ -154,6 +161,18 @@ NUMBER_MAP = [
               _get("response_cup98val.top1pct.rule"), _get("response_cup98val.top10pct.rule")]),
     ("response.md", r"Of our top 5% of picks, (\d+) out of every 100 gave again\. .*? found (\d+) out of every 100",
      lambda: [_get("response_synthetic.top5pct.model"), _get("response_synthetic.top5pct.rule")]),
+    ("response.md", r"the model's top 10% found (\d+\.\d) in 100 who gave, against (\d+\.\d) in 100 for the best rule "
+     r"\(most gifts first\)\. At the top 1% it found (\d+) in 100 against (\d+)\. Picking at random finds about "
+     r"(\d+) in 100",
+     lambda: [_get("response_karlan_list.top10pct.model"), _get("response_karlan_list.top10pct.rule"),
+              _get("response_karlan_list.top1pct.model"), _get("response_karlan_list.top1pct.rule"),
+              _get("response_karlan_list.metadata.base_rate_pct")]),
+    ("response.md", r"the offer raised giving by about (\d+\.\d) in 100\. Among the 30% the uplift model ranked highest, "
+     r"it raised giving by about (\d+\.\d) in 100, against (\d+\.\d) for the best of two simple rules \(most recent "
+     r"donors first\)\. The range on that gap runs from the model about (\d+) in 100 behind to about (\d+) in 100 ahead",
+     lambda: [_get("uplift_karlan_list.everyone"), _get("uplift_karlan_list.top30pct.model"),
+              _get("uplift_karlan_list.top30pct.rule"), -_get("uplift_karlan_list.top30pct.diff_lo"),
+              _get("uplift_karlan_list.top30pct.diff_hi")]),
     # Lapse
     ("lapse.md", r"about (\d+) out of every 100 donors gave nothing to the next mailing",
      lambda: [_get("lapse_kdd98.base_rate_pct")]),
@@ -228,6 +247,12 @@ NUMBER_MAP = [
      lambda: [_get("ask_psid_momentum.within25pct_model"), _get("ask_psid.within25pct_model")]),
     ("ask.md", r"about (\d+) in 100 within 25%, versus about (\d+) in 100",
      lambda: [_get("ask_synthetic.within25pct_model"), _get("ask_synthetic.within25pct_last_gift")]),
+    ("ask.md", r"held-out 30% of the donors: (\d+) who gave\. Of every 100 predicted amounts, (\d+) landed within 25% "
+     r"of the actual gift\. The best rule, the donor's largest past gift, landed within 25% for (\d+) out of every "
+     r"100\. When it missed, the model missed by less: \$(\d+) on average, against \$(\d+) for the rule",
+     lambda: [_get("ask_karlan_list.metadata.n_test"), _get("ask_karlan_list.within25pct_model"),
+              _get("ask_karlan_list.within25pct_last_gift"), _get("ask_karlan_list.mae_model"),
+              _get("ask_karlan_list.mae_rule")]),
     # Who to mail
     ("who_to_mail.md", r"We skipped ([\d,]+) of ([\d,]+) letters and still raised \$([\d,]+) more", _wtm_kdd98),
     ("who_to_mail.md", r"mailing ([\d,]+) of them, is marked.*?brings in \$([\d,]+) after costs, against \$([\d,]+) "

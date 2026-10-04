@@ -1,8 +1,9 @@
 # Response (will they give again?)
 
-**Use the model (tested on one organisation so far).** On one charity's real donor file it beats the simple rule on
-the held-out cup98VAL half, and on the KDD Cup 1998 half it is ahead for your top picks (top 1%
-and 5%). Both halves come from the same charity's mailing, so this is one organisation, not two.
+**Use the model.** It beats the simple rule on two organisations' real donor files. On one
+charity's mailing it wins on the held-out cup98VAL half and is ahead for your top picks (top 1% and
+5%) on the KDD Cup 1998 half; those two halves count as one organisation. On a second charity's
+letter, the Karlan and List experiment, it wins at every list length checked.
 
 === "KDD Cup 1998 (real donor file)"
 
@@ -30,6 +31,24 @@ and 5%). Both halves come from the same charity's mailing, so this is one organi
     So on this real file the model beats the rule for your top picks, on two separate donor
     files from the same program. Results on your own file will differ.
 
+=== "Karlan and List (real donor file)"
+
+    About 50,000 past donors to one US charity got the same fundraising letter in 2005, and about
+    2 in 100 gave. The model saw only what the charity knew before mailing: number of past gifts,
+    largest past gift, months since the last gift, years as a donor, and a few facts from the donor
+    record. The comparison rule is the best of most recent first, largest past gift first, most
+    gifts first, and an RFM cell score built from those three.
+
+    On a held-out 30% of the donors, the model's top 10% found 8.0 in 100 who gave, against 5.5 in
+    100 for the best rule (most gifts first). At the top 1% it found 23 in 100 against 13. Picking at
+    random finds about 2 in 100.
+
+    ![Model vs. best simple rule, top 1/5/10% of picks, Karlan and List](../assets/results/response_karlan_list.png#only-light)
+    ![Model vs. best simple rule, top 1/5/10% of picks, Karlan and List](../assets/results/response_karlan_list-dark.png#only-dark)
+
+    This is a different charity from the KDD Cup 1998 tab, so it is a second, independent check.
+    Results on your own file will differ.
+
 === "Sample data (checks the code runs, not that the model works)"
 
     We pretended it was 30 June 2022: the model only saw gifts up to that date, then we checked
@@ -56,10 +75,31 @@ Results on your own file will differ from both of these.
 response model has nothing to predict response to; the PSID giving/volunteering extract has the
 same gap.
 
+## Does a matching-grant offer move some donors more than others?
+
+The Karlan and List letter came in versions: two in three donors, picked at random, were told a
+matching grant would multiply their gift. Because the offer was random, the file can test an
+uplift model (`UpliftTLearner`), which ranks donors by how much the offer raises their chance of
+giving, not by how likely they are to give at all.
+
+Across all held-out donors, the offer raised giving by about 0.4 in 100. Among the 30% the uplift
+model ranked highest, it raised giving by about 0.6 in 100, against 0.5 for the best of two simple
+rules (most recent donors first). The range on that gap runs from the model about 1 in 100 behind
+to about 1 in 100 ahead, so this is **about the same as the rule**. Ranking donors by who the
+offer moves most does not yet beat ranking by recency on this file.
+
+Aggregates only; no donor-level figures are shown here.
+
+Karlan, D. and List, J. A. (2007), "Does Price Matter in Charitable Giving? Evidence from a
+Large-Scale Natural Field Experiment", *American Economic Review* 97(5): 1774-1793. Data from
+openICPSR 113224 (doi:10.3886/E113224V1), CC BY 4.0, copyright American Economic Association 2007.
+
 ## What the model looks at
 
 --8<-- "results/_features/response__response_kdd98.md"
 
 --8<-- "results/_features/response__response_cup98val.md"
+
+--8<-- "results/_features/response__response_karlan_list.md"
 
 --8<-- "results/_features/response__response_synthetic.md"

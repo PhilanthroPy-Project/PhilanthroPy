@@ -771,6 +771,16 @@ FEATURE_INFO = {
     "recency": ("months since last gift", "recency"),
     "frequency": ("number of gifts", "giving_history"),
     "monetary": ("lifetime giving", "giving_history"),
+    # shared snapshot builder (philanthropy.ingest.build_snapshots): a period
+    # is a fiscal year on a gift log and a survey wave on PSID
+    "period_total": ("giving this year (this wave on PSID)", "recency"),
+    "period_total_prior1": ("giving the year before (the wave before on PSID)", "recency"),
+    "period_total_prior2": ("giving two years before (two waves before on PSID)", "recency"),
+    "period_trend": ("giving trend, this year vs the one before", "momentum"),
+    "consecutive_periods_given": ("consecutive years (or waves) given", "momentum"),
+    "gave_prior1": ("gave the year (or wave) before", "recency"),
+    "gave_prior2": ("gave two years (or waves) before", "recency"),
+    "periods_since_first_gift": ("years (or waves) since first gift", "giving_history"),
     # PSID household x wave snapshots (bm._psid_wave_period_snapshots)
     "total_giving": ("this wave's giving", "recency"),
     "prior_wave_total": ("last wave's giving", "recency"),
@@ -1180,9 +1190,14 @@ def _drivers_donorschoose(path: str, seed: int, kind: str, make_model, scoring: 
     (``_gift_log_period_snapshots`` reuses ``build_leadership_snapshots``'
     internals)."""
     gifts = bm._donorschoose_gift_log(path, bm.DONORSCHOOSE_SUBSAMPLE, bm.DONORSCHOOSE_SEED)
-    snap = bm._gift_log_period_snapshots(gifts, 7, kind, False, 1000.0, (100.0, 999.0))
+    if kind == "lapse":
+        snap = bm._donorschoose_lapse_snapshots(gifts, False)
+        period, cols = "period", bm._snapshot_feature_cols(snap, "donor_id")
+    else:
+        snap = bm._gift_log_period_snapshots(gifts, 7, kind, False, 1000.0, (100.0, 999.0))
+        period, cols = "fiscal_year", UPGRADE_FEATURE_COLS[1:]
     return _drivers_last_fold(
-        snap, "fiscal_year", bm.DONORSCHOOSE_N_FOLDS, UPGRADE_FEATURE_COLS[1:], seed, kind, make_model, scoring,
+        snap, period, bm.DONORSCHOOSE_N_FOLDS, cols, seed, kind, make_model, scoring,
         split=f"walk-forward (subsample={bm.DONORSCHOOSE_SUBSAMPLE}, seed={bm.DONORSCHOOSE_SEED}, last fiscal-year fold)",
         target_label=target_label,
     )
@@ -1212,9 +1227,12 @@ def drivers_psid(data_path: str, do_path: str, seed: int, kind: str) -> Dict[str
         "lapse": (lambda s: bm.LapsePredictor(random_state=s), "roc_auc", "score"),
         "ask": (lambda s: bm.AskAmountRecommender(random_state=s), "neg_mean_absolute_error", "suggested ask"),
     }[kind]
-    snap = bm._psid_wave_period_snapshots(data_path, do_path, kind, False, 1000.0, (100.0, 999.0))
+    if kind == "lapse":
+        snap, period = bm._psid_lapse_snapshots(data_path, do_path, False), "period"
+    else:
+        snap, period = bm._psid_wave_period_snapshots(data_path, do_path, kind, False, 1000.0, (100.0, 999.0)), "wave"
     return _drivers_last_fold(
-        snap, "wave", bm.PSID_N_FOLDS, bm._snapshot_feature_cols(snap, "household_key"), seed, kind, make_model, scoring,
+        snap, period, bm.PSID_N_FOLDS, bm._snapshot_feature_cols(snap, "household_key"), seed, kind, make_model, scoring,
         split=f"walk-forward (seed={bm.PSID_SEED}, last wave fold)", target_label=target_label,
     )
 
@@ -2049,26 +2067,32 @@ def main() -> None:
 
     def _donorschoose_fold_meta(kind: str, threshold: float = 1000.0, band: tuple = (100.0, 999.0)) -> Dict[str, Any]:
         gifts = bm._donorschoose_gift_log(args.donorschoose_path, bm.DONORSCHOOSE_SUBSAMPLE, bm.DONORSCHOOSE_SEED)
-        snap = bm._gift_log_period_snapshots(gifts, 7, kind, False, threshold, band)
+        if kind == "lapse":
+            snap, period = bm._donorschoose_lapse_snapshots(gifts, False), "period"
+        else:
+            snap, period = bm._gift_log_period_snapshots(gifts, 7, kind, False, threshold, band), "fiscal_year"
         if snap.empty:
             return {"subsample": bm.DONORSCHOOSE_SUBSAMPLE, "seed": bm.DONORSCHOOSE_SEED, "fold_years": [], "n_per_fold": [], "base_rate_pct": None}
-        test_years = bm._walk_forward_test_periods(snap, "fiscal_year", bm.DONORSCHOOSE_N_FOLDS)
-        test = snap[snap["fiscal_year"].isin(test_years)]
+        test_years = bm._walk_forward_test_periods(snap, period, bm.DONORSCHOOSE_N_FOLDS)
+        test = snap[snap[period].isin(test_years)]
         return {
             "subsample": bm.DONORSCHOOSE_SUBSAMPLE, "seed": bm.DONORSCHOOSE_SEED,
-            "fold_years": test_years, "n_per_fold": [int((test["fiscal_year"] == t).sum()) for t in test_years],
+            "fold_years": test_years, "n_per_fold": [int((test[period] == t).sum()) for t in test_years],
             "base_rate_pct": float(test["target"].mean()) * 100 if kind != "ask" else None,
         }
 
     def _psid_fold_meta(kind: str, threshold: float = 1000.0, band: tuple = (100.0, 999.0)) -> Dict[str, Any]:
-        snap = bm._psid_wave_period_snapshots(args.psid_data, args.psid_do, kind, False, threshold, band)
+        if kind == "lapse":
+            snap, period = bm._psid_lapse_snapshots(args.psid_data, args.psid_do, False), "period"
+        else:
+            snap, period = bm._psid_wave_period_snapshots(args.psid_data, args.psid_do, kind, False, threshold, band), "wave"
         if snap.empty:
             return {"seed": bm.PSID_SEED, "fold_waves": [], "n_per_fold": [], "base_rate_pct": None}
-        test_waves = bm._walk_forward_test_periods(snap, "wave", bm.PSID_N_FOLDS)
-        test = snap[snap["wave"].isin(test_waves)]
+        test_waves = bm._walk_forward_test_periods(snap, period, bm.PSID_N_FOLDS)
+        test = snap[snap[period].isin(test_waves)]
         return {
             "seed": bm.PSID_SEED, "fold_waves": test_waves,
-            "n_per_fold": [int((test["wave"] == w).sum()) for w in test_waves],
+            "n_per_fold": [int((test[period] == w).sum()) for w in test_waves],
             "base_rate_pct": float(test["target"].mean()) * 100 if kind != "ask" else None,
         }
 

@@ -1,6 +1,6 @@
 === "DonorsChoose (real donor file)"
 
-    On this file the model looks at 8 things about each donor.
+    On this file the model looks at 11 things about each donor.
 
     | What it knows | What that means |
     |---|---|
@@ -14,23 +14,23 @@
 
     | What raises or lowers the score | |
     |---|---|
-    | this year's giving | ▼ lowers the score |
-    | largest gift this year | ▼ lowers the score |
-    | giving trend, this year vs last | ▼ lowers the score |
+    | number of gifts this year | ▼ lowers the score |
     | months since last gift | ▲ raises the score |
-    | giving two years ago | ● depends |
+    | giving this year (this wave on PSID) | ▼ lowers the score |
+    | giving the year before (the wave before on PSID) | ▼ lowers the score |
+    | consecutive years (or waves) given | ▼ lowers the score |
 
     ??? note "For analysts"
-        Columns: `fy_total`, `fy_total_prior1`, `fy_total_prior2`, `fy_trend`, `largest_gift`, `gift_count`, `consecutive_years_given`, `months_since_last_gift`
+        Columns: `period_total`, `period_total_prior1`, `period_total_prior2`, `period_trend`, `largest_gift`, `consecutive_periods_given`, `gave_prior1`, `gave_prior2`, `periods_since_first_gift`, `gift_count`, `months_since_last_gift`
 
         | Column | Importance | Direction |
         |---|---|---|
-        | `fy_total` | 0.091 | - |
-        | `largest_gift` | 0.068 | - |
-        | `fy_trend` | 0.057 | - |
-        | `months_since_last_gift` | 0.029 | + |
-        | `fy_total_prior2` | 0.010 | mixed |
+        | `gift_count` | 0.022 | - |
+        | `months_since_last_gift` | 0.022 | + |
+        | `period_total` | 0.021 | - |
+        | `period_total_prior1` | 0.002 | - |
+        | `consecutive_periods_given` | 0.001 | - |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (subsample=0.1, seed=42, last fiscal-year fold). Git SHA: `de2889b263d07df02d35ed429310103c37cc8de6`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (subsample=0.1, seed=42, last fiscal-year fold). Git SHA: `1f042056e7ac724e7d54aa96958c703717c5ec50`.
 
     Results on your own file will differ.

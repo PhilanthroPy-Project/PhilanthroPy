@@ -101,7 +101,8 @@ from philanthropy.datasets import (
     load_psid_philanthropy,
     make_donor_panel,
 )
-from philanthropy.ingest import build_leadership_snapshots
+from philanthropy.ingest import build_leadership_snapshots, build_snapshots
+from philanthropy.ingest._snapshots import period_snapshots
 from philanthropy.ingest._upgrade_snapshots import _column, _prepare_gifts, _snapshot_features_for_year
 from philanthropy.metrics import fundraising_roi
 from philanthropy.model_selection import FiscalYearGroupedSplitter
@@ -882,8 +883,55 @@ def _gift_log_period_snapshots(
 def _snapshot_feature_cols(snap: pd.DataFrame, id_col: str) -> List[str]:
     return [
         c for c in snap.columns
-        if c not in ("target", "fiscal_year", "wave", id_col) and pd.api.types.is_numeric_dtype(snap[c])
+        if c not in ("target", "fiscal_year", "wave", "period", id_col) and pd.api.types.is_numeric_dtype(snap[c])
     ]
+
+
+# Lapse is asked about donors with at least two giving years (E.15 2.3.2):
+# the donors a retention program can act on, not one-time givers whose lapse
+# is near-certain. Every lapse bench builds its rows with the shared
+# philanthropy.ingest builder so the model sees the same gift columns on
+# every file; a bench's own frame only adds what that file has beyond them
+# (momentum, PSID household income, wealth and volunteering).
+LAPSE_MIN_YEARS_GIVEN = 2
+_BUILDER_OWNED_COLS = (
+    "fy_total", "fy_total_prior1", "fy_total_prior2", "fy_trend", "largest_gift", "gift_count",
+    "consecutive_years_given", "months_since_last_gift", "fy_total_growth_ratio",
+    "total_giving", "prior_wave_total", "trend", "largest_giving_category", "waves_given_streak", "target",
+)
+
+
+def _join_extras(snap: pd.DataFrame, extra: pd.DataFrame, id_col: str, period_col: str) -> pd.DataFrame:
+    extra = extra.rename(columns={period_col: "period"})
+    extra = extra.drop(columns=[c for c in _BUILDER_OWNED_COLS if c in extra.columns])
+    return snap.merge(extra, on=[id_col, "period"], how="left")
+
+
+def _donorschoose_lapse_snapshots(gifts: pd.DataFrame, include_momentum: bool) -> pd.DataFrame:
+    snap = build_snapshots(gifts, kind="lapse", min_years_given=LAPSE_MIN_YEARS_GIVEN, fiscal_year_start=7)
+    snap = snap.reset_index()
+    if include_momentum:
+        extra = _gift_log_period_snapshots(gifts, 7, "lapse", True, 1000.0, (100.0, 999.0))
+        snap = _join_extras(snap, extra, "donor_id", "fiscal_year")
+    return snap
+
+
+def _psid_lapse_snapshots(data_path: str, do_path: str, include_momentum: bool) -> pd.DataFrame:
+    """PSID waves through the shared period builder: a wave is a period and
+    "prior" is the previous wave in the file. ``largest_gift`` is the
+    largest single giving category, the closest this survey has to a
+    largest gift."""
+    long_df = _psid_long_table(data_path, do_path)
+    giving_cols = [c for c in long_df.columns if c.startswith("giving_")]
+    totals = long_df.pivot(index="household_key", columns="year", values="total_giving").sort_index(axis=1)
+    largest = (
+        long_df.assign(_largest=long_df[giving_cols].max(axis=1))
+        .pivot(index="household_key", columns="year", values="_largest")
+        .reindex(index=totals.index, columns=totals.columns)
+    )
+    snap = period_snapshots(totals, kind="lapse", largest=largest, min_years_given=LAPSE_MIN_YEARS_GIVEN).reset_index()
+    extra = _psid_wave_period_snapshots(data_path, do_path, "lapse", include_momentum, 1000.0, (100.0, 999.0))
+    return _join_extras(snap, extra, "household_key", "wave")
 
 
 def _walk_forward_test_periods(snap: pd.DataFrame, period_col: str, n_folds: int) -> List[int]:
@@ -932,15 +980,15 @@ def bench_upgrade_donorschoose(
 def _donorschoose_lapse_fold(
     gifts: pd.DataFrame, seed: int, include_momentum: bool, n_test_folds: int, retention: bool,
 ) -> List[Row]:
-    snap = _gift_log_period_snapshots(gifts, 7, "lapse", include_momentum, threshold=1000.0, band=(100.0, 999.0))
+    snap = _donorschoose_lapse_snapshots(gifts, include_momentum)
     if snap.empty:
         return []
     cols = _snapshot_feature_cols(snap, "donor_id")
-    test_years = _walk_forward_test_periods(snap, "fiscal_year", n_test_folds)
+    test_years = _walk_forward_test_periods(snap, "period", n_test_folds)
 
     seed_rows = []
     for t in test_years:
-        train, test = snap[snap["fiscal_year"] < t], snap[snap["fiscal_year"] == t]
+        train, test = snap[snap["period"] < t], snap[snap["period"] == t]
         if train.empty or test.empty or test["target"].nunique() < 2:
             continue
         model = LapsePredictor(random_state=seed).fit(
@@ -949,8 +997,8 @@ def _donorschoose_lapse_fold(
         lapse_score = model.predict_lapse_score(test[cols].to_numpy("float64")) / 100.0
         rules = {
             "months since last gift": test["months_since_last_gift"].to_numpy(),
-            "shortest giving streak (negated)": -test["consecutive_years_given"].to_numpy(),
-            "declining trend (negated growth)": -test["fy_trend"].to_numpy(),
+            "shortest giving streak (negated)": -test["consecutive_periods_given"].to_numpy(),
+            "declining trend (negated growth)": -test["period_trend"].to_numpy(),
         }
         y_lapsed = test["target"].to_numpy()
         split = f"walk-forward (seed={seed}, fold=FY{t}, momentum={include_momentum})"
@@ -1197,26 +1245,26 @@ def bench_upgrade_psid(
 def _psid_lapse_fold(
     data_path: str, do_path: str, seed: int, include_momentum: bool, n_test_folds: int, retention: bool,
 ) -> List[Row]:
-    snap = _psid_wave_period_snapshots(data_path, do_path, "lapse", include_momentum, threshold=1000.0, band=(100.0, 999.0))
+    snap = _psid_lapse_snapshots(data_path, do_path, include_momentum)
     if snap.empty:
         return []
     cols = _snapshot_feature_cols(snap, "household_key")
-    test_waves = _walk_forward_test_periods(snap, "wave", n_test_folds)
+    test_waves = _walk_forward_test_periods(snap, "period", n_test_folds)
 
     seed_rows = []
     for w in test_waves:
-        train, test = snap[snap["wave"] < w], snap[snap["wave"] == w]
+        train, test = snap[snap["period"] < w], snap[snap["period"] == w]
         if train.empty or test.empty or test["target"].nunique() < 2:
             continue
         model = LapsePredictor(random_state=seed).fit(train[cols].to_numpy("float64"), train["target"].to_numpy())
         lapse_score = model.predict_lapse_score(test[cols].to_numpy("float64")) / 100.0
         rules = {
-            "shortest giving streak (negated)": -test["waves_given_streak"].to_numpy(),
-            "declining trend (negated growth)": -test["trend"].to_numpy(),
+            "shortest giving streak (negated)": -test["consecutive_periods_given"].to_numpy(),
+            "declining trend (negated growth)": -test["period_trend"].to_numpy(),
             # Smallest givers lapse first. "Months since last gift" and the
             # LYBUNT flag are not here: every household in this population
             # gave in wave W and dates are wave-level, so both are constant.
-            "this-wave total (negated)": -test["total_giving"].to_numpy(),
+            "this-wave total (negated)": -test["period_total"].to_numpy(),
         }
         y_lapsed = test["target"].to_numpy()
         split = f"walk-forward (seed={seed}, fold=wave{w}, momentum={include_momentum})"

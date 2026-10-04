@@ -29,6 +29,6 @@
         | `monetary` | 0.008 | - |
         | `tenure` | 0.005 | - |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Git SHA: `fbdb12e026b5950383070a26fe5076b52bd36941`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Git SHA: `52c038b6530f00484a223f6981cb74596151c21f`.
 
     Results on your own file will differ.

@@ -33,6 +33,6 @@
         | `head_volunteer_hours_typical_week` | 0.004 | + |
         | `wealth1` | 0.002 | mixed |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (seed=42, last wave fold). Git SHA: `fbdb12e026b5950383070a26fe5076b52bd36941`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (seed=42, last wave fold). Git SHA: `52c038b6530f00484a223f6981cb74596151c21f`.
 
     Results on your own file will differ.

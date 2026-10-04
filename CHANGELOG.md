@@ -45,6 +45,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   data (lapse), or most did (major gift).
 
 ### Changed
+- KDD Cup 1998 feature checks, recorded with no published number moving.
+  On the 15% validation fold (paired bootstrap, seed 42), adding the 12
+  donor-table columns and three as-of mailing features (`promos_received`,
+  `response_rate`, `months_since_last_promo`) to the response models did
+  not lift top-10%: `DonorPropensityModel` 9.36 to 9.64 [-0.91, +1.47],
+  `MajorGiftClassifier` 9.71 to 9.29 [-1.82, +0.77], so both keep the four
+  RFM columns (cup98VAL, looked at during exploration, showed
+  `DonorPropensityModel` +0.74 [+0.28, +1.12]; validation decides). The
+  same mailing features in the who-to-mail response model lowered
+  validation net revenue on all five seeds. Isotonic calibration of
+  `DonorPropensityModel` is not recommended (docstring note). KDD98 lapse
+  stays on its promotion panel: only 242 donors gave in the last history
+  promotion against 4,843 to the 97NK mailing, so the shared builder's
+  "gave in T" population is not real there; the parity test's skip reason
+  says so.
 - Results, lapse: the DonorsChoose and PSID lapse benchmarks now build their
   rows with `build_snapshots` / `period_snapshots`, so both feed
   `LapsePredictor` the same shared gift columns (a new parity test checks

@@ -66,7 +66,11 @@ def test_psid_lapse_uses_shared_columns(monkeypatch):
     assert "family_income" in snap.columns, "PSID keeps its own household columns next to the shared ones"
 
 
-@pytest.mark.skip(reason="KDD Cup 1998 lapse moves onto the shared builder with the KDD98 frame (E.15 PR D)")
+@pytest.mark.skip(reason=(
+    "KDD Cup 1998 lapse stays on its promotion panel: the gift history is effectively unrecorded for the "
+    "last four promotions (242 donors gave in RAMNT_3, against 4,843 to the 97NK mailing and 8,000 to 27,000 "
+    "in earlier promotions), so 'gave in T' at the published test period is not a real population"
+))
 def test_kdd98_lapse_uses_shared_columns():
     pass
 

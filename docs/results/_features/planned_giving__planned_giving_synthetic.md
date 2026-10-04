@@ -28,6 +28,6 @@
         | `recent` | 0.017 (range 0.001 to 0.050) | - |
         | `n` | 0.001 (range -0.003 to 0.005) | - |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (train on fiscal years < T, test on T). Git SHA: `52c038b6530f00484a223f6981cb74596151c21f`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (train on fiscal years < T, test on T). Git SHA: `39d544a09f786786b1e99c0bc67ff7ec0057560a`.
 
     Results on your own file will differ.

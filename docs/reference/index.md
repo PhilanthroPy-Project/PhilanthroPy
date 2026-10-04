@@ -52,6 +52,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `SolicitationWindowTransformer` | `preprocessing` | Supported alias of the above; shares its tier. |
 | `MatchingGiftFeaturizer` | `preprocessing` | The employer-normalisation rules will grow. |
 | `AskAmountRecommender` | `models` | The ask-ladder multipliers are a heuristic. |
+| `suggest_ask` | `models` | New; the default `stretch` (10%) and `round_to` ($25) are policy choices, not estimates, and may change. |
 | `constituent_events_to_features`, `read_constituent_events` | `ingest` | Tracks the UniSchema `ConstituentEvent` schema, which is versioned upstream. |
 | `civicrm_contributions_to_features`, `read_civicrm_contributions` | `ingest` | Tracks CiviCRM's contribution export labels and APIv4 field names, which move with the CRM. |
 | `raisers_edge_gifts_to_features`, `read_raisers_edge_gifts`, `DEFAULT_EXCLUDED_GIFT_TYPES` | `ingest` | Tracks Raiser's Edge export labels and the RE NXT gift-type vocabulary; the excluded-type default will grow as real exports arrive. |
@@ -97,6 +98,7 @@ Every domain method returns a number on its own scale. None of them are calibrat
 | `DischargeToSolicitationWindowTransformer.transform` | `(n, 2)` float | `in_solicitation_window` in {0, 1}; `window_position_score` 0–1 |
 | `GratefulPatientFeaturizer.transform` | `(n, 4)` float | Unbounded counts and weighted sums, all ≥ 0 |
 | `AskAmountRecommender.ask_ladder` | `(n, 3)` float | **Dollars**, not a score: conservative / target / stretch |
+| `suggest_ask` | `(n,)` float | **Dollars**: max(last gift, average gift), stretched and rounded up; no model |
 | `MovesManagementClassifier.action_priority` | `dict` | Not an array: `stage`, `confidence` (0–1), `portfolio_summary` |
 | `score_leadership_prospects` | `DataFrame` | `affinity_score` 0–100 (from `MajorGiftClassifier`), plus `rank`, `decile`; `suggested_ask` is `NaN` (see the stability-tier note) |
 | `FinancialForecastModel.predict_revenue_forecast` | `(horizon,)` float | **Dollars per future period**, length is `horizon`, not `len(X)` |

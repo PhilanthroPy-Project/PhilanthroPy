@@ -90,7 +90,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score"
     }
   },
@@ -206,7 +206,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score"
     }
   },
@@ -234,6 +234,8 @@
   "ask_synthetic": {
     "within25pct_model": 23.11009415644001,
     "within25pct_last_gift": 23.657446585915693,
+    "revenue_top10pct_model": 14.403584683320203,
+    "revenue_top10pct_rule": 10.223648862382788,
     "features": {
       "sets": [
         {
@@ -279,7 +281,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "suggested ask"
     }
   },
@@ -371,7 +373,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (FiscalYearGroupedSplitter, last split)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score"
     }
   },
@@ -453,7 +455,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score"
     }
   },
@@ -657,7 +659,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score"
     }
   },
@@ -751,7 +753,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward by fiscal year (train FY1994, test FY1995)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score"
     }
   },
@@ -847,7 +849,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score"
     },
     "nearly_everyone_lapses": true
@@ -884,6 +886,11 @@
     "verdict": "loses",
     "diff_lo": -4.198210598761176,
     "diff_hi": -0.6194081211287061,
+    "revenue_top10pct_model": 22.237729272549824,
+    "revenue_top10pct_rule": 21.74244705676332,
+    "revenue_top10pct_diff_lo": -0.2738222919177452,
+    "revenue_top10pct_diff_hi": 1.0410197978419569,
+    "revenue_top10pct_verdict": "modest",
     "features": {
       "sets": [
         {
@@ -961,7 +968,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "suggested ask"
     }
   },
@@ -1049,7 +1056,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score"
     },
     "curve": {
@@ -1227,7 +1234,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score",
       "reused_from_note": "Same response model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     },
@@ -1399,7 +1406,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score",
       "reused_from_note": "Same model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     }
@@ -1513,7 +1520,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score"
     }
   },
@@ -1630,7 +1637,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score"
     },
     "nearly_everyone_lapses": false
@@ -1688,6 +1695,11 @@
     "verdict": "loses",
     "diff_lo": -2.4364406779661008,
     "diff_hi": -1.173319729626321,
+    "revenue_top10pct_model": 63.98666143889101,
+    "revenue_top10pct_rule": 64.12135981339728,
+    "revenue_top10pct_diff_lo": -0.57580798453708,
+    "revenue_top10pct_diff_hi": 0.2744188935876579,
+    "revenue_top10pct_verdict": "modest",
     "metadata": {
       "momentum": false,
       "subsample": 0.1,
@@ -1775,7 +1787,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "suggested ask"
     }
   },
@@ -1914,6 +1926,11 @@
     "verdict": "loses",
     "diff_lo": -1.7866172256868318,
     "diff_hi": -1.1198547215496346,
+    "revenue_top10pct_model": 64.06712462651407,
+    "revenue_top10pct_rule": 64.12135981339728,
+    "revenue_top10pct_diff_lo": -0.5675864971770084,
+    "revenue_top10pct_diff_hi": 0.4574238252807228,
+    "revenue_top10pct_verdict": "modest",
     "metadata": {
       "momentum": true,
       "subsample": 0.1,
@@ -2060,7 +2077,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score"
     }
   },
@@ -2194,7 +2211,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score"
     },
     "nearly_everyone_lapses": false
@@ -2251,6 +2268,11 @@
     "verdict": "modest",
     "diff_lo": -0.4237288135593209,
     "diff_hi": 1.2495661228740074,
+    "revenue_top10pct_model": 42.97133325652199,
+    "revenue_top10pct_rule": 41.62919280700324,
+    "revenue_top10pct_diff_lo": 0.10305688317119865,
+    "revenue_top10pct_diff_hi": 3.7765560636127016,
+    "revenue_top10pct_verdict": "wins",
     "metadata": {
       "momentum": false,
       "seed": 42,
@@ -2355,7 +2377,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "suggested ask"
     }
   },
@@ -2490,6 +2512,11 @@
     "verdict": "modest",
     "diff_lo": -0.2966101694915235,
     "diff_hi": 2.4297119055883387,
+    "revenue_top10pct_model": 42.885667698211684,
+    "revenue_top10pct_rule": 41.62919280700324,
+    "revenue_top10pct_diff_lo": 0.23501973985952662,
+    "revenue_top10pct_diff_hi": 3.5501082615678916,
+    "revenue_top10pct_verdict": "wins",
     "metadata": {
       "momentum": true,
       "seed": 42,
@@ -2615,7 +2642,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "score"
     }
   },
@@ -2629,6 +2656,11 @@
     "verdict": "modest",
     "diff_lo": -4.193548387096774,
     "diff_hi": 10.653225806451605,
+    "revenue_top10pct_model": 26.925130121446685,
+    "revenue_top10pct_rule": 27.592419591618842,
+    "revenue_top10pct_diff_lo": -7.150004421947107,
+    "revenue_top10pct_diff_hi": 1.1378731778984486,
+    "revenue_top10pct_verdict": "modest",
     "metadata": {
       "n_donors": 50083,
       "base_rate_pct": 2.0645728091368327,
@@ -2705,7 +2737,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
       "target_label": "suggested ask"
     }
   },
@@ -2795,7 +2827,7 @@
     }
   },
   "_env": {
-    "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
+    "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

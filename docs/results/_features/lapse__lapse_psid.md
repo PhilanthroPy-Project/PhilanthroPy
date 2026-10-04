@@ -33,6 +33,6 @@
         | `wealth2` | 0.010 | mixed |
         | `consecutive_periods_given` | 0.008 | - |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (seed=42, last wave fold). Git SHA: `52c038b6530f00484a223f6981cb74596151c21f`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (seed=42, last wave fold). Git SHA: `39d544a09f786786b1e99c0bc67ff7ec0057560a`.
 
     Results on your own file will differ.

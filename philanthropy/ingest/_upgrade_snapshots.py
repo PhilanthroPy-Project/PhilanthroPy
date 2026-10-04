@@ -23,8 +23,10 @@ directly when an activity log is supplied.
 
 from __future__ import annotations
 
+import re
 from typing import Iterable, Mapping, Optional, Tuple, Union
 
+import numpy as np
 import pandas as pd
 
 from philanthropy.preprocessing import FiscalYearTransformer
@@ -43,7 +45,7 @@ def build_leadership_snapshots(
     gifts: Union[Iterable[Mapping], pd.DataFrame],
     *,
     fiscal_years: Iterable[int],
-    threshold: float = 1000,
+    threshold: Union[float, str] = 1000,
     band: Tuple[float, float] = (100, 999),
     fiscal_year_start: int = 7,
     activities: Optional[Union[Iterable[Mapping], pd.DataFrame]] = None,
@@ -71,10 +73,15 @@ def build_leadership_snapshots(
     fiscal_years : iterable of int
         The snapshot years ``T`` to build. One donor can appear once per year
         it qualified for the band, so passing several years stacks rows.
-    threshold : float, default=1000
+    threshold : float or str, default=1000
         The leadership-giving level an upgrade crosses into. Also the upper
         exclusive bound of the candidate population: a donor at or above this
-        in FY T already gave at that level and is not a candidate.
+        in FY T already gave at that level and is not a candidate. A string
+        ``"pNN"`` (e.g. ``"p93"``) is a percentile instead of a dollar
+        amount: the NNth percentile of every positive donor FY total in the
+        snapshot years ``fiscal_years`` (never their T+1 label years), so a
+        file in small dollars and one in large dollars ask the same
+        question. The resolved dollar value is in ``snapshots.attrs["threshold"]``.
     band : (float, float), default=(100, 999)
         Inclusive ``(low, high)`` bounds on FY T total giving that define the
         upgrade-candidate population. ``high`` should sit below ``threshold``
@@ -139,8 +146,9 @@ def build_leadership_snapshots(
         If ``gifts`` is missing ``donor_id``, ``gift_date`` or
         ``gift_amount``.
     ValueError
-        If ``fiscal_year_start`` is not between 1 and 12, or ``band[0] >
-        band[1]``.
+        If ``fiscal_year_start`` is not between 1 and 12, ``band[0] >
+        band[1]``, or ``threshold`` is a string that is not ``"pNN"`` with
+        ``0 < NN < 100``.
 
     Examples
     --------
@@ -176,6 +184,10 @@ def build_leadership_snapshots(
         raise ValueError(f"band[0] ({low}) must be <= band[1] ({high}).")
 
     df, pivot_sum, pivot_max, pivot_count = _prepare_gifts(gifts, fiscal_year_start)
+    fiscal_years = [int(fy) for fy in fiscal_years]
+    threshold = _resolve_threshold(
+        threshold, pivot_sum.reindex(columns=fiscal_years).to_numpy().ravel()
+    )
 
     donors_norm = None
     if donors is not None:
@@ -203,11 +215,15 @@ def build_leadership_snapshots(
         snapshots.append(snap)
 
     if not snapshots:
-        return pd.DataFrame(index=pd.Index([], name="donor_id", dtype="object"))
+        empty = pd.DataFrame(index=pd.Index([], name="donor_id", dtype="object"))
+        empty.attrs["threshold"] = threshold
+        return empty
 
     out = pd.concat(snapshots)
     out = out.reset_index().sort_values(["fiscal_year", "donor_id"], kind="stable")
-    return out.set_index("donor_id")
+    out = out.set_index("donor_id")
+    out.attrs["threshold"] = threshold
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -219,6 +235,20 @@ def build_leadership_snapshots(
 # donor/fiscal-year feature logic for an unlabelled "current" row that this
 # function's target computation (reading FY T+1) does not apply to.
 # --------------------------------------------------------------------------- #
+def _resolve_threshold(threshold: Union[float, str], totals: np.ndarray) -> float:
+    """A dollar threshold as-is, or ``"pNN"`` resolved as the NNth
+    percentile of the positive values in ``totals``."""
+    if not isinstance(threshold, str):
+        return float(threshold)
+    match = re.fullmatch(r"p(\d+(?:\.\d+)?)", threshold.strip())
+    if match is None or not 0 < float(match.group(1)) < 100:
+        raise ValueError(f"threshold must be a number or 'pNN' with 0 < NN < 100; got {threshold!r}.")
+    positive = totals[np.isfinite(totals) & (totals > 0)]
+    if positive.size == 0:
+        raise ValueError(f"threshold={threshold!r} needs at least one positive fiscal-year total to resolve.")
+    return float(np.percentile(positive, float(match.group(1))))
+
+
 def _to_frame(gifts: Union[Iterable[Mapping], pd.DataFrame]) -> pd.DataFrame:
     if isinstance(gifts, pd.DataFrame):
         return gifts

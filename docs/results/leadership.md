@@ -52,7 +52,8 @@ on your own donors before relying on it.
 === "KDD Cup 1998 (real donor file)"
 
     KDD98's gifts top out far lower than a major-gift program's, so the threshold is rescaled to
-    $50 (roughly this file's 93rd percentile of annual per-donor giving) instead of $1,000, and
+    $50 (the 92nd percentile of per-donor giving in the two fiscal years tested, set with
+    `threshold="p92"`) instead of $1,000, and
     the test is walk-forward by fiscal year rather than the sample data's random split (this file
     has only one real fiscal-year transition to test on; see "Which data" below).
 
@@ -137,6 +138,24 @@ on your own donors before relying on it.
 
     Panel Study of Income Dynamics, public use dataset. Produced and distributed by the Survey
     Research Center, Institute for Social Research, University of Michigan, Ann Arbor, MI.
+
+??? note "For analysts: does the model carry over to a file it never saw?"
+
+    We fit the upgrade model on DonorsChoose alone, using only columns that mean the same thing on
+    any file whatever its dollar scale (this year's total over the largest gift, the largest gift
+    over last year's total, gifts per year of the current streak, rank within the year, the
+    streak itself, whether the donor gave in each of the last two years, and years since the
+    first gift; no dollar amounts), then scored two files it never saw, each against that file's
+    own simple rules.
+
+    On PSID, the model's top 10% of picks found 36 out of every 100 households crossing $1,000,
+    against 32 for the best rule, ahead in every one of the 4 test waves. On KDD Cup 1998's $50
+    proxy question it found 5 out of every 100, against 12 for the best rule (the largest gift
+    already in the band), so it does not carry over to that file: dollar-free columns learned on
+    one charity's donors did not transfer to a mail-response file whose leadership level is 20
+    times smaller ($50 against $1,000). A model fit on one charity's donors is not a substitute
+    for checking it on your own file. This check is reported here only and does not count toward
+    the bottom line above.
 
 ## Which data
 

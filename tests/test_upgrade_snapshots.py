@@ -390,3 +390,12 @@ def test_include_momentum_adds_expected_columns():
         for stat in ("slope", "rel_slope"):
             for k in (3, 5):
                 assert f"{base}_{stat}_{k}y" in snaps.columns
+
+
+def test_percentile_threshold_resolves_on_snapshot_years_only():
+    gifts = _gifts([("1", FY2020, 300), ("2", FY2020, 500), ("3", FY2020, 700), ("1", "2020-08-01", 99999)])
+    snaps = build_leadership_snapshots(gifts, fiscal_years=[2020], threshold="p50")
+    # The FY2021 label-year gift never enters the percentile.
+    assert snaps.attrs["threshold"] == 500.0
+    assert sorted(snaps.index) == ["1"]
+    assert int(snaps.loc["1", "target"]) == 1

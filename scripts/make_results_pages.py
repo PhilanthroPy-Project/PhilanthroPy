@@ -1147,7 +1147,7 @@ def ask_drivers_kdd98(seed) -> Dict[str, Any]:
     )
 
 
-def upgrade_drivers_kdd98(seed, threshold=50.0, band=(5.0, 49.0)) -> Dict[str, Any]:
+def upgrade_drivers_kdd98(seed, threshold="p92", band=(5.0, 49.0)) -> Dict[str, Any]:
     feature_cols = UPGRADE_FEATURE_COLS[1:]  # bench_kdd_upgrade drops "fiscal_year"
 
     def build(_seed):
@@ -2322,7 +2322,7 @@ def main() -> None:
                 results[f"upgrade_donorschoose{suffix}"] = entry
 
             lap = bm.bench_lapse_donorschoose(args.donorschoose_path, include_momentum=momentum)
-            entry = _classifier_entry(lap, "LapsePredictor", momentum, {**lapse_meta, "note": "84% base rate; see the retention read for the useful list"})
+            entry = _classifier_entry(lap, "LapsePredictor", momentum, lapse_meta)
             if entry:
                 if not momentum:
                     entry["features"] = lapse_drivers_donorschoose(args.donorschoose_path, bm.DONORSCHOOSE_SEED)
@@ -2396,6 +2396,17 @@ def main() -> None:
             retention_subtitle="PSID, the 10% least likely to lapse by model score. Gave again, out of every 100 in that group.",
             ask_subtitle="PSID, next-wave total given the household gives again. Suggested amounts landing within 25% of what the household actually gave.",
         )
+
+    if args.donorschoose_path and (args.psid_data or args.with_kdd98):
+        transfer = bm.bench_upgrade_transfer(
+            args.donorschoose_path, args.psid_data, args.psid_do, with_kdd98=args.with_kdd98,
+        )
+        for target, rows in transfer.items():
+            entry = _classifier_entry(rows, "upgrade_model transfer (fit on DonorsChoose)", False, {
+                "fit_on": "donorschoose", "features": list(bm.TRANSFER_COLS),
+            })
+            if entry:
+                results[f"upgrade_transfer_{target}"] = entry
 
     # Models this benchmark cannot honestly answer on either real dataset:
     # neither file has mailing-cost or planned-giving/bequest data.

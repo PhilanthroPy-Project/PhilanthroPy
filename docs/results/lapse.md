@@ -51,8 +51,8 @@ turn, training on every earlier year each time). About 64 out of every 100 of th
 the following fiscal year.
 
 Of the model's top 10% of picks, 81 out of every 100 lapsed. The best simple rule found 81 out of
-every 100. **About the same as the rule here.** At the top 1% the rule is a little ahead (84
-against 82).
+every 100. **About the same as the rule here.** The two are level at the top 1% too (82 vs
+84).
 
 ![Model vs. best simple rule, top 1/5/10% of picks, DonorsChoose](../assets/results/lapse_donorschoose.png#only-light)
 ![Model vs. best simple rule, top 1/5/10% of picks, DonorsChoose](../assets/results/lapse_donorschoose-dark.png#only-dark)

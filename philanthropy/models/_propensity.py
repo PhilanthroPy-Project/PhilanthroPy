@@ -154,6 +154,14 @@ class DonorPropensityModel(ClassifierMixin, BaseEstimator):
     0–39   Low propensity: retain in broad annual-appeal pool.
     ====== =================================
 
+    **Isotonic calibration was checked and is not recommended.** Wrapping
+    the model in ``CalibratedClassifierCV(method="isotonic", cv=5)`` on the
+    KDD Cup 1998 validation fold (five seeds) lowered the decile
+    calibration gap on only three seeds (it is already 0.003 to 0.005
+    there) and lowered the top-10% hit rate on all five (e.g. 9.43 to 9.15
+    of 100). The wrapper is still a valid sklearn pipeline step if you need
+    probabilities on your own file; check it on held-out data first.
+
     See Also
     --------
     philanthropy.datasets.generate_synthetic_donor_data :

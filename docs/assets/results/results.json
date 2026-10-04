@@ -90,7 +90,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score"
     }
   },
@@ -206,7 +206,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score"
     }
   },
@@ -279,7 +279,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "suggested ask"
     }
   },
@@ -371,7 +371,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (FiscalYearGroupedSplitter, last split)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score"
     }
   },
@@ -453,7 +453,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score"
     }
   },
@@ -657,7 +657,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score"
     }
   },
@@ -751,7 +751,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward by fiscal year (train FY1994, test FY1995)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score"
     }
   },
@@ -847,7 +847,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score"
     },
     "nearly_everyone_lapses": true
@@ -961,7 +961,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "suggested ask"
     }
   },
@@ -1049,7 +1049,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score"
     },
     "curve": {
@@ -1227,7 +1227,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score",
       "reused_from_note": "Same response model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     },
@@ -1399,7 +1399,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score",
       "reused_from_note": "Same model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     }
@@ -1513,7 +1513,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score"
     }
   },
@@ -1630,7 +1630,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score"
     },
     "nearly_everyone_lapses": false
@@ -1775,7 +1775,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "suggested ask"
     }
   },
@@ -2060,7 +2060,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score"
     }
   },
@@ -2194,7 +2194,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score"
     },
     "nearly_everyone_lapses": false
@@ -2355,7 +2355,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "suggested ask"
     }
   },
@@ -2615,7 +2615,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "score"
     }
   },
@@ -2705,7 +2705,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
       "target_label": "suggested ask"
     }
   },
@@ -2795,7 +2795,7 @@
     }
   },
   "_env": {
-    "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+    "git_sha": "52c038b6530f00484a223f6981cb74596151c21f",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

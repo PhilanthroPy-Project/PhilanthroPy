@@ -1769,6 +1769,72 @@ def _karlan_list_section(results: Dict[str, Any], path: str) -> None:
     results["uplift_karlan_list"] = up
 
 
+INTERVAL_FILES = (
+    ("kdd98", "KDD Cup 1998, held-out 30% of donors who gave"),
+    ("donorschoose", "DonorsChoose, last 4 fiscal years, one at a time"),
+    ("psid", "PSID household survey, last 4 waves, one at a time"),
+    ("karlan_list", "Karlan and List, held-out 30% of donors who gave"),
+    ("synthetic", "Sample data, 5 seeds"),
+)
+
+
+def _interval_entry(rows) -> Dict[str, Any]:
+    """Requested vs attained range coverage (out of 100) and median width
+    (dollars) per level, with the fold or seed range where there is one."""
+    levels = {}
+    for level in bm.INTERVAL_LEVELS:
+        cov = _row(rows, "GiftIntervalCalibrator", f"empirical_coverage(target={level:.2f})")
+        width = _row(rows, "GiftIntervalCalibrator", f"median_width(target={level:.2f})")
+        levels[f"{level * 100:.0f}"] = {
+            "requested": level * 100, "attained": cov.value * 100,
+            "attained_lo": cov.lo * 100 if cov.lo is not None else None,
+            "attained_hi": cov.hi * 100 if cov.hi is not None else None,
+            "median_width": width.value if width else None,
+            "verdict": cov.verdict,
+        }
+    return {"levels": levels, "metadata": {"note": rows[0].note}}
+
+
+def _interval_section(results: Dict[str, Any], args) -> None:
+    """GiftIntervalCalibrator around each file's ask model: asked-for range
+    coverage against what the ranges actually held, one chart per file."""
+    runs = {"synthetic": lambda: [
+        r for level in bm.INTERVAL_LEVELS
+        for r in bm.bench_gift_interval(SEEDS, N_DONORS, N_YEARS, alpha=round(1 - level, 2))
+    ]}
+    if args.with_kdd98:
+        runs["kdd98"] = bm.bench_gift_interval_kdd98
+    if args.donorschoose_path:
+        runs["donorschoose"] = lambda: bm.bench_gift_interval_donorschoose(args.donorschoose_path)
+    if args.psid_data and args.psid_do:
+        runs["psid"] = lambda: bm.bench_gift_interval_psid(args.psid_data, args.psid_do)
+    if args.karlan_list_path:
+        runs["karlan_list"] = lambda: bm.bench_gift_interval_karlan_list(args.karlan_list_path)
+    for ds, subtitle in INTERVAL_FILES:
+        if ds not in runs:
+            continue
+        entry = _interval_entry(runs[ds]())
+        if ds == "synthetic":
+            for v in entry["levels"].values():
+                v.pop("verdict")
+        results[f"interval_{ds}"] = entry
+        lv = entry["levels"]
+        _render_themed(
+            _hbar_chart, OUT_DIR / f"interval_{ds}.png", [f"{k}% range" for k in lv],
+            {"Asked for": [v["requested"] for v in lv.values()], "Held the actual gift": [v["attained"] for v in lv.values()]},
+            {"Asked for": "random", "Held the actual gift": "model"},
+            title=f"Asked for 90%, the range held the actual gift {lv['90']['attained']:.0f} times in 100",
+            subtitle=f"{subtitle}. Out of every 100 gifts.",
+            errors={
+                "Asked for": [None] * len(lv),
+                "Held the actual gift": [
+                    (v["attained_lo"], v["attained_hi"]) if v["attained_lo"] != v["attained_hi"] else None
+                    for v in lv.values()
+                ],
+            },
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--with-kdd98", action="store_true", help="Also run the KDD Cup 1998 section (downloads ~36MB).")
@@ -2424,6 +2490,8 @@ def main() -> None:
 
     if args.karlan_list_path:
         _karlan_list_section(results, args.karlan_list_path)
+
+    _interval_section(results, args)
 
     # --- verdicts off sample data; index table and scoreboard ----------------
     for key in [k for k in results if "_synthetic" in k]:

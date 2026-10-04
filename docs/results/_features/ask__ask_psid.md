@@ -33,6 +33,6 @@
         | `itemized_charitable_contrib_amount` | 66.727 | mixed |
         | `largest_giving_category` | 57.953 | + |
 
-        Method: permutation importance (`neg_mean_absolute_error`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (seed=42, last wave fold). Git SHA: `17483eaac7c0ba11b1da760f9f8d6b6199804e3a`.
+        Method: permutation importance (`neg_mean_absolute_error`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (seed=42, last wave fold). Git SHA: `1946e8d50dde3815a976ee1a1a8bed508953d8a5`.
 
     Results on your own file will differ.

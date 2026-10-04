@@ -1,5 +1,7 @@
 # Response (will they give again?)
 
+Who is most likely to give again next year?
+
 **Use the model.** It beats the simple rule on two organisations' real donor files. On one
 charity's mailing it wins on the held-out cup98VAL half and is ahead for your top picks (top 1% and
 5%) on the KDD Cup 1998 half; those two halves count as one organisation. On a second charity's
@@ -19,7 +21,7 @@ letter, the Karlan and List experiment, it wins at every list length checked.
     ![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/response_kdd98.png#only-light)
     ![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/response_kdd98-dark.png#only-dark)
 
-    **Checked again on a file the model never saw at all.** `cup98VAL`, a second, entirely
+    Checked again on a file the model never saw at all. `cup98VAL`, a second, entirely
     separate file this program released (96,367 more donors, its answer key withheld until
     after the original competition and never touched during fitting), gives the same shape: the
     model's top 1% found 12 in 100 and its top 10% found 9 in 100, against 9 and 7 in 100 for the
@@ -49,6 +51,25 @@ letter, the Karlan and List experiment, it wins at every list length checked.
     This is a different charity from the KDD Cup 1998 tab, so it is a second, independent check.
     Results on your own file will differ.
 
+    Does a matching-grant offer move some donors more than others?
+
+    The Karlan and List letter came in versions: two in three donors, picked at random, were told a
+    matching grant would multiply their gift. Because the offer was random, the file can test an
+    uplift model (`UpliftTLearner`), which ranks donors by how much the offer raises their chance of
+    giving, not by how likely they are to give at all.
+
+    Across all held-out donors, the offer raised giving by about 0.4 in 100. Among the 30% the uplift
+    model ranked highest, it raised giving by about 0.6 in 100, against 0.5 for the best of two simple
+    rules (most recent donors first). The range on that gap runs from the model about 1 in 100 behind
+    to about 1 in 100 ahead, so this is about the same as the rule. Ranking donors by who the
+    offer moves most does not yet beat ranking by recency on this file.
+
+    Aggregates only; no donor-level figures are shown here.
+
+    Karlan, D. and List, J. A. (2007), "Does Price Matter in Charitable Giving? Evidence from a
+    Large-Scale Natural Field Experiment", *American Economic Review* 97(5): 1774-1793. Data from
+    openICPSR 113224 (doi:10.3886/E113224V1), CC BY 4.0, copyright American Economic Association 2007.
+
 === "Sample data (checks the code runs, not that the model works)"
 
     We pretended it was 30 June 2022: the model only saw gifts up to that date, then we checked
@@ -62,44 +83,54 @@ letter, the Karlan and List experiment, it wins at every list length checked.
     ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/response.png#only-light)
     ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/response-dark.png#only-dark)
 
-    **Code check only: sample data is not counted in the verdict.**
+    Code check only: sample data is not counted in the verdict.
     Ranking donors by their own giving history does at least as well as the model at every pick
     size checked. Our sample data is built so that giving again follows past giving almost exactly,
     which is why no model can beat ranking by past giving on it: this tab proves the pipeline runs
     end to end, it is not a test the model can pass. See the real-file tab above for a test that
     actually distinguishes the model from the rule.
 
-Results on your own file will differ from both of these.
+## What this means for your file
 
-**Not testable on DonorsChoose or PSID.** DonorsChoose Open Data has no mailing/appeal log, so a
-response model has nothing to predict response to; the PSID giving/volunteering extract has the
-same gap.
+- On a list of 10,000 donors like the Karlan and List file, the model's first 1,000 names include
+  about 80 who give; the best simple rule's first 1,000 include about 55.
+- On the KDD Cup 1998 mailing the model's edge is in its very top picks, the first 100 to 500
+  names of a 10,000-donor list; further down it is about the same as the rule.
+- Your file is not one of these. Check the model against the rule your shop already uses before
+  you trust its list.
 
-## Does a matching-grant offer move some donors more than others?
+## Try it on your own donors
 
-The Karlan and List letter came in versions: two in three donors, picked at random, were told a
-matching grant would multiply their gift. Because the offer was random, the file can test an
-uplift model (`UpliftTLearner`), which ranks donors by how much the offer raises their chance of
-giving, not by how likely they are to give at all.
+```python
+import numpy as np
+from philanthropy.models import DonorPropensityModel
 
-Across all held-out donors, the offer raised giving by about 0.4 in 100. Among the 30% the uplift
-model ranked highest, it raised giving by about 0.6 in 100, against 0.5 for the best of two simple
-rules (most recent donors first). The range on that gap runs from the model about 1 in 100 behind
-to about 1 in 100 ahead, so this is **about the same as the rule**. Ranking donors by who the
-offer moves most does not yet beat ranking by recency on this file.
+# Replace with your own donor features and whether each donor gave to the
+# last appeal (1) or not (0); random arrays here only show the API runs.
+rng = np.random.default_rng(0)
+X_train, gave_train = rng.random((400, 4)), rng.integers(0, 2, 400)
+X_new = rng.random((100, 4))
 
-Aggregates only; no donor-level figures are shown here.
+model = DonorPropensityModel(random_state=0).fit(X_train, gave_train)
+score = model.predict_affinity_score(X_new)
+call_first = np.argsort(-score)[:10]  # your top 10% of this list
+```
 
-Karlan, D. and List, J. A. (2007), "Does Price Matter in Charitable Giving? Evidence from a
-Large-Scale Natural Field Experiment", *American Economic Review* 97(5): 1774-1793. Data from
-openICPSR 113224 (doi:10.3886/E113224V1), CC BY 4.0, copyright American Economic Association 2007.
+??? note "How we tested"
 
-## What the model looks at
+    Each tab says what date we pretended it was and what we checked. Results on your own file will
+    differ from all of these.
 
---8<-- "results/_features/response__response_kdd98.md"
+    Not testable on DonorsChoose or PSID. DonorsChoose Open Data has no mailing/appeal log, so a
+    response model has nothing to predict response to; the PSID giving/volunteering extract has the
+    same gap.
 
---8<-- "results/_features/response__response_cup98val.md"
+??? note "Numbers for analysts"
 
---8<-- "results/_features/response__response_karlan_list.md"
+    --8<-- "results/_features/response__response_kdd98.md"
 
---8<-- "results/_features/response__response_synthetic.md"
+    --8<-- "results/_features/response__response_cup98val.md"
+
+    --8<-- "results/_features/response__response_karlan_list.md"
+
+    --8<-- "results/_features/response__response_synthetic.md"

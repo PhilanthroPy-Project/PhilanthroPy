@@ -1,108 +1,12 @@
 # Leadership upgrade ($1,000+)
 
 Which donors giving $100 to $999 this fiscal year will give $1,000 or more next fiscal year?
-$1,000 is the default leadership level; set your own with `threshold=` and `band=` in
-`score_leadership_prospects` (or `--threshold` / `--band` on the command line).
 
 **Use the model.** It beats the simple rule on the two real files that can ask the $1,000
 question, PSID household survey data and DonorsChoose, in every test year on both. KDD Cup 1998's
 gifts are too small for $1,000, so its tab asks a $50 proxy question instead; the model loses
 there, and that tab is shown but not counted. Results on your own file will differ, so check it
 on your own donors before relying on it.
-
-=== "Sample data"
-
-    We pretended it was 30 June 2021: the model only saw gifts up to that date, then we checked
-    what mid-level donors actually did in fiscal year 2022 (1 July 2021 to 30 June 2022),
-    specifically which of them crossed $1,000 for the first time.
-
-    Of our top 10% of picks, 22 out of every 100 crossed $1,000. Ranking by this year's giving
-    total alone found 18 out of every 100. Picking at random finds about 12 out of every 100.
-
-    ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/upgrade_topn.png#only-light)
-    ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/upgrade_topn-dark.png#only-dark)
-
-    **Code check only: sample data is not counted in the verdict.**
-
-    ### Worked example
-
-    Run `score_leadership_prospects` on a sample donor panel (`make_donor_panel(random_state=42)`,
-    one of the five draws averaged above), cutting off at 30 June 2021 and checking fiscal year
-    2022. Out of 1,035 mid-level donors held out for validation, the model's top 104 picks (its
-    top 10%) included 21 who actually upgraded. Ranking those same 1,035 donors by this year's
-    total giving instead would *also* have found 21 at this particular draw, a tie. Picking 104
-    of them at random would find about 14.
-
-    **Why this number is not the 22-vs-18 headline above.** The chart above is the average of
-    five draws, scored with the benchmark's own feature set built specifically to compare against
-    the rule; this worked example runs the actual public `score_leadership_prospects` function
-    end to end on one of those same five draws (the first), which has its own feature set and
-    model settings and so gets its own answer. Both beat the naive "pick at random" floor; take
-    the five-draw average as the more reliable estimate of the gap, and this one seed as proof
-    the shipped function itself works, not a second measurement of the same number.
-
-    The chart below averages the same per-decile breakdown across all five draws (D1 = the 10%
-    the model liked most, D10 = the 10% it liked least), with the range across draws shown as a
-    line through each bar. The top decile clearly stands out; the groups below it decline toward
-    the overall rate. Use the model to pick your top slice, not to rank the whole file:
-
-    ![Upgrade rate by decile, 5 draws averaged](../assets/results/upgrade_deciles.png#only-light)
-    ![Upgrade rate by decile, 5 draws averaged](../assets/results/upgrade_deciles-dark.png#only-dark)
-
-=== "KDD Cup 1998 (real donor file)"
-
-    KDD98's gifts top out far lower than a major-gift program's, so the threshold is rescaled to
-    $50 (the 92nd percentile of per-donor giving in the two fiscal years tested, set with
-    `threshold="p92"`) instead of $1,000, and
-    the test is walk-forward by fiscal year rather than the sample data's random split (this file
-    has only one real fiscal-year transition to test on; see "Which data" below).
-
-    Of the model's top 10% of picks, 11 out of every 100 crossed $50. The best rule (the largest
-    single gift already in the eligible band) found 12 out of every 100. At the very top of the
-    list the gap is bigger and goes the other way: the model's top 1% found 17 in 100 against 23
-    in 100 for the rule.
-
-    ![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/upgrade_kdd98.png#only-light)
-    ![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/upgrade_kdd98-dark.png#only-dark)
-
-    **Loses here.** On this file, at this threshold, ranking by the size of a donor's biggest
-    eligible gift beats the model, especially for the very top of the list. This is a $50 proxy
-    for the $1,000 question, so it is not counted in the bottom line.
-
-    Adding this year's giving trend vs. last year's as its own feature made no difference here at
-    all: the model's top 1/5/10% hit rates (17, 14, and 11 out of 100) are identical with and
-    without it, down to the last fraction of a percent. On this file the model gives those extra
-    columns zero weight, not "no data to add": the columns are there, the fit just never uses
-    them.
-
-=== "DonorsChoose (real donor file)"
-
-    [DonorsChoose Open Data](https://www.icpsr.umich.edu/web/ICPSR/studies/37898) (ICPSR 37898,
-    doi:10.3886/ICPSR37898.v1) is a real giving history for an education-crowdfunding platform,
-    far larger than KDD Cup 1998. We used a random 10% sample of individual ("citizen") donors
-    (about 40,000 donor-year rows across the test years) and tested fiscal years 2015 through
-    2018 in turn, training on every earlier year each time.
-
-    Of the model's top 10% of picks, 9 out of every 100 crossed $1,000 the following fiscal year.
-    The best of the 3 simple rules checked here (this year's total alone, the winner in all 4
-    test years) found 8 out of every 100. At the very top of the list the model is clearly ahead:
-    its top 1% found 28 in 100 against 20 in 100 for the rule. Upgrading to $1,000+ is rare in
-    this file: only about 1 in 100 donors in the test years did it at all.
-
-    ![Model vs. best simple rule, top 1/5/10% of picks, DonorsChoose](../assets/results/upgrade_donorschoose.png#only-light)
-    ![Model vs. best simple rule, top 1/5/10% of picks, DonorsChoose](../assets/results/upgrade_donorschoose-dark.png#only-dark)
-
-    **Beats the rule here**: ahead in every test year, and furthest ahead at the very top of
-    the list.
-
-    Adding this year's giving trend vs. last year's as its own feature made essentially no
-    difference here either: the model's top 10% hit rate is 9 out of 100 with it, 9 without. The
-    top 1% shifts from 28 to 25 out of 100, but that group is only about 100 donors per test year,
-    so a 3-donor difference is too small to call a real change either way: this is a single fit on
-    one file, with no seed range to check it against.
-
-    Never a donor ID or single-donor example here: every number above is an aggregate over the
-    sampled donor population.
 
 === "PSID (household survey)"
 
@@ -126,7 +30,7 @@ on your own donors before relying on it.
     ![Model vs. best simple rule, top 1/5/10% of picks, PSID](../assets/results/upgrade_psid.png#only-light)
     ![Model vs. best simple rule, top 1/5/10% of picks, PSID](../assets/results/upgrade_psid-dark.png#only-dark)
 
-    **Beats the rule here**, judged on the top 10% of the list.
+    Beats the rule here, judged on the top 10% of the list.
 
     Adding the giving trend between waves as its own feature moved the top 10% from 41 to 42
     out of 100, too small to call a change. The top 1% moved from 48 to 62, but on 13 to 18
@@ -139,7 +43,140 @@ on your own donors before relying on it.
     Panel Study of Income Dynamics, public use dataset. Produced and distributed by the Survey
     Research Center, Institute for Social Research, University of Michigan, Ann Arbor, MI.
 
-??? note "For analysts: does the model carry over to a file it never saw?"
+=== "DonorsChoose (real donor file)"
+
+    [DonorsChoose Open Data](https://www.icpsr.umich.edu/web/ICPSR/studies/37898) (ICPSR 37898,
+    doi:10.3886/ICPSR37898.v1) is a real giving history for an education-crowdfunding platform,
+    far larger than KDD Cup 1998. We used a random 10% sample of individual ("citizen") donors
+    (about 40,000 donor-year rows across the test years) and tested fiscal years 2015 through
+    2018 in turn, training on every earlier year each time.
+
+    Of the model's top 10% of picks, 9 out of every 100 crossed $1,000 the following fiscal year.
+    The best of the 3 simple rules checked here (this year's total alone, the winner in all 4
+    test years) found 8 out of every 100. At the very top of the list the model is clearly ahead:
+    its top 1% found 28 in 100 against 20 in 100 for the rule. Upgrading to $1,000+ is rare in
+    this file: only about 1 in 100 donors in the test years did it at all.
+
+    ![Model vs. best simple rule, top 1/5/10% of picks, DonorsChoose](../assets/results/upgrade_donorschoose.png#only-light)
+    ![Model vs. best simple rule, top 1/5/10% of picks, DonorsChoose](../assets/results/upgrade_donorschoose-dark.png#only-dark)
+
+    Beats the rule here: ahead in every test year, and furthest ahead at the very top of
+    the list.
+
+    Adding this year's giving trend vs. last year's as its own feature made essentially no
+    difference here either: the model's top 10% hit rate is 9 out of 100 with it, 9 without. The
+    top 1% shifts from 28 to 25 out of 100, but that group is only about 100 donors per test year,
+    so a 3-donor difference is too small to call a real change either way: this is a single fit on
+    one file, with no seed range to check it against.
+
+    Never a donor ID or single-donor example here: every number above is an aggregate over the
+    sampled donor population.
+
+=== "KDD Cup 1998 (real donor file)"
+
+    KDD98's gifts top out far lower than a major-gift program's, so the threshold is rescaled to
+    $50 (the 92nd percentile of per-donor giving in the file's two snapshot years, fiscal 1994 for
+    training and fiscal 1995 for the test, set with `threshold="p92"`) instead of $1,000, and the
+    test is walk-forward by fiscal year rather than the sample data's random split (this file has
+    only one real fiscal-year transition to test on; see "How we tested" below).
+
+    Of the model's top 10% of picks, 11 out of every 100 crossed $50. The best rule (the largest
+    single gift already in the eligible band) found 12 out of every 100. At the very top of the
+    list the gap is bigger and goes the other way: the model's top 1% found 17 in 100 against 23
+    in 100 for the rule.
+
+    ![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/upgrade_kdd98.png#only-light)
+    ![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/upgrade_kdd98-dark.png#only-dark)
+
+    Loses here. On this file, at this threshold, ranking by the size of a donor's biggest
+    eligible gift beats the model, especially for the very top of the list. This is a $50 proxy
+    for the $1,000 question, so it is not counted in the bottom line.
+
+    Adding this year's giving trend vs. last year's as its own feature made no difference here at
+    all: the model's top 1/5/10% hit rates (17, 14, and 11 out of 100) are identical with and
+    without it, down to the last fraction of a percent. On this file the model gives those extra
+    columns zero weight, not "no data to add": the columns are there, the fit just never uses
+    them.
+
+=== "Sample data (checks the code runs, not that the model works)"
+
+    We pretended it was 30 June 2021: the model only saw gifts up to that date, then we checked
+    what mid-level donors actually did in fiscal year 2022 (1 July 2021 to 30 June 2022),
+    specifically which of them crossed $1,000 for the first time.
+
+    Of our top 10% of picks, 22 out of every 100 crossed $1,000. Ranking by this year's giving
+    total alone found 18 out of every 100. Picking at random finds about 12 out of every 100.
+
+    ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/upgrade_topn.png#only-light)
+    ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/upgrade_topn-dark.png#only-dark)
+
+    Code check only: sample data is not counted in the verdict.
+
+    Worked example.
+
+    Run `score_leadership_prospects` on a sample donor panel (`make_donor_panel(random_state=42)`,
+    one of the five draws averaged above), cutting off at 30 June 2021 and checking fiscal year
+    2022. Out of 1,035 mid-level donors held out for validation, the model's top 104 picks (its
+    top 10%) included 21 who actually upgraded. Ranking those same 1,035 donors by this year's
+    total giving instead would *also* have found 21 at this particular draw, a tie. Picking 104
+    of them at random would find about 14.
+
+    Why this number is not the 22-vs-18 headline above. The chart above is the average of
+    five draws, scored with the benchmark's own feature set built specifically to compare against
+    the rule; this worked example runs the actual public `score_leadership_prospects` function
+    end to end on one of those same five draws (the first), which has its own feature set and
+    model settings and so gets its own answer. Both beat the naive "pick at random" floor; take
+    the five-draw average as the more reliable estimate of the gap, and this one seed as proof
+    the shipped function itself works, not a second measurement of the same number.
+
+    The chart below averages the same per-decile breakdown across all five draws (D1 = the 10%
+    the model liked most, D10 = the 10% it liked least), with the range across draws shown as a
+    line through each bar. The top decile clearly stands out; the groups below it decline toward
+    the overall rate. Use the model to pick your top slice, not to rank the whole file:
+
+    ![Upgrade rate by decile, 5 draws averaged](../assets/results/upgrade_deciles.png#only-light)
+    ![Upgrade rate by decile, 5 draws averaged](../assets/results/upgrade_deciles-dark.png#only-dark)
+
+## What this means for your file
+
+- On a list of 10,000 mid-level households like PSID's, the model's first 1,000 names include about
+  410 who reach $1,000 the next wave; ranking by this wave's giving finds about 320.
+- On a file where upgrading is rare, like DonorsChoose, the gain is at the very top: the model's
+  first 100 names out of 10,000 include about 28 upgraders, against about 20 for the rule.
+- Your file is not one of these. `score_leadership_prospects` reports how its own list did on your
+  most recent year, and how long a list is still worth working (`recommended_list_size`).
+
+## Try it on your own donors
+
+$1,000 is the default leadership level; set your own with `threshold=` (a dollar amount, or
+`"p92"` for a percentile of your own donors' giving) and `band=` in `score_leadership_prospects`
+(or `--threshold` / `--band` on the command line).
+
+```python
+from philanthropy.datasets import make_donor_panel
+from philanthropy.models import score_leadership_prospects
+
+# Replace with your own gift export: one row per gift, with donor_id, date
+# and amount columns.
+gifts = make_donor_panel(random_state=0)["gifts"]
+
+scored, report = score_leadership_prospects(gifts, random_state=0)
+scored.head(10)                          # today's best prospects, ranked
+report["recommended_list_size"]          # how far down the list to work
+```
+
+??? note "How we tested"
+
+    PSID and DonorsChoose are the two real files where this model beats the rule today. KDD Cup 1998, DonorsChoose and PSID are the three real files we
+    can test the $1,000 upgrade question on (KDD98's gifts are too small to test the real $1,000
+    threshold, so the threshold on that tab is rescaled; DonorsChoose's and PSID's amounts are large
+    enough to use $1,000 as-is). The Karlan and List experiment is one letter with no later giving,
+    so it cannot test upgrading at all. Results on your own file, at your own dollar threshold, will differ
+    from all four.
+
+??? note "Numbers for analysts"
+
+    Does the model carry over to a file it never saw?
 
     We fit the upgrade model on DonorsChoose alone, using only columns that mean the same thing on
     any file whatever its dollar scale (this year's total over the largest gift, the largest gift
@@ -157,21 +194,10 @@ on your own donors before relying on it.
     for checking it on your own file. This check is reported here only and does not count toward
     the bottom line above.
 
-## Which data
+    --8<-- "results/_features/upgrade__upgrade_synthetic.md"
 
-PSID and DonorsChoose are the two real files where this model beats the rule today. KDD Cup 1998, DonorsChoose and PSID are the three real files we
-can test the $1,000 upgrade question on (KDD98's gifts are too small to test the real $1,000
-threshold, so the threshold on that tab is rescaled; DonorsChoose's and PSID's amounts are large
-enough to use $1,000 as-is). The Karlan and List experiment is one letter with no later giving,
-so it cannot test upgrading at all. Results on your own file, at your own dollar threshold, will differ
-from all four.
+    --8<-- "results/_features/upgrade__upgrade_kdd98.md"
 
-## What the model looks at
+    --8<-- "results/_features/upgrade__upgrade_donorschoose.md"
 
---8<-- "results/_features/upgrade__upgrade_synthetic.md"
-
---8<-- "results/_features/upgrade__upgrade_kdd98.md"
-
---8<-- "results/_features/upgrade__upgrade_donorschoose.md"
-
---8<-- "results/_features/upgrade__upgrade_psid.md"
+    --8<-- "results/_features/upgrade__upgrade_psid.md"

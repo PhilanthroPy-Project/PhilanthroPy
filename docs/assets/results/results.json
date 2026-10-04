@@ -90,7 +90,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score"
     }
   },
@@ -206,7 +206,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score"
     }
   },
@@ -281,7 +281,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "suggested ask"
     }
   },
@@ -373,7 +373,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (FiscalYearGroupedSplitter, last split)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score"
     }
   },
@@ -455,7 +455,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score"
     }
   },
@@ -659,7 +659,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score"
     }
   },
@@ -753,7 +753,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward by fiscal year (train FY1994, test FY1995)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score"
     }
   },
@@ -849,7 +849,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score"
     },
     "nearly_everyone_lapses": true
@@ -968,7 +968,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "suggested ask"
     }
   },
@@ -1056,7 +1056,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score"
     },
     "curve": {
@@ -1234,7 +1234,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score",
       "reused_from_note": "Same response model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     },
@@ -1406,7 +1406,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score",
       "reused_from_note": "Same model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     }
@@ -1520,7 +1520,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score"
     }
   },
@@ -1636,7 +1636,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score"
     },
     "nearly_everyone_lapses": false
@@ -1786,7 +1786,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "suggested ask"
     }
   },
@@ -2075,7 +2075,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score"
     }
   },
@@ -2209,7 +2209,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score"
     },
     "nearly_everyone_lapses": false
@@ -2375,7 +2375,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "suggested ask"
     }
   },
@@ -2716,7 +2716,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "score"
     }
   },
@@ -2811,7 +2811,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
       "target_label": "suggested ask"
     }
   },
@@ -2836,6 +2836,158 @@
       "n_donors": 50083,
       "base_rate_pct": 2.0645728091368327,
       "split": "55/15/30 stratified (train/validation/test)"
+    }
+  },
+  "interval_kdd98": {
+    "levels": {
+      "80": {
+        "requested": 80.0,
+        "attained": 79.1465932553338,
+        "attained_lo": null,
+        "attained_hi": null,
+        "median_width": 10.860671730964263,
+        "verdict": "wins"
+      },
+      "90": {
+        "requested": 90.0,
+        "attained": 89.60770818995184,
+        "attained_lo": null,
+        "attained_hi": null,
+        "median_width": 19.125756230864063,
+        "verdict": "wins"
+      },
+      "95": {
+        "requested": 95.0,
+        "attained": 93.805918788713,
+        "attained_lo": null,
+        "attained_hi": null,
+        "median_width": 24.432281111866068,
+        "verdict": "wins"
+      }
+    },
+    "metadata": {
+      "note": "split=55/15/30 stratified (train/validation/test); n_test=1453"
+    }
+  },
+  "interval_donorschoose": {
+    "levels": {
+      "80": {
+        "requested": 80.0,
+        "attained": 79.03674373189583,
+        "attained_lo": 77.90556900726392,
+        "attained_hi": 80.04382268666778,
+        "median_width": 171.7010012505125,
+        "verdict": "wins"
+      },
+      "90": {
+        "requested": 90.0,
+        "attained": 89.31634312483024,
+        "attained_lo": 88.54418886198548,
+        "attained_hi": 90.0219113433339,
+        "median_width": 322.5982773459622,
+        "verdict": "wins"
+      },
+      "95": {
+        "requested": 95.0,
+        "attained": 94.65741281224246,
+        "attained_lo": 94.27966101694916,
+        "attained_hi": 94.91136334651192,
+        "median_width": 599.0058598179493,
+        "verdict": "wins"
+      }
+    },
+    "metadata": {
+      "note": "walk-forward: fit < 2014, calibrate 2014, test 2015; n_test=5933"
+    }
+  },
+  "interval_psid": {
+    "levels": {
+      "80": {
+        "requested": 80.0,
+        "attained": 78.1064405265081,
+        "attained_lo": 75.16949152542372,
+        "attained_hi": 81.1864406779661,
+        "median_width": 3158.821586871506,
+        "verdict": "wins"
+      },
+      "90": {
+        "requested": 90.0,
+        "attained": 88.82388983783103,
+        "attained_lo": 86.94915254237287,
+        "attained_hi": 90.63559322033899,
+        "median_width": 4829.611882886571,
+        "verdict": "wins"
+      },
+      "95": {
+        "requested": 95.0,
+        "attained": 94.3436546855037,
+        "attained_lo": 92.71186440677967,
+        "attained_hi": 95.50847457627118,
+        "median_width": 7157.205052110766,
+        "verdict": "wins"
+      }
+    },
+    "metadata": {
+      "note": "walk-forward: fit < 2013, calibrate 2013, test 2015; n_test=2881"
+    }
+  },
+  "interval_karlan_list": {
+    "levels": {
+      "80": {
+        "requested": 80.0,
+        "attained": 80.96774193548387,
+        "attained_lo": null,
+        "attained_hi": null,
+        "median_width": 49.30148541670826,
+        "verdict": "wins"
+      },
+      "90": {
+        "requested": 90.0,
+        "attained": 89.03225806451613,
+        "attained_lo": null,
+        "attained_hi": null,
+        "median_width": 68.68783910216939,
+        "verdict": "wins"
+      },
+      "95": {
+        "requested": 95.0,
+        "attained": 94.83870967741936,
+        "attained_lo": null,
+        "attained_hi": null,
+        "median_width": 83.30333888316498,
+        "verdict": "wins"
+      }
+    },
+    "metadata": {
+      "note": "split=55/15/30 stratified (train/validation/test); n_test=310"
+    }
+  },
+  "interval_synthetic": {
+    "levels": {
+      "80": {
+        "requested": 80.0,
+        "attained": 79.74977341424221,
+        "attained_lo": 78.97435897435898,
+        "attained_hi": 81.10419906687403,
+        "median_width": null
+      },
+      "90": {
+        "requested": 90.0,
+        "attained": 91.2059941512329,
+        "attained_lo": 89.77443609022556,
+        "attained_hi": 92.10526315789474,
+        "median_width": null
+      },
+      "95": {
+        "requested": 95.0,
+        "attained": 95.38382572947353,
+        "attained_lo": 94.60895975702354,
+        "attained_hi": 96.3452566096423,
+        "median_width": null
+      }
+    },
+    "metadata": {
+      "note": "n_test=1286, n_calibration=3720"
     }
   },
   "_index": {
@@ -2901,7 +3053,7 @@
     }
   },
   "_env": {
-    "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
+    "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

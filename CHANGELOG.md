@@ -6,6 +6,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Test coverage now constructs `RFMTransformer(include_tenure=True)`, asserting
+  that the optional `tenure` column is emitted, remains at least as large as
+  `recency`, and matches `get_feature_names_out`; the default path is pinned to
+  keep `tenure` absent unless requested.
 - `philanthropy.utils.check_label_floor(y, task)` returns `"run"` or
   `"not enough labels"` for `task="lapse"` or `"major_gift"`, so a hosted
   no-code page and a Python user apply the same cutoff before fitting. The

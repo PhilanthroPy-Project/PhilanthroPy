@@ -76,8 +76,10 @@ contribution. Code, docs, tests, and review all count.
   [#151](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/151)).
 - [@Utkarsh3725](https://github.com/Utkarsh3725): removed the unreachable
   timezone-localisation fallback in `EncounterRecencyTransformer`, preserving
-  the useful invalid-timezone error (closes
-  [#201](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/201)).
+  the useful invalid-timezone error, and added coverage for the optional
+  `RFMTransformer(include_tenure=True)` output contract (closes
+  [#201](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/201),
+  [#150](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/150)).
 
 - **Harsh Raj Singhania** ([@HarshRajSinghania](https://github.com/HarshRajSinghania)):
   added DataFrame and array-fit tests so `MovesManagementClassifier.feature_names_in_`

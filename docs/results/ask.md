@@ -1,4 +1,26 @@
-# Suggested ask
+# What will this donor give next?
+
+This page tests a forecast: how much a donor will give next time. A suggested ask is a policy
+choice built on that forecast (how far to stretch, how to round), and no file here can say which
+ask works best, because the ask itself changes the gift.
+
+**Use the simple rule.** On no real file does the model forecast the next gift reliably better
+than a simple rule from the donor's own history: it loses on some files and is about the same on
+the rest. The library gives you the usual rule, the larger of the donor's last gift and average
+gift, stretched and rounded to a ladder, as one function call:
+
+```python
+from philanthropy.models import suggest_ask
+
+suggest_ask(last_gift=[100, 40], avg_gift=[80, 55])  # array([125., 75.])
+```
+
+It takes the larger amount, adds 10% and rounds up to the next $25 (`stretch=` and `round_to=`
+change both). If you do fit `AskAmountRecommender`, give it the columns for last and average gift
+(`last_gift_idx`, `avg_gift_idx`): it then checks itself against the rule on a holdout and sets
+`beats_rule_`, so you can fall back to the rule when it is `False`.
+
+## KDD Cup 1998
 
 Featured on a real donor file: [KDD Cup 1998](https://kdd.ics.uci.edu/databases/kddcup98/kddcup98.html).
 We pretended it was 1 June 1997 and asked the model to suggest an amount for
@@ -50,14 +72,14 @@ each time: between 2,360 and 2,881 households per test wave.
 Of every 100 suggested amounts, 29 landed within 25% of what the household actually gave in the
 next wave. The best of the 3 simple rules checked here (last wave's total alone, the winner in
 all 4 test waves) landed within 25% for 28 out of every 100. The model was a little ahead in
-2015 and 2017 and a shade behind in 2019 and 2021. When it missed, it missed by less: off by
-$1,878 on average, against $2,166 for the rule, and smaller in every test wave.
+2015 and 2017 and a shade behind in 2019 and 2021. On average it was off by $1,878,
+against $2,166 for the rule, and by less in every test wave.
 
 ![How close is the suggested ask: model vs. best simple rule, PSID](../assets/results/ask_psid.png#only-light)
 ![How close is the suggested ask: model vs. best simple rule, PSID](../assets/results/ask_psid-dark.png#only-dark)
 
 **About the same as the rule here.** It lands within 25% no more often than last wave's total
-does, though its misses are smaller. Adding the giving trend between waves as its own feature
+does, though it is off by less on average. Adding the giving trend between waves as its own feature
 made no real difference (29 out of 100 within 25% with it, versus 29 without).
 
 Only aggregates are shown here: no household IDs, no single-household examples. PSID data are not
@@ -76,14 +98,14 @@ file has no last or average gift, so the rules are the donor's largest past gift
 gift in the training donors. We tested on a held-out 30% of the donors: 310 who gave.
 
 Of every 100 predicted amounts, 45 landed within 25% of the actual gift. The best rule, the
-donor's largest past gift, landed within 25% for 41 out of every 100. When it missed, the model
-missed by less: $17 on average, against $23 for the rule.
+donor's largest past gift, landed within 25% for 41 out of every 100. On average the model was
+off by $17, against $23 for the rule.
 
 ![How close is the suggested ask: model vs. best simple rule, Karlan and List](../assets/results/ask_karlan_list.png#only-light)
 ![How close is the suggested ask: model vs. best simple rule, Karlan and List](../assets/results/ask_karlan_list-dark.png#only-dark)
 
-**About the same as the rule here.** It is not reliably closer within 25%, though its misses are
-smaller. This file has no last gift, which is the rule that is hardest to beat on the other
+**About the same as the rule here.** It is not reliably closer within 25%, though it is off by less
+on average. This file has no last gift, which is the rule that is hardest to beat on the other
 files, so read this tab as a weaker test than those.
 
 Aggregates only; no donor-level figures are shown here.
@@ -91,6 +113,23 @@ Aggregates only; no donor-level figures are shown here.
 Karlan, D. and List, J. A. (2007), "Does Price Matter in Charitable Giving? Evidence from a
 Large-Scale Natural Field Experiment", *American Economic Review* 97(5): 1774-1793. Data from
 openICPSR 113224 (doi:10.3886/E113224V1), CC BY 4.0, copyright American Economic Association 2007.
+
+## Which donors bring in the most next year?
+
+A shop that can only work the top of its list cares less about each donor's exact amount than
+about which donors bring in the most. So we also ranked donors by their forecast and asked: of
+every $100 the donors on the file actually gave next time, how many came from the top 10% of that
+ranking? The rule's list is ranked by the rule's own amount.
+
+| File | Model's top 10% | Rule's top 10% | |
+|---|---|---|---|
+| KDD Cup 1998 | $22 of every $100 | $22 | About the same |
+| DonorsChoose | $64 of every $100 | $64 | About the same |
+| PSID household survey | $43 of every $100 | $42 | Beats the rule, in every test wave |
+| Karlan and List | $27 of every $100 | $28 | About the same |
+
+This does not change the bottom line above. It does show one place the model adds something: on
+PSID its ranking finds the biggest givers slightly better than last wave's total does.
 
 ## Which data
 

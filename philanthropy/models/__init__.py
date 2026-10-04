@@ -5,7 +5,7 @@ Donor propensity, lapse prediction, and share-of-wallet capacity models.
 """
 
 from ._propensity_baseline import PropensityScorer
-from ._ask import AskAmountRecommender
+from ._ask import AskAmountRecommender, suggest_ask
 from ._propensity import DonorPropensityModel, MajorGiftClassifier
 from ._wallet import ShareOfWalletRegressor
 from ._moves import MovesManagementClassifier
@@ -28,4 +28,5 @@ __all__ = [
     "ShareOfWalletRegressor",
     "PlannedGivingIntentScorer",
     "score_leadership_prospects",
+    "suggest_ask",
 ]

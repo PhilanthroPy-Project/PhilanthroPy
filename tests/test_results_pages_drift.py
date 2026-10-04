@@ -241,7 +241,7 @@ NUMBER_MAP = [
      r"landed .*? for (\d+) out of every 100",
      lambda: [min(_get("ask_psid.metadata.n_per_fold")), max(_get("ask_psid.metadata.n_per_fold")),
               _get("ask_psid.within25pct_model"), _get("ask_psid.within25pct_last_gift")]),
-    ("ask.md", r"off by \$([\d,]+) on average, against \$([\d,]+) for the rule",
+    ("ask.md", r"On average it was off by \$([\d,]+), against \$([\d,]+) for the rule",
      lambda: [_get("ask_psid.mae_model"), _get("ask_psid.mae_rule")]),
     ("ask.md", r"\((\d+) out of 100 within 25% with it, versus (\d+) without\)\. Only aggregates",
      lambda: [_get("ask_psid_momentum.within25pct_model"), _get("ask_psid.within25pct_model")]),
@@ -249,10 +249,18 @@ NUMBER_MAP = [
      lambda: [_get("ask_synthetic.within25pct_model"), _get("ask_synthetic.within25pct_last_gift")]),
     ("ask.md", r"held-out 30% of the donors: (\d+) who gave\. Of every 100 predicted amounts, (\d+) landed within 25% "
      r"of the actual gift\. The best rule, the donor's largest past gift, landed within 25% for (\d+) out of every "
-     r"100\. When it missed, the model missed by less: \$(\d+) on average, against \$(\d+) for the rule",
+     r"100\. On average the model was off by \$(\d+), against \$(\d+) for the rule",
      lambda: [_get("ask_karlan_list.metadata.n_test"), _get("ask_karlan_list.within25pct_model"),
               _get("ask_karlan_list.within25pct_last_gift"), _get("ask_karlan_list.mae_model"),
               _get("ask_karlan_list.mae_rule")]),
+    ("ask.md", r"\| KDD Cup 1998 \| \$(\d+) of every \$100 \| \$(\d+) \|",
+     lambda: [_get("ask_kdd98.revenue_top10pct_model"), _get("ask_kdd98.revenue_top10pct_rule")]),
+    ("ask.md", r"\| DonorsChoose \| \$(\d+) of every \$100 \| \$(\d+) \|",
+     lambda: [_get("ask_donorschoose.revenue_top10pct_model"), _get("ask_donorschoose.revenue_top10pct_rule")]),
+    ("ask.md", r"\| PSID household survey \| \$(\d+) of every \$100 \| \$(\d+) \|",
+     lambda: [_get("ask_psid.revenue_top10pct_model"), _get("ask_psid.revenue_top10pct_rule")]),
+    ("ask.md", r"\| Karlan and List \| \$(\d+) of every \$100 \| \$(\d+) \|",
+     lambda: [_get("ask_karlan_list.revenue_top10pct_model"), _get("ask_karlan_list.revenue_top10pct_rule")]),
     # Who to mail
     ("who_to_mail.md", r"We skipped ([\d,]+) of ([\d,]+) letters and still raised \$([\d,]+) more", _wtm_kdd98),
     ("who_to_mail.md", r"mailing ([\d,]+) of them, is marked.*?brings in \$([\d,]+) after costs, against \$([\d,]+) "
@@ -277,6 +285,22 @@ def test_page_number_matches_its_results_key(page, template, values):
         digits = shown.replace(",", "")
         decimals = len(digits.split(".")[1]) if "." in digits else 0
         assert digits == format(value, f".{decimals}f"), f"{page}: shows {shown}, results.json has {value}"
+
+
+REVENUE_WORDS = {"wins": "Beats the rule", "modest": "About the same", "loses": "Loses to the rule"}
+
+
+@pytest.mark.parametrize("label,key", [
+    ("KDD Cup 1998", "ask_kdd98"),
+    ("DonorsChoose", "ask_donorschoose"),
+    ("PSID household survey", "ask_psid"),
+    ("Karlan and List", "ask_karlan_list"),
+])
+def test_revenue_table_verdict_matches_results_json(label, key):
+    text = (PAGES / "ask.md").read_text()
+    m = re.search(rf"^\| {label} \| [^|]+ \| [^|]+ \| ([^|]+) \|$", text, re.M)
+    assert m, f"ask.md: revenue row for {label} not found"
+    assert m.group(1).startswith(REVENUE_WORDS[_get(f"{key}.revenue_top10pct_verdict")])
 
 
 def test_bottom_line_rule(mrp):

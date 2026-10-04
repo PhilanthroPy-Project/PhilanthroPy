@@ -13,7 +13,7 @@ What a fundraising shop does without a model. Each question has its own:
 | Who will move up to $1,000+ next year? | Rank by this year's giving. |
 | Who will give again? | Rank by past giving. |
 | Who is about to stop giving? | Rank by years since the last gift. |
-| How much should we ask for? | Ask for what they gave last time. |
+| What will this donor give next? | Expect what they gave last time. |
 | Is this donor worth mailing? | Mail everyone. |
 
 Each page tries a short list of these rules, fixed in code before any run,

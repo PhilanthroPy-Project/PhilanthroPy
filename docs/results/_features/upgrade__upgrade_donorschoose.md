@@ -31,6 +31,6 @@
         | `fy_trend` | 0.007 | + |
         | `largest_gift` | 0.005 | + |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (subsample=0.1, seed=42, last fiscal-year fold). Git SHA: `52c038b6530f00484a223f6981cb74596151c21f`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (subsample=0.1, seed=42, last fiscal-year fold). Git SHA: `39d544a09f786786b1e99c0bc67ff7ec0057560a`.
 
     Results on your own file will differ.

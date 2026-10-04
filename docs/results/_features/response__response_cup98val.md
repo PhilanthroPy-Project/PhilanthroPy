@@ -29,7 +29,7 @@
         | `monetary` | 0.008 | - |
         | `tenure` | 0.005 | - |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Git SHA: `52c038b6530f00484a223f6981cb74596151c21f`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Git SHA: `39d544a09f786786b1e99c0bc67ff7ec0057560a`.
         Same model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns.
 
     Results on your own file will differ.

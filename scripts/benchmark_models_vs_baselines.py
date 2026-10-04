@@ -421,6 +421,19 @@ def _within_pct(pred: np.ndarray, y_true: np.ndarray, pct: float = 0.25) -> floa
     return float((np.abs(pred - y_true) <= pct * y_true).mean())
 
 
+def _revenue_top_share(y_true: np.ndarray, score: np.ndarray, frac: float = 0.10) -> float:
+    """Share of all next-gift dollars that comes from the top ``frac`` of
+    donors ranked by ``score``: the revenue a shop captures if it can only
+    work that slice of the list. Ties keep file order."""
+    y_true = np.asarray(y_true, dtype="float64")
+    total = y_true.sum()
+    if total <= 0:
+        return float("nan")
+    k = max(1, int(round(len(y_true) * frac)))
+    top = np.argsort(-np.asarray(score), kind="stable")[:k]
+    return float(y_true[top].sum() / total)
+
+
 # --------------------------------------------------------------------------- #
 # Synthetic donor panel (make_donor_panel)
 # --------------------------------------------------------------------------- #
@@ -614,6 +627,11 @@ def bench_ask(seeds: Sequence[int], n_donors: int, n_years: int, include_momentu
                 Row(
                     "synthetic_panel", "AskAmountRecommender", "within25pct",
                     _within_pct(pred, yte), _within_pct(best_score, yte),
+                    note=header,
+                ),
+                Row(
+                    "synthetic_panel", "AskAmountRecommender", "revenue_top10pct",
+                    _revenue_top_share(yte, pred), _revenue_top_share(yte, best_score),
                     note=header,
                 ),
             ]
@@ -1086,6 +1104,10 @@ def bench_ask_donorschoose(
             "donorschoose", "AskAmountRecommender", "within25pct",
             _within_pct(pred, yte), _within_pct(best_score, yte), note=header,
         ))
+        rows.append(Row(
+            "donorschoose", "AskAmountRecommender", "revenue_top10pct",
+            _revenue_top_share(yte, pred), _revenue_top_share(yte, best_score), note=header,
+        ))
     return _aggregate([rows]) if rows else []
 
 
@@ -1340,6 +1362,10 @@ def bench_ask_psid(
         rows.append(Row(
             "psid", "AskAmountRecommender", "within25pct",
             _within_pct(pred, yte), _within_pct(best_score, yte), note=header,
+        ))
+        rows.append(Row(
+            "psid", "AskAmountRecommender", "revenue_top10pct",
+            _revenue_top_share(yte, pred), _revenue_top_share(yte, best_score), note=header,
         ))
     return _aggregate([rows]) if rows else []
 
@@ -1702,6 +1728,9 @@ def bench_kdd_ask(seed: int) -> List[Row]:
     within_d = _bootstrap_diff_ci(len(y_true), lambda idx: (
         _within_pct(pred[idx], y_true[idx]) - _within_pct(best_score[idx], y_true[idx])
     ))
+    revenue_d = _bootstrap_diff_ci(len(y_true), lambda idx: (
+        _revenue_top_share(y_true[idx], pred[idx]) - _revenue_top_share(y_true[idx], best_score[idx])
+    ))
 
     return [
         Row(
@@ -1713,6 +1742,11 @@ def bench_kdd_ask(seed: int) -> List[Row]:
             "kdd98", "AskAmountRecommender", "within25pct",
             _within_pct(pred, y_true), _within_pct(best_score, y_true),
             note=header, diff_lo=within_d[0], diff_hi=within_d[1],
+        ),
+        Row(
+            "kdd98", "AskAmountRecommender", "revenue_top10pct",
+            _revenue_top_share(y_true, pred), _revenue_top_share(y_true, best_score),
+            note=header, diff_lo=revenue_d[0], diff_hi=revenue_d[1],
         ),
     ]
 
@@ -2141,9 +2175,6 @@ def bench_blood(seeds: Sequence[int]) -> List[Row]:
 
 
 # --------------------------------------------------------------------------- #
-# Output
-# --------------------------------------------------------------------------- #
-# --------------------------------------------------------------------------- #
 # Karlan and List (2007) matching-grant experiment (openICPSR 113224; data
 # CC BY 4.0, copyright American Economic Association 2007). Opt-in, local
 # file. One letter, so it tests response, the amount given and, because the
@@ -2225,7 +2256,15 @@ def bench_ask_karlan_list(path: str) -> List[Row]:
     within_d = _bootstrap_diff_ci(len(y_true), lambda idx: (
         _within_pct(pred[idx], y_true[idx]) - _within_pct(best_score[idx], y_true[idx])
     ))
+    revenue_d = _bootstrap_diff_ci(len(y_true), lambda idx: (
+        _revenue_top_share(y_true[idx], pred[idx]) - _revenue_top_share(y_true[idx], best_score[idx])
+    ))
     return [
+        Row(
+            "karlan_list", "AskAmountRecommender", "revenue_top10pct",
+            _revenue_top_share(y_true, pred), _revenue_top_share(y_true, best_score),
+            note=header, diff_lo=revenue_d[0], diff_hi=revenue_d[1],
+        ),
         Row(
             "karlan_list", "AskAmountRecommender", "mae",
             mean_absolute_error(y_true, pred), mean_absolute_error(y_true, best_score),
@@ -2282,6 +2321,9 @@ def bench_uplift_karlan_list(path: str) -> List[Row]:
     return rows
 
 
+# --------------------------------------------------------------------------- #
+# Output
+# --------------------------------------------------------------------------- #
 def _print_table(rows: List[Row]) -> None:
     header = f"{'dataset':<16} {'model':<33} {'metric':<33} {'value':>9} {'baseline':>9}  {'verdict':<7}note"
     print(header)

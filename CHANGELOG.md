@@ -35,6 +35,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `UpliftTLearner` rows (who the matching-grant offer moves most) are about the
   same as ranking by recency. Split, features and rule sets were fixed before
   the run, one configuration each.
+- `philanthropy.models.suggest_ask(last_gift, avg_gift, stretch=0.10, round_to=25)`:
+  the simple ask rule as one function call (the larger of last and average
+  gift, raised 10% and rounded up to the next $25). With `stretch=0` and
+  `round_to=None` it is the rule the Results pages test; on no real file
+  does `AskAmountRecommender` land within 25% of the next gift reliably more
+  often than it.
+- `AskAmountRecommender` checks itself against that rule when `last_gift_idx`
+  and `avg_gift_idx` are set: `fit` scores a model trained on 80% of the rows
+  and the rule on the other 20%, and sets `beats_rule_`, `rule_mae_` and
+  `model_mae_`. The returned model is still fit on every row, so predictions
+  are unchanged. With fewer than 100 rows or no indices the three are `None`.
 - `philanthropy.utils.check_label_floor(y, task)` returns `"run"` or
   `"not enough labels"` for `task="lapse"` or `"major_gift"`, so a hosted
   no-code page and a Python user apply the same cutoff before fitting. The
@@ -60,6 +71,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   promotion against 4,843 to the 97NK mailing, so the shared builder's
   "gave in T" population is not real there; the parity test's skip reason
   says so.
+- Results, ask: the page is retitled "What will this donor give next?" and
+  opens with the bottom line and the `suggest_ask` call, since a suggested
+  ask is a policy choice built on that forecast. A new row on every ask
+  bench reports the share of next-gift dollars from the top 10% of donors
+  ranked by the model and by the rule: about the same on KDD Cup 1998,
+  DonorsChoose and Karlan and List, and slightly ahead for the model on PSID
+  in every test wave (43 vs 42 of every $100). The ask bottom line is
+  unchanged: use the simple rule.
 - Results, lapse: the DonorsChoose and PSID lapse benchmarks now build their
   rows with `build_snapshots` / `period_snapshots`, so both feed
   `LapsePredictor` the same shared gift columns (a new parity test checks

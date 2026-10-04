@@ -506,6 +506,21 @@ def _diff_pp(row) -> Dict[str, Any]:
     return {"diff_lo": fields["diff_lo"], "diff_hi": fields["diff_hi"]}
 
 
+def _revenue_fields(rows, model: str = "AskAmountRecommender") -> Dict[str, Any]:
+    """Share of next-gift dollars (out of 100) from the top 10% of donors
+    ranked by the model's predicted amount and by the best rule's, with the
+    paired interval when the run has one."""
+    row = _row(rows, model, "revenue_top10pct")
+    if row is None:
+        return {}
+    fields = _verdict_fields(row)
+    return {
+        "revenue_top10pct_model": row.value * 100, "revenue_top10pct_rule": row.baseline * 100,
+        "revenue_top10pct_diff_lo": fields["diff_lo"], "revenue_top10pct_diff_hi": fields["diff_hi"],
+        "revenue_top10pct_verdict": fields["verdict"],
+    }
+
+
 def _ci(row) -> tuple[float, float] | None:
     """A row's `(lo, hi)` interval in percentage points: a 5-seed min/max
     range for synthetic rows, a bootstrap 95% interval for KDD98 single-split
@@ -1471,7 +1486,7 @@ INDEX_QUESTIONS = (
      "Which mid-level donors are about to become $1,000+ donors?"),
     ("response", "[Response](response.md)", "Response", "Who is most likely to give again next year?"),
     ("lapse", "[Lapse](lapse.md)", "Lapse", "Which donors are about to stop giving?"),
-    ("ask", "[Suggested ask](ask.md)", "Suggested ask", "How much should we ask a donor for?"),
+    ("ask", "[Suggested ask](ask.md)", "Suggested ask", "What will this donor give next?"),
     ("planned_giving", "[Planned giving](planned_giving.md)", "Planned giving", "Which donors look like bequest prospects?"),
     ("who_to_mail", "[Who to mail](who_to_mail.md)", "Who to mail", "Is it worth mailing this donor at all?"),
 )
@@ -1726,6 +1741,7 @@ def _karlan_list_section(results: Dict[str, Any], path: str) -> None:
         "mae_model": mae.value, "mae_rule": mae.baseline,
         "mae_diff_lo": mae.diff_lo, "mae_diff_hi": mae.diff_hi,
         **_verdict_fields(within),
+        **_revenue_fields(rows),
         "metadata": {
             **meta, "target": "amount given, among donors who gave", "rule": "highest previous gift",
             "n_test": int(within.note.rsplit("n=", 1)[1]),
@@ -1851,6 +1867,7 @@ def main() -> None:
         "within25pct_model": within.value * 100,
         "within25pct_last_gift": within.baseline * 100,
         **_verdict_fields(within),
+        **_revenue_fields(ask_rows),
         "features": ask_drivers_synthetic(SEEDS, N_DONORS, N_YEARS),
     }
     if args.with_momentum:
@@ -2061,6 +2078,7 @@ def main() -> None:
             "within25pct_model": ask_row.value * 100,
             "within25pct_last_gift": ask_row.baseline * 100,
             **_verdict_fields(ask_row),
+            **_revenue_fields(kdd_ask),
             "features": ask_drivers_kdd98(seed),
         }
         _render_themed(
@@ -2187,6 +2205,7 @@ def main() -> None:
             "within25pct_model": within_row.value * 100, "within25pct_last_gift": within_row.baseline * 100,
             "mae_model": mae_row.value, "mae_rule": mae_row.baseline,
             **_verdict_fields(within_row),
+            **_revenue_fields(rows, model),
             "metadata": {"momentum": momentum, **extra_meta},
         }
 
@@ -2398,7 +2417,8 @@ def main() -> None:
     # --- verdicts off sample data; index table and scoreboard ----------------
     for key in [k for k in results if "_synthetic" in k]:
         if isinstance(results[key], dict):
-            for field in ("verdict", "diff_lo", "diff_hi"):
+            for field in ("verdict", "diff_lo", "diff_hi", "revenue_top10pct_verdict",
+                          "revenue_top10pct_diff_lo", "revenue_top10pct_diff_hi"):
                 results[key].pop(field, None)
     for _name, ds in INDEX_FILES:
         lapse, ret = results.get(f"lapse_{ds}"), results.get(f"lapse_{ds}_retention")

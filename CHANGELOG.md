@@ -6,6 +6,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `philanthropy.ingest.build_snapshots(gifts, kind=...)`: one labelled
+  donor x fiscal-year table for every question, `kind="upgrade"`, `"lapse"`,
+  `"response_next_year"` or `"next_amount"`, on one shared column set
+  (`period_total` and the two periods before it, `period_trend`,
+  `largest_gift`, `consecutive_periods_given`, `gave_prior1`, `gave_prior2`,
+  `periods_since_first_gift`, plus `gift_count` and `months_since_last_gift`
+  on a gift log). `min_years_given` restricts any kind to donors with that
+  many giving years (default 1, the current population). Its core works on a
+  donor x period table, where "prior" means the previous period observed in
+  the file, so a biennial survey gets the same columns as a gift log. An
+  opt-in `scale_free=True` adds ratio and rank columns that do not depend on
+  a file's dollar scale. They are not adopted into
+  `score_leadership_prospects`: on the E.11a validation folds (upgrade,
+  five seeds) they lifted PSID wave 2013 top-10% from 38.9 to 41.6 of 100
+  but lowered DonorsChoose FY2014 top-10% from 5.9 to 5.6 on every seed.
 - `philanthropy.utils.check_label_floor(y, task)` returns `"run"` or
   `"not enough labels"` for `task="lapse"` or `"major_gift"`, so a hosted
   no-code page and a Python user apply the same cutoff before fitting. The
@@ -16,6 +31,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   data (lapse), or most did (major gift).
 
 ### Changed
+- Results, lapse: the DonorsChoose and PSID lapse benchmarks now build their
+  rows with `build_snapshots` / `period_snapshots`, so both feed
+  `LapsePredictor` the same shared gift columns (a new parity test checks
+  this), and both ask the question only of donors with at least two years
+  (PSID: waves) of giving, the donors a retention program can act on.
+  DonorsChoose: base lapse rate 84 to 64 of 100; top-10% lapse hit rate
+  81 vs 81 for the rule (was 88 vs 90), so its index cell now shows the
+  lapse read, "about the same", instead of the retention read; the
+  retention read still beats the rule, 75 vs 68 (was 50 vs 45). PSID: base
+  rate 26 to 23; top-10% 55 vs 47 (was 59 vs 54), still beats the rule.
+  The lapse bottom line is unchanged: use the model. The how-to-read worked
+  example uses the new DonorsChoose retention numbers.
 - Results: every verdict now comes from the data instead of a fixed 15%
   margin. The model beats the rule only when the paired model-minus-rule gap
   stays on the model's side across bootstrap redraws of the same test donors

@@ -23,8 +23,8 @@ never compared against a strawman.
 ## Picking at random
 
 Picking the same number of donors with no information at all. What random
-finds is simply the file's base rate: if 16 out of every 100 donors give
-again, a random 100 contains about 16 who give again. A model or rule that
+finds is simply the file's base rate: if 36 out of every 100 donors give
+again, a random 100 contains about 36 who give again. A model or rule that
 does not beat random has learned nothing.
 
 ## Top 1%, 5% and 10%
@@ -36,12 +36,12 @@ On a file of 10,000 donors, the top 10% is the first 1,000 names.
 A worked example from DonorsChoose ("who keeps giving next year", on the
 [Lapse](lapse.md) page), scaled to a 10,000-donor file:
 
-- **Random:** a random 1,000 names include about 160 who give again.
-- **The simple rule:** the rule's first 1,000 names include about 450.
-- **The model:** the model's first 1,000 names include about 500.
+- **Random:** a random 1,000 names include about 360 who give again.
+- **The simple rule:** the rule's first 1,000 names include about 680.
+- **The model:** the model's first 1,000 names include about 750.
 
 Both lists are far ahead of random. The model is ahead of the rule by about
-50 donors in 1,000, which is the kind of gap the next section is about.
+70 donors in 1,000, which is the kind of gap the next section is about.
 
 ## About the same
 

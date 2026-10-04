@@ -170,21 +170,22 @@ NUMBER_MAP = [
      lambda: [_get("lapse_kdd98_retention.top10pct.model"), _get("lapse_kdd98_retention.top10pct.rule"),
               _get("lapse_kdd98_retention.top1pct.model"), _get("lapse_kdd98_retention.top1pct.rule"),
               100 - _get("lapse_kdd98.base_rate_pct")]),
-    ("lapse.md", r"about (\d+) out of every 100 gave nothing in the following fiscal year",
+    ("lapse.md", r"About (\d+) out of every 100 of them gave nothing in the following fiscal year",
      lambda: [_get("lapse_donorschoose.metadata.base_rate_pct")]),
     ("lapse.md", r"Of the model's top 10% of picks, (\d+) out of every 100 lapsed\. The best simple rule found (\d+) "
-     r"out of every 100\. \*\*Loses here",
-     lambda: [_get("lapse_donorschoose.top10pct.model"), _get("lapse_donorschoose.top10pct.rule")]),
+     r"out of every 100\. \*\*About the same as the rule here\.\*\* At the top 1% the rule is a little ahead \((\d+) "
+     r"against (\d+)\)",
+     lambda: [_get("lapse_donorschoose.top10pct.model"), _get("lapse_donorschoose.top10pct.rule"),
+              _get("lapse_donorschoose.top1pct.rule"), _get("lapse_donorschoose.top1pct.model")]),
     ("lapse.md", r"At the top 10% of that ranking, (\d+) out of every 100 gave again, against (\d+) out of every 100 "
      r"for the same rule inverted\. At the top 1%, (\d+) out of 100 against (\d+) out of 100 for the rule\. Picking "
-     r"at random against the ~(\d+) out of 100 overall retention rate finds about (\d+) out of every 100",
+     r"at random finds about (\d+) out of every 100",
      lambda: [_get("lapse_donorschoose_retention.top10pct.model"), _get("lapse_donorschoose_retention.top10pct.rule"),
               _get("lapse_donorschoose_retention.top1pct.model"), _get("lapse_donorschoose_retention.top1pct.rule"),
-              100 - _get("lapse_donorschoose.metadata.base_rate_pct"),
               100 - _get("lapse_donorschoose.metadata.base_rate_pct")]),
     ("lapse.md", r"\(top 10% lapse hit rate: (\d+) out of 100 with it, (\d+) without\)\. ## PSID",
      lambda: [_get("lapse_donorschoose_momentum.top10pct.model"), _get("lapse_donorschoose.top10pct.model")]),
-    ("lapse.md", r"between ([\d,]+) and ([\d,]+) households per test wave\. Unlike the two donor files above, lapsing "
+    ("lapse.md", r"between ([\d,]+) and ([\d,]+) households per test wave\. Unlike the donor files above, lapsing "
      r"is a minority outcome here: about (\d+) out of every 100 households lapsed",
      lambda: [min(_get("lapse_psid.metadata.n_per_fold")), max(_get("lapse_psid.metadata.n_per_fold")),
               _get("lapse_psid.metadata.base_rate_pct")]),
@@ -194,17 +195,16 @@ NUMBER_MAP = [
      lambda: [_get("lapse_psid.top10pct.model"), len(_folds("lapse_psid")), _get("lapse_psid.top10pct.rule"),
               _get("lapse_psid.top1pct.model"), _get("lapse_psid.top1pct.rule")]),
     ("lapse.md", r"about (\d+) out of every 100 households gave again\. Of the 10% the model ranks least likely to "
-     r"lapse, (\d+) out of every 100 gave again, against (\d+) for the best rule inverted",
+     r"lapse, (\d+) out of every 100 gave again, against (\d+) for the best rule",
      lambda: [100 - _get("lapse_psid.metadata.base_rate_pct"), _get("lapse_psid_retention.top10pct.model"),
               _get("lapse_psid_retention.top10pct.rule")]),
-    ("lapse.md", r"At the top 5% the two are level \((\d+) vs (\d+)\), and at the top 1% too close to call \((\d+) vs "
-     r"(\d+)\)",
+    ("lapse.md", r"At the top 5% it is (\d+) against (\d+), and at the top 1% (\d+) against (\d+)\.",
      lambda: [_get("lapse_psid_retention.top5pct.model"), _get("lapse_psid_retention.top5pct.rule"),
               _get("lapse_psid_retention.top1pct.model"), _get("lapse_psid_retention.top1pct.rule")]),
     ("lapse.md", r"\(top 10% lapse hit rate: (\d+) out of 100 with it, (\d+) without\)\. Only aggregates",
      lambda: [_get("lapse_psid_momentum.top10pct.model"), _get("lapse_psid.top10pct.model")]),
-    ("lapse.md", r"\((\d+) and (\d+) out of 100 respectively\), and the PSID household survey, where it is a "
-     r"minority outcome \(about (\d+) out of 100\)",
+    ("lapse.md", r"\((\d+) out of 100\), DonorsChoose Open Data, where most multi-year donors still lapse \((\d+) out of 100\), "
+     r"and the PSID household survey, where it is a minority outcome \(about (\d+) out of 100\)",
      lambda: [_get("lapse_kdd98.base_rate_pct"), _get("lapse_donorschoose.metadata.base_rate_pct"),
               _get("lapse_psid.metadata.base_rate_pct")]),
     # Suggested ask

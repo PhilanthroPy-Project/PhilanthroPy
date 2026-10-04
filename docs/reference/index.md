@@ -62,6 +62,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `activities_to_features` | `ingest` | The activity-type feature set (`_count_12m`, `_distinct`, ...) may grow as more source types are onboarded. |
 | `read_gifts`, `GIFT_SOURCES` | `ingest` | A thin preset registry over the CiviCRM, Raiser's Edge and NPSP bridges above; it inherits their tier and grows a new preset name as they do. |
 | `build_leadership_snapshots` | `ingest` | The gift-derived feature set (trend, consecutive years given, ...) is a minimal starting recipe and is likely to be refined. |
+| `build_snapshots` | `ingest` | The kinds (`upgrade`, `lapse`, `response_next_year`, `next_amount`), their populations and the shared column set are new and may grow; the scale-free block stays opt-in until a validation fold adopts it. |
 | `score_leadership_prospects` | `models` | The top-reasons heuristic (z-score within the scored population weighted by global permutation importance) and the top-N/lift report shape are a starting recipe over `build_leadership_snapshots`, likely to be refined; `suggested_ask` is left `NaN` pending a real ask-amount training signal. |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Chart composition is presentation, not contract. |
 | `fetch_kdd98_donors`, `fetch_kdd98_val_donors` | `datasets` | Return the raw upstream columns untyped; may gain as-of date parsing as the real-data leakage replication in #124 lands. The validation fetcher shares the learning fetcher's tier and will follow any change to it. |

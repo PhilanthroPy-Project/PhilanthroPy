@@ -15,6 +15,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   at least one training draw in ten scored below the simple rule on held-out
   data (lapse), or most did (major gift).
 
+### Changed
+- Results: every verdict now comes from the data instead of a fixed 15%
+  margin. The model beats the rule only when the paired model-minus-rule gap
+  stays on the model's side across bootstrap redraws of the same test donors
+  (one split) or in every seed and test year (walk-forward), loses when it
+  stays on the rule's side, and is "about the same" otherwise. A single split
+  with no bootstrap interval gets no verdict. The index table is generated
+  from `results.json`, drops the sample-data column, and ends each row with
+  one of six bottom lines by a fixed rule: "Use the model" needs wins from two
+  independent sources (two organisations, or one file in every one of several
+  test years) and no counted loss, and wins from one organisation in single
+  splits read "Use the model (tested on one organisation so far)", kept apart
+  from "Use the model for your top slice only"; KDD Cup 1998 and cup98VAL
+  count as one source, the KDD98 $50 upgrade proxy is shown but not counted,
+  and sample data is a code check only. The table also reports the
+  who-keeps-giving list with its lift over random where more than 80 in 100
+  donors lapse. The scoreboard plots each real-file result as a multiple of
+  the rule with its range, and a drift test ties each hand-written number on
+  the Results pages to its `results.json` key and fails when one drifts. The
+  PSID lapse comparison adds "this-wave total (negated)" as a third simple
+  rule.
+
 ### Fixed
 - `check_label_floor` raises a `ValueError` on missing (NaN or None) labels
   instead of counting them as a class, which let a file of non-lapses and

@@ -4,12 +4,11 @@ Which donors giving $100 to $999 this fiscal year will give $1,000 or more next 
 $1,000 is the default leadership level; set your own with `threshold=` and `band=` in
 `score_leadership_prospects` (or `--threshold` / `--band` on the command line).
 
-**Depends on your data.** It beats the simple rule on our sample data, and on the three real
-files we can test it on today the results split: it beats the rule on PSID household survey
-data, is about the same as the rule on DonorsChoose (ahead only at the very top of the list), and
-loses on KDD Cup 1998 (threshold rescaled to that file's much smaller gifts). One real win next
-to a real loss is not enough to say it beats the rule in general; try it on your own file before
-trusting any of these numbers.
+**Use the model.** It beats the simple rule on the two real files that can ask the $1,000
+question, PSID household survey data and DonorsChoose, in every test year on both. KDD Cup 1998's
+gifts are too small for $1,000, so its tab asks a $50 proxy question instead; the model loses
+there, and that tab is shown but not counted. Results on your own file will differ, so check it
+on your own donors before relying on it.
 
 === "Sample data"
 
@@ -23,7 +22,7 @@ trusting any of these numbers.
     ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/upgrade_topn.png#only-light)
     ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/upgrade_topn-dark.png#only-dark)
 
-    **Beats the simple rule here.**
+    **Code check only: sample data is not counted in the verdict.**
 
     ### Worked example
 
@@ -66,7 +65,8 @@ trusting any of these numbers.
     ![Model vs. best simple rule, top 1/5/10% of picks, KDD Cup 1998](../assets/results/upgrade_kdd98-dark.png#only-dark)
 
     **Loses here.** On this file, at this threshold, ranking by the size of a donor's biggest
-    eligible gift beats the model, especially for the very top of the list.
+    eligible gift beats the model, especially for the very top of the list. This is a $50 proxy
+    for the $1,000 question, so it is not counted in the bottom line.
 
     Adding this year's giving trend vs. last year's as its own feature made no difference here at
     all: the model's top 1/5/10% hit rates (17, 14, and 11 out of 100) are identical with and
@@ -91,7 +91,8 @@ trusting any of these numbers.
     ![Model vs. best simple rule, top 1/5/10% of picks, DonorsChoose](../assets/results/upgrade_donorschoose.png#only-light)
     ![Model vs. best simple rule, top 1/5/10% of picks, DonorsChoose](../assets/results/upgrade_donorschoose-dark.png#only-dark)
 
-    **About the same as the rule overall**, though clearly ahead at the very top of the list.
+    **Beats the rule here**: ahead in every test year, and furthest ahead at the very top of
+    the list.
 
     Adding this year's giving trend vs. last year's as its own feature made essentially no
     difference here either: the model's top 10% hit rate is 9 out of 100 with it, 9 without. The
@@ -139,8 +140,7 @@ trusting any of these numbers.
 
 ## Which data
 
-Sample (synthetic) donor panel, five random draws averaged, and PSID are the two files where
-this model beats the rule today. KDD Cup 1998, DonorsChoose and PSID are the three real files we
+PSID and DonorsChoose are the two real files where this model beats the rule today. KDD Cup 1998, DonorsChoose and PSID are the three real files we
 can test the $1,000 upgrade question on (KDD98's gifts are too small to test the real $1,000
 threshold, so the threshold on that tab is rescaled; DonorsChoose's and PSID's amounts are large
 enough to use $1,000 as-is). Results on your own file, at your own dollar threshold, will differ

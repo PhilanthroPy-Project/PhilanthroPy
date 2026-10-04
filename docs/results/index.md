@@ -7,8 +7,8 @@ these pages, see [Model Validation & Benchmarks](../explanation/benchmarks.md). 
 here? Start with [How to read these pages](how_to_read.md); the files used are
 described in [The datasets behind these pages](datasets.md).
 
-![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](../assets/results/scoreboard.png#only-light)
-![How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better](../assets/results/scoreboard-dark.png#only-dark)
+![How each model compares to the simple rule your shop already uses: one dot per real file, the model's result as a multiple of the rule's, with a line for its range; left of 1 means the rule did better](../assets/results/scoreboard.png#only-light)
+![How each model compares to the simple rule your shop already uses: one dot per real file, the model's result as a multiple of the rule's, with a line for its range; left of 1 means the rule did better](../assets/results/scoreboard-dark.png#only-dark)
 
 - **"The rule"** is whatever a fundraising shop already does without a model:
   rank by past giving, ask for what a donor gave last time, mail everyone.
@@ -16,27 +16,33 @@ described in [The datasets behind these pages](datasets.md).
   could find, not a strawman.
 - **"Random"** is picking that many donors with no information at all, the
   floor any model or rule should beat.
-- **A dot to the right of centre means the model earned its keep** on that
-  file; a dot to the left means the simple rule you already run for free
-  did better. Losses are shown as often as wins on this page.
+- **A filled dot right of the 1x line means the model earned its keep** on
+  that file; a filled dot left of it means the simple rule you already run
+  for free did better, and a hollow dot means the two are too close to call.
+  Losses are shown as often as wins on this page.
 
-Each cell below is that model's verdict on that dataset: **beats the rule**, **about the same as
-the rule**, **does not beat the rule**, or, where the file structurally cannot answer the
-question, **can't test (reason)**. "not run" means that pairing was never run (either the dataset
-doesn't fit the question, or there's nothing new it would show).
+Each cell below is that model's result on that real file, in donors out of 100 among the
+top 10% it picks: **beats the rule**, **about the same as the rule**, or **loses to the rule**,
+or, where the file structurally cannot answer the question, **can't test (reason)**. "not run"
+means that pairing was never run. A model only beats the rule when the whole range of its
+margin over the rule, across resamples or test years, lands on the model's side; if the range
+straddles zero the cell says **about the same**. The synthetic sample data is not in this table:
+it shows the code runs, not that the model helps.
 
-A model only counts as beating the rule overall when it wins on two real files. One real win next
-to a real loss means **it depends on your data**: that is where leadership upgrade and lapse stand
-today, each winning on PSID and losing or tying on the donor files.
+Where nearly every donor lapses, a list of "who will lapse" has nothing useful to say, so the
+lapse cell reports the reverse list, who keeps giving, and how many times better than picking
+at random it is.
 
-| Model | Question it answers | Sample data | KDD Cup 1998 | cup98VAL | DonorsChoose | PSID |
-|---|---|---|---|---|---|---|
-| [Leadership upgrade ($1,000+)](leadership.md) | Which mid-level donors are about to become $1,000+ donors? | Beats the rule | Loses | not run | About the same as the rule, ahead at the very top | Beats the rule |
-| [Response](response.md) | Who is most likely to give again next year? | Does not beat the rule | About the same as the rule | Beats the rule | can't test (no mailing/appeal log) | can't test (no mailing/appeal log) |
-| [Lapse](lapse.md) | Which donors are about to stop giving? | Does not beat the rule | Does not beat the rule (about the same as random) | not run | Loses, small margin (retention read: about the same, ahead at the top) | Beats the rule (retention read: about the same) |
-| [Suggested ask](ask.md) | How much should we ask a donor for? | Does not beat the rule | Does not beat the rule | not run | Does not beat the rule | About the same as the rule |
-| [Planned giving](planned_giving.md) | Which donors look like bequest prospects? | Not yet tested on real bequest data | can't test (no bequest-intent label) | not run | can't test (no bequest-intent signal) | can't test (no bequest-intent signal) |
-| [Who to mail](who_to_mail.md) | Is it worth mailing this donor at all? | not run | Beats mailing everyone | Beats mailing everyone | can't test (no per-contact mailing cost) | can't test (no per-contact mailing cost) |
+The bottom line follows one fixed rule, the same for every question; [How to read these
+pages](how_to_read.md#bottom-lines) states it in full. **Use the model** needs wins on two
+independent sources (two organisations' files, or one file in every one of several test years)
+and no loss on a file that counts; wins from one organisation only read **Use the model (tested
+on one organisation so far)**. A win next to a loss reads **Can't tell yet**. The KDD Cup
+1998 upgrade cell is a $50 proxy for the $1,000 question, so it is shown but not counted. This
+table and the scoreboard above are generated from the same results file as every number on
+these pages.
+
+--8<-- "results/_verdicts/index_table.md"
 
 ## How we tested each one
 

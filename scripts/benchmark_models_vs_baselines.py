@@ -87,7 +87,7 @@ import warnings
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -104,7 +104,7 @@ from philanthropy.datasets import (
     make_donor_panel,
 )
 from philanthropy.ingest import build_leadership_snapshots, build_snapshots
-from philanthropy.ingest._snapshots import period_snapshots
+from philanthropy.ingest._snapshots import SCALE_FREE_COLUMNS, period_snapshots
 from philanthropy.ingest._upgrade_snapshots import _column, _prepare_gifts, _snapshot_features_for_year
 from philanthropy.experimental import UpliftTLearner
 from philanthropy.metrics import fundraising_roi
@@ -1267,6 +1267,76 @@ def bench_upgrade_psid(
     return _aggregate(seed_rows)
 
 
+#: Columns that mean the same thing on any file whatever its dollar scale:
+#: the scale-free block plus the shared builder's count and flag columns.
+TRANSFER_COLS = SCALE_FREE_COLUMNS + (
+    "consecutive_periods_given", "gave_prior1", "gave_prior2", "periods_since_first_gift",
+)
+
+
+def _transfer_rules(test: pd.DataFrame) -> Dict[str, np.ndarray]:
+    """The upgrade rule set, on the target file's own dollars."""
+    return {
+        "this-period total": test["period_total"].to_numpy(),
+        "previous-period total plus this-period growth": (test["period_total"] + test["period_trend"]).to_numpy(),
+        "largest gift in band": test["largest_gift"].to_numpy(),
+    }
+
+
+def bench_upgrade_transfer(
+    donorschoose_path: str, psid_data: Optional[str] = None, psid_do: Optional[str] = None,
+    with_kdd98: bool = False, seed: int = DONORSCHOOSE_SEED, n_test_folds: int = PSID_N_FOLDS,
+) -> Dict[str, List[Row]]:
+    """Cross-file transfer (E.15 3.2): fit the upgrade model on DonorsChoose
+    with only :data:`TRANSFER_COLS`, then score files it never saw against
+    each file's own rules. PSID is scored on its last ``n_test_folds``
+    waves ($100-999 crossing $1,000, as on its own tab); KDD98 on FY1995
+    ($5-49 crossing $50, its own tab's proxy question). Nothing from the
+    target file is used to fit."""
+    gifts = _donorschoose_gift_log(donorschoose_path, DONORSCHOOSE_SUBSAMPLE, seed)
+    source = build_snapshots(gifts, kind="upgrade", scale_free=True)
+    cols = list(TRANSFER_COLS)
+    model = MajorGiftClassifier(random_state=seed).fit(
+        source[cols].to_numpy("float64"), source["target"].to_numpy()
+    )
+    out: Dict[str, List[Row]] = {}
+    name = "upgrade_model transfer (fit on DonorsChoose)"
+
+    if psid_data and psid_do:
+        long_df = _psid_long_table(psid_data, psid_do)
+        giving_cols = [c for c in long_df.columns if c.startswith("giving_")]
+        totals = long_df.pivot(index="household_key", columns="year", values="total_giving").sort_index(axis=1)
+        largest = (
+            long_df.assign(_largest=long_df[giving_cols].max(axis=1))
+            .pivot(index="household_key", columns="year", values="_largest")
+            .reindex(index=totals.index, columns=totals.columns)
+        )
+        snap = period_snapshots(totals, kind="upgrade", largest=largest, scale_free=True)
+        seed_rows = []
+        for w in _walk_forward_test_periods(snap, "period", n_test_folds):
+            test = snap[snap["period"] == w]
+            if test["target"].nunique() < 2:
+                continue
+            proba = model.predict_proba(test.reindex(columns=cols).to_numpy("float64"))[:, 1]
+            seed_rows.append(_classifier_rows(
+                "psid", name, test["target"].to_numpy(), proba, _transfer_rules(test),
+                f"transfer: fit on DonorsChoose, scored on PSID wave{w}",
+            ))
+        out["psid"] = _aggregate(seed_rows)
+
+    if with_kdd98:
+        snap = build_snapshots(
+            _kdd_gift_log(fetch_kdd98_donors()), kind="upgrade", fiscal_years=[1995],
+            threshold=50.0, band=(5.0, 49.0), scale_free=True,
+        )
+        proba = model.predict_proba(snap[cols].to_numpy("float64"))[:, 1]
+        out["kdd98"] = _classifier_rows(
+            "kdd98", name, snap["target"].to_numpy(), proba, _transfer_rules(snap),
+            "transfer: fit on DonorsChoose, scored on KDD98 FY1995 ($50 proxy)", bootstrap=True,
+        )
+    return out
+
+
 def _psid_lapse_fold(
     data_path: str, do_path: str, seed: int, include_momentum: bool, n_test_folds: int, retention: bool,
 ) -> List[Row]:
@@ -1454,13 +1524,14 @@ def _kdd_ask_design(
 
 
 def bench_kdd_upgrade(
-    seed: int, threshold: float = 50.0, band: Tuple[float, float] = (5.0, 49.0),
+    seed: int, threshold: Union[float, str] = "p92", band: Tuple[float, float] = (5.0, 49.0),
     include_momentum: bool = False,
 ) -> List[Row]:
     """Upgrade model on KDD98, threshold rescaled from the $1000/$100-999
     defaults: this file's per-donor annual giving tops out far lower than a
-    major-gift program's, so $50/$5-49 keeps the same shape (threshold is
-    roughly the 93rd percentile of per-donor annual giving on this file).
+    major-gift program's. ``"p92"`` is the 92nd percentile of positive
+    per-donor fiscal-year totals in the two snapshot years, which resolves
+    to $50 on this file, so $50/$5-49 keeps the same shape as $1000/$100-999.
 
     Split is walk-forward by fiscal year (July start): train on the FY1994
     snapshot (outcome FY1995), test on FY1995 (outcome FY1996). The RDATE

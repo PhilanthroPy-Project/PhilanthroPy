@@ -78,3 +78,14 @@ def test_kdd98_lapse_uses_shared_columns():
 @pytest.mark.skip(reason="synthetic lapse moves onto the shared builder with the synthetic panel")
 def test_synthetic_lapse_uses_shared_columns():
     pass
+
+
+def test_upgrade_transfer_scores_psid_on_columns_it_never_fit(monkeypatch):
+    gifts = make_donor_panel(n_donors=400, n_years=6, random_state=0)["gifts"][["donor_id", "gift_date", "gift_amount"]]
+    monkeypatch.setattr(bm, "_donorschoose_gift_log", lambda *_: gifts)
+    long_df = _psid_like_long_table()
+    long_df["total_giving"] *= 5  # some households reach the $100-999 band and cross $1,000
+    monkeypatch.setattr(bm, "_psid_long_table", lambda *_: long_df)
+    out = bm.bench_upgrade_transfer("unused", "unused", "unused", n_test_folds=2)
+    assert set(out) == {"psid"} and out["psid"]
+    assert all(r.dataset == "psid" and "transfer" in r.model for r in out["psid"])

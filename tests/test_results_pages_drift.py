@@ -72,6 +72,14 @@ def test_every_out_of_100_phrase_is_in_results_json():
     assert not stale, f"numbers not found in results.json: {stale}"
 
 
+def test_transfer_sentence_matches_the_intervals():
+    # "ahead in every one of the test waves" / "does not carry over": the
+    # per-wave minimum gap is above 0 on PSID, the bootstrap upper bound
+    # below 0 on KDD98.
+    assert RESULTS["upgrade_transfer_psid"]["top10pct"]["diff_lo"] > 0
+    assert RESULTS["upgrade_transfer_kdd98"]["top10pct"]["diff_hi"] < 0
+
+
 def test_how_to_read_worked_example_matches_donorschoose_retention():
     text = (PAGES / "how_to_read.md").read_text()
     ret = RESULTS["lapse_donorschoose_retention"]["top10pct"]
@@ -116,6 +124,12 @@ NUMBER_MAP = [
     ("leadership.md", r"Of our top 10% of picks, (\d+) out of every 100 crossed \$1,000\. Ranking by this year's "
      r"giving total alone found (\d+) out of every 100",
      lambda: [_get("upgrade_synthetic.top10pct.model"), _get("upgrade_synthetic.top10pct.rule")]),
+    ("leadership.md", r"On PSID, the model's top 10% of picks found (\d+) out of every 100 households crossing \$1,000, "
+     r"against (\d+) for the best rule, ahead in every one of the (\d+) test waves\. On KDD Cup 1998's \$50 proxy "
+     r"question it found (\d+) out of every 100, against (\d+) for the best rule",
+     lambda: [_get("upgrade_transfer_psid.top10pct.model"), _get("upgrade_transfer_psid.top10pct.rule"),
+              len(_folds("upgrade_psid")), _get("upgrade_transfer_kdd98.top10pct.model"),
+              _get("upgrade_transfer_kdd98.top10pct.rule")]),
     ("leadership.md", r"Of the model's top 10% of picks, (\d+) out of every 100 crossed \$50\. The best rule \(the "
      r"largest single gift already in the eligible band\) found (\d+) out of every 100",
      lambda: [_get("upgrade_kdd98.top10pct.model"), _get("upgrade_kdd98.top10pct.rule")]),

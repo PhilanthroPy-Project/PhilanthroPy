@@ -31,6 +31,6 @@
         | `fy_total_prior1` | 12.701 | + |
         | `fy_total_prior2` | 1.903 | + |
 
-        Method: permutation importance (`neg_mean_absolute_error`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (subsample=0.1, seed=42, last fiscal-year fold). Git SHA: `39d544a09f786786b1e99c0bc67ff7ec0057560a`.
+        Method: permutation importance (`neg_mean_absolute_error`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (subsample=0.1, seed=42, last fiscal-year fold). Git SHA: `17483eaac7c0ba11b1da760f9f8d6b6199804e3a`.
 
     Results on your own file will differ.

@@ -6,6 +6,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `threshold="pNN"` in `build_leadership_snapshots` and
+  `score_leadership_prospects`: the leadership level as the NNth percentile
+  of positive donor fiscal-year totals in the training (snapshot) years,
+  never their label years, so a small-dollar file and a large-dollar file
+  ask the same question. The dollar default (1000) is unchanged; the
+  resolved value is in `snapshots.attrs["threshold"]` and
+  `report["threshold"]`. The KDD Cup 1998 upgrade tab now uses `"p92"`,
+  which resolves to the same $50 it used before, so its numbers do not
+  move; the page's "roughly the 93rd percentile" becomes the exact 92nd.
+- `score_leadership_prospects` report: `recommended_list_fraction` and
+  `recommended_list_size`, the longest top slice of the held-out fold whose
+  upgrade rate is still at least 1.5 times the fold's base rate, as a share
+  and as a count of today's scored donors.
+- Results, leadership: a cross-file transfer check in a collapsed analyst
+  block. Fit on DonorsChoose with only scale-free and count columns, the
+  model beats PSID's own best rule at the top 10% (36 vs 32 of 100, ahead
+  in all 4 test waves) but loses clearly on KDD Cup 1998's $50 proxy (5 vs
+  12).
 - `philanthropy.ingest.build_snapshots(gifts, kind=...)`: one labelled
   donor x fiscal-year table for every question, `kind="upgrade"`, `"lapse"`,
   `"response_next_year"` or `"next_amount"`, on one shared column set
@@ -79,6 +97,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   DonorsChoose and Karlan and List, and slightly ahead for the model on PSID
   in every test wave (43 vs 42 of every $100). The ask bottom line is
   unchanged: use the simple rule.
+- `MajorGiftClassifier` class weights for the upgrade model, checked on the
+  PSID wave 2013 and DonorsChoose FY2014 validation folds (five seeds) and
+  not adopted: `"balanced"` lowered DonorsChoose top-1% from 22.9 to 21.8
+  of 100, and `{0: 1, 1: 5}` lowered DonorsChoose top-10% from 5.9 to 5.8.
+  `score_leadership_prospects` keeps the unweighted default.
 - Results, lapse: the DonorsChoose and PSID lapse benchmarks now build their
   rows with `build_snapshots` / `period_snapshots`, so both feed
   `LapsePredictor` the same shared gift columns (a new parity test checks

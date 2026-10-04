@@ -90,7 +90,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score"
     }
   },
@@ -206,7 +206,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score"
     }
   },
@@ -281,7 +281,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "suggested ask"
     }
   },
@@ -373,7 +373,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (FiscalYearGroupedSplitter, last split)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score"
     }
   },
@@ -455,7 +455,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score"
     }
   },
@@ -659,7 +659,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score"
     }
   },
@@ -753,7 +753,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward by fiscal year (train FY1994, test FY1995)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score"
     }
   },
@@ -849,7 +849,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score"
     },
     "nearly_everyone_lapses": true
@@ -968,7 +968,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "suggested ask"
     }
   },
@@ -1056,7 +1056,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score"
     },
     "curve": {
@@ -1234,7 +1234,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score",
       "reused_from_note": "Same response model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     },
@@ -1406,7 +1406,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score",
       "reused_from_note": "Same model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     }
@@ -1520,7 +1520,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score"
     }
   },
@@ -1563,8 +1563,7 @@
         10215,
         12108
       ],
-      "base_rate_pct": 64.33927847588163,
-      "note": "84% base rate; see the retention read for the useful list"
+      "base_rate_pct": 64.33927847588163
     },
     "features": {
       "sets": [
@@ -1637,7 +1636,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score"
     },
     "nearly_everyone_lapses": false
@@ -1787,7 +1786,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "suggested ask"
     }
   },
@@ -1872,8 +1871,7 @@
         10215,
         12108
       ],
-      "base_rate_pct": 64.33927847588163,
-      "note": "84% base rate; see the retention read for the useful list"
+      "base_rate_pct": 64.33927847588163
     }
   },
   "lapse_donorschoose_retention_momentum": {
@@ -2077,7 +2075,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score"
     }
   },
@@ -2211,7 +2209,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score"
     },
     "nearly_everyone_lapses": false
@@ -2377,7 +2375,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "suggested ask"
     }
   },
@@ -2536,6 +2534,82 @@
       "target": "next-wave total, given the household gives again"
     }
   },
+  "upgrade_transfer_psid": {
+    "top1pct": {
+      "model": 40.76640271493213,
+      "rule": 22.933163650075414,
+      "diff_lo": 6.25,
+      "diff_hi": 30.76923076923077
+    },
+    "top5pct": {
+      "model": 38.95504548194422,
+      "rule": 35.040104937256835,
+      "diff_lo": 0.0,
+      "diff_hi": 8.333333333333337
+    },
+    "top10pct": {
+      "model": 35.91536038271707,
+      "rule": 32.23606515565115,
+      "diff_lo": 1.14285714285714,
+      "diff_hi": 6.8181818181818175
+    },
+    "verdict": "wins",
+    "diff_lo": 1.14285714285714,
+    "diff_hi": 6.8181818181818175,
+    "roc_auc": 0.6956076762361468,
+    "metadata": {
+      "momentum": false,
+      "fit_on": "donorschoose",
+      "features": [
+        "total_over_largest",
+        "largest_over_prior_total",
+        "gifts_per_streak_period",
+        "period_total_pct_rank",
+        "consecutive_periods_given",
+        "gave_prior1",
+        "gave_prior2",
+        "periods_since_first_gift"
+      ]
+    }
+  },
+  "upgrade_transfer_kdd98": {
+    "top1pct": {
+      "model": 4.517133956386292,
+      "rule": 23.05295950155763,
+      "diff_lo": -22.27803738317757,
+      "diff_hi": -14.953271028037381
+    },
+    "top5pct": {
+      "model": 5.546899345590527,
+      "rule": 13.836086008102214,
+      "diff_lo": -9.848083515113743,
+      "diff_hi": -7.105017139295732
+    },
+    "top10pct": {
+      "model": 5.1729510751012775,
+      "rule": 12.153318790900594,
+      "diff_lo": -7.744234964163291,
+      "diff_hi": -6.154565285135556
+    },
+    "verdict": "loses",
+    "diff_lo": -7.744234964163291,
+    "diff_hi": -6.154565285135556,
+    "roc_auc": 0.6510899381591092,
+    "metadata": {
+      "momentum": false,
+      "fit_on": "donorschoose",
+      "features": [
+        "total_over_largest",
+        "largest_over_prior_total",
+        "gifts_per_streak_period",
+        "period_total_pct_rank",
+        "consecutive_periods_given",
+        "gave_prior1",
+        "gave_prior2",
+        "periods_since_first_gift"
+      ]
+    }
+  },
   "response_donorschoose_note": "No mailing/appeal log in this file, so a response model has nothing to predict response to.",
   "response_psid_note": "No mailing/appeal log in this extract, so a response model has nothing to predict response to.",
   "who_to_mail_donorschoose_note": "No per-contact mailing cost in this file, so cost-aware selection has no cost side to weigh.",
@@ -2642,7 +2716,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "score"
     }
   },
@@ -2737,7 +2811,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+      "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
       "target_label": "suggested ask"
     }
   },
@@ -2827,7 +2901,7 @@
     }
   },
   "_env": {
-    "git_sha": "39d544a09f786786b1e99c0bc67ff7ec0057560a",
+    "git_sha": "17483eaac7c0ba11b1da760f9f8d6b6199804e3a",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

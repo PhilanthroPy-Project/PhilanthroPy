@@ -21,6 +21,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `score_leadership_prospects`: on the E.11a validation folds (upgrade,
   five seeds) they lifted PSID wave 2013 top-10% from 38.9 to 41.6 of 100
   but lowered DonorsChoose FY2014 top-10% from 5.9 to 5.6 on every seed.
+- `philanthropy.datasets.load_karlan_list(path)` reads `AERtables1-5.dta` from
+  the Karlan and List (2007) matching-grant experiment (openICPSR 113224; data
+  CC BY 4.0, copyright American Economic Association 2007) from a local path:
+  50,083 prior donors to one charity, one 2005 letter, with the matching-grant
+  offer, match ratio, cap and example ask randomised.
+- Results pages: Karlan and List as a fifth real file
+  (`--karlan-list-path` on both results scripts). The response model beats the
+  best of four simple rules on it (top 10%: 8.0 vs 5.5 of 100 gave), a second
+  organisation after KDD Cup 1998, so the Response bottom line moves from "Use
+  the model (tested on one organisation so far)" to "Use the model". The
+  amount model is about the same as the donor's largest past gift. The first
+  `UpliftTLearner` rows (who the matching-grant offer moves most) are about the
+  same as ranking by recency. Split, features and rule sets were fixed before
+  the run, one configuration each.
 - `philanthropy.utils.check_label_floor(y, task)` returns `"run"` or
   `"not enough labels"` for `task="lapse"` or `"major_gift"`, so a hosted
   no-code page and a Python user apply the same cutoff before fitting. The

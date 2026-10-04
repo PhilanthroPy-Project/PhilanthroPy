@@ -90,7 +90,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "score"
     }
   },
@@ -206,7 +206,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "score"
     }
   },
@@ -279,7 +279,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "suggested ask"
     }
   },
@@ -371,7 +371,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (FiscalYearGroupedSplitter, last split)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "score"
     }
   },
@@ -453,7 +453,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "score"
     }
   },
@@ -657,7 +657,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "score"
     }
   },
@@ -751,7 +751,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward by fiscal year (train FY1994, test FY1995)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "score"
     }
   },
@@ -847,7 +847,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "score"
     },
     "nearly_everyone_lapses": true
@@ -961,7 +961,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "suggested ask"
     }
   },
@@ -1049,7 +1049,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "score"
     },
     "curve": {
@@ -1227,7 +1227,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "score",
       "reused_from_note": "Same response model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     },
@@ -1399,7 +1399,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "score",
       "reused_from_note": "Same model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     }
@@ -1513,7 +1513,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "score"
     }
   },
@@ -1630,7 +1630,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "score"
     },
     "nearly_everyone_lapses": false
@@ -1775,7 +1775,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "suggested ask"
     }
   },
@@ -2060,7 +2060,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "score"
     }
   },
@@ -2194,7 +2194,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "score"
     },
     "nearly_everyone_lapses": false
@@ -2355,7 +2355,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
       "target_label": "suggested ask"
     }
   },
@@ -2515,6 +2515,223 @@
   "who_to_mail_psid_note": "No per-contact mailing cost in this extract, so cost-aware selection has no cost side to weigh.",
   "planned_giving_donorschoose_note": "No bequest/estate-intent signal in this file.",
   "planned_giving_psid_note": "No bequest/estate-intent signal in this extract.",
+  "upgrade_karlan_list_note": "One letter and no later giving in this file, so there is no next year to predict.",
+  "lapse_karlan_list_note": "One letter and no later giving in this file, so there is no next year to predict.",
+  "who_to_mail_karlan_list_note": "No per-contact mailing cost in this file, so cost-aware selection has no cost side to weigh.",
+  "planned_giving_karlan_list_note": "No bequest/estate-intent signal in this file.",
+  "response_karlan_list": {
+    "top1pct": {
+      "model": 22.666666666666664,
+      "rule": 13.333333333333334,
+      "diff_lo": 2.6666666666666643,
+      "diff_hi": 15.333333333333332
+    },
+    "top5pct": {
+      "model": 11.717709720372836,
+      "rule": 6.92410119840213,
+      "diff_lo": 2.659786950732357,
+      "diff_hi": 6.790945406125165
+    },
+    "top10pct": {
+      "model": 7.989347536617843,
+      "rule": 5.525965379494008,
+      "diff_lo": 1.1984021304926762,
+      "diff_hi": 3.6634487350199723
+    },
+    "verdict": "wins",
+    "diff_lo": 1.1984021304926762,
+    "diff_hi": 3.6634487350199723,
+    "roc_auc": 0.7485298082930518,
+    "metadata": {
+      "n_donors": 50083,
+      "base_rate_pct": 2.0645728091368327,
+      "split": "55/15/30 stratified (train/validation/test)"
+    },
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "prior_gifts",
+            "highest_previous_amount",
+            "months_since_last_gift",
+            "years_since_first_gift",
+            "female",
+            "couple",
+            "red_state",
+            "red_county"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "prior_gifts",
+          "label": "number of past gifts",
+          "group": "giving_history",
+          "importance": 0.12171915863777358,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "months_since_last_gift",
+          "label": "months since last gift",
+          "group": "recency",
+          "importance": 0.08169706137033746,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "highest_previous_amount",
+          "label": "largest past gift",
+          "group": "giving_history",
+          "importance": 0.06367597250994704,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        },
+        {
+          "column": "years_since_first_gift",
+          "label": "years as a donor",
+          "group": "giving_history",
+          "importance": 0.015870101827189686,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "red_state",
+          "label": "state voted Republican in 2004",
+          "group": "wealth",
+          "importance": 0.0013972685322196532,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "55/15/30 stratified (train/validation/test)",
+      "n_configs": 1,
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "target_label": "score"
+    }
+  },
+  "ask_karlan_list": {
+    "within25pct_model": 44.516129032258064,
+    "within25pct_last_gift": 40.96774193548387,
+    "mae_model": 16.950014898485783,
+    "mae_rule": 23.164516129032258,
+    "mae_diff_lo": -10.891461190415038,
+    "mae_diff_hi": -1.6903833623744102,
+    "verdict": "modest",
+    "diff_lo": -4.193548387096774,
+    "diff_hi": 10.653225806451605,
+    "metadata": {
+      "n_donors": 50083,
+      "base_rate_pct": 2.0645728091368327,
+      "split": "55/15/30 stratified (train/validation/test)",
+      "target": "amount given, among donors who gave",
+      "rule": "highest previous gift",
+      "n_test": 310
+    },
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "prior_gifts",
+            "highest_previous_amount",
+            "months_since_last_gift",
+            "years_since_first_gift",
+            "female",
+            "couple",
+            "red_state",
+            "red_county"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "highest_previous_amount",
+          "label": "largest past gift",
+          "group": "giving_history",
+          "importance": 20.795978575204142,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "prior_gifts",
+          "label": "number of past gifts",
+          "group": "giving_history",
+          "importance": 0.8507293442361654,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "female",
+          "label": "donor is a woman",
+          "group": "wealth",
+          "importance": 0.020767206658138092,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "couple",
+          "label": "donor record is a couple",
+          "group": "wealth",
+          "importance": -0.02031938072744772,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "months_since_last_gift",
+          "label": "months since last gift",
+          "group": "recency",
+          "importance": -0.05630052813649762,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        }
+      ],
+      "scoring": "neg_mean_absolute_error",
+      "split": "55/15/30 stratified (train/validation/test)",
+      "n_configs": 1,
+      "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
+      "target_label": "suggested ask"
+    }
+  },
+  "uplift_karlan_list": {
+    "top10pct": {
+      "model": 1.3351317538509662,
+      "rule": 0.9964699048214842,
+      "diff_lo": -2.279692217289866,
+      "diff_hi": 2.9382626000781755,
+      "verdict": "modest"
+    },
+    "top30pct": {
+      "model": 0.5688440538895674,
+      "rule": 0.45695589389860913,
+      "diff_lo": -1.0266091677982254,
+      "diff_hi": 1.1439070264011162,
+      "verdict": "modest"
+    },
+    "everyone": 0.4279,
+    "rule": "most recent",
+    "metadata": {
+      "n_donors": 50083,
+      "base_rate_pct": 2.0645728091368327,
+      "split": "55/15/30 stratified (train/validation/test)"
+    }
+  },
   "_index": {
     "upgrade": {
       "bottom_line": "Use the model",
@@ -2522,16 +2739,18 @@
         "kdd98": "Proxy question ($50 threshold), not counted: loses 11 vs 12 of 100",
         "cup98val": "not run",
         "donorschoose": "Beats the rule: 9.0 vs 8.3 of 100",
-        "psid": "Beats the rule: 41 vs 32 of 100"
+        "psid": "Beats the rule: 41 vs 32 of 100",
+        "karlan_list": "can't test (one letter and no later giving)"
       }
     },
     "response": {
-      "bottom_line": "Use the model (tested on one organisation so far)",
+      "bottom_line": "Use the model",
       "cells": {
         "kdd98": "About the same as the rule: 8.9 vs 8.3 of 100, ahead in the top 1% or 5%",
         "cup98val": "Beats the rule: 8.9 vs 7.4 of 100",
         "donorschoose": "can't test (no mailing/appeal log)",
-        "psid": "can't test (no mailing/appeal log)"
+        "psid": "can't test (no mailing/appeal log)",
+        "karlan_list": "Beats the rule: 8.0 vs 5.5 of 100"
       }
     },
     "lapse": {
@@ -2540,7 +2759,8 @@
         "kdd98": "Nearly everyone lapses here (95 of 100). Who keeps giving: beats the rule, 6.5 vs 5.6 of 100 (1.3x random)",
         "cup98val": "not run",
         "donorschoose": "About the same as the rule: 81 vs 81 of 100",
-        "psid": "Beats the rule: 55 vs 47 of 100"
+        "psid": "Beats the rule: 55 vs 47 of 100",
+        "karlan_list": "can't test (one letter and no later giving)"
       }
     },
     "ask": {
@@ -2549,7 +2769,8 @@
         "kdd98": "Loses to the rule: 65 vs 67 of 100 within 25%",
         "cup98val": "not run",
         "donorschoose": "Loses to the rule: 30 vs 32 of 100 within 25%",
-        "psid": "About the same as the rule: 29 vs 28 of 100 within 25%"
+        "psid": "About the same as the rule: 29 vs 28 of 100 within 25%",
+        "karlan_list": "About the same as the rule: 45 vs 41 of 100 within 25%"
       }
     },
     "planned_giving": {
@@ -2558,7 +2779,8 @@
         "kdd98": "can't test (no bequest-intent label)",
         "cup98val": "not run",
         "donorschoose": "can't test (no bequest/estate-intent signal)",
-        "psid": "can't test (no bequest/estate-intent signal)"
+        "psid": "can't test (no bequest/estate-intent signal)",
+        "karlan_list": "can't test (no bequest/estate-intent signal)"
       }
     },
     "who_to_mail": {
@@ -2567,12 +2789,13 @@
         "kdd98": "Beats mailing everyone: $4,542 vs $3,149 net",
         "cup98val": "Beats mailing everyone: $13,764 vs $10,560 net",
         "donorschoose": "can't test (no per-contact mailing cost)",
-        "psid": "can't test (no per-contact mailing cost)"
+        "psid": "can't test (no per-contact mailing cost)",
+        "karlan_list": "can't test (no per-contact mailing cost)"
       }
     }
   },
   "_env": {
-    "git_sha": "1f042056e7ac724e7d54aa96958c703717c5ec50",
+    "git_sha": "fbdb12e026b5950383070a26fe5076b52bd36941",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

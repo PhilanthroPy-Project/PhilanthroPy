@@ -351,7 +351,7 @@ def _profit_curve_chart(
     _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle, 2, theme)
 
 
-_SCOREBOARD_MARKERS = {"KDD Cup 1998": "s", "cup98VAL": "^", "DonorsChoose": "D", "PSID": "P"}
+_SCOREBOARD_MARKERS = {"KDD Cup 1998": "s", "cup98VAL": "^", "DonorsChoose": "D", "PSID": "P", "Karlan and List": "v"}
 _SCOREBOARD_XLIM = (0.8, 1.6)
 
 
@@ -424,11 +424,15 @@ def _scoreboard_chart(path: Path, rows: List[tuple], notes: List[str], theme: di
     title = f"{n_wins} of {n_total} real-file comparisons beat the simple rule your shop already uses"
     wrapped_title = _wrap_title(title)
     extra_in = _TITLE_LINE_IN * wrapped_title.count("\n")
-    fig.legend(
-        handles=legend_handles, loc="center", bbox_to_anchor=(0.5, 1 - (_LEGEND_Y_IN + extra_in) / fig_h),
-        ncol=len(legend_handles), frameon=False, labelcolor=theme["ink2"], fontsize=8,
-        columnspacing=0.8, handletextpad=0.2,
-    )
+    # Two legend rows, files then verdicts, so five files still fit the width.
+    n_files = len(seen_datasets)
+    for row_i, handles in enumerate((legend_handles[:n_files], legend_handles[n_files:])):
+        fig.legend(
+            handles=handles, loc="center",
+            bbox_to_anchor=(0.5, 1 - (_LEGEND_Y_IN - 0.1 + 0.22 * row_i + extra_in) / fig_h),
+            ncol=len(handles), frameon=False, labelcolor=theme["ink2"], fontsize=8,
+            columnspacing=0.8, handletextpad=0.2,
+        )
     fig.suptitle(
         wrapped_title, x=0.015, ha="left", y=1 - _TITLE_Y_IN / fig_h, fontsize=12, fontweight="bold",
         color=theme["ink1"], linespacing=1.3,
@@ -696,6 +700,10 @@ DATASET_GROUPS_AVAILABLE = {
     # income, wealth with and without home equity, and volunteer hours; no
     # mailing/solicitation history.
     "psid": frozenset({"giving_history", "recency", "wealth", "engagement"}),
+    # Karlan and List (load_karlan_list): giving history before the letter,
+    # gender / couple flags and the 2004 presidential vote of the donor's
+    # state and county; no wealth screen, no event or mailing history.
+    "karlan_list": frozenset({"giving_history", "recency", "wealth"}),
 }
 
 # Who one row of each dataset is, for "the model looks at N things about each
@@ -707,11 +715,12 @@ DATASET_SUBJECT_NOUN = {"psid": "household"}
 # wealth screen).
 DATASET_GROUP_MEANINGS = {
     "psid": {"wealth": "self-reported household income and wealth (survey answers, not a wealth screen)"},
+    "karlan_list": {"wealth": "gender, couple and the 2004 vote where the donor lives (no wealth screen)"},
 }
 
 
 def _dataset_category(key: str) -> str:
-    for suffix in ("_synthetic", "_cup98val", "_kdd98", "_donorschoose", "_psid"):
+    for suffix in ("_synthetic", "_cup98val", "_kdd98", "_donorschoose", "_psid", "_karlan_list"):
         if key.endswith(suffix):
             return suffix[1:]
     raise ValueError(f"unrecognized dataset key: {key!r}")
@@ -808,6 +817,15 @@ FEATURE_INFO = {
     "household_volunteer_hours_regular": ("household's regular volunteer hours", "engagement"),
     "head_volunteer_hours_typical_week": ("head's volunteer hours in a typical week", "engagement"),
     "spouse_volunteer_hours_typical_week": ("spouse's volunteer hours in a typical week", "engagement"),
+    # Karlan and List matching-grant experiment (bm.KARLAN_LIST_FEATURES;
+    # months_since_last_gift is shared with the upgrade snapshots above)
+    "prior_gifts": ("number of past gifts", "giving_history"),
+    "highest_previous_amount": ("largest past gift", "giving_history"),
+    "years_since_first_gift": ("years as a donor", "giving_history"),
+    "female": ("donor is a woman", "wealth"),
+    "couple": ("donor record is a couple", "wealth"),
+    "red_state": ("state voted Republican in 2004", "wealth"),
+    "red_county": ("county voted Republican in 2004", "wealth"),
 }
 
 # _kdd_feature_frame's column set (AskAmountRecommender, cost-aware mailing):
@@ -1253,6 +1271,7 @@ MODEL_DATASET_TABS = {
     "response": [
         ("KDD Cup 1998 (real donor file)", "response_kdd98"),
         ("cup98VAL (real donor file, never seen by the model)", "response_cup98val"),
+        ("Karlan and List (real donor file)", "response_karlan_list"),
         ("Sample data (checks the code runs, not that the model works)", "response_synthetic"),
     ],
     "lapse": [
@@ -1265,6 +1284,7 @@ MODEL_DATASET_TABS = {
         ("Sample data", "ask_synthetic"),
         ("DonorsChoose (real donor file)", "ask_donorschoose"),
         ("PSID (household survey)", "ask_psid"),
+        ("Karlan and List (real donor file)", "ask_karlan_list"),
     ],
     "planned_giving": [
         ("Sample data", "planned_giving_synthetic"),
@@ -1455,13 +1475,19 @@ INDEX_QUESTIONS = (
     ("planned_giving", "[Planned giving](planned_giving.md)", "Planned giving", "Which donors look like bequest prospects?"),
     ("who_to_mail", "[Who to mail](who_to_mail.md)", "Who to mail", "Is it worth mailing this donor at all?"),
 )
-INDEX_FILES = (("KDD Cup 1998", "kdd98"), ("cup98VAL", "cup98val"), ("DonorsChoose", "donorschoose"), ("PSID", "psid"))
+INDEX_FILES = (
+    ("KDD Cup 1998", "kdd98"), ("cup98VAL", "cup98val"), ("DonorsChoose", "donorschoose"), ("PSID", "psid"),
+    ("Karlan and List", "karlan_list"),
+)
 # Pairs with no "<question>_<file>_note" key in results.json that still
 # cannot be tested; anything else missing reads "not run".
 INDEX_CANT_TEST = {("planned_giving", "kdd98"): "no bequest-intent label"}
 # Which organisation's donors each file holds: KDD Cup 1998 and cup98VAL are
 # two halves of one charity's 1997 mailing, so they are not independent.
-INDEX_ORGS = {"kdd98": "PVA", "cup98val": "PVA", "donorschoose": "DonorsChoose", "psid": "PSID"}
+INDEX_ORGS = {
+    "kdd98": "PVA", "cup98val": "PVA", "donorschoose": "DonorsChoose", "psid": "PSID",
+    "karlan_list": "Karlan and List",
+}
 # Cells shown but not counted in the bottom line, recorded before the run
 # that produced them: KDD98 gifts are too small for the $1,000 question, so
 # its upgrade cell answers a $50 proxy (E.15: "KDD98 is not an upgrade
@@ -1633,6 +1659,100 @@ def scoreboard_rows(index: Dict[str, Any]) -> Tuple[List[tuple], List[str]]:
     return rows, notes
 
 
+def karlan_list_drivers(path: str, kind: str) -> Dict[str, Any]:
+    """Drivers for the Karlan and List response ("response") or amount
+    ("ask") model, on the same split and features as the benchmark rows."""
+    feature_cols = tuple(bm.KARLAN_LIST_FEATURES)
+
+    def build(_seed):
+        df, idx_train, _idx_val, idx_test = bm._karlan_list_split(path)
+        if kind == "ask":
+            gave = df["gave"].to_numpy() == 1
+            tr, te = idx_train[gave[idx_train]], idx_test[gave[idx_test]]
+            X, y = df[list(feature_cols)], df["amount"].to_numpy()
+        else:
+            tr, te = idx_train, idx_test
+            X, y = bm._karlan_list_design(df, idx_train), df["gave"].to_numpy()
+        return X.iloc[tr].to_numpy(), y[tr], X.iloc[te].to_numpy(), y[te]
+
+    seed = bm.KARLAN_LIST_SEED
+    if kind == "ask":
+        drivers = _top_drivers(
+            lambda s: bm.AskAmountRecommender(random_state=s), [seed], build, feature_cols,
+            scoring="neg_mean_absolute_error",
+        )
+        return _features_entry(
+            feature_cols, drivers, scoring="neg_mean_absolute_error", split=bm.KDD_SPLIT, target_label="suggested ask",
+        )
+    drivers = _top_drivers(lambda s: bm.MajorGiftClassifier(random_state=s), [seed], build, feature_cols, scoring="roc_auc")
+    return _features_entry(feature_cols, drivers, scoring="roc_auc", split=bm.KDD_SPLIT)
+
+
+def _karlan_list_section(results: Dict[str, Any], path: str) -> None:
+    """Response, amount and matching-grant uplift on the Karlan and List
+    experiment (aggregates only; data CC BY 4.0, copyright AEA 2007)."""
+    df = bm.load_karlan_list(path)
+    meta = {"n_donors": int(len(df)), "base_rate_pct": float(df["gave"].mean()) * 100, "split": bm.KDD_SPLIT}
+
+    rows = bm.bench_response_karlan_list(path)
+    by_p = {p: _row(rows, "MajorGiftClassifier", f"top{p}pct_hit_rate") for p in (1, 5, 10)}
+    entry = {
+        f"top{p}pct": {"model": by_p[p].value * 100, "rule": by_p[p].baseline * 100, **_diff_pp(by_p[p])}
+        for p in (1, 5, 10)
+    }
+    entry.update(_verdict_fields(by_p[10]))
+    entry["roc_auc"] = _row(rows, "MajorGiftClassifier", "roc_auc").value
+    entry["metadata"] = meta
+    entry["features"] = karlan_list_drivers(path, "response")
+    results["response_karlan_list"] = entry
+    r10 = entry["top10pct"]
+    _render_themed(
+        _hbar_chart, OUT_DIR / "response_karlan_list.png", ["Top 1%", "Top 5%", "Top 10%"],
+        {
+            "Model": [entry[f"top{p}pct"]["model"] for p in (1, 5, 10)],
+            "Best simple rule": [entry[f"top{p}pct"]["rule"] for p in (1, 5, 10)],
+        },
+        {"Model": "model", "Best simple rule": "rule"},
+        title=_takeaway(r10["model"], r10["rule"], "The model", "the best simple rule"),
+        subtitle="Karlan and List, one 2005 fundraising letter, held-out 30% of donors. Gave, out of every 100 picked.",
+        errors={"Model": [_ci(by_p[p]) for p in (1, 5, 10)], "Best simple rule": [None, None, None]},
+        base_rate=meta["base_rate_pct"], base_rate_label=f"everyone: {meta['base_rate_pct']:.1f} of 100",
+    )
+
+    rows = bm.bench_ask_karlan_list(path)
+    within, mae = _row(rows, "AskAmountRecommender", "within25pct"), _row(rows, "AskAmountRecommender", "mae")
+    results["ask_karlan_list"] = {
+        "within25pct_model": within.value * 100, "within25pct_last_gift": within.baseline * 100,
+        "mae_model": mae.value, "mae_rule": mae.baseline,
+        "mae_diff_lo": mae.diff_lo, "mae_diff_hi": mae.diff_hi,
+        **_verdict_fields(within),
+        "metadata": {
+            **meta, "target": "amount given, among donors who gave", "rule": "highest previous gift",
+            "n_test": int(within.note.rsplit("n=", 1)[1]),
+        },
+        "features": karlan_list_drivers(path, "ask"),
+    }
+    a = results["ask_karlan_list"]
+    _render_themed(
+        _hbar_chart, OUT_DIR / "ask_karlan_list.png", ["Suggested ask"],
+        {"Model": [a["within25pct_model"]], "Best simple rule": [a["within25pct_last_gift"]]},
+        {"Model": "model", "Best simple rule": "rule"},
+        title=_takeaway(a["within25pct_model"], a["within25pct_last_gift"], "The model", "the best simple rule"),
+        subtitle="Karlan and List, donors who gave to the 2005 letter. Predicted amounts landing within 25% of the actual gift.",
+    )
+
+    rows = bm.bench_uplift_karlan_list(path)
+    up = {}
+    for p in (10, 30):
+        r = _row(rows, "UpliftTLearner", f"uplift_top{p}pct")
+        up[f"top{p}pct"] = {"model": r.value * 100, "rule": r.baseline * 100, **_diff_pp(r), "verdict": r.verdict}
+    note = _row(rows, "UpliftTLearner", "uplift_top30pct").note
+    up["everyone"] = float(note.rsplit("everyone=", 1)[1]) * 100
+    up["rule"] = note.split("rule_set=", 1)[1].split(" (", 1)[0]
+    up["metadata"] = meta
+    results["uplift_karlan_list"] = up
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--with-kdd98", action="store_true", help="Also run the KDD Cup 1998 section (downloads ~36MB).")
@@ -1660,6 +1780,11 @@ def main() -> None:
     parser.add_argument(
         "--psid-do", type=str, default=None,
         help="Path to the PSID extract's accompanying Stata .do file. Requires --psid-data too.",
+    )
+    parser.add_argument(
+        "--karlan-list-path", type=str, default=None,
+        help="Path to a user-obtained AERtables1-5.dta (openICPSR 113224, Karlan and List 2007); "
+        "skipped entirely when not given.",
     )
     args = parser.parse_args()
 
@@ -2261,6 +2386,14 @@ def main() -> None:
     results["who_to_mail_psid_note"] = "No per-contact mailing cost in this extract, so cost-aware selection has no cost side to weigh."
     results["planned_giving_donorschoose_note"] = "No bequest/estate-intent signal in this file."
     results["planned_giving_psid_note"] = "No bequest/estate-intent signal in this extract."
+    one_letter = "One letter and no later giving in this file, so there is no next year to predict."
+    results["upgrade_karlan_list_note"] = one_letter
+    results["lapse_karlan_list_note"] = one_letter
+    results["who_to_mail_karlan_list_note"] = "No per-contact mailing cost in this file, so cost-aware selection has no cost side to weigh."
+    results["planned_giving_karlan_list_note"] = "No bequest/estate-intent signal in this file."
+
+    if args.karlan_list_path:
+        _karlan_list_section(results, args.karlan_list_path)
 
     # --- verdicts off sample data; index table and scoreboard ----------------
     for key in [k for k in results if "_synthetic" in k]:

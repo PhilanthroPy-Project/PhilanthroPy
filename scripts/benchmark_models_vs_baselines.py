@@ -23,6 +23,7 @@ Run:
     python scripts/benchmark_models_vs_baselines.py --out results/bench  # also writes bench.json / bench.csv
     python scripts/benchmark_models_vs_baselines.py --with-cup98val      # also scores on cup98VAL (opt-in, +~37MB)
     python scripts/benchmark_models_vs_baselines.py --with-blood         # also UCI Blood Transfusion (opt-in, ~12KB)
+    python scripts/benchmark_models_vs_baselines.py --karlan-list-path ~/data/karlan_list/AERtables1-5.dta
 
 The KDD Cup 1998 section downloads ``cup98lrn.zip`` (~36 MB) to
 ``~/philanthropy_data`` on first use (see ``fetch_kdd98_donors``); pass
@@ -98,12 +99,14 @@ from philanthropy.datasets import (
     fetch_kdd98_donors,
     fetch_kdd98_val_donors,
     load_donorschoose,
+    load_karlan_list,
     load_psid_philanthropy,
     make_donor_panel,
 )
 from philanthropy.ingest import build_leadership_snapshots, build_snapshots
 from philanthropy.ingest._snapshots import period_snapshots
 from philanthropy.ingest._upgrade_snapshots import _column, _prepare_gifts, _snapshot_features_for_year
+from philanthropy.experimental import UpliftTLearner
 from philanthropy.metrics import fundraising_roi
 from philanthropy.model_selection import FiscalYearGroupedSplitter
 from philanthropy.utils import trailing_slope_features
@@ -2140,6 +2143,145 @@ def bench_blood(seeds: Sequence[int]) -> List[Row]:
 # --------------------------------------------------------------------------- #
 # Output
 # --------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+# Karlan and List (2007) matching-grant experiment (openICPSR 113224; data
+# CC BY 4.0, copyright American Economic Association 2007). Opt-in, local
+# file. One letter, so it tests response, the amount given and, because the
+# matching-grant offer was randomised, uplift; nothing multi-year.
+# Fixed before any run: the 55/15/30 split (stratified on gave x matched),
+# the features, and the rule sets below. One configuration each.
+# --------------------------------------------------------------------------- #
+KARLAN_LIST_SEED = 42
+KARLAN_LIST_FEATURES = [
+    "prior_gifts", "highest_previous_amount", "months_since_last_gift", "years_since_first_gift",
+    "female", "couple", "red_state", "red_county",
+]
+
+
+def _karlan_list_split(path: str) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray, np.ndarray]:
+    df = load_karlan_list(path)
+    strat = df["gave"].to_numpy() * 2 + df["matched"].to_numpy()
+    idx_train, idx_val, idx_test = _split_55_15_30(len(df), strat, KARLAN_LIST_SEED)
+    return df, idx_train, idx_val, idx_test
+
+
+def _karlan_list_rules(rows: pd.DataFrame) -> Dict[str, np.ndarray]:
+    """The fixed response rule set: most recent, past spend (highest previous
+    gift, the only amount the file has), most gifts, and the RFM cell score
+    on those three."""
+    recency = rows["months_since_last_gift"].to_numpy()
+    return {
+        "most recent": -recency,
+        "past spend": rows["highest_previous_amount"].to_numpy(),
+        "most gifts": rows["prior_gifts"].to_numpy(),
+        "RFM cell score": _rfm_cell_score(
+            recency, rows["prior_gifts"].to_numpy(), rows["highest_previous_amount"].to_numpy()
+        ),
+    }
+
+
+def _karlan_list_design(df: pd.DataFrame, idx_train: np.ndarray) -> pd.DataFrame:
+    """Features with NaN filled by the training rows' medians (frozen)."""
+    medians = df.iloc[idx_train][KARLAN_LIST_FEATURES].median()
+    return df[KARLAN_LIST_FEATURES].fillna(medians)
+
+
+def bench_response_karlan_list(path: str) -> List[Row]:
+    """DonorPropensityModel / MajorGiftClassifier vs the response rule set:
+    who answers one fundraising letter (about 2 in 100 do)."""
+    df, idx_train, _idx_val, idx_test = _karlan_list_split(path)
+    X = _karlan_list_design(df, idx_train)
+    y = df["gave"].to_numpy()
+    rules = _karlan_list_rules(X.iloc[idx_test])
+    rows: List[Row] = []
+    for name, cls in (("DonorPropensityModel", DonorPropensityModel), ("MajorGiftClassifier", MajorGiftClassifier)):
+        model = cls(random_state=KARLAN_LIST_SEED).fit(X.iloc[idx_train].to_numpy(), y[idx_train])
+        proba = model.predict_proba(X.iloc[idx_test].to_numpy())[:, 1]
+        rows += _classifier_rows("karlan_list", name, y[idx_test], proba, rules, KDD_SPLIT, bootstrap=True)
+    return rows
+
+
+def bench_ask_karlan_list(path: str) -> List[Row]:
+    """AskAmountRecommender vs the ask rule set on donors who gave: highest
+    previous gift (the file has no last or average gift) and the median
+    training gift."""
+    df, idx_train, _idx_val, idx_test = _karlan_list_split(path)
+    gave = df["gave"].to_numpy() == 1
+    tr, te = idx_train[gave[idx_train]], idx_test[gave[idx_test]]
+    X = df[KARLAN_LIST_FEATURES]
+    y = df["amount"].to_numpy()
+    model = AskAmountRecommender(random_state=KARLAN_LIST_SEED).fit(X.iloc[tr].to_numpy(), y[tr])
+    pred = model.predict(X.iloc[te].to_numpy())
+    y_true = y[te]
+    rules = {
+        "highest previous gift": df["highest_previous_amount"].to_numpy()[te],
+        "median training gift": np.full_like(y_true, float(np.median(y[tr]))),
+    }
+    best_name, best_score, _ = _best_ask_baseline(y_true, rules)
+    header = f"rule_set={best_name} (best of {len(rules)}); split={KDD_SPLIT}; n_configs=1; n={len(te)}"
+    mae_d = _bootstrap_diff_ci(len(y_true), lambda idx: (
+        mean_absolute_error(y_true[idx], pred[idx]) - mean_absolute_error(y_true[idx], best_score[idx])
+    ))
+    within_d = _bootstrap_diff_ci(len(y_true), lambda idx: (
+        _within_pct(pred[idx], y_true[idx]) - _within_pct(best_score[idx], y_true[idx])
+    ))
+    return [
+        Row(
+            "karlan_list", "AskAmountRecommender", "mae",
+            mean_absolute_error(y_true, pred), mean_absolute_error(y_true, best_score),
+            lower_is_better=True, note=header, diff_lo=mae_d[0], diff_hi=mae_d[1],
+        ),
+        Row(
+            "karlan_list", "AskAmountRecommender", "within25pct",
+            _within_pct(pred, y_true), _within_pct(best_score, y_true),
+            note=header, diff_lo=within_d[0], diff_hi=within_d[1],
+        ),
+    ]
+
+
+def _uplift_in_top(y: np.ndarray, treated: np.ndarray, score: np.ndarray, frac: float) -> float:
+    """Response rate with the matching-grant offer minus without it, among
+    the top ``frac`` of donors by ``score``. ``nan`` if either arm is empty."""
+    top = np.argsort(-score, kind="stable")[: max(1, int(round(len(score) * frac)))]
+    t, c = y[top][treated[top] == 1], y[top][treated[top] == 0]
+    if len(t) == 0 or len(c) == 0:
+        return float("nan")
+    return float(t.mean() - c.mean())
+
+
+def bench_uplift_karlan_list(path: str) -> List[Row]:
+    """UpliftTLearner vs "most recent" and "past spend": rank donors, keep
+    the top 10% or 30%, and measure how much the randomised matching-grant
+    offer raised their response rate (in proportion points). The rule with
+    the larger lift at 30% is the baseline for both rows."""
+    df, idx_train, _idx_val, idx_test = _karlan_list_split(path)
+    X = _karlan_list_design(df, idx_train)
+    y, treated = df["gave"].to_numpy(), df["matched"].to_numpy()
+    model = UpliftTLearner(random_state=KARLAN_LIST_SEED).fit(
+        X.iloc[idx_train].to_numpy(), y[idx_train], treated[idx_train]
+    )
+    score = model.predict_uplift_score(X.iloc[idx_test].to_numpy())
+    yt, tt = y[idx_test], treated[idx_test]
+    all_rules = _karlan_list_rules(X.iloc[idx_test])
+    rules = {k: all_rules[k] for k in ("most recent", "past spend")}
+    best = max(rules, key=lambda k: _uplift_in_top(yt, tt, rules[k], 0.30))
+    header = (
+        f"rule_set={best} (best of {len(rules)}); split={KDD_SPLIT}; n_configs=1; "
+        f"everyone={_uplift_in_top(yt, tt, np.zeros(len(yt)), 1.0):.6f}"
+    )
+    rows = []
+    for frac in (0.10, 0.30):
+        d_lo, d_hi = _bootstrap_diff_ci(len(yt), lambda idx, f=frac: (
+            _uplift_in_top(yt[idx], tt[idx], score[idx], f) - _uplift_in_top(yt[idx], tt[idx], rules[best][idx], f)
+        ))
+        rows.append(Row(
+            "karlan_list", "UpliftTLearner", f"uplift_top{int(frac * 100)}pct",
+            _uplift_in_top(yt, tt, score, frac), _uplift_in_top(yt, tt, rules[best], frac),
+            note=header, diff_lo=d_lo, diff_hi=d_hi,
+        ))
+    return rows
+
+
 def _print_table(rows: List[Row]) -> None:
     header = f"{'dataset':<16} {'model':<33} {'metric':<33} {'value':>9} {'baseline':>9}  {'verdict':<7}note"
     print(header)
@@ -2195,6 +2337,11 @@ def main() -> None:
     parser.add_argument(
         "--psid-do", type=str, default=None,
         help="Path to the PSID extract's accompanying Stata .do file. Requires --psid-data too.",
+    )
+    parser.add_argument(
+        "--karlan-list-path", type=str, default=None,
+        help="Path to a user-obtained AERtables1-5.dta from openICPSR 113224 (Karlan and List 2007); "
+        "skipped entirely when not given.",
     )
     parser.add_argument("--out", type=str, default=None, help="Path prefix; also writes <out>.json and <out>.csv.")
     args = parser.parse_args()
@@ -2253,6 +2400,11 @@ def main() -> None:
             rows += bench_lapse_psid(args.psid_data, args.psid_do, include_momentum=momentum)
             rows += bench_lapse_psid_retention(args.psid_data, args.psid_do, include_momentum=momentum)
             rows += bench_ask_psid(args.psid_data, args.psid_do, include_momentum=momentum)
+
+    if args.karlan_list_path:
+        rows += bench_response_karlan_list(args.karlan_list_path)
+        rows += bench_ask_karlan_list(args.karlan_list_path)
+        rows += bench_uplift_karlan_list(args.karlan_list_path)
 
     runtime = time.time() - start
     _print_table(rows)

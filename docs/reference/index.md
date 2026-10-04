@@ -68,6 +68,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `fetch_kdd98_donors`, `fetch_kdd98_val_donors` | `datasets` | Return the raw upstream columns untyped; may gain as-of date parsing as the real-data leakage replication in #124 lands. The validation fetcher shares the learning fetcher's tier and will follow any change to it. |
 | `make_donor_panel` | `datasets` | The returned dict may gain keys (pledges, appeals, soft credits) as more of the library needs panel-shaped fixtures; existing keys and their columns will not change silently. |
 | `load_donorschoose` | `datasets` | Reads the ICPSR 37898 DS0001 variable names (`DONOR_ID`, `AMOUNT`, `CREATED_MONTH`, ...); may grow a configurable column mapping if a later ICPSR version renames them. |
+| `load_karlan_list` | `datasets` | Reads the published `AERtables1-5.dta` variable names (`gave`, `HPA`, `MRM2`, ...); the returned column names may still be adjusted while the Results rows built on them settle. |
 | `load_psid_philanthropy` | `datasets` | Reads a fixed list of PSID ER/S variables for 2001-2023; an extract that omits some of them skips those waves (or raises KeyError for a partially selected wave). |
 | `GiftIntervalCalibrator`, `GiftInterval` | `models` | The conformity-score menu is expected to grow (conformalised quantile regression is not shipped), which adds `score` values rather than changing existing ones. |
 | `trailing_slope_features` | `utils` | New, off-by-default helper; the bin width, window set and NaN threshold are a starting recipe and may be refined. |

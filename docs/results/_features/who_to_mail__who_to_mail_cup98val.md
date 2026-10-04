@@ -32,7 +32,7 @@
         | `AGE` | 0.006 | mixed |
         | `rfm_recency` | 0.005 | - |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Git SHA: `1f042056e7ac724e7d54aa96958c703717c5ec50`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Git SHA: `fbdb12e026b5950383070a26fe5076b52bd36941`.
         Same response model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns.
 
     Results on your own file will differ.

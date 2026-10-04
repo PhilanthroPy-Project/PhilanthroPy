@@ -143,7 +143,8 @@ on your own donors before relying on it.
 PSID and DonorsChoose are the two real files where this model beats the rule today. KDD Cup 1998, DonorsChoose and PSID are the three real files we
 can test the $1,000 upgrade question on (KDD98's gifts are too small to test the real $1,000
 threshold, so the threshold on that tab is rescaled; DonorsChoose's and PSID's amounts are large
-enough to use $1,000 as-is). Results on your own file, at your own dollar threshold, will differ
+enough to use $1,000 as-is). The Karlan and List experiment is one letter with no later giving,
+so it cannot test upgrading at all. Results on your own file, at your own dollar threshold, will differ
 from all four.
 
 ## What the model looks at

@@ -1,5 +1,7 @@
 # Who to mail
 
+**Use the model (tested on one organisation so far).** Both files below come from one charity's 1997 mailing.
+
 **We skipped 9,920 of 28,624 letters and still raised $1,393 more.** On a real
 donor file, mailing only the donors the model expects to be worth the postage
 beats mailing everyone, in dollars raised and in letters saved.

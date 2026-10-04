@@ -1,10 +1,10 @@
 # Lapse
 
-**Depends on your data.** On PSID household survey data, where most households keep giving,
-the model beats the simple rule. On KDD Cup 1998 and DonorsChoose, where nearly every donor
-lapses, it is about the same as random picks or a little behind the rule, and on our sample data
-the rule wins. One real win next to a real loss is not enough to say it beats the rule in
-general.
+**Use the model.** On PSID household survey data, where most households keep giving, it beats
+the simple rule at picking who will lapse. On KDD Cup 1998 and DonorsChoose, where nearly every
+donor lapses, a lapse list is about the same as the rule or a little behind it, so use its
+retention list there instead: who is most likely to keep giving, which beats the rule on both
+files.
 
 Featured on a real donor file: [KDD Cup 1998](https://kdd.ics.uci.edu/databases/kddcup98/kddcup98.html).
 We pretended it was 1 June 1997, the date of that program's own held-out
@@ -30,9 +30,8 @@ On a file this lopsided, the question worth asking is not "who is about to lapse
 everyone), it is "who is the model most confident will *not* lapse". Take the donors the model
 ranks least likely to lapse: at the top 5% of that ranking, 8 out of every 100 gave again,
 against 6 out of every 100 for the same rule inverted (donors with the fewest years since their
-last gift, i.e. the ones the rule itself would call safest). At the top 1% and top 10% the two
-are close enough to call about the same (9 vs 9, and 6 vs 6), though the model's own number is a
-shade ahead at every size checked. Picking at random finds about 5 out of every 100 at any size.
+last gift, i.e. the ones the rule itself would call safest). At the top 10% the model is
+also ahead (6.5 vs 5.6); at the top 1% the two are too close to call (9 vs 9). Picking at random finds about 5 out of every 100 at any size.
 
 ![Retained donors in the model's least-likely-to-lapse 10%, vs. the same rule, KDD Cup 1998](../assets/results/lapse_kdd98_retention.png#only-light)
 ![Retained donors in the model's least-likely-to-lapse 10%, vs. the same rule, KDD Cup 1998](../assets/results/lapse_kdd98_retention-dark.png#only-dark)
@@ -68,7 +67,8 @@ retention rate finds about 16 out of every 100 at any size.
 ![Retained donors in the model's least-likely-to-lapse 10%, vs. the same rule, DonorsChoose](../assets/results/lapse_donorschoose_retention.png#only-light)
 ![Retained donors in the model's least-likely-to-lapse 10%, vs. the same rule, DonorsChoose](../assets/results/lapse_donorschoose_retention-dark.png#only-dark)
 
-**About the same as the rule overall, ahead at the top of the list.** As on KDD98, use this as a
+**Beats the rule here**, in every test year, and furthest ahead at the top of the list. As on
+KDD98, use this as a
 retention list on a file shaped this way, not as a lapse list. Aggregates only; no donor-level
 figures are shown here.
 
@@ -86,30 +86,30 @@ tested the 2015, 2017, 2019 and 2021 waves in turn, training on every earlier wa
 each time: between 3,109 and 3,803 households per test wave. Unlike the two donor files above,
 lapsing is a minority outcome here: about 26 out of every 100 households lapsed.
 
-Of the model's top 10% of picks, 59 out of every 100 lapsed. The best simple rule (the shortest
-run of back-to-back waves with any giving, the better of the 2 rules checked here in all 4 test
-waves) found 44 out of every 100. The model was ahead in every test wave. At the top 1% it found
-67 against 44.
+Of the model's top 10% of picks, 59 out of every 100 lapsed. The best simple rule (the smallest
+giving this wave first, the best of the 3 rules checked here in all 4 test waves) found 54 out of
+every 100. The model was ahead in every test wave. At the top 1% it found 67 against 56.
 
 ![Model vs. best simple rule, top 1/5/10% of picks, PSID](../assets/results/lapse_psid.png#only-light)
 ![Model vs. best simple rule, top 1/5/10% of picks, PSID](../assets/results/lapse_psid-dark.png#only-dark)
 
 **Beats the rule here.** On a file where lapsing is the exception, not the norm, the model's
-list of likely lapsers is clearly better than ranking by giving streak.
+list of likely lapsers is clearly better than ranking by this wave's giving.
 
 ### The retention read
 
 Flipped the same way as above: about 74 out of every 100 households gave again. Of the 10% the
-model ranks least likely to lapse, 95 out of every 100 gave again, against 92 for the same rule
-inverted (households with the longest giving runs). At the top 5% it is 94 against 93, and at
-the top 1% the two are level (94 vs 94).
+model ranks least likely to lapse, 95 out of every 100 gave again, against 92 for the best rule
+inverted (households with the longest giving runs in three test waves, the biggest givers in
+2015). At the top 5% the two are level (94 vs 94), and at the top 1% too close to call (94 vs
+95).
 
 ![Retained households in the model's least-likely-to-lapse 10%, vs. the same rule, PSID](../assets/results/lapse_psid_retention.png#only-light)
 ![Retained households in the model's least-likely-to-lapse 10%, vs. the same rule, PSID](../assets/results/lapse_psid_retention-dark.png#only-dark)
 
-**About the same as the rule for this retention read.** When most households already keep
-giving, both find a group that almost all gives again; on a file shaped like this, the lapse list
-above is the more useful one.
+**Beats the rule for this retention read at the top 10%, by a small margin**, and level with it
+higher up the list. When most households already keep giving, both find a group that almost all
+gives again; on a file shaped like this, the lapse list above is the more useful one.
 
 Adding the giving trend between waves as its own feature made no real difference to either read
 (top 10% lapse hit rate: 61 out of 100 with it, 59 without).
@@ -126,9 +126,8 @@ Research Center, Institute for Social Research, University of Michigan, Ann Arbo
 Real files: [KDD Cup 1998](https://kdd.ics.uci.edu/databases/kddcup98/kddcup98.html) and
 DonorsChoose Open Data, where lapsing is close to universal (95 and 84 out of 100 respectively),
 and the PSID household survey, where it is a minority outcome (about 26 out of 100) and the model
-beats the rule. On our sample (synthetic) donor panel, where lapsing is also a minority outcome,
-the simple rule "years since the donor's last gift" beats the model at every pick size we
-checked; use that rule instead there. Results on your own file will differ from all four.
+beats the rule. On our sample (synthetic) donor panel, which only checks that the code runs, the
+simple rule "years since the donor's last gift" is ahead of the model at every pick size. Results on your own file will differ from all four.
 
 ## What the model looks at
 

@@ -351,52 +351,56 @@ def _profit_curve_chart(
     _finish_chart(path, fig, ax, fig_h, extra_in, wrapped_title, wrapped_subtitle, 2, theme)
 
 
-_SCOREBOARD_X = {"loses": 0.15, "modest": 0.5, "wins": 0.85}
-_SCOREBOARD_MARKERS = {"Sample data": "o", "KDD Cup 1998": "s", "cup98VAL": "^", "DonorsChoose": "D", "PSID": "P"}
+_SCOREBOARD_MARKERS = {"KDD Cup 1998": "s", "cup98VAL": "^", "DonorsChoose": "D", "PSID": "P"}
+_SCOREBOARD_XLIM = (0.8, 1.6)
 
 
-def _scoreboard_chart(path: Path, rows: List[tuple], theme: dict) -> None:
-    """One row per question, one dot per dataset, placed left (loses to the
-    simple rule), centre (about the same) or right (beats the rule); a
-    dataset with no rule to compare against (planned giving) gets a hollow
-    grey marker at centre labelled untested instead. Different marker shapes
-    (not just colour) tell datasets apart for colour-blind readers. Replaces
-    a table as the first thing a reader sees (E.13c)."""
+def _scoreboard_chart(path: Path, rows: List[tuple], notes: List[str], theme: dict) -> None:
+    """One row per question, one dot per real file, placed by lift ratio:
+    the model's top-10% result divided by the best simple rule's (1.0 = the
+    same; for the ask, the share of suggestions within 25%; for who to mail,
+    net revenue against mailing everyone). A thin line through each dot is
+    the paired model-minus-rule interval on the same ratio scale; the dot is
+    filled in the model colour when the verdict is "beats the rule", in the
+    rule colour when it loses, and hollow when the two are about the same.
+    Sample data never appears: it is a code check, not a result. Questions
+    no real file can test, and any row that mixes reads, are explained in
+    the caption lines in ``notes``, not drawn. Marker
+    shapes (not just colour) tell files apart for colour-blind readers."""
     n = len(rows)
     row_in = 0.5
-    fig_h = _HEADER_IN + row_in * n + 0.7
+    fig_h = _HEADER_IN + row_in * n + 1.25
     fig, ax = plt.subplots(figsize=(_FIG_W, fig_h), dpi=150)
     ax.set_facecolor(theme["surface"])
     fig.patch.set_facecolor(theme["surface"])
-    body_in = row_in * n + 0.7
-    fig.subplots_adjust(top=body_in / fig_h, left=0.24, right=0.98, bottom=0.55 / fig_h)
+    body_in = row_in * n + 1.25
+    fig.subplots_adjust(top=body_in / fig_h, left=0.24, right=0.95, bottom=1.0 / fig_h)
 
     seen_datasets: List[str] = []
     n_wins = n_total = 0
     for i, (_label, dots) in enumerate(rows):
         y = n - 1 - i
-        y_jitter = np.linspace(-0.12, 0.12, len(dots)) if len(dots) > 1 else [0.0]
-        for (dataset, verdict), dy in zip(dots, y_jitter):
+        y_jitter = np.linspace(-0.15, 0.15, len(dots)) if len(dots) > 1 else [0.0]
+        for (dataset, verdict, ratio, ratio_lo, ratio_hi), dy in zip(dots, y_jitter):
             if dataset not in seen_datasets:
                 seen_datasets.append(dataset)
-            marker = _SCOREBOARD_MARKERS.get(dataset, "o")
-            if verdict is None:
-                ax.scatter(
-                    [0.5], [y + dy], marker="o", s=90, facecolor="none", edgecolor=theme["random"],
-                    linewidth=1.4, zorder=3,
-                )
-                continue
             n_total += 1
             n_wins += verdict == "wins"
+            clip = lambda v: float(np.clip(v, *_SCOREBOARD_XLIM))  # noqa: E731
+            if ratio_lo is not None and ratio_hi is not None:
+                ax.plot([clip(ratio_lo), clip(ratio_hi)], [y + dy, y + dy], color=theme["ink2"], linewidth=1, zorder=2)
+            color = {"wins": theme["model"], "loses": theme["rule"]}.get(verdict)
             ax.scatter(
-                [_SCOREBOARD_X[verdict]], [y + dy], marker=marker, s=90, color=theme["model"],
-                edgecolor=theme["surface"], linewidth=1, zorder=3,
+                [clip(ratio)], [y + dy], marker=_SCOREBOARD_MARKERS.get(dataset, "o"), s=80,
+                facecolor=color if color else theme["surface"], edgecolor=color or theme["ink2"],
+                linewidth=1.3, zorder=3,
             )
-    for xv in _SCOREBOARD_X.values():
-        ax.axvline(xv, color=theme["grid"], linewidth=0.8, zorder=0)
-    ax.set_xlim(0, 1)
-    ax.set_xticks(list(_SCOREBOARD_X.values()))
-    ax.set_xticklabels(["Worse than\nthe rule", "About the\nsame", "Beats\nthe rule"], fontsize=8.5, color=theme["ink2"])
+    ax.axvline(1.0, color=theme["ink2"], linewidth=1, zorder=1)
+    ax.set_xlim(*_SCOREBOARD_XLIM)
+    ticks = [0.8, 1.0, 1.2, 1.4, 1.6]
+    ax.set_xticks(ticks)
+    ax.set_xticklabels(["0.8x", "1.0x = the rule", "1.2x", "1.4x", "1.6x+"], fontsize=8.5, color=theme["ink2"])
+    ax.grid(axis="x", color=theme["grid"], linewidth=0.8, zorder=0)
     ax.set_yticks(range(n))
     ax.set_yticklabels([label for label, _ in reversed(rows)])
     ax.set_ylim(-0.6, n - 0.4)
@@ -405,28 +409,35 @@ def _scoreboard_chart(path: Path, rows: List[tuple], theme: dict) -> None:
     ax.tick_params(colors=theme["ink2"], length=0)
 
     legend_handles = [
-        plt.Line2D([0], [0], marker=_SCOREBOARD_MARKERS.get(ds, "o"), linestyle="none", markerfacecolor=theme["model"],
-                   markeredgecolor=theme["surface"], markersize=9, label=ds)
+        plt.Line2D([0], [0], marker=_SCOREBOARD_MARKERS.get(ds, "o"), linestyle="none", markerfacecolor=theme["ink2"],
+                   markeredgecolor=theme["ink2"], markersize=8, label=ds)
         for ds in seen_datasets
     ] + [
-        plt.Line2D([0], [0], marker="o", linestyle="none", markerfacecolor="none", markeredgecolor=theme["random"],
-                   markersize=9, label="Not yet tested")
+        plt.Line2D([0], [0], marker="o", linestyle="none", markerfacecolor=theme["model"],
+                   markeredgecolor=theme["model"], markersize=8, label="beats the rule"),
+        plt.Line2D([0], [0], marker="o", linestyle="none", markerfacecolor=theme["surface"],
+                   markeredgecolor=theme["ink2"], markersize=8, label="about the same"),
+        plt.Line2D([0], [0], marker="o", linestyle="none", markerfacecolor=theme["rule"],
+                   markeredgecolor=theme["rule"], markersize=8, label="loses"),
     ]
 
-    title = f"{n_wins} of {n_total} real-and-sample-data comparisons beat the simple rule your shop already uses"
+    title = f"{n_wins} of {n_total} real-file comparisons beat the simple rule your shop already uses"
     wrapped_title = _wrap_title(title)
     extra_in = _TITLE_LINE_IN * wrapped_title.count("\n")
     fig.legend(
         handles=legend_handles, loc="center", bbox_to_anchor=(0.5, 1 - (_LEGEND_Y_IN + extra_in) / fig_h),
-        ncol=len(legend_handles), frameon=False, labelcolor=theme["ink2"], fontsize=9,
-        # Tighter than matplotlib's default spacing so six entries (five
-        # datasets plus "Not yet tested") fit the figure width unclipped.
-        columnspacing=1.0, handletextpad=0.3,
+        ncol=len(legend_handles), frameon=False, labelcolor=theme["ink2"], fontsize=8,
+        columnspacing=0.8, handletextpad=0.2,
     )
     fig.suptitle(
         wrapped_title, x=0.015, ha="left", y=1 - _TITLE_Y_IN / fig_h, fontsize=12, fontweight="bold",
         color=theme["ink1"], linespacing=1.3,
     )
+    caption = " ".join(
+        ["Dot: model result divided by the best simple rule's, top 10% of the list. "
+         "Line: range across redraws and test years."] + notes
+    )
+    fig.text(0.015, 0.25 / fig_h, _wrap_subtitle(caption), fontsize=8, color=theme["ink2"], ha="left", va="bottom")
     fig.savefig(path)
     plt.close(fig)
 
@@ -469,9 +480,26 @@ def _momentum_summary(rows, model: str, method: str) -> Dict[str, Any]:
         }
         for p in (1, 5, 10)
     }
-    out["verdict"] = row_by_p[10].verdict
+    out.update(_verdict_fields(row_by_p[10]))
     out["method"] = method
     return out
+
+
+def _verdict_fields(row, scale: float = 100.0) -> Dict[str, Any]:
+    """The row's verdict plus the paired model-minus-rule interval it was
+    read from (``diff_lo``/``diff_hi``, in percentage points for rates, or
+    in dollars with ``scale=1``), so every verdict in ``results.json`` can be
+    checked against its own interval."""
+    def _scaled(v):
+        return None if v is None or v != v else v * scale
+
+    return {"verdict": row.verdict, "diff_lo": _scaled(row.diff_lo), "diff_hi": _scaled(row.diff_hi)}
+
+
+def _diff_pp(row) -> Dict[str, Any]:
+    """``diff_lo``/``diff_hi`` of one top-N row, in percentage points."""
+    fields = _verdict_fields(row)
+    return {"diff_lo": fields["diff_lo"], "diff_hi": fields["diff_hi"]}
 
 
 def _ci(row) -> tuple[float, float] | None:
@@ -1395,6 +1423,198 @@ def render_feature_snippets(results: Dict[str, Any], out_dir: Path) -> None:
             (out_dir / f"{model}__{key}.md").write_text("\n".join(lines).rstrip() + "\n")
 
 
+# --------------------------------------------------------------------------- #
+# The index table and the scoreboard, both computed from results.json so no
+# verdict on the site is hand-written (E.15.5.1). Sample data never appears
+# in either: it is the "does the code run" tab, not a result.
+# --------------------------------------------------------------------------- #
+INDEX_QUESTIONS = (
+    ("upgrade", "[Leadership upgrade ($1,000+)](leadership.md)", "Leadership upgrade",
+     "Which mid-level donors are about to become $1,000+ donors?"),
+    ("response", "[Response](response.md)", "Response", "Who is most likely to give again next year?"),
+    ("lapse", "[Lapse](lapse.md)", "Lapse", "Which donors are about to stop giving?"),
+    ("ask", "[Suggested ask](ask.md)", "Suggested ask", "How much should we ask a donor for?"),
+    ("planned_giving", "[Planned giving](planned_giving.md)", "Planned giving", "Which donors look like bequest prospects?"),
+    ("who_to_mail", "[Who to mail](who_to_mail.md)", "Who to mail", "Is it worth mailing this donor at all?"),
+)
+INDEX_FILES = (("KDD Cup 1998", "kdd98"), ("cup98VAL", "cup98val"), ("DonorsChoose", "donorschoose"), ("PSID", "psid"))
+# Pairs with no "<question>_<file>_note" key in results.json that still
+# cannot be tested; anything else missing reads "not run".
+INDEX_CANT_TEST = {("planned_giving", "kdd98"): "no bequest-intent label"}
+# Which organisation's donors each file holds: KDD Cup 1998 and cup98VAL are
+# two halves of one charity's 1997 mailing, so they are not independent.
+INDEX_ORGS = {"kdd98": "PVA", "cup98val": "PVA", "donorschoose": "DonorsChoose", "psid": "PSID"}
+# Cells shown but not counted in the bottom line, recorded before the run
+# that produced them: KDD98 gifts are too small for the $1,000 question, so
+# its upgrade cell answers a $50 proxy (E.15: "KDD98 is not an upgrade
+# benchmark; PSID is").
+INDEX_PROXY = {("upgrade", "kdd98"): "Proxy question ($50 threshold), not counted"}
+HIGH_BASE_RATE_PCT = 80.0
+VERDICT_WORDS = {"wins": "Beats the rule", "modest": "About the same as the rule", "loses": "Loses to the rule"}
+
+
+def _lapse_base_rate(entry: Dict[str, Any]) -> float | None:
+    return entry.get("base_rate_pct", entry.get("metadata", {}).get("base_rate_pct"))
+
+
+def _n_folds(entry: Dict[str, Any]) -> int:
+    meta = entry.get("metadata", {})
+    return len(meta.get("fold_years") or meta.get("fold_waves") or []) or 1
+
+
+def _of100(x: float) -> str:
+    return f"{x:.0f}" if x >= 10 else f"{x:.1f}"
+
+
+def _ratio_block(model: float, rule: float, diff_lo: float | None, diff_hi: float | None) -> Dict[str, Any]:
+    if not rule:
+        return {"ratio": None, "ratio_lo": None, "ratio_hi": None}
+    return {
+        "ratio": model / rule,
+        "ratio_lo": None if diff_lo is None else (rule + diff_lo) / rule,
+        "ratio_hi": None if diff_hi is None else (rule + diff_hi) / rule,
+    }
+
+
+def index_cell(results: Dict[str, Any], question: str, ds: str) -> Dict[str, Any]:
+    cell = _index_cell(results, question, ds)
+    cell["org"] = INDEX_ORGS[ds]
+    cell["counted"] = cell["verdict"] is not None and (question, ds) not in INDEX_PROXY
+    if (question, ds) in INDEX_PROXY and cell["verdict"] is not None:
+        short = {"wins": "wins", "modest": "about the same", "loses": "loses"}[cell["verdict"]]
+        cell["text"] = f"{INDEX_PROXY[(question, ds)]}: {short} {cell['text'].split(': ', 1)[1]}"
+    return cell
+
+
+def _index_cell(results: Dict[str, Any], question: str, ds: str) -> Dict[str, Any]:
+    """One index-table cell: its text, the verdict it carries (``None`` for
+    "can't test" / "not run"), and the lift ratio the scoreboard plots. A
+    lapse cell on a file where more than 80 in 100 donors lapse reads the
+    retention list instead (E.15.3 item 4): "who will lapse" has no useful
+    answer there, so the cell says so and reports the "who keeps giving" list
+    and its lift over random."""
+    key = f"{question}_{ds}"
+    if key not in results:
+        note = results.get(f"{key}_note")
+        reason = INDEX_CANT_TEST.get((question, ds))
+        if note:
+            reason = note.rstrip(".").split(", so ")[0].split(" in this ")[0]
+            reason = reason[0].lower() + reason[1:]
+        return {"text": f"can't test ({reason})" if reason else "not run", "verdict": None}
+    entry = results[key]
+    if question == "lapse":
+        base = _lapse_base_rate(entry)
+        ret = results.get(f"lapse_{ds}_retention")
+        if base is not None and base > HIGH_BASE_RATE_PCT and ret is not None:
+            t = ret["top10pct"]
+            lift = t["model"] / (100.0 - base)
+            return {
+                "text": (
+                    f"Nearly everyone lapses here ({base:.0f} of 100). Who keeps giving: "
+                    f"{VERDICT_WORDS[ret['verdict']].lower()}, {_of100(t['model'])} vs {_of100(t['rule'])} of 100 "
+                    f"({lift:.1f}x random)"
+                ),
+                "verdict": ret["verdict"], "retention": True, "folds": _n_folds(ret),
+                "top_slice_win": False,
+                **_ratio_block(t["model"], t["rule"], t.get("diff_lo"), t.get("diff_hi")),
+            }
+    if question == "ask":
+        m, r = entry["within25pct_model"], entry["within25pct_last_gift"]
+        text = f"{VERDICT_WORDS[entry['verdict']]}: {_of100(m)} vs {_of100(r)} of 100 within 25%"
+        return {"text": text, "verdict": entry["verdict"], "folds": _n_folds(entry), "top_slice_win": False,
+                **_ratio_block(m, r, entry.get("diff_lo"), entry.get("diff_hi"))}
+    if question == "who_to_mail":
+        m, r = entry["net_revenue_model"], entry["net_revenue_mail_everyone"]
+        word = {"wins": "Beats mailing everyone", "loses": "Loses to mailing everyone"}.get(
+            entry["verdict"], "About the same as mailing everyone"
+        )
+        return {"text": f"{word}: ${m:,.0f} vs ${r:,.0f} net", "verdict": entry["verdict"], "folds": _n_folds(entry),
+                "top_slice_win": False, **_ratio_block(m, r, entry.get("diff_lo"), entry.get("diff_hi"))}
+    t = entry["top10pct"]
+    top_slice_win = any((entry[f"top{p}pct"].get("diff_lo") or 0) > 0 for p in (1, 5))
+    text = f"{VERDICT_WORDS[entry['verdict']]}: {_of100(t['model'])} vs {_of100(t['rule'])} of 100"
+    if entry["verdict"] != "wins" and top_slice_win:
+        text += ", ahead in the top 1% or 5%"
+    return {"text": text, "verdict": entry["verdict"], "folds": _n_folds(entry), "top_slice_win": top_slice_win,
+            **_ratio_block(t["model"], t["rule"], t.get("diff_lo"), t.get("diff_hi"))}
+
+
+def bottom_line(cells: List[Dict[str, Any]]) -> str:
+    """One of the six fixed bottom lines from a question's counted cells
+    (real files, minus proxy questions; a "nearly everyone lapses" cell
+    counts through its retention read), by a rule fixed before the run
+    (E.11f rule 5):
+
+    - Use the model: wins from two independent sources (different
+      organisations, or one source across several test years) and no loss.
+    - Use the model (tested on one organisation so far): no loss, and every
+      win comes from one organisation, in single splits.
+    - Use the model for your top slice only: no loss, no win, and an "about
+      the same" that is ahead at the top 1% or 5%.
+    - Use the retention list: as "Use the model", when every counted cell is
+      a retention read.
+    - Can't tell yet: a win and a loss, or nothing counted.
+    - Use the simple rule: everything else."""
+    counted = [c for c in cells if c.get("counted", c["verdict"] is not None)]
+    wins = [c for c in counted if c["verdict"] == "wins"]
+    losses = [c for c in counted if c["verdict"] == "loses"]
+    if not counted or (wins and losses):
+        return "Can't tell yet"
+    if losses:
+        return "Use the simple rule"
+    if len({c["org"] for c in wins}) >= 2 or any(c["folds"] >= 2 for c in wins):
+        if all(c.get("retention") for c in counted):
+            return "Use the retention list"
+        return "Use the model"
+    if wins:
+        return "Use the model (tested on one organisation so far)"
+    if any(c["top_slice_win"] for c in counted):
+        return "Use the model for your top slice only"
+    return "Use the simple rule"
+
+
+def build_index(results: Dict[str, Any]) -> Dict[str, Any]:
+    out = {}
+    for question, _link, _label, _ask in INDEX_QUESTIONS:
+        cells = {ds: index_cell(results, question, ds) for _name, ds in INDEX_FILES}
+        out[question] = {"cells": cells, "bottom_line": bottom_line(list(cells.values()))}
+    return out
+
+
+def render_index_table(index: Dict[str, Any], path: Path) -> None:
+    lines = [
+        "| Model | Question it answers | " + " | ".join(name for name, _ in INDEX_FILES) + " | Bottom line |",
+        "|---|---|" + "---|" * len(INDEX_FILES) + "---|",
+    ]
+    for question, link, _label, ask in INDEX_QUESTIONS:
+        row = index[question]
+        cells = " | ".join(row["cells"][ds]["text"] for _name, ds in INDEX_FILES)
+        lines.append(f"| {link} | {ask} | {cells} | **{row['bottom_line']}** |")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n")
+
+
+def scoreboard_rows(index: Dict[str, Any]) -> Tuple[List[tuple], List[str]]:
+    rows, untested, notes = [], [], []
+    for question, _link, label, _ask in INDEX_QUESTIONS:
+        cells = [(name, index[question]["cells"][ds]) for name, ds in INDEX_FILES]
+        dots = [(name, c["verdict"], c["ratio"], c["ratio_lo"], c["ratio_hi"])
+                for name, c in cells if c["counted"] and c.get("ratio") is not None]
+        if not dots:
+            untested.append(label.lower())
+            continue
+        rows.append((label, dots))
+        notes += [f"{label} on {name}: {INDEX_PROXY[(question, ds)].lower()}, so not drawn."
+                  for name, ds in INDEX_FILES if (question, ds) in INDEX_PROXY]
+        retention = [name for name, c in cells if c.get("retention")]
+        if retention:
+            notes.append(f"{label} on {' and '.join(retention)}: nearly everyone lapses, so the dot is the "
+                         "who-keeps-giving list.")
+    if untested:
+        notes.append(f"Not yet testable on any real file: {', '.join(untested)}.")
+    return rows, notes
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--with-kdd98", action="store_true", help="Also run the KDD Cup 1998 section (downloads ~36MB).")
@@ -1439,7 +1659,7 @@ def main() -> None:
         }
         for p in (1, 5, 10)
     }
-    results["response_synthetic"]["verdict"] = resp_row_by_p[10].verdict
+    results["response_synthetic"].update(_verdict_fields(resp_row_by_p[10]))
     if args.with_momentum:
         resp_mom_rows = bm.bench_response(SEEDS, N_DONORS, N_YEARS, include_momentum=True)
         results["response_synthetic_momentum"] = _momentum_summary(resp_mom_rows, "MajorGiftClassifier", MOMENTUM_METHOD_PANEL)
@@ -1475,7 +1695,7 @@ def main() -> None:
         }
         for p in (1, 5, 10)
     }
-    results["lapse_synthetic"]["verdict"] = _row(lapse_rows, "LapsePredictor", "top10pct_hit_rate").verdict
+    results["lapse_synthetic"].update(_verdict_fields(_row(lapse_rows, "LapsePredictor", "top10pct_hit_rate")))
     if args.with_momentum:
         lapse_mom_rows = bm.bench_lapse(SEEDS, N_DONORS, N_YEARS, include_momentum=True)
         results["lapse_synthetic_momentum"] = _momentum_summary(lapse_mom_rows, "LapsePredictor", MOMENTUM_METHOD_PANEL)
@@ -1487,7 +1707,7 @@ def main() -> None:
     results["ask_synthetic"] = {
         "within25pct_model": within.value * 100,
         "within25pct_last_gift": within.baseline * 100,
-        "verdict": within.verdict,
+        **_verdict_fields(within),
         "features": ask_drivers_synthetic(SEEDS, N_DONORS, N_YEARS),
     }
     if args.with_momentum:
@@ -1495,7 +1715,7 @@ def main() -> None:
         within_mom = _row(ask_mom_rows, "AskAmountRecommender", "within25pct")
         results["ask_synthetic_momentum"] = {
             "within25pct_model": within_mom.value * 100,
-            "verdict": within_mom.verdict,
+            **_verdict_fields(within_mom),
             "method": MOMENTUM_METHOD_PANEL,
         }
 
@@ -1513,7 +1733,7 @@ def main() -> None:
         }
         for p in (1, 5, 10)
     }
-    results["upgrade_synthetic"]["verdict"] = upg_row_by_p[10].verdict
+    results["upgrade_synthetic"].update(_verdict_fields(upg_row_by_p[10]))
     if args.with_momentum:
         upg_mom_rows = bm.bench_upgrade(SEEDS, N_DONORS, N_YEARS, include_momentum=True)
         results["upgrade_synthetic_momentum"] = _momentum_summary(upg_mom_rows, "upgrade_model (MajorGiftClassifier)", MOMENTUM_METHOD_UPGRADE)
@@ -1577,10 +1797,10 @@ def main() -> None:
 
         resp_kdd_row_by_p = {p: _row(kdd_resp, "MajorGiftClassifier", f"top{p}pct_hit_rate") for p in (1, 5, 10)}
         results["response_kdd98"] = {
-            f"top{p}pct": {"model": resp_kdd_row_by_p[p].value * 100, "rule": resp_kdd_row_by_p[p].baseline * 100}
+            f"top{p}pct": {"model": resp_kdd_row_by_p[p].value * 100, "rule": resp_kdd_row_by_p[p].baseline * 100, **_diff_pp(resp_kdd_row_by_p[p])}
             for p in (1, 5, 10)
         }
-        results["response_kdd98"]["verdict"] = resp_kdd_row_by_p[10].verdict
+        results["response_kdd98"].update(_verdict_fields(resp_kdd_row_by_p[10]))
         results["response_kdd98"]["features"] = response_drivers_kdd98(seed)
         rk10 = results["response_kdd98"]["top10pct"]
         _render_themed(
@@ -1606,10 +1826,10 @@ def main() -> None:
             p: _row(kdd_upgrade, "upgrade_model (MajorGiftClassifier)", f"top{p}pct_hit_rate") for p in (1, 5, 10)
         }
         results["upgrade_kdd98"] = {
-            f"top{p}pct": {"model": upg_kdd_row_by_p[p].value * 100, "rule": upg_kdd_row_by_p[p].baseline * 100}
+            f"top{p}pct": {"model": upg_kdd_row_by_p[p].value * 100, "rule": upg_kdd_row_by_p[p].baseline * 100, **_diff_pp(upg_kdd_row_by_p[p])}
             for p in (1, 5, 10)
         }
-        results["upgrade_kdd98"]["verdict"] = upg_kdd_row_by_p[10].verdict
+        results["upgrade_kdd98"].update(_verdict_fields(upg_kdd_row_by_p[10]))
         if args.with_momentum:
             kdd_upg_mom_rows = bm.bench_kdd_upgrade(seed, include_momentum=True)
             results["upgrade_kdd98_momentum"] = _momentum_summary(
@@ -1639,8 +1859,8 @@ def main() -> None:
         base_rate_lapse_kdd = float((donors["TARGET_B"].to_numpy() == 0).mean()) * 100
         results["lapse_kdd98"] = {
             "base_rate_pct": base_rate_lapse_kdd,
-            "verdict": lapse_top[10].verdict,
-            **{f"top{p}pct": {"model": r.value * 100, "rule": r.baseline * 100} for p, r in lapse_top.items()},
+            **_verdict_fields(lapse_top[10]),
+            **{f"top{p}pct": {"model": r.value * 100, "rule": r.baseline * 100, **_diff_pp(r)} for p, r in lapse_top.items()},
         }
         results["lapse_kdd98"]["features"] = lapse_drivers_kdd98(seed)
         _render_themed(
@@ -1662,10 +1882,10 @@ def main() -> None:
         ret_row_by_p = {p: _row(kdd_retention, "LapsePredictor", f"top{p}pct_hit_rate") for p in (1, 5, 10)}
         retention_base_rate = 100.0 - base_rate_lapse_kdd
         results["lapse_kdd98_retention"] = {
-            f"top{p}pct": {"model": ret_row_by_p[p].value * 100, "rule": ret_row_by_p[p].baseline * 100}
+            f"top{p}pct": {"model": ret_row_by_p[p].value * 100, "rule": ret_row_by_p[p].baseline * 100, **_diff_pp(ret_row_by_p[p])}
             for p in (1, 5, 10)
         }
-        results["lapse_kdd98_retention"]["verdict"] = ret_row_by_p[10].verdict
+        results["lapse_kdd98_retention"].update(_verdict_fields(ret_row_by_p[10]))
         rt10 = results["lapse_kdd98_retention"]["top10pct"]
         rt_gap = abs(rt10["model"] - rt10["rule"])
         if rt_gap < 1.5:
@@ -1697,7 +1917,7 @@ def main() -> None:
         results["ask_kdd98"] = {
             "within25pct_model": ask_row.value * 100,
             "within25pct_last_gift": ask_row.baseline * 100,
-            "verdict": ask_row.verdict,
+            **_verdict_fields(ask_row),
             "features": ask_drivers_kdd98(seed),
         }
         _render_themed(
@@ -1720,7 +1940,7 @@ def main() -> None:
         results["who_to_mail_kdd98"] = {
             "net_revenue_model": net_row.value,
             "net_revenue_mail_everyone": net_row.baseline,
-            "verdict": net_row.verdict,
+            **_verdict_fields(net_row, scale=1.0),
             "note": net_row.note,
             "features": who_to_mail_drivers_kdd98(seed),
         }
@@ -1745,7 +1965,7 @@ def main() -> None:
             results["who_to_mail_cup98val"] = {
                 "net_revenue_model": net_row_val.value,
                 "net_revenue_mail_everyone": net_row_val.baseline,
-                "verdict": net_row_val.verdict,
+                **_verdict_fields(net_row_val, scale=1.0),
                 "note": net_row_val.note,
                 "features": _reused_features(
                     results["who_to_mail_kdd98"]["features"],
@@ -1774,10 +1994,10 @@ def main() -> None:
             kdd_val = bm.bench_kdd_val_models(seed)
             val_row_by_p = {p: _row(kdd_val, "MajorGiftClassifier", f"top{p}pct_hit_rate") for p in (1, 5, 10)}
             results["response_cup98val"] = {
-                f"top{p}pct": {"model": val_row_by_p[p].value * 100, "rule": val_row_by_p[p].baseline * 100}
+                f"top{p}pct": {"model": val_row_by_p[p].value * 100, "rule": val_row_by_p[p].baseline * 100, **_diff_pp(val_row_by_p[p])}
                 for p in (1, 5, 10)
             }
-            results["response_cup98val"]["verdict"] = val_row_by_p[10].verdict
+            results["response_cup98val"].update(_verdict_fields(val_row_by_p[10]))
             results["response_cup98val"]["features"] = _reused_features(
                 results["response_kdd98"]["features"],
                 "Same model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the "
@@ -1807,10 +2027,10 @@ def main() -> None:
         if row_by_p[10] is None:
             return None
         entry = {
-            f"top{p}pct": {"model": row_by_p[p].value * 100, "rule": row_by_p[p].baseline * 100}
+            f"top{p}pct": {"model": row_by_p[p].value * 100, "rule": row_by_p[p].baseline * 100, **_diff_pp(row_by_p[p])}
             for p in (1, 5, 10)
         }
-        entry["verdict"] = row_by_p[10].verdict
+        entry.update(_verdict_fields(row_by_p[10]))
         entry["roc_auc"] = _row(rows, model, "roc_auc").value
         entry["metadata"] = {"momentum": momentum, **extra_meta}
         return entry
@@ -1823,7 +2043,7 @@ def main() -> None:
         return {
             "within25pct_model": within_row.value * 100, "within25pct_last_gift": within_row.baseline * 100,
             "mae_model": mae_row.value, "mae_rule": mae_row.baseline,
-            "verdict": within_row.verdict,
+            **_verdict_fields(within_row),
             "metadata": {"momentum": momentum, **extra_meta},
         }
 
@@ -2018,45 +2238,26 @@ def main() -> None:
     results["planned_giving_donorschoose_note"] = "No bequest/estate-intent signal in this file."
     results["planned_giving_psid_note"] = "No bequest/estate-intent signal in this extract."
 
-    # --- scoreboard: one row per question, one dot per dataset -------------
-    def _dots(*pairs):
-        return [(label, results[key]["verdict"]) for label, key in pairs if key in results]
-
-    scoreboard_rows = [
-        (
-            "Leadership upgrade", _dots(
-                ("Sample data", "upgrade_synthetic"), ("KDD Cup 1998", "upgrade_kdd98"),
-                ("DonorsChoose", "upgrade_donorschoose"), ("PSID", "upgrade_psid"),
-            ),
-        ),
-        (
-            "Response", _dots(
-                ("Sample data", "response_synthetic"), ("KDD Cup 1998", "response_kdd98"),
-                ("cup98VAL", "response_cup98val"),
-            ),
-        ),
-        (
-            "Lapse", _dots(
-                ("Sample data", "lapse_synthetic"), ("KDD Cup 1998", "lapse_kdd98"),
-                ("DonorsChoose", "lapse_donorschoose"), ("PSID", "lapse_psid"),
-            ),
-        ),
-        (
-            "Lapse (retention read)", _dots(
-                ("KDD Cup 1998", "lapse_kdd98_retention"), ("DonorsChoose", "lapse_donorschoose_retention"),
-                ("PSID", "lapse_psid_retention"),
-            ),
-        ),
-        (
-            "Suggested ask", _dots(
-                ("Sample data", "ask_synthetic"), ("KDD Cup 1998", "ask_kdd98"),
-                ("DonorsChoose", "ask_donorschoose"), ("PSID", "ask_psid"),
-            ),
-        ),
-        ("Who to mail", _dots(("KDD Cup 1998", "who_to_mail_kdd98"), ("cup98VAL", "who_to_mail_cup98val"))),
-        ("Planned giving", [("Sample data", None)]),
-    ]
-    _render_themed(_scoreboard_chart, OUT_DIR / "scoreboard.png", scoreboard_rows)
+    # --- verdicts off sample data; index table and scoreboard ----------------
+    for key in [k for k in results if "_synthetic" in k]:
+        if isinstance(results[key], dict):
+            for field in ("verdict", "diff_lo", "diff_hi"):
+                results[key].pop(field, None)
+    for _name, ds in INDEX_FILES:
+        lapse, ret = results.get(f"lapse_{ds}"), results.get(f"lapse_{ds}_retention")
+        if lapse is None or ret is None or _lapse_base_rate(lapse) is None:
+            continue
+        retention_base = 100.0 - _lapse_base_rate(lapse)
+        ret["retention_base_rate_pct"] = retention_base
+        ret["lift_over_random"] = ret["top10pct"]["model"] / retention_base
+        ret["rule_lift_over_random"] = ret["top10pct"]["rule"] / retention_base
+        lapse["nearly_everyone_lapses"] = _lapse_base_rate(lapse) > HIGH_BASE_RATE_PCT
+    index = build_index(results)
+    results["_index"] = {q: {"bottom_line": v["bottom_line"], "cells": {ds: c["text"] for ds, c in v["cells"].items()}}
+                         for q, v in index.items()}
+    render_index_table(index, ROOT / "docs" / "results" / "_verdicts" / "index_table.md")
+    sb_rows, sb_notes = scoreboard_rows(index)
+    _render_themed(_scoreboard_chart, OUT_DIR / "scoreboard.png", sb_rows, sb_notes)
 
     results["_env"] = {
         "git_sha": _git_sha(),

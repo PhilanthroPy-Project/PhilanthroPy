@@ -47,15 +47,20 @@ attain roughly its requested coverage.
 
 ## Verdict rule
 
-Every row with a baseline gets one of three verdicts, from a single ratio:
-``ratio = model / baseline`` for a metric where higher is better (hit rate,
-ROC-AUC, net revenue), or ``ratio = baseline / model`` where lower is better
-(MAE, the calibration gap). ``ratio >= 1.15`` is ``"wins"``, ``1.00 <= ratio
-< 1.15`` is ``"modest"``, ``ratio < 1.00`` is ``"loses"``. A row with no
-baseline (average precision) uses ``"n/a"``; the two coverage checks use a
-coverage-specific rule instead: attained coverage within 3 points of the
-requested level is ``"wins"``, within 6 points is ``"modest"``, more than 6
-points short is ``"loses"``.
+A verdict is never read off one point. Each row with a baseline carries an
+interval on the paired difference ``model - baseline``, measured on the same
+donors: on a single split, a 1,000-resample bootstrap of that difference
+(2.5th to 97.5th percentile); across seeds or walk-forward folds, the
+smallest and largest per-seed difference, so the worst seed decides. The
+model ``"wins"`` if the whole interval is on its side of zero (above zero
+where higher is better: hit rate, ROC-AUC, share within 25%, net revenue;
+below zero where lower is better: MAE), ``"loses"`` if the whole interval is
+on the rule's side, and is ``"modest"`` (about the same) if it straddles
+zero. A row with no baseline (average precision, the calibration gap) or no
+interval uses ``"n/a"``. The two coverage checks use a coverage-specific
+rule instead: attained coverage within 3 points of the requested level is
+``"wins"``, within 6 points is ``"modest"``, more than 6 points short is
+``"loses"``.
 
 ## Reading the KDD Cup 1998 numbers against the reference run
 
@@ -126,7 +131,6 @@ MOMENTUM_COLS: Tuple[str, ...] = tuple(
     f"fy_total_{stat}_{k}y" for stat in ("slope", "rel_slope") for k in (3, 5)
 )
 KDD_AS_OF = "1997-06-01"
-WIN_RATIO = 1.15
 COVERAGE_TOL = 0.03
 N_BOOTSTRAP = 1000
 BOOTSTRAP_METRICS = ("top10pct_hit_rate", "roc_auc")
@@ -184,6 +188,19 @@ def _best_ask_baseline(
     return best, rules[best], scored[best]
 
 
+def _bootstrap_diff_ci(n: int, diff_fn, n_resamples: int = N_BOOTSTRAP, seed: int = 0) -> Tuple[float, float]:
+    """Bootstrap 95% interval on a paired difference: ``diff_fn(idx)``
+    returns ``model metric - rule metric`` on the resampled rows ``idx``, so
+    both sides see the same donors in every resample. ``nan`` resamples
+    (e.g. a single-class draw for ROC-AUC) are skipped."""
+    rng = np.random.default_rng(seed)
+    values = [diff_fn(rng.integers(0, n, size=n)) for _ in range(n_resamples)]
+    values = [v for v in values if v == v]
+    if not values:
+        return float("nan"), float("nan")
+    return float(np.percentile(values, 2.5)), float(np.percentile(values, 97.5))
+
+
 def _bootstrap_ci(
     y_true: np.ndarray, score: np.ndarray, metric_fn, n_resamples: int = N_BOOTSTRAP, seed: int = 0,
 ) -> Tuple[float, float]:
@@ -223,6 +240,10 @@ class Row:
     lo: Optional[float] = None
     hi: Optional[float] = None
     n_seeds: int = 1
+    diff_lo: Optional[float] = None
+    diff_hi: Optional[float] = None
+    baseline_lo: Optional[float] = None
+    baseline_hi: Optional[float] = None
 
     @property
     def verdict(self) -> str:
@@ -235,14 +256,14 @@ class Row:
             return "loses"
         if self.baseline is None or self.baseline != self.baseline:
             return "n/a"
-        if self.baseline == 0:
-            return "wins" if self.value > 0 else "n/a"
-        ratio = self.baseline / self.value if self.lower_is_better else self.value / self.baseline
-        if ratio >= WIN_RATIO:
+        if self.diff_lo is None or self.diff_hi is None or self.diff_lo != self.diff_lo:
+            return "n/a"
+        lo, hi = (-self.diff_hi, -self.diff_lo) if self.lower_is_better else (self.diff_lo, self.diff_hi)
+        if lo > 0:
             return "wins"
-        if ratio >= 1.0:
-            return "modest"
-        return "loses"
+        if hi < 0:
+            return "loses"
+        return "modest"
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -254,6 +275,8 @@ class Row:
             "lo": self.lo,
             "hi": self.hi,
             "n_seeds": self.n_seeds,
+            "diff_lo": self.diff_lo,
+            "diff_hi": self.diff_hi,
             "verdict": self.verdict,
             "note": self.note,
         }
@@ -272,6 +295,16 @@ def _aggregate(seed_rows: List[List[Row]]) -> List[Row]:
         if not values:
             continue
         baselines = [r.baseline for r in rs if r.baseline is not None and r.baseline == r.baseline]
+        # Worst seed decides (E.11f rule 5): the interval on model - rule is
+        # the smallest and largest per-seed paired difference.
+        diffs = [
+            r.value - r.baseline for r in rs
+            if r.value == r.value and r.baseline is not None and r.baseline == r.baseline
+        ]
+        if len(rs) == 1:
+            # One split is a point estimate, not a range: keep that row's own
+            # bootstrap interval, or none (so its verdict is "n/a").
+            diffs = [d for d in (rs[0].diff_lo, rs[0].diff_hi) if d is not None]
         out.append(
             Row(
                 dataset=dataset,
@@ -285,6 +318,10 @@ def _aggregate(seed_rows: List[List[Row]]) -> List[Row]:
                 lo=float(min(values)),
                 hi=float(max(values)),
                 n_seeds=len(values),
+                diff_lo=float(min(diffs)) if diffs else None,
+                diff_hi=float(max(diffs)) if diffs else None,
+                baseline_lo=float(min(baselines)) if baselines else None,
+                baseline_hi=float(max(baselines)) if baselines else None,
             )
         )
     return out
@@ -323,9 +360,12 @@ def _classifier_rows(
     named rule, not a different cherry-picked one per metric. ``split`` and
     ``n_configs`` (E.11a rules 1-2) are recorded in every row's note.
     ``bootstrap=True`` adds a 1,000-resample 95% interval (rule 4) on
-    top10pct_hit_rate and roc_auc; that is for single-split (KDD98) rows
-    only, synthetic rows already have a 5-seed range."""
-    y_true = np.asarray(y_true)
+    top10pct_hit_rate and roc_auc, and a paired-difference interval
+    (model - rule on the same resample) on every top-N hit rate and ROC-AUC,
+    which is what the verdict reads; that is for single-split rows only.
+    Walk-forward and multi-seed rows get their difference interval from
+    :func:`_aggregate` instead."""
+    y_true, score = np.asarray(y_true), np.asarray(score)
     best_name, baseline_score, _ = _best_classifier_baseline(y_true, rules, lambda y, s: _topn_rate(y, s, 0.10)[0])
     header = f"rule_set={best_name} (best of {len(rules)}); split={split}; n_configs={n_configs}"
     rows = []
@@ -333,17 +373,34 @@ def _classifier_rows(
         m_rate, n = _topn_rate(y_true, score, frac)
         b_rate, _ = _topn_rate(y_true, baseline_score, frac)
         metric = f"top{int(frac * 100)}pct_hit_rate"
-        lo = hi = None
+        lo = hi = d_lo = d_hi = None
         if bootstrap and metric in BOOTSTRAP_METRICS:
             lo, hi = _bootstrap_ci(y_true, score, lambda y, s: _topn_rate(y, s, frac)[0])
-        rows.append(Row(dataset, model_name, metric, m_rate, b_rate, note=f"n={n}; {header}", lo=lo, hi=hi))
+        if bootstrap:
+            d_lo, d_hi = _bootstrap_diff_ci(len(y_true), lambda idx, f=frac: (
+                _topn_rate(y_true[idx], score[idx], f)[0] - _topn_rate(y_true[idx], baseline_score[idx], f)[0]
+            ))
+        rows.append(Row(
+            dataset, model_name, metric, m_rate, b_rate, note=f"n={n}; {header}", lo=lo, hi=hi,
+            diff_lo=d_lo, diff_hi=d_hi,
+        ))
     has_both_classes = len(np.unique(y_true)) > 1
     auc = roc_auc_score(y_true, score) if has_both_classes else float("nan")
     b_auc = roc_auc_score(y_true, baseline_score) if has_both_classes else float("nan")
-    auc_lo = auc_hi = None
+    auc_lo = auc_hi = auc_d_lo = auc_d_hi = None
     if bootstrap and has_both_classes:
         auc_lo, auc_hi = _bootstrap_ci(y_true, score, roc_auc_score)
-    rows.append(Row(dataset, model_name, "roc_auc", auc, b_auc, note=header, lo=auc_lo, hi=auc_hi))
+
+        def _auc_diff(idx: np.ndarray) -> float:
+            if len(np.unique(y_true[idx])) < 2:
+                return float("nan")
+            return roc_auc_score(y_true[idx], score[idx]) - roc_auc_score(y_true[idx], baseline_score[idx])
+
+        auc_d_lo, auc_d_hi = _bootstrap_diff_ci(len(y_true), _auc_diff)
+    rows.append(Row(
+        dataset, model_name, "roc_auc", auc, b_auc, note=header, lo=auc_lo, hi=auc_hi,
+        diff_lo=auc_d_lo, diff_hi=auc_d_hi,
+    ))
     ap = average_precision_score(y_true, score) if has_both_classes else float("nan")
     rows.append(Row(dataset, model_name, "average_precision", ap, note=f"no baseline; base-rate dependent; {header}"))
     rows.append(
@@ -1156,6 +1213,10 @@ def _psid_lapse_fold(
         rules = {
             "shortest giving streak (negated)": -test["waves_given_streak"].to_numpy(),
             "declining trend (negated growth)": -test["trend"].to_numpy(),
+            # Smallest givers lapse first. "Months since last gift" and the
+            # LYBUNT flag are not here: every household in this population
+            # gave in wave W and dates are wave-level, so both are constant.
+            "this-wave total (negated)": -test["total_giving"].to_numpy(),
         }
         y_lapsed = test["target"].to_numpy()
         split = f"walk-forward (seed={seed}, fold=wave{w}, momentum={include_momentum})"
@@ -1584,17 +1645,23 @@ def bench_kdd_ask(seed: int) -> List[Row]:
     }
     best_name, best_score, _ = _best_ask_baseline(y_true, rules)
     header = f"rule_set={best_name} (best of {len(rules)}); split={KDD_SPLIT}; n_configs=1"
+    mae_d = _bootstrap_diff_ci(len(y_true), lambda idx: (
+        mean_absolute_error(y_true[idx], pred[idx]) - mean_absolute_error(y_true[idx], best_score[idx])
+    ))
+    within_d = _bootstrap_diff_ci(len(y_true), lambda idx: (
+        _within_pct(pred[idx], y_true[idx]) - _within_pct(best_score[idx], y_true[idx])
+    ))
 
     return [
         Row(
             "kdd98", "AskAmountRecommender", "mae",
             mean_absolute_error(y_true, pred), mean_absolute_error(y_true, best_score),
-            lower_is_better=True, note=header,
+            lower_is_better=True, note=header, diff_lo=mae_d[0], diff_hi=mae_d[1],
         ),
         Row(
             "kdd98", "AskAmountRecommender", "within25pct",
             _within_pct(pred, y_true), _within_pct(best_score, y_true),
-            note=header,
+            note=header, diff_lo=within_d[0], diff_hi=within_d[1],
         ),
     ]
 
@@ -1695,6 +1762,14 @@ def bench_kdd_ask_relative(seed: int) -> List[Row]:
     ]
 
 
+def _net_revenue_diff_ci(y: np.ndarray, mail: np.ndarray, cost: float) -> Tuple[float, float]:
+    """Paired bootstrap interval on (net revenue mailing ``mail``) - (net
+    revenue mailing everyone). Per donor that difference is ``-(y - cost)``
+    for every donor not mailed and 0 otherwise, so a resample sums it."""
+    per_donor = np.where(mail, 0.0, -(np.asarray(y, dtype="float64") - cost))
+    return _bootstrap_diff_ci(len(per_donor), lambda idx: float(per_donor[idx].sum()))
+
+
 def bench_kdd_cost_aware(seed: int, cost: float = 0.68) -> List[Row]:
     """Mail if E[gift] > cost (the KDD Cup 1998 competition's own rule) vs mailing everyone."""
     donors = fetch_kdd98_donors()
@@ -1718,6 +1793,7 @@ def bench_kdd_cost_aware(seed: int, cost: float = 0.68) -> List[Row]:
 
     raised_all, cost_all = float(yd_test.sum()), cost * len(Xd_test)
     raised_mail, cost_mail = float(yd_test[mail].sum()), cost * int(mail.sum())
+    net_d = _net_revenue_diff_ci(yd_test.to_numpy(), np.asarray(mail), cost)
     roi_all = fundraising_roi(total_raised=raised_all, total_fundraising_expense=cost_all)
     roi_mail = fundraising_roi(total_raised=raised_mail, total_fundraising_expense=cost_mail)
 
@@ -1726,6 +1802,7 @@ def bench_kdd_cost_aware(seed: int, cost: float = 0.68) -> List[Row]:
             "kdd98", "cost_aware_selection", "net_revenue",
             raised_mail - cost_mail, raised_all - cost_all,
             note=f"mail if E[gift]>${cost:.2f}; pieces={int(mail.sum())}/{len(Xd_test)}",
+            diff_lo=net_d[0], diff_hi=net_d[1],
         ),
         Row(
             "kdd98", "cost_aware_selection", "roi",
@@ -1773,6 +1850,7 @@ def bench_kdd_cost_aware_val(seed: int, cost: float = 0.68) -> List[Row]:
 
     raised_all, cost_all = float(y_val.sum()), cost * len(X_val)
     raised_mail, cost_mail = float(y_val[mail].sum()), cost * int(mail.sum())
+    net_d = _net_revenue_diff_ci(y_val.to_numpy(), np.asarray(mail), cost)
     roi_all = fundraising_roi(total_raised=raised_all, total_fundraising_expense=cost_all)
     roi_mail = fundraising_roi(total_raised=raised_mail, total_fundraising_expense=cost_mail)
 
@@ -1786,6 +1864,7 @@ def bench_kdd_cost_aware_val(seed: int, cost: float = 0.68) -> List[Row]:
                 "own held-out validation file (cup98VAL+valtargt), reported next to "
                 "bench_kdd_cost_aware's random-split number, not replacing it"
             ),
+            diff_lo=net_d[0], diff_hi=net_d[1],
         ),
         Row(
             "cup98val", "cost_aware_selection", "roi",

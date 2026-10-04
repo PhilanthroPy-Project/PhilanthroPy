@@ -1,7 +1,8 @@
 # Response (will they give again?)
 
-**Beats the simple rule for your top picks on a real donor file, twice; does not beat it on our
-sample data.** Which one you should expect on your own file depends on your data; see below.
+**Use the model (tested on one organisation so far).** On one charity's real donor file it beats the simple rule on
+the held-out cup98VAL half, and on the KDD Cup 1998 half it is ahead for your top picks (top 1%
+and 5%). Both halves come from the same charity's mailing, so this is one organisation, not two.
 
 === "KDD Cup 1998 (real donor file)"
 
@@ -42,12 +43,12 @@ sample data.** Which one you should expect on your own file depends on your data
     ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/response.png#only-light)
     ![Model vs. best simple rule vs. random, top 1/5/10% of picks](../assets/results/response-dark.png#only-dark)
 
-    **Does not beat the simple rule here.** Ranking donors by their own giving history does at
-    least as well as the model at every pick size checked. Our sample data is built so that
-    giving again follows past giving almost exactly, which is why no model can beat ranking by
-    past giving on it: this tab proves the pipeline runs end to end, it is not a test the model
-    can pass. See the real-file tab above for a test that actually distinguishes the model from
-    the rule.
+    **Code check only: sample data is not counted in the verdict.**
+    Ranking donors by their own giving history does at least as well as the model at every pick
+    size checked. Our sample data is built so that giving again follows past giving almost exactly,
+    which is why no model can beat ranking by past giving on it: this tab proves the pipeline runs
+    end to end, it is not a test the model can pass. See the real-file tab above for a test that
+    actually distinguishes the model from the rule.
 
 Results on your own file will differ from both of these.
 

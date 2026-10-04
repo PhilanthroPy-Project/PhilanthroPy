@@ -70,8 +70,8 @@ Research Center, Institute for Social Research, University of Michigan, Ann Arbo
 ## Which data
 
 Real files: [KDD Cup 1998](https://kdd.ics.uci.edu/databases/kddcup98/kddcup98.html),
-DonorsChoose Open Data and the PSID household survey. On our sample (synthetic) donor panel the
-model also does not beat the best simple rule (about 23 in 100 within 25%, versus about 24 in 100
+DonorsChoose Open Data and the PSID household survey. Our sample (synthetic) donor panel is a code
+check only and is not counted in the verdict (about 23 in 100 within 25%, versus about 24 in 100
 for the best of last gift, max(last gift, average gift), and the median training gift). It never
 beats the rule on any file, and is only about even with it on PSID; use the simple rule. Results
 on your own data will differ.

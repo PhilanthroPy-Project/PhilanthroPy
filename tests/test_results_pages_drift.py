@@ -114,6 +114,42 @@ def _wtm_kdd98():
     return [total - mailed, total, e["net_revenue_model"] - e["net_revenue_mail_everyone"]]
 
 
+def _per_10k(pct):
+    # "N of 100" in the top 10% -> donors among the first 1,000 of 10,000, to the nearest 10.
+    return round(pct * 10, -1)
+
+
+INTERVAL_REAL = ("kdd98", "donorschoose", "psid", "karlan_list")
+
+
+def _lv(ds, level="90"):
+    return RESULTS[f"interval_{ds}"]["levels"][level]
+
+
+def _n_test(key):
+    return int(re.search(r"n_test=(\d+)", RESULTS[key]["metadata"]["note"]).group(1))
+
+
+INTERVAL_NAMES = {"kdd98": "KDD Cup 1998", "donorschoose": "DonorsChoose", "psid": "PSID household survey",
+                  "karlan_list": "Karlan and List"}
+
+
+def test_interval_analyst_table_matches_results_json():
+    text = (PAGES / "intervals.md").read_text()
+    for ds, name in INTERVAL_NAMES.items():
+        for level, v in RESULTS[f"interval_{ds}"]["levels"].items():
+            row = f"| {name} | {level}% | {v['attained']:.0f} of 100 | ${v['median_width']:,.0f} |"
+            assert row in text, row
+
+
+def test_every_real_interval_level_is_on_target():
+    # The page and the CHANGELOG say "within 3 points of the level asked
+    # for" on every real file: that is the coverage verdict "wins".
+    for ds in INTERVAL_REAL:
+        for level, v in RESULTS[f"interval_{ds}"]["levels"].items():
+            assert v["verdict"] == "wins", (ds, level, v)
+
+
 # (page, sentence template, the numbers it must show, in order). Every number
 # in a bold verdict sentence, in the opening paragraphs of each real-file tab,
 # and every hand-written number on these pages traces to a results.json key
@@ -206,7 +242,7 @@ NUMBER_MAP = [
     ("lapse.md", r"About (\d+) out of every 100 of them gave nothing in the following fiscal year",
      lambda: [_get("lapse_donorschoose.metadata.base_rate_pct")]),
     ("lapse.md", r"Of the model's top 10% of picks, (\d+) out of every 100 lapsed\. The best simple rule found (\d+) "
-     r"out of every 100\. \*\*About the same as the rule here\.\*\* The two are level at the top 1% too \((\d+) "
+     r"out of every 100\. About the same as the rule here\. The two are level at the top 1% too \((\d+) "
      r"vs (\d+)\)",
      lambda: [_get("lapse_donorschoose.top10pct.model"), _get("lapse_donorschoose.top10pct.rule"),
               _get("lapse_donorschoose.top1pct.model"), _get("lapse_donorschoose.top1pct.rule")]),
@@ -216,9 +252,9 @@ NUMBER_MAP = [
      lambda: [_get("lapse_donorschoose_retention.top10pct.model"), _get("lapse_donorschoose_retention.top10pct.rule"),
               _get("lapse_donorschoose_retention.top1pct.model"), _get("lapse_donorschoose_retention.top1pct.rule"),
               100 - _get("lapse_donorschoose.metadata.base_rate_pct")]),
-    ("lapse.md", r"\(top 10% lapse hit rate: (\d+) out of 100 with it, (\d+) without\)\. ## PSID",
+    ("lapse.md", r"\(top 10% lapse hit rate: (\d+) out of 100 with it, (\d+) without\)\. === .KDD Cup 1998",
      lambda: [_get("lapse_donorschoose_momentum.top10pct.model"), _get("lapse_donorschoose.top10pct.model")]),
-    ("lapse.md", r"between ([\d,]+) and ([\d,]+) households per test wave\. Unlike the donor files above, lapsing "
+    ("lapse.md", r"between ([\d,]+) and ([\d,]+) households per test wave\. Unlike the donor files in the other tabs, lapsing "
      r"is a minority outcome here: about (\d+) out of every 100 households lapsed",
      lambda: [min(_get("lapse_psid.metadata.n_per_fold")), max(_get("lapse_psid.metadata.n_per_fold")),
               _get("lapse_psid.metadata.base_rate_pct")]),
@@ -275,6 +311,48 @@ NUMBER_MAP = [
      lambda: [_get("ask_psid.revenue_top10pct_model"), _get("ask_psid.revenue_top10pct_rule")]),
     ("ask.md", r"\| Karlan and List \| \$(\d+) of every \$100 \| \$(\d+) \|",
      lambda: [_get("ask_karlan_list.revenue_top10pct_model"), _get("ask_karlan_list.revenue_top10pct_rule")]),
+    # "What this means for your file": counts for a 10,000-donor file, to the nearest 10
+    ("leadership.md", r"first 1,000 names include about ([\d,]+) who reach \$1,000 the next wave; ranking by this "
+     r"wave's giving finds about ([\d,]+)",
+     lambda: [_per_10k(_get("upgrade_psid.top10pct.model")), _per_10k(_get("upgrade_psid.top10pct.rule"))]),
+    ("leadership.md", r"first 100 names out of 10,000 include about (\d+) upgraders, against about (\d+) for the rule",
+     lambda: [_get("upgrade_donorschoose.top1pct.model"), _get("upgrade_donorschoose.top1pct.rule")]),
+    ("response.md", r"first 1,000 names include about (\d+) who give; the best simple rule's first 1,000 include about "
+     r"(\d+)",
+     lambda: [_get("response_karlan_list.top10pct.model") * 10, _get("response_karlan_list.top10pct.rule") * 10]),
+    ("lapse.md", r"first 1,000 names include about ([\d,]+) who stop giving; ranking by the smallest giving first "
+     r"finds about ([\d,]+)",
+     lambda: [_per_10k(_get("lapse_psid.top10pct.model")), _per_10k(_get("lapse_psid.top10pct.rule"))]),
+    ("lapse.md", r"of the 1,000 donors the model ranks least likely to lapse, about ([\d,]+) give again, against about "
+     r"([\d,]+) for the rule",
+     lambda: [_per_10k(_get("lapse_donorschoose_retention.top10pct.model")),
+              _per_10k(_get("lapse_donorschoose_retention.top10pct.rule"))]),
+    ("ask.md", r"the simple rule lands within 25% of the next gift for about ([\d,]+) donors and the model for about "
+     r"([\d,]+)",
+     lambda: [round(_get("ask_kdd98.within25pct_last_gift") * 100, -1), round(_get("ask_kdd98.within25pct_model") * 100, -1)]),
+    ("who_to_mail.md", r"the model skips about ([\d,]+) letters and still brings in about \$([\d,]+) more",
+     lambda: [round((_pieces("who_to_mail_kdd98")[1] - _pieces("who_to_mail_kdd98")[0]) / _pieces("who_to_mail_kdd98")[1]
+                    * 10_000, -1),
+              round((_get("who_to_mail_kdd98.net_revenue_model") - _get("who_to_mail_kdd98.net_revenue_mail_everyone"))
+                    / _pieces("who_to_mail_kdd98")[1] * 10_000, -1)]),
+    # How sure are we?
+    ("intervals.md", r"checked them on the held-out 30%: ([\d,]+) donors who gave\. Asked to hold 90 out of 100 gifts, "
+     r"the range held (\d+) out of 100\. The typical 90% range was (\d+) dollars wide",
+     lambda: [_n_test("interval_kdd98"), _lv("kdd98")["attained"], _lv("kdd98")["median_width"]]),
+    ("intervals.md", r"the range held (\d+) out of 100 on average, and (\d+) out of 100 in the weakest year\. "
+     r"The typical 90% range was ([\d,]+) dollars wide",
+     lambda: [_lv("donorschoose")["attained"], _lv("donorschoose")["attained_lo"], _lv("donorschoose")["median_width"]]),
+    ("intervals.md", r"the range held (\d+) out of 100 on average, and (\d+) out of 100 in the weakest wave\. "
+     r"The typical 90% range was ([\d,]+) dollars wide",
+     lambda: [_lv("psid")["attained"], _lv("psid")["attained_lo"], _lv("psid")["median_width"]]),
+    ("intervals.md", r"(\d+) donors who gave in the held-out 30%\. Asked to hold 90 out of 100 gifts, "
+     r"the range held (\d+) out of 100\. The typical 90% range was (\d+) dollars wide",
+     lambda: [_n_test("interval_karlan_list"), _lv("karlan_list")["attained"], _lv("karlan_list")["median_width"]]),
+    ("intervals.md", r"On our generated donors, asked to hold 90 out of 100 gifts, the range held (\d+) out of 100",
+     lambda: [_lv("synthetic")["attained"]]),
+    ("intervals.md", r"between about ([\d,]+) and ([\d,]+) of their next gifts land inside it",
+     lambda: [round(min(_lv(f)["attained"] for f in INTERVAL_REAL) * 100, -1),
+              round(max(_lv(f)["attained"] for f in INTERVAL_REAL) * 100, -1)]),
     # Who to mail
     ("who_to_mail.md", r"We skipped ([\d,]+) of ([\d,]+) letters and still raised \$([\d,]+) more", _wtm_kdd98),
     ("who_to_mail.md", r"mailing ([\d,]+) of them, is marked.*?brings in \$([\d,]+) after costs, against \$([\d,]+) "

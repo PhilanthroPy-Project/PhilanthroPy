@@ -24,6 +24,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   model beats PSID's own best rule at the top 10% (36 vs 32 of 100, ahead
   in all 4 test waves) but loses clearly on KDD Cup 1998's $50 proxy (5 vs
   12).
+- Results: a "How sure are we?" page for `GiftIntervalCalibrator`. Around
+  each real file's ask model, ranges requested at 80%, 90% and 95% are
+  calibrated on held-out donors and scored on later ones; on KDD Cup 1998,
+  DonorsChoose, PSID and Karlan and List they hold the actual gift within
+  3 points of the level asked for. The page also reports how wide the
+  ranges are.
+- Results: every model page now follows one template, enforced by
+  `tests/test_results_page_template.py`: the question, the bold bottom line
+  (the only bold on the page, and the one the index computes), results by
+  file as tabs with sample data last, "What this means for your file" with
+  counts for a 10,000-donor file, a runnable "Try it on your own donors"
+  example, then collapsed "How we tested" and "Numbers for analysts". The
+  planned giving page's bottom line now reads "Can't tell yet", matching the
+  index. The KDD Cup 1998 leadership tab names the two snapshot years its
+  $50 threshold is read from.
 - `philanthropy.ingest.build_snapshots(gifts, kind=...)`: one labelled
   donor x fiscal-year table for every question, `kind="upgrade"`, `"lapse"`,
   `"response_next_year"` or `"next_amount"`, on one shared column set

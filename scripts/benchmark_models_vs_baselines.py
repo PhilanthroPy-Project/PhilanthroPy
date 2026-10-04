@@ -754,6 +754,100 @@ def bench_gift_interval(seeds: Sequence[int], n_donors: int, n_years: int, alpha
     return _aggregate(seed_rows)
 
 
+INTERVAL_LEVELS = (0.80, 0.90, 0.95)
+
+
+def _interval_rows(
+    dataset: str, ask: Any, Xcal: np.ndarray, ycal: np.ndarray, Xte: np.ndarray, yte: np.ndarray, note: str,
+) -> List[Row]:
+    """Calibrate a fitted ask model at each requested level on held-out rows
+    and score the ranges on later ones: how often the range held the actual
+    gift (``empirical_coverage``) and the median range width in dollars."""
+    rows = []
+    for level in INTERVAL_LEVELS:
+        cal = GiftIntervalCalibrator(ask, alpha=round(1 - level, 2)).fit(Xcal, ycal)
+        interval = cal.predict_gift_interval(Xte)
+        rows += [
+            Row(
+                dataset, "GiftIntervalCalibrator", f"empirical_coverage(target={level:.2f})",
+                float(((yte >= interval.lower) & (yte <= interval.upper)).mean()),
+                coverage_target=level, note=note,
+            ),
+            Row(
+                dataset, "GiftIntervalCalibrator", f"median_width(target={level:.2f})",
+                float(np.median(interval.upper - interval.lower)), note=note,
+            ),
+        ]
+    return rows
+
+
+def _interval_walk_forward(dataset: str, snap: pd.DataFrame, period_col: str, id_col: str, seed: int,
+                           n_test_folds: int) -> List[Row]:
+    """Walk-forward ranges on a period snapshot: for each test period T, fit
+    the ask model on periods before T-1, calibrate on T-1, score on T."""
+    cols = _snapshot_feature_cols(snap, id_col)
+    periods = sorted(int(p) for p in snap[period_col].unique())
+    fold_rows = []
+    for t in _walk_forward_test_periods(snap, period_col, n_test_folds):
+        prev = periods[periods.index(t) - 1]
+        fit, cal, test = snap[snap[period_col] < prev], snap[snap[period_col] == prev], snap[snap[period_col] == t]
+        if len(fit) < 20 or len(test) < 5:
+            continue
+        ask = AskAmountRecommender(random_state=seed).fit(fit[cols].to_numpy("float64"), fit["target"].to_numpy())
+        fold_rows.append(_interval_rows(
+            dataset, ask, cal[cols].to_numpy("float64"), cal["target"].to_numpy("float64"),
+            test[cols].to_numpy("float64"), test["target"].to_numpy("float64"),
+            note=f"walk-forward: fit < {prev}, calibrate {prev}, test {t}; n_test={len(test)}",
+        ))
+    return _aggregate(fold_rows)
+
+
+def bench_gift_interval_kdd98(seed: int = KDD_SEED) -> List[Row]:
+    """Ranges around the ask page's KDD98 model: fit on the training fold,
+    calibrate on the validation fold, score on the test fold, responders only."""
+    donors = fetch_kdd98_donors()
+    Xtr, Xva, Xte, ytr, yva, yte = _kdd_ask_design(donors, _kdd_rfm(_kdd_gift_log(donors)), seed)
+    ask = make_pipeline(
+        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
+        AskAmountRecommender(random_state=seed),
+    ).fit(Xtr[ytr > 0], ytr[ytr > 0])
+    return _interval_rows(
+        "kdd98", ask, Xva[yva > 0], yva[yva > 0].to_numpy(), Xte[yte > 0], yte[yte > 0].to_numpy(),
+        note=f"split={KDD_SPLIT}; n_test={int((yte > 0).sum())}",
+    )
+
+
+def bench_gift_interval_karlan_list(path: str) -> List[Row]:
+    """Ranges around the ask page's Karlan and List model: same split,
+    donors who gave, calibrated on the validation fold."""
+    df, idx_train, idx_val, idx_test = _karlan_list_split(path)
+    gave = df["gave"].to_numpy() == 1
+    tr, va, te = (idx[gave[idx]] for idx in (idx_train, idx_val, idx_test))
+    X, y = df[KARLAN_LIST_FEATURES].to_numpy("float64"), df["amount"].to_numpy("float64")
+    ask = AskAmountRecommender(random_state=KARLAN_LIST_SEED).fit(X[tr], y[tr])
+    return _interval_rows(
+        "karlan_list", ask, X[va], y[va], X[te], y[te], note=f"split={KDD_SPLIT}; n_test={len(te)}",
+    )
+
+
+def bench_gift_interval_donorschoose(
+    path: str, seed: int = DONORSCHOOSE_SEED, subsample_fraction: float = DONORSCHOOSE_SUBSAMPLE,
+    n_test_folds: int = DONORSCHOOSE_N_FOLDS,
+) -> List[Row]:
+    """Ranges around the ask page's DonorsChoose model, walk-forward."""
+    gifts = _donorschoose_gift_log(path, subsample_fraction, seed)
+    snap = _gift_log_period_snapshots(gifts, 7, "ask", False, threshold=1000.0, band=(100.0, 999.0))
+    return _interval_walk_forward("donorschoose", snap, "fiscal_year", "donor_id", seed, n_test_folds)
+
+
+def bench_gift_interval_psid(
+    data_path: str, do_path: str, seed: int = PSID_SEED, n_test_folds: int = PSID_N_FOLDS,
+) -> List[Row]:
+    """Ranges around the ask page's PSID model, walk-forward over waves."""
+    snap = _psid_wave_period_snapshots(data_path, do_path, "ask", False, threshold=1000.0, band=(100.0, 999.0))
+    return _interval_walk_forward("psid", snap, "wave", "household_key", seed, n_test_folds)
+
+
 def bench_forecast(seeds: Sequence[int], n_donors: int, n_years: int, horizon: int = 12) -> List[Row]:
     """FinancialForecastModel on monthly giving totals, last ``horizon``
     months held out, against the forecast rule set: the mean of the last 12

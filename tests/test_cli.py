@@ -267,3 +267,29 @@ def test_cli_features_then_train_then_score(tmp_path, capsys):
     scored = pd.read_csv(scores_path)
     assert "score" in scored.columns
     assert len(scored) == 80
+    
+def test_cli_score_falls_back_to_predict_proba_without_affinity_score(tmp_path):
+    data = _make_csv(tmp_path, "d.csv", n=120)
+
+    model_path = tmp_path / "planned_giving.joblib"
+    main([
+        "train",
+        "--data", str(data),
+        "--target", "is_major_donor",
+        "--features", FEATURES,
+        "--model", "PlannedGivingIntentScorer",
+        "--out", str(model_path),
+    ])
+
+    scores_path = tmp_path / "scores.csv"
+    main([
+        "score",
+        "--model", str(model_path),
+        "--data", str(data),
+        "--out", str(scores_path),
+    ])
+
+    scored = pd.read_csv(scores_path)
+
+    assert "score" in scored.columns
+    assert scored["score"].notna().all()

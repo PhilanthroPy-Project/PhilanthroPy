@@ -26,6 +26,11 @@ one charity's 1997 mailing.
     (or less) than $0.68?": a higher cost per piece shifts the stopping point left, without needing
     a new chart.
 
+    The same fit at four costs per letter. The cost only moves where the list stops; the models do
+    not change. The range shows how far the difference moves when the held-out donors are resampled.
+
+    --8<-- "results/_verdicts/who_to_mail_kdd98_cost_sweep.md"
+
 === "cup98VAL (same charity, a file the model never saw)"
 
     The KDD Cup 1998 tab scores a random 30% slice of the same file the model was fit on. KDD Cup
@@ -38,6 +43,10 @@ one charity's 1997 mailing.
 
     ![Net revenue against how many donors are mailed, most to least likely to respond, cup98VAL](../assets/results/who_to_mail_cup98val.png#only-light)
     ![Net revenue against how many donors are mailed, most to least likely to respond, cup98VAL](../assets/results/who_to_mail_cup98val-dark.png#only-dark)
+
+    The same fit at four costs per letter:
+
+    --8<-- "results/_verdicts/who_to_mail_cup98val_cost_sweep.md"
 
 ## What this means for your file
 

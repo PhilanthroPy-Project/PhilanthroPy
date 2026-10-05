@@ -73,7 +73,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `load_psid_philanthropy` | `datasets` | Reads a fixed list of PSID ER/S variables for 2001-2023; an extract that omits some of them skips those waves (or raises KeyError for a partially selected wave). |
 | `GiftIntervalCalibrator`, `GiftInterval` | `models` | The conformity-score menu is expected to grow (conformalised quantile regression is not shipped), which adds `score` values rather than changing existing ones. |
 | `trailing_slope_features` | `utils` | New, off-by-default helper; the bin width, window set and NaN threshold are a starting recipe and may be refined. |
-| `check_label_floor`, `LABEL_FLOORS` | `utils` | The floor values come from one validation-fold learning curve per task and will move as more real files are measured; the `"run"` / `"not enough labels"` return values will not. |
+| `check_label_floor`, `LABEL_FLOORS` | `utils` | The floor values come from validation-fold learning curves (lapse: PSID and DonorsChoose; major gift: KDD Cup 1998 and PSID, on ROC-AUC and the top-10% hit rate) and will move as more real files are measured; the `"run"` / `"not enough labels"` return values will not. |
 
 ### Tier 3: Experimental
 

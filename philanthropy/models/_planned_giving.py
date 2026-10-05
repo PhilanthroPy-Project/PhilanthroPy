@@ -11,7 +11,7 @@ from typing import Any, TypeVar
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.utils import Tags
 from sklearn.utils.multiclass import check_classification_targets
 from sklearn.utils.validation import check_is_fitted, validate_data
@@ -23,13 +23,13 @@ _CALIBRATION_CV_FOLDS = 2
 
 class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
     """
-    Predicts bequest/planned giving intent. Wraps GradientBoostingClassifier
-    with CalibratedClassifierCV.
+    Predicts bequest/planned giving intent. Wraps
+    HistGradientBoostingClassifier with CalibratedClassifierCV.
 
-    Exposes `.predict_intent_score(X)` returning a 0-100 float array. NaN
-    features are rejected: GradientBoostingClassifier, the backend this
-    class calibrates, does not support missing values, so ``fit``/``predict``
-    raise on NaN input rather than passing it through.
+    Exposes `.predict_intent_score(X)` returning a 0-100 float array.
+    Missing values are accepted and handled natively by the boosting
+    backend, so a file with blank age or wealth-screening columns needs no
+    imputation first.
 
     Calibration uses ``cv=2``, so every class in ``y`` must have at least 2
     examples; ``fit`` raises a ``ValueError`` up front if that is not the
@@ -38,7 +38,8 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
     Parameters
     ----------
     n_estimators : int, default=100
-        The number of boosting stages to perform.
+        The maximum number of boosting iterations, passed as ``max_iter`` to
+        the underlying :class:`HistGradientBoostingClassifier`.
     random_state : int, RandomState instance or None, default=None
         Controls the randomness of the estimator.
     """
@@ -74,7 +75,7 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
             than 2 classes, or if any class has fewer than 2 examples,
             since calibration uses ``cv=2``.
         """
-        X, y = validate_data(self, X, y, reset=True)
+        X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
         # Reject continuous targets before counting classes, so a regression
         # target gets sklearn's standard "continuous" message instead of
         # being misread as one-example-per-class.
@@ -96,8 +97,11 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
                 f"{counts.min()}."
             )
 
-        base_estimator = GradientBoostingClassifier(
-            n_estimators=self.n_estimators,
+        base_estimator = HistGradientBoostingClassifier(
+            max_iter=self.n_estimators,
+            # The old GradientBoostingClassifier default depth: same tree
+            # shape, so scores match it on sample data; only NaN handling changes.
+            max_depth=3,
             random_state=self.random_state
         )
         self.estimator_ = CalibratedClassifierCV(
@@ -127,7 +131,7 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
             If :meth:`fit` has not been called yet.
         """
         check_is_fitted(self)
-        X = validate_data(self, X, reset=False)
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self.estimator_.predict(X)
 
     def predict_proba(self, X: Any) -> np.ndarray:
@@ -149,7 +153,7 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
             If :meth:`fit` has not been called yet.
         """
         check_is_fitted(self)
-        X = validate_data(self, X, reset=False)
+        X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
         return self.estimator_.predict_proba(X)
 
     def predict_intent_score(self, X: Any) -> np.ndarray:
@@ -171,4 +175,5 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
 
     def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
+        tags.input_tags.allow_nan = True
         return tags

@@ -1653,6 +1653,28 @@ def render_index_table(index: Dict[str, Any], path: Path) -> None:
     path.write_text("\n".join(lines) + "\n")
 
 
+def render_cost_sweep_table(sweep: List[Dict[str, Any]], path: Path) -> None:
+    """Who to mail at each cost per letter, as a table snippet for one tab.
+    The range is the paired bootstrap interval on the difference."""
+    lines = [
+        "| Cost per letter | Letters sent | Raised after costs | Mailing everyone | Difference (range) |",
+        "|---|---|---|---|---|",
+    ]
+
+    def money(v: float, sign: str = "") -> str:
+        return f"{'-' if v < 0 else ('+' if sign and v > 0 else '')}${abs(v):,.0f}"
+
+    for r in sweep:
+        diff = r["net_revenue_model"] - r["net_revenue_mail_everyone"]
+        lines.append(
+            f"| ${r['cost']:.2f} | {r['mailed']:,} of {r['n_total']:,} | {money(r['net_revenue_model'])} | "
+            f"{money(r['net_revenue_mail_everyone'])} | {money(diff, '+')} "
+            f"({money(r['diff_lo'], '+')} to {money(r['diff_hi'], '+')}) |"
+        )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n")
+
+
 def scoreboard_rows(index: Dict[str, Any]) -> Tuple[List[tuple], List[str]]:
     rows, untested, notes = [], [], []
     for question, _link, label, _ask in INDEX_QUESTIONS:
@@ -2173,6 +2195,7 @@ def main() -> None:
         }
         curve = bm.kdd_mail_profit_curve(seed)
         results["who_to_mail_kdd98"]["curve"] = curve
+        results["who_to_mail_kdd98"]["cost_sweep"] = bm.kdd_mail_cost_sweep(seed, held_out_file=False)
         gain = curve["stop_net_revenue"] - curve["everyone_net_revenue"]
         skip = curve["n_total"] - curve["stop_k"]
         _render_themed(
@@ -2202,6 +2225,7 @@ def main() -> None:
             }
             curve_val = bm.kdd_mail_profit_curve_val(seed)
             results["who_to_mail_cup98val"]["curve"] = curve_val
+            results["who_to_mail_cup98val"]["cost_sweep"] = bm.kdd_mail_cost_sweep(seed, held_out_file=True)
             gain_val = curve_val["stop_net_revenue"] - curve_val["everyone_net_revenue"]
             skip_val = curve_val["n_total"] - curve_val["stop_k"]
             _render_themed(
@@ -2512,6 +2536,9 @@ def main() -> None:
     results["_index"] = {q: {"bottom_line": v["bottom_line"], "cells": {ds: c["text"] for ds, c in v["cells"].items()}}
                          for q, v in index.items()}
     render_index_table(index, ROOT / "docs" / "results" / "_verdicts" / "index_table.md")
+    for key in ("who_to_mail_kdd98", "who_to_mail_cup98val"):
+        if "cost_sweep" in results.get(key, {}):
+            render_cost_sweep_table(results[key]["cost_sweep"], ROOT / "docs" / "results" / "_verdicts" / f"{key}_cost_sweep.md")
     sb_rows, sb_notes = scoreboard_rows(index)
     _render_themed(_scoreboard_chart, OUT_DIR / "scoreboard.png", sb_rows, sb_notes)
 

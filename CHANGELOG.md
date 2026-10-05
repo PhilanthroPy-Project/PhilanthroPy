@@ -10,6 +10,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   that the optional `tenure` column is emitted, remains at least as large as
   `recency`, and matches `get_feature_names_out`; the default path is pinned to
   keep `tenure` absent unless requested.
+- `docs/tutorials/avoiding_temporal_data_leakage.md` now links to the
+  real-data replication and states the measured feature-timing leakage cost on
+  KDD Cup 1998: walk-forward ROC-AUC 0.482 as of each decision point versus
+  0.858 over the whole export, an inflation of +0.376.
 - `threshold="pNN"` in `build_leadership_snapshots` and
   `score_leadership_prospects`: the leadership level as the NNth percentile
   of positive donor fiscal-year totals in the training (snapshot) years,

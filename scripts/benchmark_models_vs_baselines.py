@@ -23,6 +23,7 @@ Run:
     python scripts/benchmark_models_vs_baselines.py --out results/bench  # also writes bench.json / bench.csv
     python scripts/benchmark_models_vs_baselines.py --with-cup98val      # also scores on cup98VAL (opt-in, +~37MB)
     python scripts/benchmark_models_vs_baselines.py --with-blood         # also UCI Blood Transfusion (opt-in, ~12KB)
+    python scripts/benchmark_models_vs_baselines.py --karlan-list-path ~/data/karlan_list/AERtables1-5.dta
 
 The KDD Cup 1998 section downloads ``cup98lrn.zip`` (~36 MB) to
 ``~/philanthropy_data`` on first use (see ``fetch_kdd98_donors``); pass
@@ -47,15 +48,20 @@ attain roughly its requested coverage.
 
 ## Verdict rule
 
-Every row with a baseline gets one of three verdicts, from a single ratio:
-``ratio = model / baseline`` for a metric where higher is better (hit rate,
-ROC-AUC, net revenue), or ``ratio = baseline / model`` where lower is better
-(MAE, the calibration gap). ``ratio >= 1.15`` is ``"wins"``, ``1.00 <= ratio
-< 1.15`` is ``"modest"``, ``ratio < 1.00`` is ``"loses"``. A row with no
-baseline (average precision) uses ``"n/a"``; the two coverage checks use a
-coverage-specific rule instead: attained coverage within 3 points of the
-requested level is ``"wins"``, within 6 points is ``"modest"``, more than 6
-points short is ``"loses"``.
+A verdict is never read off one point. Each row with a baseline carries an
+interval on the paired difference ``model - baseline``, measured on the same
+donors: on a single split, a 1,000-resample bootstrap of that difference
+(2.5th to 97.5th percentile); across seeds or walk-forward folds, the
+smallest and largest per-seed difference, so the worst seed decides. The
+model ``"wins"`` if the whole interval is on its side of zero (above zero
+where higher is better: hit rate, ROC-AUC, share within 25%, net revenue;
+below zero where lower is better: MAE), ``"loses"`` if the whole interval is
+on the rule's side, and is ``"modest"`` (about the same) if it straddles
+zero. A row with no baseline (average precision, the calibration gap) or no
+interval uses ``"n/a"``. The two coverage checks use a coverage-specific
+rule instead: attained coverage within 3 points of the requested level is
+``"wins"``, within 6 points is ``"modest"``, more than 6 points short is
+``"loses"``.
 
 ## Reading the KDD Cup 1998 numbers against the reference run
 
@@ -81,7 +87,7 @@ import warnings
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -93,11 +99,14 @@ from philanthropy.datasets import (
     fetch_kdd98_donors,
     fetch_kdd98_val_donors,
     load_donorschoose,
+    load_karlan_list,
     load_psid_philanthropy,
     make_donor_panel,
 )
-from philanthropy.ingest import build_leadership_snapshots
+from philanthropy.ingest import build_leadership_snapshots, build_snapshots
+from philanthropy.ingest._snapshots import SCALE_FREE_COLUMNS, period_snapshots
 from philanthropy.ingest._upgrade_snapshots import _column, _prepare_gifts, _snapshot_features_for_year
+from philanthropy.experimental import UpliftTLearner
 from philanthropy.metrics import fundraising_roi
 from philanthropy.model_selection import FiscalYearGroupedSplitter
 from philanthropy.utils import trailing_slope_features
@@ -126,7 +135,6 @@ MOMENTUM_COLS: Tuple[str, ...] = tuple(
     f"fy_total_{stat}_{k}y" for stat in ("slope", "rel_slope") for k in (3, 5)
 )
 KDD_AS_OF = "1997-06-01"
-WIN_RATIO = 1.15
 COVERAGE_TOL = 0.03
 N_BOOTSTRAP = 1000
 BOOTSTRAP_METRICS = ("top10pct_hit_rate", "roc_auc")
@@ -184,6 +192,19 @@ def _best_ask_baseline(
     return best, rules[best], scored[best]
 
 
+def _bootstrap_diff_ci(n: int, diff_fn, n_resamples: int = N_BOOTSTRAP, seed: int = 0) -> Tuple[float, float]:
+    """Bootstrap 95% interval on a paired difference: ``diff_fn(idx)``
+    returns ``model metric - rule metric`` on the resampled rows ``idx``, so
+    both sides see the same donors in every resample. ``nan`` resamples
+    (e.g. a single-class draw for ROC-AUC) are skipped."""
+    rng = np.random.default_rng(seed)
+    values = [diff_fn(rng.integers(0, n, size=n)) for _ in range(n_resamples)]
+    values = [v for v in values if v == v]
+    if not values:
+        return float("nan"), float("nan")
+    return float(np.percentile(values, 2.5)), float(np.percentile(values, 97.5))
+
+
 def _bootstrap_ci(
     y_true: np.ndarray, score: np.ndarray, metric_fn, n_resamples: int = N_BOOTSTRAP, seed: int = 0,
 ) -> Tuple[float, float]:
@@ -223,6 +244,10 @@ class Row:
     lo: Optional[float] = None
     hi: Optional[float] = None
     n_seeds: int = 1
+    diff_lo: Optional[float] = None
+    diff_hi: Optional[float] = None
+    baseline_lo: Optional[float] = None
+    baseline_hi: Optional[float] = None
 
     @property
     def verdict(self) -> str:
@@ -235,14 +260,14 @@ class Row:
             return "loses"
         if self.baseline is None or self.baseline != self.baseline:
             return "n/a"
-        if self.baseline == 0:
-            return "wins" if self.value > 0 else "n/a"
-        ratio = self.baseline / self.value if self.lower_is_better else self.value / self.baseline
-        if ratio >= WIN_RATIO:
+        if self.diff_lo is None or self.diff_hi is None or self.diff_lo != self.diff_lo:
+            return "n/a"
+        lo, hi = (-self.diff_hi, -self.diff_lo) if self.lower_is_better else (self.diff_lo, self.diff_hi)
+        if lo > 0:
             return "wins"
-        if ratio >= 1.0:
-            return "modest"
-        return "loses"
+        if hi < 0:
+            return "loses"
+        return "modest"
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -254,6 +279,8 @@ class Row:
             "lo": self.lo,
             "hi": self.hi,
             "n_seeds": self.n_seeds,
+            "diff_lo": self.diff_lo,
+            "diff_hi": self.diff_hi,
             "verdict": self.verdict,
             "note": self.note,
         }
@@ -272,6 +299,16 @@ def _aggregate(seed_rows: List[List[Row]]) -> List[Row]:
         if not values:
             continue
         baselines = [r.baseline for r in rs if r.baseline is not None and r.baseline == r.baseline]
+        # Worst seed decides (E.11f rule 5): the interval on model - rule is
+        # the smallest and largest per-seed paired difference.
+        diffs = [
+            r.value - r.baseline for r in rs
+            if r.value == r.value and r.baseline is not None and r.baseline == r.baseline
+        ]
+        if len(rs) == 1:
+            # One split is a point estimate, not a range: keep that row's own
+            # bootstrap interval, or none (so its verdict is "n/a").
+            diffs = [d for d in (rs[0].diff_lo, rs[0].diff_hi) if d is not None]
         out.append(
             Row(
                 dataset=dataset,
@@ -285,6 +322,10 @@ def _aggregate(seed_rows: List[List[Row]]) -> List[Row]:
                 lo=float(min(values)),
                 hi=float(max(values)),
                 n_seeds=len(values),
+                diff_lo=float(min(diffs)) if diffs else None,
+                diff_hi=float(max(diffs)) if diffs else None,
+                baseline_lo=float(min(baselines)) if baselines else None,
+                baseline_hi=float(max(baselines)) if baselines else None,
             )
         )
     return out
@@ -323,9 +364,12 @@ def _classifier_rows(
     named rule, not a different cherry-picked one per metric. ``split`` and
     ``n_configs`` (E.11a rules 1-2) are recorded in every row's note.
     ``bootstrap=True`` adds a 1,000-resample 95% interval (rule 4) on
-    top10pct_hit_rate and roc_auc; that is for single-split (KDD98) rows
-    only, synthetic rows already have a 5-seed range."""
-    y_true = np.asarray(y_true)
+    top10pct_hit_rate and roc_auc, and a paired-difference interval
+    (model - rule on the same resample) on every top-N hit rate and ROC-AUC,
+    which is what the verdict reads; that is for single-split rows only.
+    Walk-forward and multi-seed rows get their difference interval from
+    :func:`_aggregate` instead."""
+    y_true, score = np.asarray(y_true), np.asarray(score)
     best_name, baseline_score, _ = _best_classifier_baseline(y_true, rules, lambda y, s: _topn_rate(y, s, 0.10)[0])
     header = f"rule_set={best_name} (best of {len(rules)}); split={split}; n_configs={n_configs}"
     rows = []
@@ -333,17 +377,34 @@ def _classifier_rows(
         m_rate, n = _topn_rate(y_true, score, frac)
         b_rate, _ = _topn_rate(y_true, baseline_score, frac)
         metric = f"top{int(frac * 100)}pct_hit_rate"
-        lo = hi = None
+        lo = hi = d_lo = d_hi = None
         if bootstrap and metric in BOOTSTRAP_METRICS:
             lo, hi = _bootstrap_ci(y_true, score, lambda y, s: _topn_rate(y, s, frac)[0])
-        rows.append(Row(dataset, model_name, metric, m_rate, b_rate, note=f"n={n}; {header}", lo=lo, hi=hi))
+        if bootstrap:
+            d_lo, d_hi = _bootstrap_diff_ci(len(y_true), lambda idx, f=frac: (
+                _topn_rate(y_true[idx], score[idx], f)[0] - _topn_rate(y_true[idx], baseline_score[idx], f)[0]
+            ))
+        rows.append(Row(
+            dataset, model_name, metric, m_rate, b_rate, note=f"n={n}; {header}", lo=lo, hi=hi,
+            diff_lo=d_lo, diff_hi=d_hi,
+        ))
     has_both_classes = len(np.unique(y_true)) > 1
     auc = roc_auc_score(y_true, score) if has_both_classes else float("nan")
     b_auc = roc_auc_score(y_true, baseline_score) if has_both_classes else float("nan")
-    auc_lo = auc_hi = None
+    auc_lo = auc_hi = auc_d_lo = auc_d_hi = None
     if bootstrap and has_both_classes:
         auc_lo, auc_hi = _bootstrap_ci(y_true, score, roc_auc_score)
-    rows.append(Row(dataset, model_name, "roc_auc", auc, b_auc, note=header, lo=auc_lo, hi=auc_hi))
+
+        def _auc_diff(idx: np.ndarray) -> float:
+            if len(np.unique(y_true[idx])) < 2:
+                return float("nan")
+            return roc_auc_score(y_true[idx], score[idx]) - roc_auc_score(y_true[idx], baseline_score[idx])
+
+        auc_d_lo, auc_d_hi = _bootstrap_diff_ci(len(y_true), _auc_diff)
+    rows.append(Row(
+        dataset, model_name, "roc_auc", auc, b_auc, note=header, lo=auc_lo, hi=auc_hi,
+        diff_lo=auc_d_lo, diff_hi=auc_d_hi,
+    ))
     ap = average_precision_score(y_true, score) if has_both_classes else float("nan")
     rows.append(Row(dataset, model_name, "average_precision", ap, note=f"no baseline; base-rate dependent; {header}"))
     rows.append(
@@ -358,6 +419,19 @@ def _classifier_rows(
 
 def _within_pct(pred: np.ndarray, y_true: np.ndarray, pct: float = 0.25) -> float:
     return float((np.abs(pred - y_true) <= pct * y_true).mean())
+
+
+def _revenue_top_share(y_true: np.ndarray, score: np.ndarray, frac: float = 0.10) -> float:
+    """Share of all next-gift dollars that comes from the top ``frac`` of
+    donors ranked by ``score``: the revenue a shop captures if it can only
+    work that slice of the list. Ties keep file order."""
+    y_true = np.asarray(y_true, dtype="float64")
+    total = y_true.sum()
+    if total <= 0:
+        return float("nan")
+    k = max(1, int(round(len(y_true) * frac)))
+    top = np.argsort(-np.asarray(score), kind="stable")[:k]
+    return float(y_true[top].sum() / total)
 
 
 # --------------------------------------------------------------------------- #
@@ -555,6 +629,11 @@ def bench_ask(seeds: Sequence[int], n_donors: int, n_years: int, include_momentu
                     _within_pct(pred, yte), _within_pct(best_score, yte),
                     note=header,
                 ),
+                Row(
+                    "synthetic_panel", "AskAmountRecommender", "revenue_top10pct",
+                    _revenue_top_share(yte, pred), _revenue_top_share(yte, best_score),
+                    note=header,
+                ),
             ]
         )
     return _aggregate(seed_rows)
@@ -673,6 +752,100 @@ def bench_gift_interval(seeds: Sequence[int], n_donors: int, n_years: int, alpha
             ]
         )
     return _aggregate(seed_rows)
+
+
+INTERVAL_LEVELS = (0.80, 0.90, 0.95)
+
+
+def _interval_rows(
+    dataset: str, ask: Any, Xcal: np.ndarray, ycal: np.ndarray, Xte: np.ndarray, yte: np.ndarray, note: str,
+) -> List[Row]:
+    """Calibrate a fitted ask model at each requested level on held-out rows
+    and score the ranges on later ones: how often the range held the actual
+    gift (``empirical_coverage``) and the median range width in dollars."""
+    rows = []
+    for level in INTERVAL_LEVELS:
+        cal = GiftIntervalCalibrator(ask, alpha=round(1 - level, 2)).fit(Xcal, ycal)
+        interval = cal.predict_gift_interval(Xte)
+        rows += [
+            Row(
+                dataset, "GiftIntervalCalibrator", f"empirical_coverage(target={level:.2f})",
+                float(((yte >= interval.lower) & (yte <= interval.upper)).mean()),
+                coverage_target=level, note=note,
+            ),
+            Row(
+                dataset, "GiftIntervalCalibrator", f"median_width(target={level:.2f})",
+                float(np.median(interval.upper - interval.lower)), note=note,
+            ),
+        ]
+    return rows
+
+
+def _interval_walk_forward(dataset: str, snap: pd.DataFrame, period_col: str, id_col: str, seed: int,
+                           n_test_folds: int) -> List[Row]:
+    """Walk-forward ranges on a period snapshot: for each test period T, fit
+    the ask model on periods before T-1, calibrate on T-1, score on T."""
+    cols = _snapshot_feature_cols(snap, id_col)
+    periods = sorted(int(p) for p in snap[period_col].unique())
+    fold_rows = []
+    for t in _walk_forward_test_periods(snap, period_col, n_test_folds):
+        prev = periods[periods.index(t) - 1]
+        fit, cal, test = snap[snap[period_col] < prev], snap[snap[period_col] == prev], snap[snap[period_col] == t]
+        if len(fit) < 20 or len(test) < 5:
+            continue
+        ask = AskAmountRecommender(random_state=seed).fit(fit[cols].to_numpy("float64"), fit["target"].to_numpy())
+        fold_rows.append(_interval_rows(
+            dataset, ask, cal[cols].to_numpy("float64"), cal["target"].to_numpy("float64"),
+            test[cols].to_numpy("float64"), test["target"].to_numpy("float64"),
+            note=f"walk-forward: fit < {prev}, calibrate {prev}, test {t}; n_test={len(test)}",
+        ))
+    return _aggregate(fold_rows)
+
+
+def bench_gift_interval_kdd98(seed: int = KDD_SEED) -> List[Row]:
+    """Ranges around the ask page's KDD98 model: fit on the training fold,
+    calibrate on the validation fold, score on the test fold, responders only."""
+    donors = fetch_kdd98_donors()
+    Xtr, Xva, Xte, ytr, yva, yte = _kdd_ask_design(donors, _kdd_rfm(_kdd_gift_log(donors)), seed)
+    ask = make_pipeline(
+        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
+        AskAmountRecommender(random_state=seed),
+    ).fit(Xtr[ytr > 0], ytr[ytr > 0])
+    return _interval_rows(
+        "kdd98", ask, Xva[yva > 0], yva[yva > 0].to_numpy(), Xte[yte > 0], yte[yte > 0].to_numpy(),
+        note=f"split={KDD_SPLIT}; n_test={int((yte > 0).sum())}",
+    )
+
+
+def bench_gift_interval_karlan_list(path: str) -> List[Row]:
+    """Ranges around the ask page's Karlan and List model: same split,
+    donors who gave, calibrated on the validation fold."""
+    df, idx_train, idx_val, idx_test = _karlan_list_split(path)
+    gave = df["gave"].to_numpy() == 1
+    tr, va, te = (idx[gave[idx]] for idx in (idx_train, idx_val, idx_test))
+    X, y = df[KARLAN_LIST_FEATURES].to_numpy("float64"), df["amount"].to_numpy("float64")
+    ask = AskAmountRecommender(random_state=KARLAN_LIST_SEED).fit(X[tr], y[tr])
+    return _interval_rows(
+        "karlan_list", ask, X[va], y[va], X[te], y[te], note=f"split={KDD_SPLIT}; n_test={len(te)}",
+    )
+
+
+def bench_gift_interval_donorschoose(
+    path: str, seed: int = DONORSCHOOSE_SEED, subsample_fraction: float = DONORSCHOOSE_SUBSAMPLE,
+    n_test_folds: int = DONORSCHOOSE_N_FOLDS,
+) -> List[Row]:
+    """Ranges around the ask page's DonorsChoose model, walk-forward."""
+    gifts = _donorschoose_gift_log(path, subsample_fraction, seed)
+    snap = _gift_log_period_snapshots(gifts, 7, "ask", False, threshold=1000.0, band=(100.0, 999.0))
+    return _interval_walk_forward("donorschoose", snap, "fiscal_year", "donor_id", seed, n_test_folds)
+
+
+def bench_gift_interval_psid(
+    data_path: str, do_path: str, seed: int = PSID_SEED, n_test_folds: int = PSID_N_FOLDS,
+) -> List[Row]:
+    """Ranges around the ask page's PSID model, walk-forward over waves."""
+    snap = _psid_wave_period_snapshots(data_path, do_path, "ask", False, threshold=1000.0, band=(100.0, 999.0))
+    return _interval_walk_forward("psid", snap, "wave", "household_key", seed, n_test_folds)
 
 
 def bench_forecast(seeds: Sequence[int], n_donors: int, n_years: int, horizon: int = 12) -> List[Row]:
@@ -825,8 +998,55 @@ def _gift_log_period_snapshots(
 def _snapshot_feature_cols(snap: pd.DataFrame, id_col: str) -> List[str]:
     return [
         c for c in snap.columns
-        if c not in ("target", "fiscal_year", "wave", id_col) and pd.api.types.is_numeric_dtype(snap[c])
+        if c not in ("target", "fiscal_year", "wave", "period", id_col) and pd.api.types.is_numeric_dtype(snap[c])
     ]
+
+
+# Lapse is asked about donors with at least two giving years (E.15 2.3.2):
+# the donors a retention program can act on, not one-time givers whose lapse
+# is near-certain. Every lapse bench builds its rows with the shared
+# philanthropy.ingest builder so the model sees the same gift columns on
+# every file; a bench's own frame only adds what that file has beyond them
+# (momentum, PSID household income, wealth and volunteering).
+LAPSE_MIN_YEARS_GIVEN = 2
+_BUILDER_OWNED_COLS = (
+    "fy_total", "fy_total_prior1", "fy_total_prior2", "fy_trend", "largest_gift", "gift_count",
+    "consecutive_years_given", "months_since_last_gift", "fy_total_growth_ratio",
+    "total_giving", "prior_wave_total", "trend", "largest_giving_category", "waves_given_streak", "target",
+)
+
+
+def _join_extras(snap: pd.DataFrame, extra: pd.DataFrame, id_col: str, period_col: str) -> pd.DataFrame:
+    extra = extra.rename(columns={period_col: "period"})
+    extra = extra.drop(columns=[c for c in _BUILDER_OWNED_COLS if c in extra.columns])
+    return snap.merge(extra, on=[id_col, "period"], how="left")
+
+
+def _donorschoose_lapse_snapshots(gifts: pd.DataFrame, include_momentum: bool) -> pd.DataFrame:
+    snap = build_snapshots(gifts, kind="lapse", min_years_given=LAPSE_MIN_YEARS_GIVEN, fiscal_year_start=7)
+    snap = snap.reset_index()
+    if include_momentum:
+        extra = _gift_log_period_snapshots(gifts, 7, "lapse", True, 1000.0, (100.0, 999.0))
+        snap = _join_extras(snap, extra, "donor_id", "fiscal_year")
+    return snap
+
+
+def _psid_lapse_snapshots(data_path: str, do_path: str, include_momentum: bool) -> pd.DataFrame:
+    """PSID waves through the shared period builder: a wave is a period and
+    "prior" is the previous wave in the file. ``largest_gift`` is the
+    largest single giving category, the closest this survey has to a
+    largest gift."""
+    long_df = _psid_long_table(data_path, do_path)
+    giving_cols = [c for c in long_df.columns if c.startswith("giving_")]
+    totals = long_df.pivot(index="household_key", columns="year", values="total_giving").sort_index(axis=1)
+    largest = (
+        long_df.assign(_largest=long_df[giving_cols].max(axis=1))
+        .pivot(index="household_key", columns="year", values="_largest")
+        .reindex(index=totals.index, columns=totals.columns)
+    )
+    snap = period_snapshots(totals, kind="lapse", largest=largest, min_years_given=LAPSE_MIN_YEARS_GIVEN).reset_index()
+    extra = _psid_wave_period_snapshots(data_path, do_path, "lapse", include_momentum, 1000.0, (100.0, 999.0))
+    return _join_extras(snap, extra, "household_key", "wave")
 
 
 def _walk_forward_test_periods(snap: pd.DataFrame, period_col: str, n_folds: int) -> List[int]:
@@ -875,15 +1095,15 @@ def bench_upgrade_donorschoose(
 def _donorschoose_lapse_fold(
     gifts: pd.DataFrame, seed: int, include_momentum: bool, n_test_folds: int, retention: bool,
 ) -> List[Row]:
-    snap = _gift_log_period_snapshots(gifts, 7, "lapse", include_momentum, threshold=1000.0, band=(100.0, 999.0))
+    snap = _donorschoose_lapse_snapshots(gifts, include_momentum)
     if snap.empty:
         return []
     cols = _snapshot_feature_cols(snap, "donor_id")
-    test_years = _walk_forward_test_periods(snap, "fiscal_year", n_test_folds)
+    test_years = _walk_forward_test_periods(snap, "period", n_test_folds)
 
     seed_rows = []
     for t in test_years:
-        train, test = snap[snap["fiscal_year"] < t], snap[snap["fiscal_year"] == t]
+        train, test = snap[snap["period"] < t], snap[snap["period"] == t]
         if train.empty or test.empty or test["target"].nunique() < 2:
             continue
         model = LapsePredictor(random_state=seed).fit(
@@ -892,8 +1112,8 @@ def _donorschoose_lapse_fold(
         lapse_score = model.predict_lapse_score(test[cols].to_numpy("float64")) / 100.0
         rules = {
             "months since last gift": test["months_since_last_gift"].to_numpy(),
-            "shortest giving streak (negated)": -test["consecutive_years_given"].to_numpy(),
-            "declining trend (negated growth)": -test["fy_trend"].to_numpy(),
+            "shortest giving streak (negated)": -test["consecutive_periods_given"].to_numpy(),
+            "declining trend (negated growth)": -test["period_trend"].to_numpy(),
         }
         y_lapsed = test["target"].to_numpy()
         split = f"walk-forward (seed={seed}, fold=FY{t}, momentum={include_momentum})"
@@ -977,6 +1197,10 @@ def bench_ask_donorschoose(
         rows.append(Row(
             "donorschoose", "AskAmountRecommender", "within25pct",
             _within_pct(pred, yte), _within_pct(best_score, yte), note=header,
+        ))
+        rows.append(Row(
+            "donorschoose", "AskAmountRecommender", "revenue_top10pct",
+            _revenue_top_share(yte, pred), _revenue_top_share(yte, best_score), note=header,
         ))
     return _aggregate([rows]) if rows else []
 
@@ -1137,25 +1361,99 @@ def bench_upgrade_psid(
     return _aggregate(seed_rows)
 
 
+#: Columns that mean the same thing on any file whatever its dollar scale:
+#: the scale-free block plus the shared builder's count and flag columns.
+TRANSFER_COLS = SCALE_FREE_COLUMNS + (
+    "consecutive_periods_given", "gave_prior1", "gave_prior2", "periods_since_first_gift",
+)
+
+
+def _transfer_rules(test: pd.DataFrame) -> Dict[str, np.ndarray]:
+    """The upgrade rule set, on the target file's own dollars."""
+    return {
+        "this-period total": test["period_total"].to_numpy(),
+        "previous-period total plus this-period growth": (test["period_total"] + test["period_trend"]).to_numpy(),
+        "largest gift in band": test["largest_gift"].to_numpy(),
+    }
+
+
+def bench_upgrade_transfer(
+    donorschoose_path: str, psid_data: Optional[str] = None, psid_do: Optional[str] = None,
+    with_kdd98: bool = False, seed: int = DONORSCHOOSE_SEED, n_test_folds: int = PSID_N_FOLDS,
+) -> Dict[str, List[Row]]:
+    """Cross-file transfer (E.15 3.2): fit the upgrade model on DonorsChoose
+    with only :data:`TRANSFER_COLS`, then score files it never saw against
+    each file's own rules. PSID is scored on its last ``n_test_folds``
+    waves ($100-999 crossing $1,000, as on its own tab); KDD98 on FY1995
+    ($5-49 crossing $50, its own tab's proxy question). Nothing from the
+    target file is used to fit."""
+    gifts = _donorschoose_gift_log(donorschoose_path, DONORSCHOOSE_SUBSAMPLE, seed)
+    source = build_snapshots(gifts, kind="upgrade", scale_free=True)
+    cols = list(TRANSFER_COLS)
+    model = MajorGiftClassifier(random_state=seed).fit(
+        source[cols].to_numpy("float64"), source["target"].to_numpy()
+    )
+    out: Dict[str, List[Row]] = {}
+    name = "upgrade_model transfer (fit on DonorsChoose)"
+
+    if psid_data and psid_do:
+        long_df = _psid_long_table(psid_data, psid_do)
+        giving_cols = [c for c in long_df.columns if c.startswith("giving_")]
+        totals = long_df.pivot(index="household_key", columns="year", values="total_giving").sort_index(axis=1)
+        largest = (
+            long_df.assign(_largest=long_df[giving_cols].max(axis=1))
+            .pivot(index="household_key", columns="year", values="_largest")
+            .reindex(index=totals.index, columns=totals.columns)
+        )
+        snap = period_snapshots(totals, kind="upgrade", largest=largest, scale_free=True)
+        seed_rows = []
+        for w in _walk_forward_test_periods(snap, "period", n_test_folds):
+            test = snap[snap["period"] == w]
+            if test["target"].nunique() < 2:
+                continue
+            proba = model.predict_proba(test.reindex(columns=cols).to_numpy("float64"))[:, 1]
+            seed_rows.append(_classifier_rows(
+                "psid", name, test["target"].to_numpy(), proba, _transfer_rules(test),
+                f"transfer: fit on DonorsChoose, scored on PSID wave{w}",
+            ))
+        out["psid"] = _aggregate(seed_rows)
+
+    if with_kdd98:
+        snap = build_snapshots(
+            _kdd_gift_log(fetch_kdd98_donors()), kind="upgrade", fiscal_years=[1995],
+            threshold=50.0, band=(5.0, 49.0), scale_free=True,
+        )
+        proba = model.predict_proba(snap[cols].to_numpy("float64"))[:, 1]
+        out["kdd98"] = _classifier_rows(
+            "kdd98", name, snap["target"].to_numpy(), proba, _transfer_rules(snap),
+            "transfer: fit on DonorsChoose, scored on KDD98 FY1995 ($50 proxy)", bootstrap=True,
+        )
+    return out
+
+
 def _psid_lapse_fold(
     data_path: str, do_path: str, seed: int, include_momentum: bool, n_test_folds: int, retention: bool,
 ) -> List[Row]:
-    snap = _psid_wave_period_snapshots(data_path, do_path, "lapse", include_momentum, threshold=1000.0, band=(100.0, 999.0))
+    snap = _psid_lapse_snapshots(data_path, do_path, include_momentum)
     if snap.empty:
         return []
     cols = _snapshot_feature_cols(snap, "household_key")
-    test_waves = _walk_forward_test_periods(snap, "wave", n_test_folds)
+    test_waves = _walk_forward_test_periods(snap, "period", n_test_folds)
 
     seed_rows = []
     for w in test_waves:
-        train, test = snap[snap["wave"] < w], snap[snap["wave"] == w]
+        train, test = snap[snap["period"] < w], snap[snap["period"] == w]
         if train.empty or test.empty or test["target"].nunique() < 2:
             continue
         model = LapsePredictor(random_state=seed).fit(train[cols].to_numpy("float64"), train["target"].to_numpy())
         lapse_score = model.predict_lapse_score(test[cols].to_numpy("float64")) / 100.0
         rules = {
-            "shortest giving streak (negated)": -test["waves_given_streak"].to_numpy(),
-            "declining trend (negated growth)": -test["trend"].to_numpy(),
+            "shortest giving streak (negated)": -test["consecutive_periods_given"].to_numpy(),
+            "declining trend (negated growth)": -test["period_trend"].to_numpy(),
+            # Smallest givers lapse first. "Months since last gift" and the
+            # LYBUNT flag are not here: every household in this population
+            # gave in wave W and dates are wave-level, so both are constant.
+            "this-wave total (negated)": -test["period_total"].to_numpy(),
         }
         y_lapsed = test["target"].to_numpy()
         split = f"walk-forward (seed={seed}, fold=wave{w}, momentum={include_momentum})"
@@ -1228,6 +1526,10 @@ def bench_ask_psid(
         rows.append(Row(
             "psid", "AskAmountRecommender", "within25pct",
             _within_pct(pred, yte), _within_pct(best_score, yte), note=header,
+        ))
+        rows.append(Row(
+            "psid", "AskAmountRecommender", "revenue_top10pct",
+            _revenue_top_share(yte, pred), _revenue_top_share(yte, best_score), note=header,
         ))
     return _aggregate([rows]) if rows else []
 
@@ -1316,13 +1618,14 @@ def _kdd_ask_design(
 
 
 def bench_kdd_upgrade(
-    seed: int, threshold: float = 50.0, band: Tuple[float, float] = (5.0, 49.0),
+    seed: int, threshold: Union[float, str] = "p92", band: Tuple[float, float] = (5.0, 49.0),
     include_momentum: bool = False,
 ) -> List[Row]:
     """Upgrade model on KDD98, threshold rescaled from the $1000/$100-999
     defaults: this file's per-donor annual giving tops out far lower than a
-    major-gift program's, so $50/$5-49 keeps the same shape (threshold is
-    roughly the 93rd percentile of per-donor annual giving on this file).
+    major-gift program's. ``"p92"`` is the 92nd percentile of positive
+    per-donor fiscal-year totals in the two snapshot years, which resolves
+    to $50 on this file, so $50/$5-49 keeps the same shape as $1000/$100-999.
 
     Split is walk-forward by fiscal year (July start): train on the FY1994
     snapshot (outcome FY1995), test on FY1995 (outcome FY1996). The RDATE
@@ -1584,17 +1887,31 @@ def bench_kdd_ask(seed: int) -> List[Row]:
     }
     best_name, best_score, _ = _best_ask_baseline(y_true, rules)
     header = f"rule_set={best_name} (best of {len(rules)}); split={KDD_SPLIT}; n_configs=1"
+    mae_d = _bootstrap_diff_ci(len(y_true), lambda idx: (
+        mean_absolute_error(y_true[idx], pred[idx]) - mean_absolute_error(y_true[idx], best_score[idx])
+    ))
+    within_d = _bootstrap_diff_ci(len(y_true), lambda idx: (
+        _within_pct(pred[idx], y_true[idx]) - _within_pct(best_score[idx], y_true[idx])
+    ))
+    revenue_d = _bootstrap_diff_ci(len(y_true), lambda idx: (
+        _revenue_top_share(y_true[idx], pred[idx]) - _revenue_top_share(y_true[idx], best_score[idx])
+    ))
 
     return [
         Row(
             "kdd98", "AskAmountRecommender", "mae",
             mean_absolute_error(y_true, pred), mean_absolute_error(y_true, best_score),
-            lower_is_better=True, note=header,
+            lower_is_better=True, note=header, diff_lo=mae_d[0], diff_hi=mae_d[1],
         ),
         Row(
             "kdd98", "AskAmountRecommender", "within25pct",
             _within_pct(pred, y_true), _within_pct(best_score, y_true),
-            note=header,
+            note=header, diff_lo=within_d[0], diff_hi=within_d[1],
+        ),
+        Row(
+            "kdd98", "AskAmountRecommender", "revenue_top10pct",
+            _revenue_top_share(y_true, pred), _revenue_top_share(y_true, best_score),
+            note=header, diff_lo=revenue_d[0], diff_hi=revenue_d[1],
         ),
     ]
 
@@ -1695,8 +2012,20 @@ def bench_kdd_ask_relative(seed: int) -> List[Row]:
     ]
 
 
-def bench_kdd_cost_aware(seed: int, cost: float = 0.68) -> List[Row]:
-    """Mail if E[gift] > cost (the KDD Cup 1998 competition's own rule) vs mailing everyone."""
+def _net_revenue_diff_ci(y: np.ndarray, mail: np.ndarray, cost: float) -> Tuple[float, float]:
+    """Paired bootstrap interval on (net revenue mailing ``mail``) - (net
+    revenue mailing everyone). Per donor that difference is ``-(y - cost)``
+    for every donor not mailed and 0 otherwise, so a resample sums it."""
+    per_donor = np.where(mail, 0.0, -(np.asarray(y, dtype="float64") - cost))
+    return _bootstrap_diff_ci(len(per_donor), lambda idx: float(per_donor[idx].sum()))
+
+
+def _kdd_expected_gift(seed: int, held_out_file: bool) -> Tuple[pd.Series, np.ndarray]:
+    """Fit the who-to-mail response model (``MajorGiftClassifier``) and ask
+    model (``AskAmountRecommender``) on the learning file's 55% train split
+    and return ``(actual gift, expected gift)`` for the donors scored: the
+    split's 30% test fold, or with ``held_out_file`` KDD98's own validation
+    file (``cup98VAL`` + ``valtargt``), never touched during fitting."""
     donors = fetch_kdd98_donors()
     rfm = _kdd_rfm(_kdd_gift_log(donors))
     Xd_train, _Xd_val, Xd_test, yd_train, _yd_val, yd_test = _kdd_ask_design(donors, rfm, seed)
@@ -1706,18 +2035,27 @@ def bench_kdd_cost_aware(seed: int, cost: float = 0.68) -> List[Row]:
         WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
         MajorGiftClassifier(random_state=seed),
     ).fit(Xd_train, (yd_train > 0).astype(int))
-    p_respond = resp_model.predict_proba(Xd_test)[:, 1]
-
     ask_model = make_pipeline(
         WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
         # Expected gift needs the conditional mean, not the ask default's median.
         AskAmountRecommender(loss="squared_error", random_state=seed),
     ).fit(Xd_train[responders_train], yd_train[responders_train])
-    expected_gift = p_respond * ask_model.predict(Xd_test)
+
+    if held_out_file:
+        val_donors = fetch_kdd98_val_donors()
+        Xd_test = _kdd_feature_frame(val_donors, _kdd_rfm(_kdd_gift_log(val_donors)))
+        yd_test = val_donors.set_index("CONTROLN")["TARGET_D"]
+    return yd_test, resp_model.predict_proba(Xd_test)[:, 1] * ask_model.predict(Xd_test)
+
+
+def bench_kdd_cost_aware(seed: int, cost: float = 0.68) -> List[Row]:
+    """Mail if E[gift] > cost (the KDD Cup 1998 competition's own rule) vs mailing everyone."""
+    yd_test, expected_gift = _kdd_expected_gift(seed, held_out_file=False)
     mail = expected_gift > cost
 
-    raised_all, cost_all = float(yd_test.sum()), cost * len(Xd_test)
+    raised_all, cost_all = float(yd_test.sum()), cost * len(yd_test)
     raised_mail, cost_mail = float(yd_test[mail].sum()), cost * int(mail.sum())
+    net_d = _net_revenue_diff_ci(yd_test.to_numpy(), np.asarray(mail), cost)
     roi_all = fundraising_roi(total_raised=raised_all, total_fundraising_expense=cost_all)
     roi_mail = fundraising_roi(total_raised=raised_mail, total_fundraising_expense=cost_mail)
 
@@ -1725,7 +2063,8 @@ def bench_kdd_cost_aware(seed: int, cost: float = 0.68) -> List[Row]:
         Row(
             "kdd98", "cost_aware_selection", "net_revenue",
             raised_mail - cost_mail, raised_all - cost_all,
-            note=f"mail if E[gift]>${cost:.2f}; pieces={int(mail.sum())}/{len(Xd_test)}",
+            note=f"mail if E[gift]>${cost:.2f}; pieces={int(mail.sum())}/{len(yd_test)}",
+            diff_lo=net_d[0], diff_hi=net_d[1],
         ),
         Row(
             "kdd98", "cost_aware_selection", "roi",
@@ -1746,33 +2085,12 @@ def bench_kdd_cost_aware_val(seed: int, cost: float = 0.68) -> List[Row]:
     that were never part of the learning file and never touched by any split
     of it. Reported *next to* ``bench_kdd_cost_aware``'s random-split number
     (dataset ``"cup98val"`` vs ``"kdd98"``), not replacing it."""
-    donors = fetch_kdd98_donors()
-    rfm = _kdd_rfm(_kdd_gift_log(donors))
-    Xd_train, _Xd_val, _Xd_test, yd_train, _yd_val, _yd_test = _kdd_ask_design(donors, rfm, seed)
-    responders_train = yd_train > 0
-
-    resp_model = make_pipeline(
-        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
-        MajorGiftClassifier(random_state=seed),
-    ).fit(Xd_train, (yd_train > 0).astype(int))
-
-    ask_model = make_pipeline(
-        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
-        # Same pin as bench_kdd_cost_aware: expected gift needs the conditional mean.
-        AskAmountRecommender(loss="squared_error", random_state=seed),
-    ).fit(Xd_train[responders_train], yd_train[responders_train])
-
-    val_donors = fetch_kdd98_val_donors()
-    val_rfm = _kdd_rfm(_kdd_gift_log(val_donors))
-    X_val = _kdd_feature_frame(val_donors, val_rfm)
-    y_val = val_donors.set_index("CONTROLN")["TARGET_D"]
-
-    p_respond = resp_model.predict_proba(X_val)[:, 1]
-    expected_gift = p_respond * ask_model.predict(X_val)
+    y_val, expected_gift = _kdd_expected_gift(seed, held_out_file=True)
     mail = expected_gift > cost
 
-    raised_all, cost_all = float(y_val.sum()), cost * len(X_val)
+    raised_all, cost_all = float(y_val.sum()), cost * len(y_val)
     raised_mail, cost_mail = float(y_val[mail].sum()), cost * int(mail.sum())
+    net_d = _net_revenue_diff_ci(y_val.to_numpy(), np.asarray(mail), cost)
     roi_all = fundraising_roi(total_raised=raised_all, total_fundraising_expense=cost_all)
     roi_mail = fundraising_roi(total_raised=raised_mail, total_fundraising_expense=cost_mail)
 
@@ -1781,11 +2099,12 @@ def bench_kdd_cost_aware_val(seed: int, cost: float = 0.68) -> List[Row]:
             "cup98val", "cost_aware_selection", "net_revenue",
             raised_mail - cost_mail, raised_all - cost_all,
             note=(
-                f"mail if E[gift]>${cost:.2f}; pieces={int(mail.sum())}/{len(X_val)}; "
+                f"mail if E[gift]>${cost:.2f}; pieces={int(mail.sum())}/{len(y_val)}; "
                 "model fit on cup98LRN's own 55% train split only, scored on KDD98's "
                 "own held-out validation file (cup98VAL+valtargt), reported next to "
                 "bench_kdd_cost_aware's random-split number, not replacing it"
             ),
+            diff_lo=net_d[0], diff_hi=net_d[1],
         ),
         Row(
             "cup98val", "cost_aware_selection", "roi",
@@ -1819,50 +2138,38 @@ def _mail_profit_curve(y: np.ndarray, expected_gift: np.ndarray, cost: float, n_
 
 def kdd_mail_profit_curve(seed: int, cost: float = 0.68) -> Dict[str, Any]:
     """Profit curve for bench_kdd_cost_aware's own fit and test split."""
-    donors = fetch_kdd98_donors()
-    rfm = _kdd_rfm(_kdd_gift_log(donors))
-    Xd_train, _Xd_val, Xd_test, yd_train, _yd_val, yd_test = _kdd_ask_design(donors, rfm, seed)
-    responders_train = yd_train > 0
-
-    resp_model = make_pipeline(
-        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
-        MajorGiftClassifier(random_state=seed),
-    ).fit(Xd_train, (yd_train > 0).astype(int))
-    ask_model = make_pipeline(
-        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
-        AskAmountRecommender(loss="squared_error", random_state=seed),
-    ).fit(Xd_train[responders_train], yd_train[responders_train])
-
-    p_respond = resp_model.predict_proba(Xd_test)[:, 1]
-    expected_gift = p_respond * ask_model.predict(Xd_test)
-    return _mail_profit_curve(yd_test.to_numpy(), expected_gift, cost)
+    y, expected_gift = _kdd_expected_gift(seed, held_out_file=False)
+    return _mail_profit_curve(y.to_numpy(), expected_gift, cost)
 
 
 def kdd_mail_profit_curve_val(seed: int, cost: float = 0.68) -> Dict[str, Any]:
     """Profit curve for bench_kdd_cost_aware_val's own fit (learning file's
     train split) and test split (cup98VAL, never touched during fitting)."""
-    donors = fetch_kdd98_donors()
-    rfm = _kdd_rfm(_kdd_gift_log(donors))
-    Xd_train, _Xd_val, _Xd_test, yd_train, _yd_val, _yd_test = _kdd_ask_design(donors, rfm, seed)
-    responders_train = yd_train > 0
+    y, expected_gift = _kdd_expected_gift(seed, held_out_file=True)
+    return _mail_profit_curve(y.to_numpy(), expected_gift, cost)
 
-    resp_model = make_pipeline(
-        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
-        MajorGiftClassifier(random_state=seed),
-    ).fit(Xd_train, (yd_train > 0).astype(int))
-    ask_model = make_pipeline(
-        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
-        AskAmountRecommender(loss="squared_error", random_state=seed),
-    ).fit(Xd_train[responders_train], yd_train[responders_train])
 
-    val_donors = fetch_kdd98_val_donors()
-    val_rfm = _kdd_rfm(_kdd_gift_log(val_donors))
-    X_val = _kdd_feature_frame(val_donors, val_rfm)
-    y_val = val_donors.set_index("CONTROLN")["TARGET_D"]
+MAIL_COSTS = (0.50, 0.68, 1.00, 2.00)
 
-    p_respond = resp_model.predict_proba(X_val)[:, 1]
-    expected_gift = p_respond * ask_model.predict(X_val)
-    return _mail_profit_curve(y_val.to_numpy(), expected_gift, cost)
+
+def kdd_mail_cost_sweep(seed: int, held_out_file: bool, costs: Sequence[float] = MAIL_COSTS) -> List[Dict[str, Any]]:
+    """The rule "mail if E[gift] > cost" against mailing everyone at each cost per
+    piece, on one fit: the cost only moves the cut, not the models. Each
+    entry has the letters sent, both net revenues and a paired bootstrap
+    interval on their difference."""
+    y, expected_gift = _kdd_expected_gift(seed, held_out_file)
+    y = y.to_numpy(dtype="float64")
+    out = []
+    for cost in costs:
+        mail = expected_gift > cost
+        lo, hi = _net_revenue_diff_ci(y, mail, cost)
+        out.append({
+            "cost": cost, "mailed": int(mail.sum()), "n_total": len(y),
+            "net_revenue_model": float(y[mail].sum() - cost * mail.sum()),
+            "net_revenue_mail_everyone": float(y.sum() - cost * len(y)),
+            "diff_lo": lo, "diff_hi": hi,
+        })
+    return out
 
 
 def bench_kdd_val_models(seed: int) -> List[Row]:
@@ -2011,6 +2318,153 @@ def bench_blood(seeds: Sequence[int]) -> List[Row]:
 
 
 # --------------------------------------------------------------------------- #
+# Karlan and List (2007) matching-grant experiment (openICPSR 113224; data
+# CC BY 4.0, copyright American Economic Association 2007). Opt-in, local
+# file. One letter, so it tests response, the amount given and, because the
+# matching-grant offer was randomised, uplift; nothing multi-year.
+# Fixed before any run: the 55/15/30 split (stratified on gave x matched),
+# the features, and the rule sets below. One configuration each.
+# --------------------------------------------------------------------------- #
+KARLAN_LIST_SEED = 42
+KARLAN_LIST_FEATURES = [
+    "prior_gifts", "highest_previous_amount", "months_since_last_gift", "years_since_first_gift",
+    "female", "couple", "red_state", "red_county",
+]
+
+
+def _karlan_list_split(path: str) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray, np.ndarray]:
+    df = load_karlan_list(path)
+    strat = df["gave"].to_numpy() * 2 + df["matched"].to_numpy()
+    idx_train, idx_val, idx_test = _split_55_15_30(len(df), strat, KARLAN_LIST_SEED)
+    return df, idx_train, idx_val, idx_test
+
+
+def _karlan_list_rules(rows: pd.DataFrame) -> Dict[str, np.ndarray]:
+    """The fixed response rule set: most recent, past spend (highest previous
+    gift, the only amount the file has), most gifts, and the RFM cell score
+    on those three."""
+    recency = rows["months_since_last_gift"].to_numpy()
+    return {
+        "most recent": -recency,
+        "past spend": rows["highest_previous_amount"].to_numpy(),
+        "most gifts": rows["prior_gifts"].to_numpy(),
+        "RFM cell score": _rfm_cell_score(
+            recency, rows["prior_gifts"].to_numpy(), rows["highest_previous_amount"].to_numpy()
+        ),
+    }
+
+
+def _karlan_list_design(df: pd.DataFrame, idx_train: np.ndarray) -> pd.DataFrame:
+    """Features with NaN filled by the training rows' medians (frozen)."""
+    medians = df.iloc[idx_train][KARLAN_LIST_FEATURES].median()
+    return df[KARLAN_LIST_FEATURES].fillna(medians)
+
+
+def bench_response_karlan_list(path: str) -> List[Row]:
+    """DonorPropensityModel / MajorGiftClassifier vs the response rule set:
+    who answers one fundraising letter (about 2 in 100 do)."""
+    df, idx_train, _idx_val, idx_test = _karlan_list_split(path)
+    X = _karlan_list_design(df, idx_train)
+    y = df["gave"].to_numpy()
+    rules = _karlan_list_rules(X.iloc[idx_test])
+    rows: List[Row] = []
+    for name, cls in (("DonorPropensityModel", DonorPropensityModel), ("MajorGiftClassifier", MajorGiftClassifier)):
+        model = cls(random_state=KARLAN_LIST_SEED).fit(X.iloc[idx_train].to_numpy(), y[idx_train])
+        proba = model.predict_proba(X.iloc[idx_test].to_numpy())[:, 1]
+        rows += _classifier_rows("karlan_list", name, y[idx_test], proba, rules, KDD_SPLIT, bootstrap=True)
+    return rows
+
+
+def bench_ask_karlan_list(path: str) -> List[Row]:
+    """AskAmountRecommender vs the ask rule set on donors who gave: highest
+    previous gift (the file has no last or average gift) and the median
+    training gift."""
+    df, idx_train, _idx_val, idx_test = _karlan_list_split(path)
+    gave = df["gave"].to_numpy() == 1
+    tr, te = idx_train[gave[idx_train]], idx_test[gave[idx_test]]
+    X = df[KARLAN_LIST_FEATURES]
+    y = df["amount"].to_numpy()
+    model = AskAmountRecommender(random_state=KARLAN_LIST_SEED).fit(X.iloc[tr].to_numpy(), y[tr])
+    pred = model.predict(X.iloc[te].to_numpy())
+    y_true = y[te]
+    rules = {
+        "highest previous gift": df["highest_previous_amount"].to_numpy()[te],
+        "median training gift": np.full_like(y_true, float(np.median(y[tr]))),
+    }
+    best_name, best_score, _ = _best_ask_baseline(y_true, rules)
+    header = f"rule_set={best_name} (best of {len(rules)}); split={KDD_SPLIT}; n_configs=1; n={len(te)}"
+    mae_d = _bootstrap_diff_ci(len(y_true), lambda idx: (
+        mean_absolute_error(y_true[idx], pred[idx]) - mean_absolute_error(y_true[idx], best_score[idx])
+    ))
+    within_d = _bootstrap_diff_ci(len(y_true), lambda idx: (
+        _within_pct(pred[idx], y_true[idx]) - _within_pct(best_score[idx], y_true[idx])
+    ))
+    revenue_d = _bootstrap_diff_ci(len(y_true), lambda idx: (
+        _revenue_top_share(y_true[idx], pred[idx]) - _revenue_top_share(y_true[idx], best_score[idx])
+    ))
+    return [
+        Row(
+            "karlan_list", "AskAmountRecommender", "revenue_top10pct",
+            _revenue_top_share(y_true, pred), _revenue_top_share(y_true, best_score),
+            note=header, diff_lo=revenue_d[0], diff_hi=revenue_d[1],
+        ),
+        Row(
+            "karlan_list", "AskAmountRecommender", "mae",
+            mean_absolute_error(y_true, pred), mean_absolute_error(y_true, best_score),
+            lower_is_better=True, note=header, diff_lo=mae_d[0], diff_hi=mae_d[1],
+        ),
+        Row(
+            "karlan_list", "AskAmountRecommender", "within25pct",
+            _within_pct(pred, y_true), _within_pct(best_score, y_true),
+            note=header, diff_lo=within_d[0], diff_hi=within_d[1],
+        ),
+    ]
+
+
+def _uplift_in_top(y: np.ndarray, treated: np.ndarray, score: np.ndarray, frac: float) -> float:
+    """Response rate with the matching-grant offer minus without it, among
+    the top ``frac`` of donors by ``score``. ``nan`` if either arm is empty."""
+    top = np.argsort(-score, kind="stable")[: max(1, int(round(len(score) * frac)))]
+    t, c = y[top][treated[top] == 1], y[top][treated[top] == 0]
+    if len(t) == 0 or len(c) == 0:
+        return float("nan")
+    return float(t.mean() - c.mean())
+
+
+def bench_uplift_karlan_list(path: str) -> List[Row]:
+    """UpliftTLearner vs "most recent" and "past spend": rank donors, keep
+    the top 10% or 30%, and measure how much the randomised matching-grant
+    offer raised their response rate (in proportion points). The rule with
+    the larger lift at 30% is the baseline for both rows."""
+    df, idx_train, _idx_val, idx_test = _karlan_list_split(path)
+    X = _karlan_list_design(df, idx_train)
+    y, treated = df["gave"].to_numpy(), df["matched"].to_numpy()
+    model = UpliftTLearner(random_state=KARLAN_LIST_SEED).fit(
+        X.iloc[idx_train].to_numpy(), y[idx_train], treated[idx_train]
+    )
+    score = model.predict_uplift_score(X.iloc[idx_test].to_numpy())
+    yt, tt = y[idx_test], treated[idx_test]
+    all_rules = _karlan_list_rules(X.iloc[idx_test])
+    rules = {k: all_rules[k] for k in ("most recent", "past spend")}
+    best = max(rules, key=lambda k: _uplift_in_top(yt, tt, rules[k], 0.30))
+    header = (
+        f"rule_set={best} (best of {len(rules)}); split={KDD_SPLIT}; n_configs=1; "
+        f"everyone={_uplift_in_top(yt, tt, np.zeros(len(yt)), 1.0):.6f}"
+    )
+    rows = []
+    for frac in (0.10, 0.30):
+        d_lo, d_hi = _bootstrap_diff_ci(len(yt), lambda idx, f=frac: (
+            _uplift_in_top(yt[idx], tt[idx], score[idx], f) - _uplift_in_top(yt[idx], tt[idx], rules[best][idx], f)
+        ))
+        rows.append(Row(
+            "karlan_list", "UpliftTLearner", f"uplift_top{int(frac * 100)}pct",
+            _uplift_in_top(yt, tt, score, frac), _uplift_in_top(yt, tt, rules[best], frac),
+            note=header, diff_lo=d_lo, diff_hi=d_hi,
+        ))
+    return rows
+
+
+# --------------------------------------------------------------------------- #
 # Output
 # --------------------------------------------------------------------------- #
 def _print_table(rows: List[Row]) -> None:
@@ -2069,6 +2523,11 @@ def main() -> None:
         "--psid-do", type=str, default=None,
         help="Path to the PSID extract's accompanying Stata .do file. Requires --psid-data too.",
     )
+    parser.add_argument(
+        "--karlan-list-path", type=str, default=None,
+        help="Path to a user-obtained AERtables1-5.dta from openICPSR 113224 (Karlan and List 2007); "
+        "skipped entirely when not given.",
+    )
     parser.add_argument("--out", type=str, default=None, help="Path prefix; also writes <out>.json and <out>.csv.")
     args = parser.parse_args()
 
@@ -2126,6 +2585,11 @@ def main() -> None:
             rows += bench_lapse_psid(args.psid_data, args.psid_do, include_momentum=momentum)
             rows += bench_lapse_psid_retention(args.psid_data, args.psid_do, include_momentum=momentum)
             rows += bench_ask_psid(args.psid_data, args.psid_do, include_momentum=momentum)
+
+    if args.karlan_list_path:
+        rows += bench_response_karlan_list(args.karlan_list_path)
+        rows += bench_ask_karlan_list(args.karlan_list_path)
+        rows += bench_uplift_karlan_list(args.karlan_list_path)
 
     runtime = time.time() - start
     _print_table(rows)

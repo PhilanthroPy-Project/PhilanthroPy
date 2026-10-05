@@ -36,6 +36,7 @@ from philanthropy.ingest._upgrade_snapshots import (
     _column,
     _fy_end,
     _prepare_gifts,
+    _resolve_threshold,
     _snapshot_features_for_year,
 )
 from philanthropy.inspection import donor_feature_importance
@@ -54,6 +55,9 @@ _LOW_DATA_ROWS = 500
 # number of splits n_splits=5 greater than the number of samples") instead of
 # failing with a message that points at the actual cause.
 _MIN_TRAINING_ROWS = 5
+# recommended_list_size: the longest list whose held-out hit rate is still
+# this many times the fold's base rate.
+_LIST_LIFT = 1.5
 
 
 def score_leadership_prospects(
@@ -61,7 +65,7 @@ def score_leadership_prospects(
     *,
     activities: Optional[Union[Iterable[Mapping], pd.DataFrame]] = None,
     donors: Optional[pd.DataFrame] = None,
-    threshold: float = 1000.0,
+    threshold: Union[float, str] = 1000.0,
     band: Tuple[float, float] = (100.0, 999.0),
     fiscal_year_start: int = 7,
     as_of: Optional[Union[str, pd.Timestamp]] = None,
@@ -99,8 +103,13 @@ def score_leadership_prospects(
         Only its numeric columns become model features (see Notes); it is
         still joined and returned for a non-numeric attribute a caller wants
         to inspect alongside the score.
-    threshold : float, default=1000.0
-        The leadership-giving level an upgrade crosses into.
+    threshold : float or str, default=1000.0
+        The leadership-giving level an upgrade crosses into. A string
+        ``"pNN"`` (e.g. ``"p93"``) is the NNth percentile of every positive
+        donor FY total in the historical training years instead of a dollar
+        amount, so the same call asks the same question of a file in small
+        dollars and one in large dollars; ``band`` stays in dollars. The
+        resolved value is ``report["threshold"]``.
     band : (float, float), default=(100.0, 999.0)
         Inclusive bounds on FY giving that define the upgrade-candidate
         population, exactly as in ``build_leadership_snapshots``.
@@ -146,6 +155,7 @@ def score_leadership_prospects(
         Notes). Empty (but correctly typed) if no donor currently qualifies
         for ``band``.
     report : dict
+        ``threshold`` (in dollars, after resolving a ``"pNN"`` string);
         ``n_training_rows``, ``n_training_fiscal_years``, ``n_scored``;
         ``low_data_warning`` / ``low_data_message`` (flagged under roughly
         ``500`` training rows); ``activity_id_match_warnings`` (list of str,
@@ -178,6 +188,13 @@ def score_leadership_prospects(
           is misleading on its own.
         - ``roc_auc``, ``average_precision``: from :mod:`sklearn.metrics`
           on the held-out fold; ``None`` if the fold has only one class.
+        - ``recommended_list_fraction`` / ``recommended_list_size``: the
+          longest top slice of the held-out fold whose upgrade rate is still
+          at least 1.5 times the fold's overall rate, as a fraction of the
+          fold and as a count of today's scored donors (``scores`` rows with
+          ``rank <= recommended_list_size``). ``None`` when no slice gets
+          there. On a rare outcome this is the honest list length: past it
+          the model is close to picking at random.
 
     Raises
     ------
@@ -274,6 +291,8 @@ def score_leadership_prospects(
     low, high = band
     if low > high:
         raise ValueError(f"band[0] ({low}) must be <= band[1] ({high}).")
+    if isinstance(threshold, str):
+        _resolve_threshold(threshold, np.array([1.0]))  # bad strings fail before any work
 
     df_all, _, _, _ = _prepare_gifts(gifts, fiscal_year_start)
     if df_all.empty:
@@ -298,6 +317,9 @@ def score_leadership_prospects(
         if _fy_end(t + 1, fiscal_year_start) <= as_of_ts
     ]
 
+    threshold = _resolve_threshold(
+        threshold, pivot_sum.reindex(columns=historical_years).to_numpy().ravel()
+    )
     totals_current = _column(pivot_sum, current_fy)
     current_candidates = totals_current[
         (totals_current >= low) & (totals_current <= high) & (totals_current < threshold)
@@ -362,6 +384,7 @@ def score_leadership_prospects(
     )
 
     report: Dict[str, Any] = {
+        "threshold": threshold,
         "n_training_rows": int(len(historical_snap)),
         "n_training_fiscal_years": n_unique_fys,
         "low_data_warning": bool(low_data_warning),
@@ -383,6 +406,8 @@ def score_leadership_prospects(
         "deciles": None,
         "roc_auc": None,
         "average_precision": None,
+        "recommended_list_fraction": None,
+        "recommended_list_size": None,
     }
 
     if n_unique_fys >= 2:
@@ -440,6 +465,7 @@ def score_leadership_prospects(
             "deciles": _decile_report(proba_test, y_test),
             "roc_auc": roc_auc,
             "average_precision": average_precision,
+            "recommended_list_fraction": _recommended_list_fraction(proba_test, y_test),
         })
         importance_df = donor_feature_importance(
             eval_model, X[test_idx], y[test_idx], feature_names=feature_cols,
@@ -490,6 +516,8 @@ def score_leadership_prospects(
         ]
 
     report["n_scored"] = int(len(scores))
+    if report["recommended_list_fraction"] is not None:
+        report["recommended_list_size"] = int(np.ceil(report["recommended_list_fraction"] * len(scores)))
     return scores, report
 
 
@@ -527,6 +555,18 @@ def _check_two_classes(classes: np.ndarray, as_of_ts: pd.Timestamp, scope: str) 
             "or a `threshold`/`band` that no historical donor ever crossed "
             "(or that every one did)."
         )
+
+
+def _recommended_list_fraction(proba: np.ndarray, y_true: np.ndarray) -> Optional[float]:
+    """Largest top-k share of the fold whose hit rate is at least
+    ``_LIST_LIFT`` times the fold's base rate, or ``None``."""
+    base = float(np.mean(y_true))
+    if base <= 0:
+        return None
+    hits = np.cumsum(y_true[np.argsort(-proba, kind="stable")])
+    rate = hits / np.arange(1, len(hits) + 1)
+    ok = np.flatnonzero(rate >= _LIST_LIFT * base)
+    return None if ok.size == 0 else float((ok[-1] + 1) / len(y_true))
 
 
 def _decile_report(proba: np.ndarray, y_true: np.ndarray) -> list:

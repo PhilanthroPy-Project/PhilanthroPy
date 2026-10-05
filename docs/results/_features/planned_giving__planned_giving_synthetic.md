@@ -15,19 +15,18 @@
     | What raises or lowers the score | |
     |---|---|
     | lifetime giving | ▲ raises the score |
-    | this year's gift | ▼ lowers the score |
 
-    Only 2 features had a measurable effect; the rest are in the analyst note below.
+    Only 1 feature had a measurable effect; the rest are in the analyst note below.
 
     ??? note "For analysts"
         Columns: `total`, `n`, `recent`
 
         | Column | Importance | Direction |
         |---|---|---|
-        | `total` | 0.182 (range 0.155 to 0.215) | + |
-        | `recent` | 0.017 (range 0.001 to 0.050) | - |
-        | `n` | 0.001 (range -0.003 to 0.005) | - |
+        | `total` | 0.190 (range 0.155 to 0.222) | + |
+        | `recent` | 0.019 (range -0.000 to 0.047) | mixed |
+        | `n` | -0.003 (range -0.007 to 0.001) | - |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (train on fiscal years < T, test on T). Git SHA: `b0122490e6902ce1e5c9f00e3f0d142874a1c72f`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (train on fiscal years < T, test on T). Git SHA: `d857e8aac5ff4cdbb8c91450cec7583480c1d7af`.
 
     Results on your own file will differ.

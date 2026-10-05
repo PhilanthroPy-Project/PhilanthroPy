@@ -263,7 +263,7 @@ Full parameter documentation for every symbol below is rendered in the [API refe
 | `DonorPropensityModel` | Random Forest with `predict_affinity_score()` on a 0–100 scale |
 | `MajorGiftClassifier` | Calibrated `HistGradientBoostingClassifier`, NaN-native |
 | `LapsePredictor` | Random Forest for donor lapse, with `predict_lapse_score()` |
-| `PlannedGivingIntentScorer` | Calibrated bequest-intent scorer, `predict_intent_score()` |
+| `PlannedGivingIntentScorer` | Calibrated bequest-intent scorer, NaN-native, `predict_intent_score()` |
 | `ShareOfWalletRegressor` | Total giving capacity and untapped-potential ratio |
 | `AskAmountRecommender` | Conservative / target / stretch ask ladder via `ask_ladder()` |
 | `MovesManagementClassifier` | Multi-class portfolio stage predictor |

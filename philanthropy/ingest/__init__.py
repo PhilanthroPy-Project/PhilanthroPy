@@ -51,7 +51,9 @@ one CRM export format.
 table for an upgrade model: one row per (donor, fiscal year T) for every
 donor whose FY T giving falls in a mid-level band, features computed only
 from data through the end of T, and a target reading whether FY T+1 crossed
-a leadership threshold.
+a leadership threshold. ``build_snapshots`` is the same idea for every
+question (upgrade, lapse, response next year, next gift amount) on one shared
+column set, with an optional minimum number of giving years.
 """
 
 from ._activities import activities_to_features
@@ -86,6 +88,7 @@ from ._raisers_edge import (
 )
 from ._read_gifts import GIFT_SOURCES, read_gifts
 from ._upgrade_snapshots import build_leadership_snapshots
+from ._snapshots import build_snapshots
 
 __all__ = [
     "DEFAULT_EXCLUDED_ENTRY_TYPES",
@@ -96,6 +99,7 @@ __all__ = [
     "activities_to_features",
     "bloomerang_transactions_to_features",
     "build_leadership_snapshots",
+    "build_snapshots",
     "civicrm_contributions_to_features",
     "constituent_events_to_features",
     "donorperfect_gifts_to_features",

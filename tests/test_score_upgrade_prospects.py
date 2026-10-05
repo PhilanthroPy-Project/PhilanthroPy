@@ -92,9 +92,46 @@ def test_report_keys_present():
         "baseline_topn_fy_total_upgrade_rate", "lift_topn_fy_total",
         "baseline_giving_threshold", "baseline_gave_threshold_upgrade_rate",
         "lift_over_gave_threshold", "overall_upgrade_rate", "deciles",
-        "roc_auc", "average_precision",
+        "roc_auc", "average_precision", "threshold",
+        "recommended_list_fraction", "recommended_list_size",
     ):
         assert key in report
+
+
+def test_percentile_threshold_matches_the_same_dollar_threshold():
+    gifts = _archetype_gifts()
+    _, by_pct = score_leadership_prospects(gifts, threshold="p80", random_state=0)
+    scores, by_dollar = score_leadership_prospects(gifts, threshold=by_pct["threshold"], random_state=0)
+    assert by_pct["threshold"] == by_dollar["threshold"] == 900.0
+    assert by_pct["n_training_rows"] == by_dollar["n_training_rows"]
+
+
+def test_percentile_threshold_never_reads_the_last_label_year():
+    # Historical snapshot years are FY2021-FY2023; FY2024 is only the last
+    # one's label year. Inflating every FY2024 gift must not move "p80".
+    gifts = _archetype_gifts()
+    _, base = score_leadership_prospects(gifts, threshold="p80", random_state=0)
+    inflated = gifts.copy()
+    inflated.loc[inflated["gift_date"] == "2023-08-01", "gift_amount"] *= 100
+    _, moved = score_leadership_prospects(inflated, threshold="p80", random_state=0)
+    assert moved["threshold"] == base["threshold"]
+
+
+@pytest.mark.parametrize("bad", ["p0", "p100", "93", "top10"])
+def test_bad_percentile_threshold_raises(bad):
+    with pytest.raises(ValueError, match="pNN"):
+        score_leadership_prospects(_archetype_gifts(), threshold=bad)
+
+
+def test_recommended_list_size_is_the_longest_slice_at_1_5x_base():
+    from philanthropy.models._upgrade import _recommended_list_fraction
+    # Base rate 0.4. Top 1: 1.0, top 2: 1.0, top 3: 0.67, top 4: 0.5, top 5: 0.4.
+    y = np.array([1, 1, 0, 0, 0, 0, 0, 0, 1, 1])
+    proba = np.arange(10, 0, -1) / 10.0
+    assert _recommended_list_fraction(proba, y) == 0.3
+    assert _recommended_list_fraction(proba, np.zeros(10, dtype=int)) is None
+    _, report = score_leadership_prospects(_archetype_gifts(), random_state=0)
+    assert report["recommended_list_size"] == int(np.ceil(report["recommended_list_fraction"] * report["n_scored"]))
 
 
 # --------------------------------------------------------------------------- #

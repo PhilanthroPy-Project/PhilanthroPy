@@ -10,6 +10,79 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   that the optional `tenure` column is emitted, remains at least as large as
   `recency`, and matches `get_feature_names_out`; the default path is pinned to
   keep `tenure` absent unless requested.
+- `threshold="pNN"` in `build_leadership_snapshots` and
+  `score_leadership_prospects`: the leadership level as the NNth percentile
+  of positive donor fiscal-year totals in the training (snapshot) years,
+  never their label years, so a small-dollar file and a large-dollar file
+  ask the same question. The dollar default (1000) is unchanged; the
+  resolved value is in `snapshots.attrs["threshold"]` and
+  `report["threshold"]`. The KDD Cup 1998 upgrade tab now uses `"p92"`,
+  which resolves to the same $50 it used before, so its numbers do not
+  move; the page's "roughly the 93rd percentile" becomes the exact 92nd.
+- `score_leadership_prospects` report: `recommended_list_fraction` and
+  `recommended_list_size`, the longest top slice of the held-out fold whose
+  upgrade rate is still at least 1.5 times the fold's base rate, as a share
+  and as a count of today's scored donors.
+- Results, leadership: a cross-file transfer check in a collapsed analyst
+  block. Fit on DonorsChoose with only scale-free and count columns, the
+  model beats PSID's own best rule at the top 10% (36 vs 32 of 100, ahead
+  in all 4 test waves) but loses clearly on KDD Cup 1998's $50 proxy (5 vs
+  12).
+- Results: a "How sure are we?" page for `GiftIntervalCalibrator`. Around
+  each real file's ask model, ranges requested at 80%, 90% and 95% are
+  calibrated on held-out donors and scored on later ones; on KDD Cup 1998,
+  DonorsChoose, PSID and Karlan and List they hold the actual gift within
+  3 points of the level asked for. The page also reports how wide the
+  ranges are.
+- Results: every model page now follows one template, enforced by
+  `tests/test_results_page_template.py`: the question, the bold bottom line
+  (the only bold on the page, and the one the index computes), results by
+  file as tabs with sample data last, "What this means for your file" with
+  counts for a 10,000-donor file, a runnable "Try it on your own donors"
+  example, then collapsed "How we tested" and "Numbers for analysts". The
+  planned giving page's bottom line now reads "Can't tell yet", matching the
+  index. The KDD Cup 1998 leadership tab names the two snapshot years its
+  $50 threshold is read from.
+- `philanthropy.ingest.build_snapshots(gifts, kind=...)`: one labelled
+  donor x fiscal-year table for every question, `kind="upgrade"`, `"lapse"`,
+  `"response_next_year"` or `"next_amount"`, on one shared column set
+  (`period_total` and the two periods before it, `period_trend`,
+  `largest_gift`, `consecutive_periods_given`, `gave_prior1`, `gave_prior2`,
+  `periods_since_first_gift`, plus `gift_count` and `months_since_last_gift`
+  on a gift log). `min_years_given` restricts any kind to donors with that
+  many giving years (default 1, the current population). Its core works on a
+  donor x period table, where "prior" means the previous period observed in
+  the file, so a biennial survey gets the same columns as a gift log. An
+  opt-in `scale_free=True` adds ratio and rank columns that do not depend on
+  a file's dollar scale. They are not adopted into
+  `score_leadership_prospects`: on the E.11a validation folds (upgrade,
+  five seeds) they lifted PSID wave 2013 top-10% from 38.9 to 41.6 of 100
+  but lowered DonorsChoose FY2014 top-10% from 5.9 to 5.6 on every seed.
+- `philanthropy.datasets.load_karlan_list(path)` reads `AERtables1-5.dta` from
+  the Karlan and List (2007) matching-grant experiment (openICPSR 113224; data
+  CC BY 4.0, copyright American Economic Association 2007) from a local path:
+  50,083 prior donors to one charity, one 2005 letter, with the matching-grant
+  offer, match ratio, cap and example ask randomised.
+- Results pages: Karlan and List as a fifth real file
+  (`--karlan-list-path` on both results scripts). The response model beats the
+  best of four simple rules on it (top 10%: 8.0 vs 5.5 of 100 gave), a second
+  organisation after KDD Cup 1998, so the Response bottom line moves from "Use
+  the model (tested on one organisation so far)" to "Use the model". The
+  amount model is about the same as the donor's largest past gift. The first
+  `UpliftTLearner` rows (who the matching-grant offer moves most) are about the
+  same as ranking by recency. Split, features and rule sets were fixed before
+  the run, one configuration each.
+- `philanthropy.models.suggest_ask(last_gift, avg_gift, stretch=0.10, round_to=25)`:
+  the simple ask rule as one function call (the larger of last and average
+  gift, raised 10% and rounded up to the next $25). With `stretch=0` and
+  `round_to=None` it is the rule the Results pages test; on no real file
+  does `AskAmountRecommender` land within 25% of the next gift reliably more
+  often than it.
+- `AskAmountRecommender` checks itself against that rule when `last_gift_idx`
+  and `avg_gift_idx` are set: `fit` scores a model trained on 80% of the rows
+  and the rule on the other 20%, and sets `beats_rule_`, `rule_mae_` and
+  `model_mae_`. The returned model is still fit on every row, so predictions
+  are unchanged. With fewer than 100 rows or no indices the three are `None`.
 - `philanthropy.utils.check_label_floor(y, task)` returns `"run"` or
   `"not enough labels"` for `task="lapse"` or `"major_gift"`, so a hosted
   no-code page and a Python user apply the same cutoff before fitting. The
@@ -18,6 +91,93 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   Cup 1998, ten seeds each; the test splits were not used. Below the floor,
   at least one training draw in ten scored below the simple rule on held-out
   data (lapse), or most did (major gift).
+
+- Results, who to mail: each tab gains a table of the same fit at four
+  costs per letter ($0.50, $0.68, $1.00, $2.00), with letters sent, net
+  revenue against mailing everyone, and a paired bootstrap range on the
+  difference. Generated from `results.json` and covered by the drift test.
+
+### Changed
+- KDD Cup 1998 feature checks, recorded with no published number moving.
+  On the 15% validation fold (paired bootstrap, seed 42), adding the 12
+  donor-table columns and three as-of mailing features (`promos_received`,
+  `response_rate`, `months_since_last_promo`) to the response models did
+  not lift top-10%: `DonorPropensityModel` 9.36 to 9.64 [-0.91, +1.47],
+  `MajorGiftClassifier` 9.71 to 9.29 [-1.82, +0.77], so both keep the four
+  RFM columns (cup98VAL, looked at during exploration, showed
+  `DonorPropensityModel` +0.74 [+0.28, +1.12]; validation decides). The
+  same mailing features in the who-to-mail response model lowered
+  validation net revenue on all five seeds. Isotonic calibration of
+  `DonorPropensityModel` is not recommended (docstring note). KDD98 lapse
+  stays on its promotion panel: only 242 donors gave in the last history
+  promotion against 4,843 to the 97NK mailing, so the shared builder's
+  "gave in T" population is not real there; the parity test's skip reason
+  says so.
+- Results, ask: the page is retitled "What will this donor give next?" and
+  opens with the bottom line and the `suggest_ask` call, since a suggested
+  ask is a policy choice built on that forecast. A new row on every ask
+  bench reports the share of next-gift dollars from the top 10% of donors
+  ranked by the model and by the rule: about the same on KDD Cup 1998,
+  DonorsChoose and Karlan and List, and slightly ahead for the model on PSID
+  in every test wave (43 vs 42 of every $100). The ask bottom line is
+  unchanged: use the simple rule.
+- `MajorGiftClassifier` class weights for the upgrade model, checked on the
+  PSID wave 2013 and DonorsChoose FY2014 validation folds (five seeds) and
+  not adopted: `"balanced"` lowered DonorsChoose top-1% from 22.9 to 21.8
+  of 100, and `{0: 1, 1: 5}` lowered DonorsChoose top-10% from 5.9 to 5.8.
+  `score_leadership_prospects` keeps the unweighted default.
+- Results, lapse: the DonorsChoose and PSID lapse benchmarks now build their
+  rows with `build_snapshots` / `period_snapshots`, so both feed
+  `LapsePredictor` the same shared gift columns (a new parity test checks
+  this), and both ask the question only of donors with at least two years
+  (PSID: waves) of giving, the donors a retention program can act on.
+  DonorsChoose: base lapse rate 84 to 64 of 100; top-10% lapse hit rate
+  81 vs 81 for the rule (was 88 vs 90), so its index cell now shows the
+  lapse read, "about the same", instead of the retention read; the
+  retention read still beats the rule, 75 vs 68 (was 50 vs 45). PSID: base
+  rate 26 to 23; top-10% 55 vs 47 (was 59 vs 54), still beats the rule.
+  The lapse bottom line is unchanged: use the model. The how-to-read worked
+  example uses the new DonorsChoose retention numbers.
+- Results: every verdict now comes from the data instead of a fixed 15%
+  margin. The model beats the rule only when the paired model-minus-rule gap
+  stays on the model's side across bootstrap redraws of the same test donors
+  (one split) or in every seed and test year (walk-forward), loses when it
+  stays on the rule's side, and is "about the same" otherwise. A single split
+  with no bootstrap interval gets no verdict. The index table is generated
+  from `results.json`, drops the sample-data column, and ends each row with
+  one of six bottom lines by a fixed rule: "Use the model" needs wins from two
+  independent sources (two organisations, or one file in every one of several
+  test years) and no counted loss, and wins from one organisation in single
+  splits read "Use the model (tested on one organisation so far)", kept apart
+  from "Use the model for your top slice only"; KDD Cup 1998 and cup98VAL
+  count as one source, the KDD98 $50 upgrade proxy is shown but not counted,
+  and sample data is a code check only. The table also reports the
+  who-keeps-giving list with its lift over random where more than 80 in 100
+  donors lapse. The scoreboard plots each real-file result as a multiple of
+  the rule with its range, and a drift test ties each hand-written number on
+  the Results pages to its `results.json` key and fails when one drifts. The
+  PSID lapse comparison adds "this-wave total (negated)" as a third simple
+  rule.
+- `PlannedGivingIntentScorer` now boosts with `HistGradientBoostingClassifier`
+  (`max_iter=n_estimators`, `max_depth=3`, the old backend's depth) and
+  accepts missing values, so blank age or wealth-screening columns need no
+  imputation. On the sample-data response stand-in (5 seeds) the old
+  backend scored mean ROC-AUC 0.699 and top-10% 75 of 100; the new one
+  0.700 and 76. HGB at its default depth scored 0.692 and 73, so the depth
+  is pinned. Two configurations were compared.
+- `LABEL_FLOORS` re-measured with the top-10% hit rate next to ROC-AUC, on
+  validation folds outside every published test fold (the lapse floor was
+  first read on DonorsChoose FY2017, which is one of the Lapse page's test
+  years). Both floors stand. Lapse, PSID wave 2013: from 100 lapsed
+  households every draw beat the best rule on both measures. On
+  DonorsChoose FY2014 the model needs 200 retained donors to clear the rule
+  on ROC-AUC every time and only ties it at the top 10% at any count, as the
+  Lapse page says. Major gift, KDD Cup 1998 validation fold: at 800
+  positives `DonorPropensityModel` beat the rule in 10 of 10 draws on both
+  measures and `MajorGiftClassifier` in 10 of 10 on ROC-AUC and 9 of 10 at
+  the top 10%. On PSID's real $1,000 upgrade label (validate wave 2013),
+  `MajorGiftClassifier` beat the rule at the top 10% in every draw from 800
+  positives (39 vs 35 of 100) and in 6 of 10 at 400.
 
 ### Fixed
 - `check_label_floor` raises a `ValueError` on missing (NaN or None) labels

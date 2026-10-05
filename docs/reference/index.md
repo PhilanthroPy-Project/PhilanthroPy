@@ -52,6 +52,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `SolicitationWindowTransformer` | `preprocessing` | Supported alias of the above; shares its tier. |
 | `MatchingGiftFeaturizer` | `preprocessing` | The employer-normalisation rules will grow. |
 | `AskAmountRecommender` | `models` | The ask-ladder multipliers are a heuristic. |
+| `suggest_ask` | `models` | New; the default `stretch` (10%) and `round_to` ($25) are policy choices, not estimates, and may change. |
 | `constituent_events_to_features`, `read_constituent_events` | `ingest` | Tracks the UniSchema `ConstituentEvent` schema, which is versioned upstream. |
 | `civicrm_contributions_to_features`, `read_civicrm_contributions` | `ingest` | Tracks CiviCRM's contribution export labels and APIv4 field names, which move with the CRM. |
 | `raisers_edge_gifts_to_features`, `read_raisers_edge_gifts`, `DEFAULT_EXCLUDED_GIFT_TYPES` | `ingest` | Tracks Raiser's Edge export labels and the RE NXT gift-type vocabulary; the excluded-type default will grow as real exports arrive. |
@@ -62,15 +63,17 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `activities_to_features` | `ingest` | The activity-type feature set (`_count_12m`, `_distinct`, ...) may grow as more source types are onboarded. |
 | `read_gifts`, `GIFT_SOURCES` | `ingest` | A thin preset registry over the CiviCRM, Raiser's Edge and NPSP bridges above; it inherits their tier and grows a new preset name as they do. |
 | `build_leadership_snapshots` | `ingest` | The gift-derived feature set (trend, consecutive years given, ...) is a minimal starting recipe and is likely to be refined. |
+| `build_snapshots` | `ingest` | The kinds (`upgrade`, `lapse`, `response_next_year`, `next_amount`), their populations and the shared column set are new and may grow; the scale-free block stays opt-in until a validation fold adopts it. |
 | `score_leadership_prospects` | `models` | The top-reasons heuristic (z-score within the scored population weighted by global permutation importance) and the top-N/lift report shape are a starting recipe over `build_leadership_snapshots`, likely to be refined; `suggested_ask` is left `NaN` pending a real ask-amount training signal. |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Chart composition is presentation, not contract. |
 | `fetch_kdd98_donors`, `fetch_kdd98_val_donors` | `datasets` | Return the raw upstream columns untyped; may gain as-of date parsing as the real-data leakage replication in #124 lands. The validation fetcher shares the learning fetcher's tier and will follow any change to it. |
 | `make_donor_panel` | `datasets` | The returned dict may gain keys (pledges, appeals, soft credits) as more of the library needs panel-shaped fixtures; existing keys and their columns will not change silently. |
 | `load_donorschoose` | `datasets` | Reads the ICPSR 37898 DS0001 variable names (`DONOR_ID`, `AMOUNT`, `CREATED_MONTH`, ...); may grow a configurable column mapping if a later ICPSR version renames them. |
+| `load_karlan_list` | `datasets` | Reads the published `AERtables1-5.dta` variable names (`gave`, `HPA`, `MRM2`, ...); the returned column names may still be adjusted while the Results rows built on them settle. |
 | `load_psid_philanthropy` | `datasets` | Reads a fixed list of PSID ER/S variables for 2001-2023; an extract that omits some of them skips those waves (or raises KeyError for a partially selected wave). |
 | `GiftIntervalCalibrator`, `GiftInterval` | `models` | The conformity-score menu is expected to grow (conformalised quantile regression is not shipped), which adds `score` values rather than changing existing ones. |
 | `trailing_slope_features` | `utils` | New, off-by-default helper; the bin width, window set and NaN threshold are a starting recipe and may be refined. |
-| `check_label_floor`, `LABEL_FLOORS` | `utils` | The floor values come from one validation-fold learning curve per task and will move as more real files are measured; the `"run"` / `"not enough labels"` return values will not. |
+| `check_label_floor`, `LABEL_FLOORS` | `utils` | The floor values come from validation-fold learning curves (lapse: PSID and DonorsChoose; major gift: KDD Cup 1998 and PSID, on ROC-AUC and the top-10% hit rate) and will move as more real files are measured; the `"run"` / `"not enough labels"` return values will not. |
 
 ### Tier 3: Experimental
 
@@ -95,6 +98,7 @@ Every domain method returns a number on its own scale. None of them are calibrat
 | `DischargeToSolicitationWindowTransformer.transform` | `(n, 2)` float | `in_solicitation_window` in {0, 1}; `window_position_score` 0–1 |
 | `GratefulPatientFeaturizer.transform` | `(n, 4)` float | Unbounded counts and weighted sums, all ≥ 0 |
 | `AskAmountRecommender.ask_ladder` | `(n, 3)` float | **Dollars**, not a score: conservative / target / stretch |
+| `suggest_ask` | `(n,)` float | **Dollars**: max(last gift, average gift), stretched and rounded up; no model |
 | `MovesManagementClassifier.action_priority` | `dict` | Not an array: `stage`, `confidence` (0–1), `portfolio_summary` |
 | `score_leadership_prospects` | `DataFrame` | `affinity_score` 0–100 (from `MajorGiftClassifier`), plus `rank`, `decile`; `suggested_ask` is `NaN` (see the stability-tier note) |
 | `FinancialForecastModel.predict_revenue_forecast` | `(horizon,)` float | **Dollars per future period**, length is `horizon`, not `len(X)` |

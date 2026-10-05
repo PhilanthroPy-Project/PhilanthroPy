@@ -4,6 +4,9 @@ site_url: https://PhilanthroPy-Project.github.io/PhilanthroPy/
 repo_url: https://github.com/PhilanthroPy-Project/PhilanthroPy
 repo_name: PhilanthroPy-Project/PhilanthroPy
 edit_uri: edit/main/docs/
+# Included into results/index.md by pymdownx.snippets; not a page of its own.
+exclude_docs: |
+  results/_verdicts/
 copyright: MIT licensed. Built by the PhilanthroPy contributors.
 
 theme:
@@ -113,6 +116,7 @@ nav:
     - results/response.md
     - results/lapse.md
     - results/ask.md
+    - results/intervals.md
     - results/planned_giving.md
     - results/who_to_mail.md
   - Start Here: start_here.md

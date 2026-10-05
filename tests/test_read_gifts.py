@@ -20,6 +20,7 @@ from philanthropy.ingest import (
     bloomerang_transactions_to_features,
     civicrm_contributions_to_features,
     donorperfect_gifts_to_features,
+    little_green_light_gifts_to_features,
     nonprofit_cloud_gifts_to_features,
     npsp_opportunities_to_features,
     raisers_edge_gifts_to_features,
@@ -28,6 +29,7 @@ from philanthropy.ingest import (
     read_civicrm_contributions,
     read_donorperfect_gifts,
     read_gifts,
+    read_little_green_light_gifts,
     read_nonprofit_cloud_gifts,
     read_npsp_opportunities,
     read_raisers_edge_gifts,
@@ -157,10 +159,10 @@ def test_unknown_source_raises_a_clear_error():
         read_gifts([], source="salesforce_classic")
 
 
-def test_gift_sources_lists_the_seven_presets():
+def test_gift_sources_lists_all_eight_presets():
     assert set(GIFT_SOURCES) == {
         "civicrm", "raisers_edge", "npsp", "nonprofit_cloud",
-        "bloomerang", "donorperfect", "blackbaud_crm"
+        "bloomerang", "donorperfect", "blackbaud_crm", "little_green_light"
     }
 
 
@@ -226,7 +228,6 @@ def test_donorperfect_kwarg_reaches_the_underlying_aggregator():
     unfiltered = read_gifts(rows, source="donorperfect", exclude_record_types=None)
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0
 
-
 def test_blackbaud_crm_kwarg_reaches_the_underlying_aggregator():
     rows = [
         {"Constituent ID": "88", "Date": "2025-01-10", "Amount": "1200.00",
@@ -239,4 +240,47 @@ def test_blackbaud_crm_kwarg_reaches_the_underlying_aggregator():
     assert float(default.loc["88", "total_gift_amount"]) == 100.0
     # include_revenue_types=None disables the filter and sums both rows.
     unfiltered = read_gifts(rows, source="blackbaud_crm", include_revenue_types=None)
+    assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0
+
+
+def test_little_green_light_path_matches_direct_call(tmp_path):
+    path = _write_csv(
+        tmp_path,
+        "LGL Constituent ID,Gift date,Amount,Gift type",
+        "88,2025-01-10,1200.00,Pledge",
+        "88,2025-02-10,100.00,Gift",
+    )
+    via_registry = read_gifts(path, source="little_green_light")
+    direct = little_green_light_gifts_to_features(
+        read_little_green_light_gifts(path)
+    )
+    pd.testing.assert_frame_equal(via_registry, direct)
+
+
+def test_little_green_light_kwarg_reaches_the_underlying_aggregator():
+    rows = [
+        {
+            "LGL Constituent ID": "88",
+            "Gift date": "2025-01-10",
+            "Amount": "1200.00",
+            "Gift type": "Pledge",
+        },
+        {
+            "LGL Constituent ID": "88",
+            "Gift date": "2025-02-10",
+            "Amount": "100.00",
+            "Gift type": "Gift",
+        },
+    ]
+
+    # Default excludes the pledge; only the received gift counts.
+    default = read_gifts(rows, source="little_green_light")
+    assert float(default.loc["88", "total_gift_amount"]) == 100.0
+
+    # None disables the pledge filter and sums both rows.
+    unfiltered = read_gifts(
+        rows,
+        source="little_green_light",
+        exclude_gift_types=None,
+    )
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0

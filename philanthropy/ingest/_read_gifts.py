@@ -32,13 +32,21 @@ from ._donorperfect import (
 )
 from ._npsp import npsp_opportunities_to_features, read_npsp_opportunities
 from ._raisers_edge import raisers_edge_gifts_to_features, read_raisers_edge_gifts
-
+from ._little_green_light import (
+    little_green_light_gifts_to_features,
+    read_little_green_light_gifts,
+)
 __all__ = ["GIFT_SOURCES", "read_gifts"]
 
 #: Valid ``source`` names for :func:`read_gifts`, in the order the CLI's
 #: `--source` choices already list them.
 GIFT_SOURCES: Tuple[str, ...] = (
-    "civicrm", "raisers_edge", "npsp", "bloomerang", "donorperfect",
+    "civicrm",
+    "raisers_edge",
+    "npsp",
+    "bloomerang",
+    "donorperfect",
+    "little_green_light",
 )
 
 # (reader, aggregator) pair per source, the same shape as the preset dispatch
@@ -49,6 +57,10 @@ _REGISTRY: "dict[str, tuple[Callable[[Union[str, Path]], pd.DataFrame], Callable
     "npsp": (read_npsp_opportunities, npsp_opportunities_to_features),
     "bloomerang": (read_bloomerang_transactions, bloomerang_transactions_to_features),
     "donorperfect": (read_donorperfect_gifts, donorperfect_gifts_to_features),
+    "little_green_light": (
+    read_little_green_light_gifts,
+    little_green_light_gifts_to_features,
+),
 }
 
 

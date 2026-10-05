@@ -324,3 +324,22 @@ def test_row_loss_warning_fires_on_the_first_fold_not_at_exhaustion():
     )
     with pytest.warns(UserWarning, match="removed 3 test row"):
         next(gen)
+
+
+def test_split_skips_fold_with_no_prior_training_data():
+    X = np.zeros((6, 2))
+    fy = np.array([2019, 2019, 2020, 2020, 2021, 2021])
+
+    splitter = FiscalYearGroupedSplitter(
+        drop_repeat_donors=False,
+        n_splits=3,
+        gap_years=0,
+    )
+
+    splits = list(splitter.split(X, groups=fy))
+
+    assert len(splits) < splitter.n_splits
+    assert len(splits) == 2
+
+    for train_idx, _ in splits:
+        assert len(train_idx) > 0

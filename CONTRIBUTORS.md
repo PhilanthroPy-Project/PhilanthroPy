@@ -77,9 +77,12 @@ contribution. Code, docs, tests, and review all count.
 - [@Utkarsh3725](https://github.com/Utkarsh3725): removed the unreachable
   timezone-localisation fallback in `EncounterRecencyTransformer`, preserving
   the useful invalid-timezone error, and added coverage for the optional
-  `RFMTransformer(include_tenure=True)` output contract (closes
+  `RFMTransformer(include_tenure=True)` output contract, then linked the
+  temporal-leakage tutorial to the measured KDD Cup 1998 replication result
+  (closes
   [#201](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/201),
-  [#150](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/150)).
+  [#150](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/150),
+  [#205](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/205)).
 
 - **Harsh Raj Singhania** ([@HarshRajSinghania](https://github.com/HarshRajSinghania)):
   added DataFrame and array-fit tests so `MovesManagementClassifier.feature_names_in_`

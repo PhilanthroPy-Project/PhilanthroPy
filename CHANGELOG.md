@@ -6,6 +6,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Test coverage now constructs `RFMTransformer(include_tenure=True)`, asserting
+  that the optional `tenure` column is emitted, remains at least as large as
+  `recency`, and matches `get_feature_names_out`; the default path is pinned to
+  keep `tenure` absent unless requested.
 - `threshold="pNN"` in `build_leadership_snapshots` and
   `score_leadership_prospects`: the leadership level as the NNth percentile
   of positive donor fiscal-year totals in the training (snapshot) years,

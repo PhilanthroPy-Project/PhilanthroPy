@@ -36,6 +36,20 @@ def test_momentum_off_by_default_matches_pre_momentum_columns(sample_transaction
     assert set(rfm.columns) == {'donor_id', 'recency', 'frequency', 'monetary'}
 
 
+def test_include_tenure_emits_tenure_column_and_name(sample_transactions):
+    t = RFMTransformer(reference_date='2024-01-01', include_tenure=True)
+    rfm = t.fit_transform(sample_transactions)
+    assert 'tenure' in rfm.columns
+    assert (rfm['tenure'] >= rfm['recency']).all()
+    assert list(t.get_feature_names_out()) == list(rfm.columns)
+
+
+def test_tenure_absent_by_default(sample_transactions):
+    t = RFMTransformer(reference_date='2024-01-01')
+    rfm = t.fit_transform(sample_transactions)
+    assert 'tenure' not in rfm.columns
+
+
 def test_include_momentum_adds_expected_columns_matching_feature_names_out(sample_transactions):
     t = RFMTransformer(reference_date='2024-01-01', include_momentum=True)
     rfm = t.fit_transform(sample_transactions)

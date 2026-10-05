@@ -27,6 +27,8 @@ from philanthropy.ingest import (
     read_gifts,
     read_npsp_opportunities,
     read_raisers_edge_gifts,
+    little_green_light_gifts_to_features,
+read_little_green_light_gifts,
 )
 
 
@@ -129,9 +131,9 @@ def test_unknown_source_raises_a_clear_error():
         read_gifts([], source="salesforce_classic")
 
 
-def test_gift_sources_lists_the_five_presets():
+def test_gift_sources_lists_the_six_presets():
     assert set(GIFT_SOURCES) == {
-        "civicrm", "raisers_edge", "npsp", "bloomerang", "donorperfect",
+        "civicrm", "raisers_edge", "npsp", "bloomerang", "donorperfect",  "little_green_light",
     }
 
 
@@ -180,4 +182,45 @@ def test_donorperfect_kwarg_reaches_the_underlying_aggregator():
     assert float(default.loc["88", "total_gift_amount"]) == 100.0
     # exclude_record_types=None disables the filter and sums both rows.
     unfiltered = read_gifts(rows, source="donorperfect", exclude_record_types=None)
+    assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0
+
+def test_little_green_light_path_matches_direct_call(tmp_path):
+    path = _write_csv(
+        tmp_path,
+        "LGL Constituent ID,Gift date,Amount,Gift type",
+        "88,2025-01-10,1200.00,Pledge",
+        "88,2025-02-10,100.00,Gift",
+    )
+    via_registry = read_gifts(path, source="little_green_light")
+    direct = little_green_light_gifts_to_features(
+        read_little_green_light_gifts(path)
+    )
+    pd.testing.assert_frame_equal(via_registry, direct)
+    
+def test_little_green_light_kwarg_reaches_the_underlying_aggregator():
+    rows = [
+        {
+            "LGL Constituent ID": "88",
+            "Gift date": "2025-01-10",
+            "Amount": "1200.00",
+            "Gift type": "Pledge",
+        },
+        {
+            "LGL Constituent ID": "88",
+            "Gift date": "2025-02-10",
+            "Amount": "100.00",
+            "Gift type": "Gift",
+        },
+    ]
+
+    # Default excludes the pledge; only the received gift counts.
+    default = read_gifts(rows, source="little_green_light")
+    assert float(default.loc["88", "total_gift_amount"]) == 100.0
+
+    # None disables the pledge filter and sums both rows.
+    unfiltered = read_gifts(
+        rows,
+        source="little_green_light",
+        exclude_gift_types=None,
+    )
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0

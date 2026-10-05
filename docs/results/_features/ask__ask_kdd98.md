@@ -32,6 +32,6 @@
         | `rfm_monetary` | 0.213 | + |
         | `MAXRAMNT` | 0.133 | + |
 
-        Method: permutation importance (`neg_mean_absolute_error`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Git SHA: `1946e8d50dde3815a976ee1a1a8bed508953d8a5`.
+        Method: permutation importance (`neg_mean_absolute_error`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Git SHA: `d857e8aac5ff4cdbb8c91450cec7583480c1d7af`.
 
     Results on your own file will differ.

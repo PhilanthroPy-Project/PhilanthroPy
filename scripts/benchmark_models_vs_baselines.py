@@ -2020,8 +2020,12 @@ def _net_revenue_diff_ci(y: np.ndarray, mail: np.ndarray, cost: float) -> Tuple[
     return _bootstrap_diff_ci(len(per_donor), lambda idx: float(per_donor[idx].sum()))
 
 
-def bench_kdd_cost_aware(seed: int, cost: float = 0.68) -> List[Row]:
-    """Mail if E[gift] > cost (the KDD Cup 1998 competition's own rule) vs mailing everyone."""
+def _kdd_expected_gift(seed: int, held_out_file: bool) -> Tuple[pd.Series, np.ndarray]:
+    """Fit the who-to-mail response model (``MajorGiftClassifier``) and ask
+    model (``AskAmountRecommender``) on the learning file's 55% train split
+    and return ``(actual gift, expected gift)`` for the donors scored: the
+    split's 30% test fold, or with ``held_out_file`` KDD98's own validation
+    file (``cup98VAL`` + ``valtargt``), never touched during fitting."""
     donors = fetch_kdd98_donors()
     rfm = _kdd_rfm(_kdd_gift_log(donors))
     Xd_train, _Xd_val, Xd_test, yd_train, _yd_val, yd_test = _kdd_ask_design(donors, rfm, seed)
@@ -2031,17 +2035,25 @@ def bench_kdd_cost_aware(seed: int, cost: float = 0.68) -> List[Row]:
         WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
         MajorGiftClassifier(random_state=seed),
     ).fit(Xd_train, (yd_train > 0).astype(int))
-    p_respond = resp_model.predict_proba(Xd_test)[:, 1]
-
     ask_model = make_pipeline(
         WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
         # Expected gift needs the conditional mean, not the ask default's median.
         AskAmountRecommender(loss="squared_error", random_state=seed),
     ).fit(Xd_train[responders_train], yd_train[responders_train])
-    expected_gift = p_respond * ask_model.predict(Xd_test)
+
+    if held_out_file:
+        val_donors = fetch_kdd98_val_donors()
+        Xd_test = _kdd_feature_frame(val_donors, _kdd_rfm(_kdd_gift_log(val_donors)))
+        yd_test = val_donors.set_index("CONTROLN")["TARGET_D"]
+    return yd_test, resp_model.predict_proba(Xd_test)[:, 1] * ask_model.predict(Xd_test)
+
+
+def bench_kdd_cost_aware(seed: int, cost: float = 0.68) -> List[Row]:
+    """Mail if E[gift] > cost (the KDD Cup 1998 competition's own rule) vs mailing everyone."""
+    yd_test, expected_gift = _kdd_expected_gift(seed, held_out_file=False)
     mail = expected_gift > cost
 
-    raised_all, cost_all = float(yd_test.sum()), cost * len(Xd_test)
+    raised_all, cost_all = float(yd_test.sum()), cost * len(yd_test)
     raised_mail, cost_mail = float(yd_test[mail].sum()), cost * int(mail.sum())
     net_d = _net_revenue_diff_ci(yd_test.to_numpy(), np.asarray(mail), cost)
     roi_all = fundraising_roi(total_raised=raised_all, total_fundraising_expense=cost_all)
@@ -2051,7 +2063,7 @@ def bench_kdd_cost_aware(seed: int, cost: float = 0.68) -> List[Row]:
         Row(
             "kdd98", "cost_aware_selection", "net_revenue",
             raised_mail - cost_mail, raised_all - cost_all,
-            note=f"mail if E[gift]>${cost:.2f}; pieces={int(mail.sum())}/{len(Xd_test)}",
+            note=f"mail if E[gift]>${cost:.2f}; pieces={int(mail.sum())}/{len(yd_test)}",
             diff_lo=net_d[0], diff_hi=net_d[1],
         ),
         Row(
@@ -2073,32 +2085,10 @@ def bench_kdd_cost_aware_val(seed: int, cost: float = 0.68) -> List[Row]:
     that were never part of the learning file and never touched by any split
     of it. Reported *next to* ``bench_kdd_cost_aware``'s random-split number
     (dataset ``"cup98val"`` vs ``"kdd98"``), not replacing it."""
-    donors = fetch_kdd98_donors()
-    rfm = _kdd_rfm(_kdd_gift_log(donors))
-    Xd_train, _Xd_val, _Xd_test, yd_train, _yd_val, _yd_test = _kdd_ask_design(donors, rfm, seed)
-    responders_train = yd_train > 0
-
-    resp_model = make_pipeline(
-        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
-        MajorGiftClassifier(random_state=seed),
-    ).fit(Xd_train, (yd_train > 0).astype(int))
-
-    ask_model = make_pipeline(
-        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
-        # Same pin as bench_kdd_cost_aware: expected gift needs the conditional mean.
-        AskAmountRecommender(loss="squared_error", random_state=seed),
-    ).fit(Xd_train[responders_train], yd_train[responders_train])
-
-    val_donors = fetch_kdd98_val_donors()
-    val_rfm = _kdd_rfm(_kdd_gift_log(val_donors))
-    X_val = _kdd_feature_frame(val_donors, val_rfm)
-    y_val = val_donors.set_index("CONTROLN")["TARGET_D"]
-
-    p_respond = resp_model.predict_proba(X_val)[:, 1]
-    expected_gift = p_respond * ask_model.predict(X_val)
+    y_val, expected_gift = _kdd_expected_gift(seed, held_out_file=True)
     mail = expected_gift > cost
 
-    raised_all, cost_all = float(y_val.sum()), cost * len(X_val)
+    raised_all, cost_all = float(y_val.sum()), cost * len(y_val)
     raised_mail, cost_mail = float(y_val[mail].sum()), cost * int(mail.sum())
     net_d = _net_revenue_diff_ci(y_val.to_numpy(), np.asarray(mail), cost)
     roi_all = fundraising_roi(total_raised=raised_all, total_fundraising_expense=cost_all)
@@ -2109,7 +2099,7 @@ def bench_kdd_cost_aware_val(seed: int, cost: float = 0.68) -> List[Row]:
             "cup98val", "cost_aware_selection", "net_revenue",
             raised_mail - cost_mail, raised_all - cost_all,
             note=(
-                f"mail if E[gift]>${cost:.2f}; pieces={int(mail.sum())}/{len(X_val)}; "
+                f"mail if E[gift]>${cost:.2f}; pieces={int(mail.sum())}/{len(y_val)}; "
                 "model fit on cup98LRN's own 55% train split only, scored on KDD98's "
                 "own held-out validation file (cup98VAL+valtargt), reported next to "
                 "bench_kdd_cost_aware's random-split number, not replacing it"
@@ -2148,50 +2138,38 @@ def _mail_profit_curve(y: np.ndarray, expected_gift: np.ndarray, cost: float, n_
 
 def kdd_mail_profit_curve(seed: int, cost: float = 0.68) -> Dict[str, Any]:
     """Profit curve for bench_kdd_cost_aware's own fit and test split."""
-    donors = fetch_kdd98_donors()
-    rfm = _kdd_rfm(_kdd_gift_log(donors))
-    Xd_train, _Xd_val, Xd_test, yd_train, _yd_val, yd_test = _kdd_ask_design(donors, rfm, seed)
-    responders_train = yd_train > 0
-
-    resp_model = make_pipeline(
-        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
-        MajorGiftClassifier(random_state=seed),
-    ).fit(Xd_train, (yd_train > 0).astype(int))
-    ask_model = make_pipeline(
-        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
-        AskAmountRecommender(loss="squared_error", random_state=seed),
-    ).fit(Xd_train[responders_train], yd_train[responders_train])
-
-    p_respond = resp_model.predict_proba(Xd_test)[:, 1]
-    expected_gift = p_respond * ask_model.predict(Xd_test)
-    return _mail_profit_curve(yd_test.to_numpy(), expected_gift, cost)
+    y, expected_gift = _kdd_expected_gift(seed, held_out_file=False)
+    return _mail_profit_curve(y.to_numpy(), expected_gift, cost)
 
 
 def kdd_mail_profit_curve_val(seed: int, cost: float = 0.68) -> Dict[str, Any]:
     """Profit curve for bench_kdd_cost_aware_val's own fit (learning file's
     train split) and test split (cup98VAL, never touched during fitting)."""
-    donors = fetch_kdd98_donors()
-    rfm = _kdd_rfm(_kdd_gift_log(donors))
-    Xd_train, _Xd_val, _Xd_test, yd_train, _yd_val, _yd_test = _kdd_ask_design(donors, rfm, seed)
-    responders_train = yd_train > 0
+    y, expected_gift = _kdd_expected_gift(seed, held_out_file=True)
+    return _mail_profit_curve(y.to_numpy(), expected_gift, cost)
 
-    resp_model = make_pipeline(
-        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
-        MajorGiftClassifier(random_state=seed),
-    ).fit(Xd_train, (yd_train > 0).astype(int))
-    ask_model = make_pipeline(
-        WealthScreeningImputer(wealth_cols=["WEALTH1", "WEALTH2", "INCOME"]),
-        AskAmountRecommender(loss="squared_error", random_state=seed),
-    ).fit(Xd_train[responders_train], yd_train[responders_train])
 
-    val_donors = fetch_kdd98_val_donors()
-    val_rfm = _kdd_rfm(_kdd_gift_log(val_donors))
-    X_val = _kdd_feature_frame(val_donors, val_rfm)
-    y_val = val_donors.set_index("CONTROLN")["TARGET_D"]
+MAIL_COSTS = (0.50, 0.68, 1.00, 2.00)
 
-    p_respond = resp_model.predict_proba(X_val)[:, 1]
-    expected_gift = p_respond * ask_model.predict(X_val)
-    return _mail_profit_curve(y_val.to_numpy(), expected_gift, cost)
+
+def kdd_mail_cost_sweep(seed: int, held_out_file: bool, costs: Sequence[float] = MAIL_COSTS) -> List[Dict[str, Any]]:
+    """The rule "mail if E[gift] > cost" against mailing everyone at each cost per
+    piece, on one fit: the cost only moves the cut, not the models. Each
+    entry has the letters sent, both net revenues and a paired bootstrap
+    interval on their difference."""
+    y, expected_gift = _kdd_expected_gift(seed, held_out_file)
+    y = y.to_numpy(dtype="float64")
+    out = []
+    for cost in costs:
+        mail = expected_gift > cost
+        lo, hi = _net_revenue_diff_ci(y, mail, cost)
+        out.append({
+            "cost": cost, "mailed": int(mail.sum()), "n_total": len(y),
+            "net_revenue_model": float(y[mail].sum() - cost * mail.sum()),
+            "net_revenue_mail_everyone": float(y.sum() - cost * len(y)),
+            "diff_lo": lo, "diff_hi": hi,
+        })
+    return out
 
 
 def bench_kdd_val_models(seed: int) -> List[Row]:

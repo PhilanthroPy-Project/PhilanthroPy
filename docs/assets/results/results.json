@@ -90,7 +90,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
@@ -206,7 +206,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
@@ -281,7 +281,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "suggested ask"
     }
   },
@@ -373,7 +373,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (FiscalYearGroupedSplitter, last split)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
@@ -401,9 +401,9 @@
   "planned_giving_synthetic": {
     "n_test": 3000,
     "model": {
-      "0.01": 0.8066666666666666,
-      "0.05": 0.7933333333333333,
-      "0.1": 0.7513333333333333
+      "0.01": 0.78,
+      "0.05": 0.788,
+      "0.1": 0.76
     },
     "random": {
       "0.01": 0.4418666666666667,
@@ -428,34 +428,34 @@
           "column": "total",
           "label": "lifetime giving",
           "group": "giving_history",
-          "importance": 0.18214047423030033,
-          "lo": 0.15535389992270726,
-          "hi": 0.21508706701658603,
+          "importance": 0.1903767787965967,
+          "lo": 0.15533776056908744,
+          "hi": 0.22219628055082946,
           "direction": "+"
         },
         {
           "column": "recent",
           "label": "this year's gift",
           "group": "recency",
-          "importance": 0.017002718821069445,
-          "lo": 0.0005163520505876651,
-          "hi": 0.049766129395344694,
-          "direction": "-"
+          "importance": 0.01867106042236965,
+          "lo": -0.0003577243695160548,
+          "hi": 0.0472433028679484,
+          "direction": "mixed"
         },
         {
           "column": "n",
           "label": "number of gifts",
           "group": "giving_history",
-          "importance": 0.001291395891578886,
-          "lo": -0.00347147449899744,
-          "hi": 0.005428193228005762,
+          "importance": -0.003093836839662227,
+          "lo": -0.007499459727162183,
+          "hi": 0.0012776160370959744,
           "direction": "-"
         }
       ],
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
@@ -659,7 +659,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
@@ -753,7 +753,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward by fiscal year (train FY1994, test FY1995)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
@@ -849,7 +849,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     },
     "nearly_everyone_lapses": true
@@ -968,7 +968,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "suggested ask"
     }
   },
@@ -1056,7 +1056,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     },
     "curve": {
@@ -1148,7 +1148,45 @@
       "stop_k": 18704,
       "stop_net_revenue": 4541.98,
       "everyone_net_revenue": 3149.0499999999993
-    }
+    },
+    "cost_sweep": [
+      {
+        "cost": 0.5,
+        "mailed": 25982,
+        "n_total": 28624,
+        "net_revenue_model": 8107.450000000001,
+        "net_revenue_mail_everyone": 8301.369999999999,
+        "diff_lo": -444.0375,
+        "diff_hi": 29.051999999999953
+      },
+      {
+        "cost": 0.68,
+        "mailed": 18704,
+        "n_total": 28624,
+        "net_revenue_model": 4541.98,
+        "net_revenue_mail_everyone": 3149.0499999999993,
+        "diff_lo": 875.2394999999999,
+        "diff_hi": 1841.2652499999995
+      },
+      {
+        "cost": 1.0,
+        "mailed": 5226,
+        "n_total": 28624,
+        "net_revenue_model": 1629.6999999999998,
+        "net_revenue_mail_everyone": -6010.630000000001,
+        "diff_lo": 6589.8915,
+        "diff_hi": 8591.8195
+      },
+      {
+        "cost": 2.0,
+        "mailed": 466,
+        "n_total": 28624,
+        "net_revenue_model": 433.0,
+        "net_revenue_mail_everyone": -34634.630000000005,
+        "diff_lo": 33789.2445,
+        "diff_hi": 36256.00275000001
+      }
+    ]
   },
   "who_to_mail_cup98val": {
     "net_revenue_model": 13763.730000000003,
@@ -1234,7 +1272,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score",
       "reused_from_note": "Same response model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     },
@@ -1327,7 +1365,45 @@
       "stop_k": 62703,
       "stop_net_revenue": 13763.729999999996,
       "everyone_net_revenue": 10560.079999999994
-    }
+    },
+    "cost_sweep": [
+      {
+        "cost": 0.5,
+        "mailed": 87424,
+        "n_total": 96367,
+        "net_revenue_model": 28034.14,
+        "net_revenue_mail_everyone": 27906.14,
+        "diff_lo": -264.55,
+        "diff_hi": 533.0749999999999
+      },
+      {
+        "cost": 0.68,
+        "mailed": 62703,
+        "n_total": 96367,
+        "net_revenue_model": 13763.730000000003,
+        "net_revenue_mail_everyone": 10560.079999999994,
+        "diff_lo": 2220.4327499999995,
+        "diff_hi": 4188.319750000001
+      },
+      {
+        "cost": 1.0,
+        "mailed": 17123,
+        "n_total": 96367,
+        "net_revenue_model": 4405.950000000001,
+        "net_revenue_mail_everyone": -20277.36,
+        "diff_lo": 22809.15225,
+        "diff_hi": 26639.937
+      },
+      {
+        "cost": 2.0,
+        "mailed": 1517,
+        "n_total": 96367,
+        "net_revenue_model": 1828.4499999999998,
+        "net_revenue_mail_everyone": -116644.36,
+        "diff_lo": 116240.6755,
+        "diff_hi": 120931.94649999999
+      }
+    ]
   },
   "response_cup98val": {
     "top1pct": {
@@ -1406,7 +1482,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score",
       "reused_from_note": "Same model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     }
@@ -1520,7 +1596,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
@@ -1636,7 +1712,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     },
     "nearly_everyone_lapses": false
@@ -1786,7 +1862,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "suggested ask"
     }
   },
@@ -2075,7 +2151,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
@@ -2209,7 +2285,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     },
     "nearly_everyone_lapses": false
@@ -2375,7 +2451,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "suggested ask"
     }
   },
@@ -2716,7 +2792,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
@@ -2811,7 +2887,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "suggested ask"
     }
   },
@@ -3053,7 +3129,7 @@
     }
   },
   "_env": {
-    "git_sha": "1946e8d50dde3815a976ee1a1a8bed508953d8a5",
+    "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

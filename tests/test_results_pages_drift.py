@@ -52,6 +52,14 @@ def test_index_table_matches_results_json(mrp, tmp_path):
     )
 
 
+@pytest.mark.parametrize("key", ["who_to_mail_kdd98", "who_to_mail_cup98val"])
+def test_cost_sweep_tables_match_results_json(mrp, tmp_path, key):
+    out = tmp_path / "sweep.md"
+    mrp.render_cost_sweep_table(RESULTS[key]["cost_sweep"], out)
+    committed = PAGES / "_verdicts" / f"{key}_cost_sweep.md"
+    assert committed.read_text() == out.read_text(), f"{committed} is stale; rerun scripts/make_results_pages.py"
+
+
 def test_results_json_index_matches_a_fresh_build(mrp):
     fresh = mrp.build_index(RESULTS)
     for question, row in RESULTS["_index"].items():
@@ -144,10 +152,12 @@ def test_interval_analyst_table_matches_results_json():
 
 def test_every_real_interval_level_is_on_target():
     # The page and the CHANGELOG say "within 3 points of the level asked
-    # for" on every real file: that is the coverage verdict "wins".
+    # for" on every real file. The coverage verdict "wins" is one-sided (it
+    # only penalises under-coverage), so the two-sided claim is checked too.
     for ds in INTERVAL_REAL:
         for level, v in RESULTS[f"interval_{ds}"]["levels"].items():
             assert v["verdict"] == "wins", (ds, level, v)
+            assert abs(v["attained"] - float(level)) <= 3, (ds, level, v)
 
 
 # (page, sentence template, the numbers it must show, in order). Every number

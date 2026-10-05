@@ -88,6 +88,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   at least one training draw in ten scored below the simple rule on held-out
   data (lapse), or most did (major gift).
 
+- Results, who to mail: each tab gains a table of the same fit at four
+  costs per letter ($0.50, $0.68, $1.00, $2.00), with letters sent, net
+  revenue against mailing everyone, and a paired bootstrap range on the
+  difference. Generated from `results.json` and covered by the drift test.
+
 ### Changed
 - KDD Cup 1998 feature checks, recorded with no published number moving.
   On the 15% validation fold (paired bootstrap, seed 42), adding the 12
@@ -149,6 +154,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   the Results pages to its `results.json` key and fails when one drifts. The
   PSID lapse comparison adds "this-wave total (negated)" as a third simple
   rule.
+- `PlannedGivingIntentScorer` now boosts with `HistGradientBoostingClassifier`
+  (`max_iter=n_estimators`, `max_depth=3`, the old backend's depth) and
+  accepts missing values, so blank age or wealth-screening columns need no
+  imputation. On the sample-data response stand-in (5 seeds) the old
+  backend scored mean ROC-AUC 0.699 and top-10% 75 of 100; the new one
+  0.700 and 76. HGB at its default depth scored 0.692 and 73, so the depth
+  is pinned. Two configurations were compared.
+- `LABEL_FLOORS` re-measured with the top-10% hit rate next to ROC-AUC, on
+  validation folds outside every published test fold (the lapse floor was
+  first read on DonorsChoose FY2017, which is one of the Lapse page's test
+  years). Both floors stand. Lapse, PSID wave 2013: from 100 lapsed
+  households every draw beat the best rule on both measures. On
+  DonorsChoose FY2014 the model needs 200 retained donors to clear the rule
+  on ROC-AUC every time and only ties it at the top 10% at any count, as the
+  Lapse page says. Major gift, KDD Cup 1998 validation fold: at 800
+  positives `DonorPropensityModel` beat the rule in 10 of 10 draws on both
+  measures and `MajorGiftClassifier` in 10 of 10 on ROC-AUC and 9 of 10 at
+  the top 10%. On PSID's real $1,000 upgrade label (validate wave 2013),
+  `MajorGiftClassifier` beat the rule at the top 10% in every draw from 800
+  positives (39 vs 35 of 100) and in 6 of 10 at 400.
 
 ### Fixed
 - `check_label_floor` raises a `ValueError` on missing (NaN or None) labels

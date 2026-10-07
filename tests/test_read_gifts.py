@@ -1,8 +1,8 @@
 """
 tests/test_read_gifts.py
 Tests for philanthropy.ingest.read_gifts, the preset-registry entry point
-over the CiviCRM, Raiser's Edge, NPSP, Bloomerang and DonorPerfect gift
-bridges.
+over the CiviCRM, Raiser's Edge, NPSP, Bloomerang, DonorPerfect and Neon CRM
+gift bridges.
 
 The point of this module is that `read_gifts(x, source=name)` is exactly
 equivalent to calling that source's own reader-and-aggregator pair directly;
@@ -19,12 +19,14 @@ from philanthropy.ingest import (
     bloomerang_transactions_to_features,
     civicrm_contributions_to_features,
     donorperfect_gifts_to_features,
+    neon_donations_to_features,
     npsp_opportunities_to_features,
     raisers_edge_gifts_to_features,
     read_bloomerang_transactions,
     read_civicrm_contributions,
     read_donorperfect_gifts,
     read_gifts,
+    read_neon_donations,
     read_npsp_opportunities,
     read_raisers_edge_gifts,
 )
@@ -98,6 +100,18 @@ def test_donorperfect_path_matches_direct_call(tmp_path):
     pd.testing.assert_frame_equal(via_registry, direct)
 
 
+def test_neon_path_matches_direct_call(tmp_path):
+    path = _write_csv(
+        tmp_path,
+        "Account ID,Donation Date,Donation Amount,Donation Type",
+        "88,2025-01-10,1200.00,Pledge",
+        "88,2025-02-10,100.00,Pledge Payment",
+    )
+    via_registry = read_gifts(path, source="neon")
+    direct = neon_donations_to_features(read_neon_donations(path))
+    pd.testing.assert_frame_equal(via_registry, direct)
+
+
 # --------------------------------------------------------------------------- #
 # In-memory input: no file read, straight to the aggregator
 # --------------------------------------------------------------------------- #
@@ -131,7 +145,12 @@ def test_unknown_source_raises_a_clear_error():
 
 def test_gift_sources_lists_the_five_presets():
     assert set(GIFT_SOURCES) == {
-        "civicrm", "raisers_edge", "npsp", "bloomerang", "donorperfect",
+        "civicrm",
+        "raisers_edge",
+        "npsp",
+        "bloomerang",
+        "donorperfect",
+        "neon",
     }
 
 
@@ -180,4 +199,17 @@ def test_donorperfect_kwarg_reaches_the_underlying_aggregator():
     assert float(default.loc["88", "total_gift_amount"]) == 100.0
     # exclude_record_types=None disables the filter and sums both rows.
     unfiltered = read_gifts(rows, source="donorperfect", exclude_record_types=None)
+    assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0
+
+
+def test_neon_kwarg_reaches_the_underlying_aggregator():
+    rows = [
+        {"Account ID": "88", "Donation Date": "2025-01-10",
+         "Donation Amount": "1200.00", "Donation Type": "Pledge"},
+        {"Account ID": "88", "Donation Date": "2025-02-10",
+         "Donation Amount": "100.00", "Donation Type": "Pledge Payment"},
+    ]
+    default = read_gifts(rows, source="neon")
+    assert float(default.loc["88", "total_gift_amount"]) == 100.0
+    unfiltered = read_gifts(rows, source="neon", exclude_donation_types=None)
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0

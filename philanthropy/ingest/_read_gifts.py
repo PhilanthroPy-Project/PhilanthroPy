@@ -1,8 +1,8 @@
 """
 philanthropy.ingest._read_gifts
 ================================
-One call over the CiviCRM, Raiser's Edge, NPSP, Bloomerang and DonorPerfect
-gift bridges.
+One call over the CiviCRM, Raiser's Edge, NPSP, Bloomerang, DonorPerfect and
+Neon CRM gift bridges.
 
 Each bridge module pairs its own ``read_<source>_...`` loader with a
 ``<source>_..._to_features`` aggregator, because each CRM's export needs its
@@ -16,8 +16,9 @@ is, from the outside, the same read-then-aggregate operation.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping, Tuple, Union
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -30,6 +31,7 @@ from ._donorperfect import (
     donorperfect_gifts_to_features,
     read_donorperfect_gifts,
 )
+from ._neon import neon_donations_to_features, read_neon_donations
 from ._npsp import npsp_opportunities_to_features, read_npsp_opportunities
 from ._raisers_edge import raisers_edge_gifts_to_features, read_raisers_edge_gifts
 
@@ -37,23 +39,31 @@ __all__ = ["GIFT_SOURCES", "read_gifts"]
 
 #: Valid ``source`` names for :func:`read_gifts`, in the order the CLI's
 #: `--source` choices already list them.
-GIFT_SOURCES: Tuple[str, ...] = (
-    "civicrm", "raisers_edge", "npsp", "bloomerang", "donorperfect",
+GIFT_SOURCES: tuple[str, ...] = (
+    "civicrm",
+    "raisers_edge",
+    "npsp",
+    "bloomerang",
+    "donorperfect",
+    "neon",
 )
 
 # (reader, aggregator) pair per source, the same shape as the preset dispatch
 # in cli.py's _cmd_features.
-_REGISTRY: "dict[str, tuple[Callable[[Union[str, Path]], pd.DataFrame], Callable[..., pd.DataFrame]]]" = {
+_REGISTRY: dict[
+    str, tuple[Callable[[str | Path], pd.DataFrame], Callable[..., pd.DataFrame]]
+] = {
     "civicrm": (read_civicrm_contributions, civicrm_contributions_to_features),
     "raisers_edge": (read_raisers_edge_gifts, raisers_edge_gifts_to_features),
     "npsp": (read_npsp_opportunities, npsp_opportunities_to_features),
     "bloomerang": (read_bloomerang_transactions, bloomerang_transactions_to_features),
     "donorperfect": (read_donorperfect_gifts, donorperfect_gifts_to_features),
+    "neon": (read_neon_donations, neon_donations_to_features),
 }
 
 
 def read_gifts(
-    path_or_df: Union[str, Path, pd.DataFrame, Iterable[Mapping]],
+    path_or_df: str | Path | pd.DataFrame | Iterable[Mapping],
     *,
     source: str,
     **kwargs: Any,

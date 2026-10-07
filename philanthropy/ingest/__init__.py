@@ -34,6 +34,10 @@ records and split-gift Main totals (``record_type`` ``P`` / ``M``) first so
 a pledged or split dollar is not counted both as the promise/total and as
 the payments/splits against it.
 
+Neon CRM: ``read_neon_donations`` loads a Neon donation export CSV;
+``neon_donations_to_features`` aggregates it, dropping pledge commitments
+first so pledged dollars are not counted before payment.
+
 ``map_columns`` renames a user-supplied export's headers to the canonical
 names a bridge above expects, raising one error listing every column still
 missing after the rename.
@@ -76,6 +80,11 @@ from ._donorperfect import (
     read_donorperfect_gifts,
 )
 from ._map_columns import map_columns
+from ._neon import (
+    DEFAULT_EXCLUDED_NEON_DONATION_TYPES,
+    neon_donations_to_features,
+    read_neon_donations,
+)
 from ._npsp import (
     DEFAULT_INCLUDED_STAGES,
     npsp_opportunities_to_features,
@@ -87,12 +96,13 @@ from ._raisers_edge import (
     read_raisers_edge_gifts,
 )
 from ._read_gifts import GIFT_SOURCES, read_gifts
-from ._upgrade_snapshots import build_leadership_snapshots
 from ._snapshots import build_snapshots
+from ._upgrade_snapshots import build_leadership_snapshots
 
 __all__ = [
     "DEFAULT_EXCLUDED_ENTRY_TYPES",
     "DEFAULT_EXCLUDED_GIFT_TYPES",
+    "DEFAULT_EXCLUDED_NEON_DONATION_TYPES",
     "DEFAULT_EXCLUDED_RECORD_TYPES",
     "DEFAULT_INCLUDED_STAGES",
     "GIFT_SOURCES",
@@ -104,6 +114,7 @@ __all__ = [
     "constituent_events_to_features",
     "donorperfect_gifts_to_features",
     "map_columns",
+    "neon_donations_to_features",
     "npsp_opportunities_to_features",
     "raisers_edge_gifts_to_features",
     "read_bloomerang_transactions",
@@ -111,6 +122,7 @@ __all__ = [
     "read_constituent_events",
     "read_donorperfect_gifts",
     "read_gifts",
+    "read_neon_donations",
     "read_npsp_opportunities",
     "read_raisers_edge_gifts",
 ]

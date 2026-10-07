@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `philanthropy.ingest.neon_donations_to_features()` and
+  `read_neon_donations()` now provide a Neon CRM donation-export preset,
+  excluding pledge commitments by default while keeping pledge payments.
 - Test coverage now constructs `RFMTransformer(include_tenure=True)`, asserting
   that the optional `tenure` column is emitted, remains at least as large as
   `recency`, and matches `get_feature_names_out`; the default path is pinned to

@@ -40,7 +40,7 @@ from . import __version__
 
 # Gift-export readers `features` can front. Each name maps to a
 # (reader, aggregator) pair in _cmd_features.
-_FEATURE_SOURCES = ("civicrm", "raisers_edge", "npsp")
+_FEATURE_SOURCES = ("civicrm", "raisers_edge", "npsp", "nonprofit_cloud")
 
 # The donor-level columns `features` emits, in order. Named here so
 # `philanthropy features --help` answers "what do I pass to --features?"
@@ -143,6 +143,10 @@ def _read_raw_gifts(source: str, path: str) -> pd.DataFrame:
             from .ingest._npsp import _canonical_npsp
 
             raw = _normalise_headers(ingest.read_npsp_opportunities(path), _canonical_npsp)
+        elif source == "nonprofit_cloud":
+            from .ingest._nonprofit_cloud import _canonical_nonprofit_cloud
+
+            raw = _normalise_headers(ingest.read_nonprofit_cloud_gifts(path), _canonical_nonprofit_cloud)
         else:
             raw = ingest.read_civicrm_contributions(path)
     except FileNotFoundError:
@@ -359,6 +363,9 @@ def _cmd_features(args: argparse.Namespace) -> None:
     elif args.source == "npsp":
         read = ingest.read_npsp_opportunities
         to_features = ingest.npsp_opportunities_to_features
+    elif args.source == "nonprofit_cloud":
+        read = ingest.read_nonprofit_cloud_gifts
+        to_features = ingest.nonprofit_cloud_gifts_to_features
     else:
         read = ingest.read_civicrm_contributions
         to_features = ingest.civicrm_contributions_to_features
@@ -413,9 +420,12 @@ def _build_parser() -> argparse.ArgumentParser:
             "rows (pledges, recurring gift templates) are dropped for "
             "raisers_edge. For npsp only closed/won stages (Closed Won, "
             "Awarded, Posted) are kept, so Pledged, open pipeline, and "
-            "Closed Lost are not counted as gifts. Test-mode and "
-            "non-Completed rows are dropped for civicrm. No label is "
-            "produced: `train --target` needs a column you define yourself."
+            "Closed Lost are not counted as gifts. Only Paid rows are kept "
+            "for nonprofit_cloud, so Unpaid, Cancelled, Pending, Failed, "
+            "Written Off, and Fully Refunded are not counted as gifts. "
+            "Test-mode and non-Completed rows are dropped for civicrm. No "
+            "label is produced: `train --target` needs a column you define "
+            "yourself. "
         ),
     )
     features.add_argument(

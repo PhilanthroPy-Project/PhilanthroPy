@@ -601,6 +601,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   existing precision/recall/F1 are now labelled "at threshold 0.5" so they
   aren't mistaken for the whole picture on a rare, imbalanced target, where
   they can look broken even when the model ranks donors well.
+- `philanthropy.ingest.read_nonprofit_cloud_gifts` and
+  `nonprofit_cloud_gifts_to_features`: a Salesforce Nonprofit Cloud
+  GiftTransaction export bridge, alongside the existing CiviCRM, Raiser's Edge,
+  and NPSP ones. Includes only paid statuses by default (`Paid` via
+  `DEFAULT_INCLUDED_GIFT_TRANSACTION_STATUSES`), so only `Unpaid`, `Cancelled`,
+  `Failed`, `Pending`, `Written Off`, and `Fully Refunded` installments are not
+  summed as gifts. Wired into the CLI as `philanthropy features --source nonprofit_cloud`
+  and registered in the `read_gifts` preset registry.
 
 ### Changed
 - Logo: the heart-and-arrow mark is replaced by a phi (φ) with a dot above
@@ -971,9 +979,9 @@ emitting a `DeprecationWarning` naming this version.
   `recency` went negative. Left at the default `None` the behaviour is
   unchanged, but it now warns instead of aggregating the future silently.
   Closes #208.
-- Added complete NumPy-formatted docstrings to `RFMTransformer.fit` and 
-  `RFMTransformer.transform` methods, including detailed `Parameters`, 
-  `Returns`, and `Raises` sections that now properly render in the 
+- Added complete NumPy-formatted docstrings to `RFMTransformer.fit` and
+  `RFMTransformer.transform` methods, including detailed `Parameters`,
+  `Returns`, and `Raises` sections that now properly render in the
   mkdocstrings-generated API reference.
 
 - Added regression coverage for `PlannedGivingSignalTransformer` when transforming a NumPy array after fitting on a DataFrame.

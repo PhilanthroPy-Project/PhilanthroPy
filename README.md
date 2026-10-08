@@ -407,7 +407,7 @@ it is done. Comment on the issue to claim it; ask there if anything is unclear.
 
 See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the fork-and-PR workflow, the full
 local test gate, and pre-push hook setup. In short: fork, branch, run `make ci`
-before every push, and never use `git push --no-verify`. Setup plus a first green
+before opening the PR, and never use `git push --no-verify`. Setup plus a first green
 `make ci` takes about eight minutes.
 
 Everyone who has landed a change is credited in

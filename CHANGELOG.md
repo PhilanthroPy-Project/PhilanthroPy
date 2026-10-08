@@ -193,6 +193,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   positives (39 vs 35 of 100) and in 6 of 10 at 400.
 
 ### Fixed
+- `FiscalYearGroupedSplitter.get_n_splits` no longer counts a fold that
+  `split` skips for having no training rows before its `gap_years` cutoff
+  (possible with fractional fiscal years). The two disagreed, which made
+  `GridSearchCV` reject the splitter.
 - `check_label_floor` raises a `ValueError` on missing (NaN or None) labels
   instead of counting them as a class, which let a file of non-lapses and
   blank outcomes pass the lapse floor with zero lapses.

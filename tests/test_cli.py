@@ -1,9 +1,10 @@
 """tests/test_cli.py: end-to-end CLI (train -> score -> validate)."""
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from philanthropy.cli import main
+from philanthropy.cli import _score_array, main
 from philanthropy.datasets import generate_synthetic_donor_data
 
 FEATURES = "total_gift_amount,years_active,event_attendance_count"
@@ -115,6 +116,19 @@ def test_cli_score_writes_to_stdout_by_default(tmp_path, capsys):
     out = capsys.readouterr().out
     assert out.splitlines()[0].endswith(",score")
     assert len(out.strip().splitlines()) == 21  # header + 20 rows
+
+
+def test_score_array_falls_back_to_predict_proba_positive_class():
+    class ProbaOnlyModel:
+        def predict_proba(self, X):
+            return np.column_stack([1 - X[:, 0], X[:, 0]])
+
+    X = np.array([[0.2], [0.7], [0.9]])
+
+    np.testing.assert_allclose(
+        _score_array(ProbaOnlyModel(), X),
+        np.array([0.2, 0.7, 0.9]),
+    )
 
 
 @pytest.mark.parametrize("model_name", [

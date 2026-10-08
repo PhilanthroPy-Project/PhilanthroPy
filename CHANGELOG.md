@@ -102,6 +102,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   difference. Generated from `results.json` and covered by the drift test.
 
 ### Changed
+- `tests/test_score_upgrade_prospects.py` shares one module-scoped default
+  `score_leadership_prospects` run across the 16 tests that only read its
+  output, instead of repeating the same ~4s call in each. The file runs in
+  about 88s instead of 151s locally; no assertion changed.
 - KDD Cup 1998 feature checks, recorded with no published number moving.
   On the 15% validation fold (paired bootstrap, seed 42), adding the 12
   donor-table columns and three as-of mailing features (`promos_received`,

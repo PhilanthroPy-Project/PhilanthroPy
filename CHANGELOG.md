@@ -106,6 +106,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `score_leadership_prospects` run across the 16 tests that only read its
   output, instead of repeating the same ~4s call in each. The file runs in
   about 88s instead of 151s locally; no assertion changed.
+- The pre-push hook (`scripts/install_hooks.sh`) now runs only the test
+  collection check and flake8, which take seconds, instead of the full suite.
+  CI already runs the full suite on every push to a PR. Contributors run
+  `make ci` once before opening the PR rather than before every push; rerun
+  `sh scripts/install_hooks.sh` to pick up the new hook.
+- CI measures coverage on one test leg (Ubuntu, Python 3.13) instead of all
+  six. The other legs run the same tests without tracing; on the older
+  Pythons tracing roughly doubled the suite's time. Both coverage floors
+  are unchanged.
 - KDD Cup 1998 feature checks, recorded with no published number moving.
   On the 15% validation fold (paired bootstrap, seed 42), adding the 12
   donor-table columns and three as-of mailing features (`promos_received`,

@@ -91,15 +91,23 @@ jobs:
           }
       - name: Docstring examples
         run: python -m pytest philanthropy --doctest-modules -q --no-cov
+      # Coverage tracing roughly doubles the suite's runtime on older Pythons,
+      # and both floors are single numbers, so only one leg measures them.
+      # Every other leg runs the same tests without tracing.
+      - name: Test suite
+        if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13') }}
+        run: pytest tests/ -q
       # This step runs every test; pytest-cov honours fail_under from
-      # pyproject.toml, so there is no separate bare suite run.
+      # pyproject.toml, so there is no separate bare suite run on this leg.
       - name: Coverage gate
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13' }}
         run: pytest tests/ --cov=philanthropy --cov-report=term-missing
       # Measured 94% branch on this subtree; pinned one point under. The
       # visualisation package is exempt by omission: a chart's correctness is
       # not a line-coverage question. The include list and the floor live in the
       # Makefile so this job and CONTRIBUTING.md cannot drift apart.
       - name: Risk-tier coverage floor
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13' }}
         run: make riskcov
 
   floors:

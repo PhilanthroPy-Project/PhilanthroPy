@@ -102,6 +102,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   difference. Generated from `results.json` and covered by the drift test.
 
 ### Changed
+- Python 3.10 is now the minimum supported version (`requires-python =
+  ">=3.10"`). Python 3.9 reached end of life in October 2025, and recent
+  scikit-learn and NumPy releases no longer support it. Installs on 3.9 keep
+  resolving to the last release that allowed it. CI drops its 3.9 test leg,
+  and the dependency-floors job now runs on 3.10.
 - `tests/test_score_upgrade_prospects.py` shares one module-scoped default
   `score_leadership_prospects` run across the 16 tests that only read its
   output, instead of repeating the same ~4s call in each. The file runs in

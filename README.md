@@ -377,7 +377,7 @@ and documentation, in an agentic workflow rather than line completion alone.
 runs flake8, mypy, the docstring examples, and the test suite against a 92%
 coverage floor (`pyproject.toml`). CI additionally enforces a 93% coverage floor
 on the risk-tier subtree, runs the suite across an OS and Python-version matrix,
-installs at the declared dependency floors on Python 3.9, builds the
+installs at the declared dependency floors on Python 3.10, builds the
 distributions and checks their metadata with `twine`, and verifies the package
 imports without a plotting stack installed. Public estimators are exercised by
 a `parametrize_with_checks` battery over

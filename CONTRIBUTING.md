@@ -68,7 +68,7 @@ CI. CI checks four more things `make ci` does not:
   (run it after `make ci`, which produces the coverage data). The include list and
   the floor are defined once in the `Makefile`; CI runs the same target, so the two
   cannot disagree.
-- the declared **dependency floors** on Python 3.9 (`uv pip install --resolution lowest-direct`)
+- the declared **dependency floors** on Python 3.10 (`uv pip install --resolution lowest-direct`)
 - `python -m build` plus `twine check` on the built distributions
 - a **minimal install** (`pip install .`) that must import without matplotlib
 

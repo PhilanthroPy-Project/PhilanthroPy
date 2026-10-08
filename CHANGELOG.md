@@ -102,6 +102,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   difference. Generated from `results.json` and covered by the drift test.
 
 ### Changed
+- Python 3.10 is now the minimum supported version (`requires-python =
+  ">=3.10"`). Python 3.9 reached end of life in October 2025, and recent
+  scikit-learn and NumPy releases no longer support it. Installs on 3.9 keep
+  resolving to the last release that allowed it. CI drops its 3.9 test leg,
+  and the dependency-floors job now runs on 3.10.
 - KDD Cup 1998 feature checks, recorded with no published number moving.
   On the 15% validation fold (paired bootstrap, seed 42), adding the 12
   donor-table columns and three as-of mailing features (`promos_received`,

@@ -30,7 +30,7 @@ cd PhilanthroPy
 git remote add upstream https://github.com/PhilanthroPy-Project/PhilanthroPy.git
 git switch -c my-change         # never work on main
 pip install -e ".[dev]"          # editable install so the working tree is what's tested
-sh scripts/install_hooks.sh      # pre-push hook: runs the suite before every push
+sh scripts/install_hooks.sh      # pre-push hook: collection check + flake8, a few seconds
 ```
 > **Windows contributors:** `make` is not available in PowerShell by default,
 > so `make ci` and `make riskcov` below will not run as written. See
@@ -44,9 +44,11 @@ under pytest and silently run stale code.
 
 Expect the install plus a first green `make ci` to take about eight minutes.
 
-## Before pushing any commit
+## Before opening a pull request
 
-Always run the full local gate first:
+Run the full local gate once before you open the PR (or mark it ready for
+review). While iterating, running the tests for the files you touched is
+enough; CI runs the full suite on every push to the PR.
 
 ```bash
 make ci
@@ -113,8 +115,8 @@ same branch; the PR updates itself.
 ## Additional checks
 
 After cloning, run `sh scripts/install_hooks.sh` to install the pre-push hook.
-This runs the full test suite before every push, preventing collection errors
-from reaching CI.
+It checks for test collection errors and runs flake8 before every push, which
+takes a few seconds. The full suite runs in CI.
 
 Before committing a new test file, always verify:
 
@@ -155,7 +157,8 @@ Same result, different import path.
 
 The `sh scripts/install_hooks.sh` pre-push hook requires Git Bash to
 install, and does not fire when pushing from plain PowerShell. Run it via
-Git Bash, or run the commands above manually before every push.
+Git Bash, or run `pytest tests/ --collect-only -q` and
+`python -m flake8 philanthropy tests examples` manually before pushing.
 
 ## Versioning & deprecation
 

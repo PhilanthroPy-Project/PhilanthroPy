@@ -59,6 +59,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `npsp_opportunities_to_features`, `read_npsp_opportunities`, `DEFAULT_INCLUDED_STAGES` | `ingest` | Tracks NPSP Opportunity export labels and a per-org-configurable stage vocabulary; the closed/won allowlist will grow as real exports arrive. |
 | `bloomerang_transactions_to_features`, `read_bloomerang_transactions`, `DEFAULT_EXCLUDED_ENTRY_TYPES` | `ingest` | Tracks Bloomerang's REST API entry-type vocabulary and export labels; the excluded-type default will grow as real exports arrive. |
 | `donorperfect_gifts_to_features`, `read_donorperfect_gifts`, `DEFAULT_EXCLUDED_RECORD_TYPES` | `ingest` | Tracks DonorPerfect's `record_type` vocabulary and export labels; the excluded-type default will grow as real exports arrive. |
+| `neon_donations_to_features`, `read_neon_donations`, `DEFAULT_EXCLUDED_NEON_DONATION_TYPES` | `ingest` | Tracks Neon CRM's donation export labels and pledge/payment vocabulary; the excluded-type default will grow as real exports arrive. |
 | `map_columns` | `ingest` | The one-error-per-missing-column message shape may still change. |
 | `activities_to_features` | `ingest` | The activity-type feature set (`_count_12m`, `_distinct`, ...) may grow as more source types are onboarded. |
 | `read_gifts`, `GIFT_SOURCES` | `ingest` | A thin preset registry over the CiviCRM, Raiser's Edge and NPSP bridges above; it inherits their tier and grows a new preset name as they do. |

@@ -193,6 +193,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   positives (39 vs 35 of 100) and in 6 of 10 at 400.
 
 ### Fixed
+- `scripts/install_hooks.sh` works from a git worktree. It wrote to
+  `$(git rev-parse --git-dir)/hooks`, which in a worktree is a per-worktree
+  directory with no `hooks/` folder, so the install failed. It now uses
+  `git rev-parse --git-path hooks`, which resolves to the shared hooks
+  directory and honours `core.hooksPath`.
 - `FiscalYearGroupedSplitter.get_n_splits` no longer counts a fold that
   `split` skips for having no training rows before its `gap_years` cutoff
   (possible with fractional fiscal years). The two disagreed, which made

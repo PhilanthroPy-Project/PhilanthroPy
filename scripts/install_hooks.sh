@@ -3,7 +3,7 @@
 # Run once after cloning: sh scripts/install_hooks.sh
 
 set -e
-HOOKS_DIR="$(git rev-parse --git-dir)/hooks"
+HOOKS_DIR="$(git rev-parse --git-path hooks)"
 
 cat > "$HOOKS_DIR/pre-push" << 'EOF'
 #!/bin/sh

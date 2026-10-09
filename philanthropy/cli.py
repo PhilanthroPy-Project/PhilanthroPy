@@ -40,7 +40,7 @@ from . import __version__
 
 # Gift-export readers `features` can front. Each name maps to a
 # (reader, aggregator) pair in _cmd_features.
-_FEATURE_SOURCES = ("civicrm", "raisers_edge", "npsp")
+_FEATURE_SOURCES = ("civicrm", "raisers_edge", "npsp", "ellucian_advance")
 
 # The donor-level columns `features` emits, in order. Named here so
 # `philanthropy features --help` answers "what do I pass to --features?"
@@ -143,6 +143,13 @@ def _read_raw_gifts(source: str, path: str) -> pd.DataFrame:
             from .ingest._npsp import _canonical_npsp
 
             raw = _normalise_headers(ingest.read_npsp_opportunities(path), _canonical_npsp)
+        elif source == "ellucian_advance":
+            from .ingest._ellucian_advance import _canonical_ellucian_advance
+
+            raw = _normalise_headers(
+                ingest.read_ellucian_advance_gifts(path),
+                _canonical_ellucian_advance,
+            )
         else:
             raw = ingest.read_civicrm_contributions(path)
     except FileNotFoundError:
@@ -359,6 +366,9 @@ def _cmd_features(args: argparse.Namespace) -> None:
     elif args.source == "npsp":
         read = ingest.read_npsp_opportunities
         to_features = ingest.npsp_opportunities_to_features
+    elif args.source == "ellucian_advance":
+        read = ingest.read_ellucian_advance_gifts
+        to_features = ingest.ellucian_advance_gifts_to_features
     else:
         read = ingest.read_civicrm_contributions
         to_features = ingest.civicrm_contributions_to_features

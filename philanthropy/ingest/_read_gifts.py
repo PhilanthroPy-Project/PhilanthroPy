@@ -1,8 +1,8 @@
 """
 philanthropy.ingest._read_gifts
 ================================
-One call over the CiviCRM, Raiser's Edge, NPSP, Bloomerang and DonorPerfect
-gift bridges.
+One call over the CiviCRM, Raiser's Edge, NPSP, Bloomerang, DonorPerfect and
+Ellucian CRM Advance gift bridges.
 
 Each bridge module pairs its own ``read_<source>_...`` loader with a
 ``<source>_..._to_features`` aggregator, because each CRM's export needs its
@@ -30,6 +30,10 @@ from ._donorperfect import (
     donorperfect_gifts_to_features,
     read_donorperfect_gifts,
 )
+from ._ellucian_advance import (
+    ellucian_advance_gifts_to_features,
+    read_ellucian_advance_gifts,
+)
 from ._npsp import npsp_opportunities_to_features, read_npsp_opportunities
 from ._raisers_edge import raisers_edge_gifts_to_features, read_raisers_edge_gifts
 
@@ -39,6 +43,7 @@ __all__ = ["GIFT_SOURCES", "read_gifts"]
 #: `--source` choices already list them.
 GIFT_SOURCES: Tuple[str, ...] = (
     "civicrm", "raisers_edge", "npsp", "bloomerang", "donorperfect",
+    "ellucian_advance",
 )
 
 # (reader, aggregator) pair per source, the same shape as the preset dispatch
@@ -49,6 +54,10 @@ _REGISTRY: "dict[str, tuple[Callable[[Union[str, Path]], pd.DataFrame], Callable
     "npsp": (read_npsp_opportunities, npsp_opportunities_to_features),
     "bloomerang": (read_bloomerang_transactions, bloomerang_transactions_to_features),
     "donorperfect": (read_donorperfect_gifts, donorperfect_gifts_to_features),
+    "ellucian_advance": (
+        read_ellucian_advance_gifts,
+        ellucian_advance_gifts_to_features,
+    ),
 }
 
 
@@ -60,10 +69,10 @@ def read_gifts(
 ) -> pd.DataFrame:
     """Read (if given a path) and aggregate a CRM gift export in one call.
 
-    Looks ``source`` up in a small preset registry mapping each of
-    ``"civicrm"``, ``"raisers_edge"`` and ``"npsp"`` to that CRM's
-    ``read_<source>_...`` loader and ``<source>_..._to_features`` aggregator,
-    then runs the pair. ``read_gifts("gifts.csv", source="npsp")`` is
+    Looks ``source`` up in a small preset registry mapping each supported CRM
+    to that source's ``read_<source>_...`` loader and
+    ``<source>_..._to_features`` aggregator, then runs the pair.
+    ``read_gifts("gifts.csv", source="npsp")`` is
     equivalent to
     ``npsp_opportunities_to_features(read_npsp_opportunities("gifts.csv"))``.
 
@@ -81,7 +90,8 @@ def read_gifts(
         ``"civicrm"``, ``exclude_gift_types=`` for ``"raisers_edge"``,
         ``include_stages=`` for ``"npsp"``, ``exclude_entry_types=`` for
         ``"bloomerang"``, ``exclude_record_types=`` for ``"donorperfect"``,
-        or the ``reference_date=`` every preset accepts.
+        ``exclude_transaction_types=`` for ``"ellucian_advance"``, or the
+        ``reference_date=`` every preset accepts.
 
     Returns
     -------

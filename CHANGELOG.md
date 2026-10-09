@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `ellucian_advance_gifts_to_features` and `read_ellucian_advance_gifts`
+  provide an Ellucian CRM Advance transaction-export preset, registered in
+  `read_gifts` and the `features --source` CLI dispatch.
 - Test coverage now constructs `RFMTransformer(include_tenure=True)`, asserting
   that the optional `tenure` column is emitted, remains at least as large as
   `recency`, and matches `get_feature_names_out`; the default path is pinned to

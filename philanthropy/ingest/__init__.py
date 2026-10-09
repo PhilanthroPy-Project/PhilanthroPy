@@ -34,6 +34,11 @@ records and split-gift Main totals (``record_type`` ``P`` / ``M``) first so
 a pledged or split dollar is not counted both as the promise/total and as
 the payments/splits against it.
 
+Ellucian CRM Advance: ``read_ellucian_advance_gifts`` loads an Advance
+transaction export CSV; ``ellucian_advance_gifts_to_features`` aggregates it,
+dropping pledge commitments first so a promised dollar is not counted both as
+the promise and as the payments against it.
+
 ``map_columns`` renames a user-supplied export's headers to the canonical
 names a bridge above expects, raising one error listing every column still
 missing after the rename.
@@ -43,9 +48,8 @@ missing after the rename.
 per-type engagement features, generalising the pattern above to an
 open-ended set of activity types discovered from the data itself.
 
-``read_gifts(path_or_df, source=...)`` looks up the CiviCRM, Raiser's Edge or
-NPSP reader-and-aggregator pair by name, for a caller working with more than
-one CRM export format.
+``read_gifts(path_or_df, source=...)`` looks up a CRM reader-and-aggregator
+pair by name, for a caller working with more than one gift export format.
 
 ``build_leadership_snapshots`` builds a per-donor, per-fiscal-year training
 table for an upgrade model: one row per (donor, fiscal year T) for every
@@ -75,6 +79,11 @@ from ._donorperfect import (
     donorperfect_gifts_to_features,
     read_donorperfect_gifts,
 )
+from ._ellucian_advance import (
+    DEFAULT_EXCLUDED_ADVANCE_TRANSACTION_TYPES,
+    ellucian_advance_gifts_to_features,
+    read_ellucian_advance_gifts,
+)
 from ._map_columns import map_columns
 from ._npsp import (
     DEFAULT_INCLUDED_STAGES,
@@ -91,6 +100,7 @@ from ._upgrade_snapshots import build_leadership_snapshots
 from ._snapshots import build_snapshots
 
 __all__ = [
+    "DEFAULT_EXCLUDED_ADVANCE_TRANSACTION_TYPES",
     "DEFAULT_EXCLUDED_ENTRY_TYPES",
     "DEFAULT_EXCLUDED_GIFT_TYPES",
     "DEFAULT_EXCLUDED_RECORD_TYPES",
@@ -103,6 +113,7 @@ __all__ = [
     "civicrm_contributions_to_features",
     "constituent_events_to_features",
     "donorperfect_gifts_to_features",
+    "ellucian_advance_gifts_to_features",
     "map_columns",
     "npsp_opportunities_to_features",
     "raisers_edge_gifts_to_features",
@@ -110,6 +121,7 @@ __all__ = [
     "read_civicrm_contributions",
     "read_constituent_events",
     "read_donorperfect_gifts",
+    "read_ellucian_advance_gifts",
     "read_gifts",
     "read_npsp_opportunities",
     "read_raisers_edge_gifts",

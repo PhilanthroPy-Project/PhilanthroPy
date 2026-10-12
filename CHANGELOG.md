@@ -5,6 +5,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-12
+
+### Breaking
+- Python 3.10 is now the minimum supported version (`requires-python =
+  ">=3.10"`). Python 3.9 reached end of life in October 2025, and recent
+  scikit-learn and NumPy releases no longer support it. Installs on 3.9 keep
+  resolving to the last release that allowed it. CI drops its 3.9 test leg,
+  and the dependency-floors job now runs on 3.10.
+- Removed `ShareOfWalletScorer.get_legacy_feature_names_out()`, deprecated
+  since 0.7.1. `get_feature_names_out()` names column 0
+  `capacity_utilisation_ratio`; the values and column order are unchanged, so
+  only code that spelled the old `sow_score` name needs to change.
+
 ### Added
 - Test coverage now constructs `RFMTransformer(include_tenure=True)`, asserting
   that the optional `tenure` column is emitted, remains at least as large as
@@ -101,142 +114,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   revenue against mailing everyone, and a paired bootstrap range on the
   difference. Generated from `results.json` and covered by the drift test.
 
-### Changed
-- Python 3.10 is now the minimum supported version (`requires-python =
-  ">=3.10"`). Python 3.9 reached end of life in October 2025, and recent
-  scikit-learn and NumPy releases no longer support it. Installs on 3.9 keep
-  resolving to the last release that allowed it. CI drops its 3.9 test leg,
-  and the dependency-floors job now runs on 3.10.
-- `tests/test_score_upgrade_prospects.py` shares one module-scoped default
-  `score_leadership_prospects` run across the 16 tests that only read its
-  output, instead of repeating the same ~4s call in each. The file runs in
-  about 88s instead of 151s locally; no assertion changed.
-- The pre-push hook (`scripts/install_hooks.sh`) now runs only the test
-  collection check and flake8, which take seconds, instead of the full suite.
-  CI already runs the full suite on every push to a PR. Contributors run
-  `make ci` once before opening the PR rather than before every push; rerun
-  `sh scripts/install_hooks.sh` to pick up the new hook.
-- CI measures coverage on one test leg (Ubuntu, Python 3.13) instead of all
-  six. The other legs run the same tests without tracing; on the older
-  Pythons tracing roughly doubled the suite's time. Both coverage floors
-  are unchanged.
-- KDD Cup 1998 feature checks, recorded with no published number moving.
-  On the 15% validation fold (paired bootstrap, seed 42), adding the 12
-  donor-table columns and three as-of mailing features (`promos_received`,
-  `response_rate`, `months_since_last_promo`) to the response models did
-  not lift top-10%: `DonorPropensityModel` 9.36 to 9.64 [-0.91, +1.47],
-  `MajorGiftClassifier` 9.71 to 9.29 [-1.82, +0.77], so both keep the four
-  RFM columns (cup98VAL, looked at during exploration, showed
-  `DonorPropensityModel` +0.74 [+0.28, +1.12]; validation decides). The
-  same mailing features in the who-to-mail response model lowered
-  validation net revenue on all five seeds. Isotonic calibration of
-  `DonorPropensityModel` is not recommended (docstring note). KDD98 lapse
-  stays on its promotion panel: only 242 donors gave in the last history
-  promotion against 4,843 to the 97NK mailing, so the shared builder's
-  "gave in T" population is not real there; the parity test's skip reason
-  says so.
-- Results, ask: the page is retitled "What will this donor give next?" and
-  opens with the bottom line and the `suggest_ask` call, since a suggested
-  ask is a policy choice built on that forecast. A new row on every ask
-  bench reports the share of next-gift dollars from the top 10% of donors
-  ranked by the model and by the rule: about the same on KDD Cup 1998,
-  DonorsChoose and Karlan and List, and slightly ahead for the model on PSID
-  in every test wave (43 vs 42 of every $100). The ask bottom line is
-  unchanged: use the simple rule.
-- `MajorGiftClassifier` class weights for the upgrade model, checked on the
-  PSID wave 2013 and DonorsChoose FY2014 validation folds (five seeds) and
-  not adopted: `"balanced"` lowered DonorsChoose top-1% from 22.9 to 21.8
-  of 100, and `{0: 1, 1: 5}` lowered DonorsChoose top-10% from 5.9 to 5.8.
-  `score_leadership_prospects` keeps the unweighted default.
-- Results, lapse: the DonorsChoose and PSID lapse benchmarks now build their
-  rows with `build_snapshots` / `period_snapshots`, so both feed
-  `LapsePredictor` the same shared gift columns (a new parity test checks
-  this), and both ask the question only of donors with at least two years
-  (PSID: waves) of giving, the donors a retention program can act on.
-  DonorsChoose: base lapse rate 84 to 64 of 100; top-10% lapse hit rate
-  81 vs 81 for the rule (was 88 vs 90), so its index cell now shows the
-  lapse read, "about the same", instead of the retention read; the
-  retention read still beats the rule, 75 vs 68 (was 50 vs 45). PSID: base
-  rate 26 to 23; top-10% 55 vs 47 (was 59 vs 54), still beats the rule.
-  The lapse bottom line is unchanged: use the model. The how-to-read worked
-  example uses the new DonorsChoose retention numbers.
-- Results: every verdict now comes from the data instead of a fixed 15%
-  margin. The model beats the rule only when the paired model-minus-rule gap
-  stays on the model's side across bootstrap redraws of the same test donors
-  (one split) or in every seed and test year (walk-forward), loses when it
-  stays on the rule's side, and is "about the same" otherwise. A single split
-  with no bootstrap interval gets no verdict. The index table is generated
-  from `results.json`, drops the sample-data column, and ends each row with
-  one of six bottom lines by a fixed rule: "Use the model" needs wins from two
-  independent sources (two organisations, or one file in every one of several
-  test years) and no counted loss, and wins from one organisation in single
-  splits read "Use the model (tested on one organisation so far)", kept apart
-  from "Use the model for your top slice only"; KDD Cup 1998 and cup98VAL
-  count as one source, the KDD98 $50 upgrade proxy is shown but not counted,
-  and sample data is a code check only. The table also reports the
-  who-keeps-giving list with its lift over random where more than 80 in 100
-  donors lapse. The scoreboard plots each real-file result as a multiple of
-  the rule with its range, and a drift test ties each hand-written number on
-  the Results pages to its `results.json` key and fails when one drifts. The
-  PSID lapse comparison adds "this-wave total (negated)" as a third simple
-  rule.
-- `PlannedGivingIntentScorer` now boosts with `HistGradientBoostingClassifier`
-  (`max_iter=n_estimators`, `max_depth=3`, the old backend's depth) and
-  accepts missing values, so blank age or wealth-screening columns need no
-  imputation. On the sample-data response stand-in (5 seeds) the old
-  backend scored mean ROC-AUC 0.699 and top-10% 75 of 100; the new one
-  0.700 and 76. HGB at its default depth scored 0.692 and 73, so the depth
-  is pinned. Two configurations were compared.
-- `LABEL_FLOORS` re-measured with the top-10% hit rate next to ROC-AUC, on
-  validation folds outside every published test fold (the lapse floor was
-  first read on DonorsChoose FY2017, which is one of the Lapse page's test
-  years). Both floors stand. Lapse, PSID wave 2013: from 100 lapsed
-  households every draw beat the best rule on both measures. On
-  DonorsChoose FY2014 the model needs 200 retained donors to clear the rule
-  on ROC-AUC every time and only ties it at the top 10% at any count, as the
-  Lapse page says. Major gift, KDD Cup 1998 validation fold: at 800
-  positives `DonorPropensityModel` beat the rule in 10 of 10 draws on both
-  measures and `MajorGiftClassifier` in 10 of 10 on ROC-AUC and 9 of 10 at
-  the top 10%. On PSID's real $1,000 upgrade label (validate wave 2013),
-  `MajorGiftClassifier` beat the rule at the top 10% in every draw from 800
-  positives (39 vs 35 of 100) and in 6 of 10 at 400.
-
-### Fixed
-- `scripts/install_hooks.sh` works from a git worktree. It wrote to
-  `$(git rev-parse --git-dir)/hooks`, which in a worktree is a per-worktree
-  directory with no `hooks/` folder, so the install failed. It now uses
-  `git rev-parse --git-path hooks`, which resolves to the shared hooks
-  directory and honours `core.hooksPath`.
-- `FiscalYearGroupedSplitter.get_n_splits` no longer counts a fold that
-  `split` skips for having no training rows before its `gap_years` cutoff
-  (possible with fractional fiscal years). The two disagreed, which made
-  `GridSearchCV` reject the splitter.
-- `check_label_floor` raises a `ValueError` on missing (NaN or None) labels
-  instead of counting them as a class, which let a file of non-lapses and
-  blank outcomes pass the lapse floor with zero lapses.
-
-### Removed
-- `scripts/issue-drafts/_DISCUSSION_who_is_using_this.md`: the draft was
-  posted as Discussion #158 on 2026-09-05, and its "zero dependents" and
-  "zero usage" lines are now out of date. The Discussion itself is the record.
-
-### Documentation
-- Results: a "How to read these pages" page (the simple rule per question,
-  "random", list lengths with a 10,000-donor worked example from the
-  DonorsChoose retention read, "about the same", and the five bottom lines)
-  and a "The datasets behind these pages" page with one card per file (what it
-  is, who gave to whom and when, how big, what it can and cannot test, terms),
-  including the Karlan and List experiment that is on hand but not yet used.
-- `MajorGiftClassifier` docstring: states the calibration method (sigmoid,
-  5 folds) and that boosting already stops early above 10,000 rows, and
-  records two tuning checks on a KDD Cup 1998 validation fold (five seeds):
-  `learning_rate=0.05, max_iter=300` scored the same as the defaults, and the
-  textbook RFM monotonic constraint lowered ROC-AUC (0.601 to 0.595). No
-  default changed. A `DonorPropensityModel` leaf-fraction check on the same
-  fold (0.01, 0.02, 0.05) also stayed inside the 0.008 default's seed range,
-  so that default stays too.
-
-### Added
 - Results pages now show PSID (Panel Study of Income Dynamics) household
   survey results for leadership upgrade, lapse (both the lapse read and the
   "who gives again" retention read) and suggested ask, with a chart, verdict
@@ -317,61 +194,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   DonorsChoose Donations file has no wealth, demographic, or mailing-history
   columns at all).
 
-### Fixed
-- `scripts/benchmark_models_vs_baselines.py`'s synthetic `$1K upgrade` bench
-  (`bench_upgrade`) trained `MajorGiftClassifier` on every numeric snapshot
-  column including the raw `fiscal_year` label, unlike the KDD98 upgrade
-  bench and `score_leadership_prospects`, both of which already drop it. The
-  model could partly key on which split a row came from rather than who
-  upgrades. `fiscal_year` is now excluded there too. Regenerated
-  `docs/assets/results/results.json` and the upgrade results page: the
-  synthetic $1K upgrade top-10% hit rate moves from 24.9% to 21.6% model
-  (rule stays 17.7%, random 12.5%); still a win, just a smaller one. The
-  KDD98 upgrade numbers are unchanged, since that bench already excluded
-  `fiscal_year`.
-- Results-page charts (`docs/results/*.md`, the homepage, Start Here) were
-  baked as light-background PNGs only, so on the site's default dark theme
-  each one rendered as a bright rectangle. `scripts/make_results_pages.py`
-  now renders a matching dark variant of every chart, and each page embeds
-  both via Material's `#only-light`/`#only-dark` image switch. Also fixes a
-  reference-line label overlapping the first bar on two charts, and widens
-  the docs layout's content column on pages with both a nav and
-  table-of-contents sidebar (previously squeezed on wide screens).
-- `FiscalYearTransformer` and `EncounterRecencyTransformer` labelled every
-  January-start fiscal year one year ahead of the calendar year (e.g. June
-  2024 came out as FY2025 instead of FY2024). Every other start month was
-  already correct. **Behaviour change** for `fiscal_year_start=1` users: the
-  fiscal year now equals the calendar year, matching the class docs. The
-  same off-by-one existed in `score_leadership_prospects`'s current-fiscal-year
-  calculation and in `build_leadership_snapshots`'s `_fy_end` cutoff; both now
-  share the corrected, vectorised `philanthropy.utils._validation.
-  fiscal_year_and_quarter`/`fiscal_year_for` helpers instead of duplicating
-  the formula (and a per-row `.apply`) in four places.
-- `UpliftTLearner.fit` now rejects a non-``{0, 1}`` `y` instead of silently
-  mis-scoring: `_prob_give` resolves the positive class as the literal
-  integer `1`, so a string-labelled ("yes"/"no") arm that saw only one class
-  during fit produced a sign-flipped uplift score with no error.
-- `WealthScreeningImputerKNN(strategy="knn")` filled every column via
-  `KNNImputer.transform`, not just the columns in `wealth_cols`/
-  `imputed_cols_`, contradicting the documented "subset of columns to
-  impute". It still fits `KNNImputer` on the whole matrix (neighbour
-  distance benefits from every column), but now only writes back the
-  columns it is contracted to impute.
-- `GratefulPatientFeaturizer` counted a missing `service_line` value as a
-  distinct line: `.astype(str)` turned `NaN`/`None` into the literal string
-  `"nan"`, which could be counted in `distinct_service_lines` or win
-  `primary_service_line`. Missing values are now excluded before counting.
-- `FiscalYearGroupedSplitter` counted a `NaN` fiscal year as one more
-  distinct year in `get_n_splits`, while `split` silently produced one fewer
-  fold (every comparison against `NaN` is `False`, so those rows never
-  landed in a train or test fold). `get_n_splits` and `split` now agree, and
-  a `UserWarning` names how many rows were excluded.
-- `gift_concentration_gini`/`top_donor_share` returned `NaN` (with a
-  `RuntimeWarning`) for an infinite gift amount, despite `_clean_nonneg_
-  amounts` documenting that it keeps only finite values. Both now raise
-  `ValueError`, matching the existing negative-amount check.
-
-### Added
 - `philanthropy.datasets.load_psid_philanthropy`: reads a user-downloaded
   PSID (Panel Study of Income Dynamics) individual-level cross-year extract
   into a long household giving/volunteering table (`household_key`, `year`,
@@ -405,30 +227,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   with `pymdownx.snippets`. Raw column names, importance intervals and
   method details stay in a collapsed "For analysts" note.
 
-### Changed
-- Renamed the unreleased upgrade model before its first release, so the name
-  says what it predicts (a mid-level donor reaching the leadership-giving
-  level, $1,000 by default): `score_leadership_prospects` is now
-  `score_leadership_prospects`, `build_leadership_snapshots` is now
-  `build_leadership_snapshots`, and `philanthropy train --task upgrade` is now
-  `--task leadership`. The Results page moved from `results/upgrade/` to
-  `results/leadership/`; the old address keeps a stub linking to the new one.
-  No deprecation aliases, since none of these shipped in 0.8.0.
-- `scripts/benchmark_models_vs_baselines.py` now checks `GiftIntervalCalibrator`
-  coverage over 10 seeds at 80/90/95% requested levels instead of 5 seeds at
-  90% only. Attained coverage is 0.784/0.9045/0.9539, all within 2 points of
-  target, confirming the earlier single-seed 88% vs 90% reading was noise.
-- `scripts/benchmark_models_vs_baselines.py` adds a second synthetic column
-  (`synthetic_panel_full_features`) that re-runs `DonorPropensityModel`,
-  `MajorGiftClassifier` and `LapsePredictor` on the full 8 as-of columns
-  instead of the 3 the models were fed while the baseline rules already saw
-  5+. `LapsePredictor` moves from losing everywhere (AUC 0.638) to beating
-  the rule on synthetic (AUC 0.680, top-10% 94.4% vs 83.1%); response models
-  move only slightly. The same feature set hurts lapse on KDD98 (below
-  chance, AUC 0.488 in an earlier probe), so this is reported next to the
-  3-feature row, not adopted as a default.
-
-### Added
 - `AskAmountRecommender(target_mode="relative")`: fits
   `log(y / max(last_gift, avg_gift))` and multiplies the prediction back out,
   via new `last_gift_idx`/`avg_gift_idx` parameters (E.12d). Evaluated under
@@ -611,6 +409,122 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   and registered in the `read_gifts` preset registry.
 
 ### Changed
+- `tests/test_score_upgrade_prospects.py` shares one module-scoped default
+  `score_leadership_prospects` run across the 16 tests that only read its
+  output, instead of repeating the same ~4s call in each. The file runs in
+  about 88s instead of 151s locally; no assertion changed.
+- The pre-push hook (`scripts/install_hooks.sh`) now runs only the test
+  collection check and flake8, which take seconds, instead of the full suite.
+  CI already runs the full suite on every push to a PR. Contributors run
+  `make ci` once before opening the PR rather than before every push; rerun
+  `sh scripts/install_hooks.sh` to pick up the new hook.
+- CI measures coverage on one test leg (Ubuntu, Python 3.13) instead of all
+  six. The other legs run the same tests without tracing; on the older
+  Pythons tracing roughly doubled the suite's time. Both coverage floors
+  are unchanged.
+- KDD Cup 1998 feature checks, recorded with no published number moving.
+  On the 15% validation fold (paired bootstrap, seed 42), adding the 12
+  donor-table columns and three as-of mailing features (`promos_received`,
+  `response_rate`, `months_since_last_promo`) to the response models did
+  not lift top-10%: `DonorPropensityModel` 9.36 to 9.64 [-0.91, +1.47],
+  `MajorGiftClassifier` 9.71 to 9.29 [-1.82, +0.77], so both keep the four
+  RFM columns (cup98VAL, looked at during exploration, showed
+  `DonorPropensityModel` +0.74 [+0.28, +1.12]; validation decides). The
+  same mailing features in the who-to-mail response model lowered
+  validation net revenue on all five seeds. Isotonic calibration of
+  `DonorPropensityModel` is not recommended (docstring note). KDD98 lapse
+  stays on its promotion panel: only 242 donors gave in the last history
+  promotion against 4,843 to the 97NK mailing, so the shared builder's
+  "gave in T" population is not real there; the parity test's skip reason
+  says so.
+- Results, ask: the page is retitled "What will this donor give next?" and
+  opens with the bottom line and the `suggest_ask` call, since a suggested
+  ask is a policy choice built on that forecast. A new row on every ask
+  bench reports the share of next-gift dollars from the top 10% of donors
+  ranked by the model and by the rule: about the same on KDD Cup 1998,
+  DonorsChoose and Karlan and List, and slightly ahead for the model on PSID
+  in every test wave (43 vs 42 of every $100). The ask bottom line is
+  unchanged: use the simple rule.
+- `MajorGiftClassifier` class weights for the upgrade model, checked on the
+  PSID wave 2013 and DonorsChoose FY2014 validation folds (five seeds) and
+  not adopted: `"balanced"` lowered DonorsChoose top-1% from 22.9 to 21.8
+  of 100, and `{0: 1, 1: 5}` lowered DonorsChoose top-10% from 5.9 to 5.8.
+  `score_leadership_prospects` keeps the unweighted default.
+- Results, lapse: the DonorsChoose and PSID lapse benchmarks now build their
+  rows with `build_snapshots` / `period_snapshots`, so both feed
+  `LapsePredictor` the same shared gift columns (a new parity test checks
+  this), and both ask the question only of donors with at least two years
+  (PSID: waves) of giving, the donors a retention program can act on.
+  DonorsChoose: base lapse rate 84 to 64 of 100; top-10% lapse hit rate
+  81 vs 81 for the rule (was 88 vs 90), so its index cell now shows the
+  lapse read, "about the same", instead of the retention read; the
+  retention read still beats the rule, 75 vs 68 (was 50 vs 45). PSID: base
+  rate 26 to 23; top-10% 55 vs 47 (was 59 vs 54), still beats the rule.
+  The lapse bottom line is unchanged: use the model. The how-to-read worked
+  example uses the new DonorsChoose retention numbers.
+- Results: every verdict now comes from the data instead of a fixed 15%
+  margin. The model beats the rule only when the paired model-minus-rule gap
+  stays on the model's side across bootstrap redraws of the same test donors
+  (one split) or in every seed and test year (walk-forward), loses when it
+  stays on the rule's side, and is "about the same" otherwise. A single split
+  with no bootstrap interval gets no verdict. The index table is generated
+  from `results.json`, drops the sample-data column, and ends each row with
+  one of six bottom lines by a fixed rule: "Use the model" needs wins from two
+  independent sources (two organisations, or one file in every one of several
+  test years) and no counted loss, and wins from one organisation in single
+  splits read "Use the model (tested on one organisation so far)", kept apart
+  from "Use the model for your top slice only"; KDD Cup 1998 and cup98VAL
+  count as one source, the KDD98 $50 upgrade proxy is shown but not counted,
+  and sample data is a code check only. The table also reports the
+  who-keeps-giving list with its lift over random where more than 80 in 100
+  donors lapse. The scoreboard plots each real-file result as a multiple of
+  the rule with its range, and a drift test ties each hand-written number on
+  the Results pages to its `results.json` key and fails when one drifts. The
+  PSID lapse comparison adds "this-wave total (negated)" as a third simple
+  rule.
+- `PlannedGivingIntentScorer` now boosts with `HistGradientBoostingClassifier`
+  (`max_iter=n_estimators`, `max_depth=3`, the old backend's depth) and
+  accepts missing values, so blank age or wealth-screening columns need no
+  imputation. On the sample-data response stand-in (5 seeds) the old
+  backend scored mean ROC-AUC 0.699 and top-10% 75 of 100; the new one
+  0.700 and 76. HGB at its default depth scored 0.692 and 73, so the depth
+  is pinned. Two configurations were compared.
+- `LABEL_FLOORS` re-measured with the top-10% hit rate next to ROC-AUC, on
+  validation folds outside every published test fold (the lapse floor was
+  first read on DonorsChoose FY2017, which is one of the Lapse page's test
+  years). Both floors stand. Lapse, PSID wave 2013: from 100 lapsed
+  households every draw beat the best rule on both measures. On
+  DonorsChoose FY2014 the model needs 200 retained donors to clear the rule
+  on ROC-AUC every time and only ties it at the top 10% at any count, as the
+  Lapse page says. Major gift, KDD Cup 1998 validation fold: at 800
+  positives `DonorPropensityModel` beat the rule in 10 of 10 draws on both
+  measures and `MajorGiftClassifier` in 10 of 10 on ROC-AUC and 9 of 10 at
+  the top 10%. On PSID's real $1,000 upgrade label (validate wave 2013),
+  `MajorGiftClassifier` beat the rule at the top 10% in every draw from 800
+  positives (39 vs 35 of 100) and in 6 of 10 at 400.
+
+- Renamed the unreleased upgrade model before its first release, so the name
+  says what it predicts (a mid-level donor reaching the leadership-giving
+  level, $1,000 by default): `score_leadership_prospects` is now
+  `score_leadership_prospects`, `build_leadership_snapshots` is now
+  `build_leadership_snapshots`, and `philanthropy train --task upgrade` is now
+  `--task leadership`. The Results page moved from `results/upgrade/` to
+  `results/leadership/`; the old address keeps a stub linking to the new one.
+  No deprecation aliases, since none of these shipped in 0.8.0.
+- `scripts/benchmark_models_vs_baselines.py` now checks `GiftIntervalCalibrator`
+  coverage over 10 seeds at 80/90/95% requested levels instead of 5 seeds at
+  90% only. Attained coverage is 0.784/0.9045/0.9539, all within 2 points of
+  target, confirming the earlier single-seed 88% vs 90% reading was noise.
+- `scripts/benchmark_models_vs_baselines.py` adds a second synthetic column
+  (`synthetic_panel_full_features`) that re-runs `DonorPropensityModel`,
+  `MajorGiftClassifier` and `LapsePredictor` on the full 8 as-of columns
+  instead of the 3 the models were fed while the baseline rules already saw
+  5+. `LapsePredictor` moves from losing everywhere (AUC 0.638) to beating
+  the rule on synthetic (AUC 0.680, top-10% 94.4% vs 83.1%); response models
+  move only slightly. The same feature set hurts lapse on KDD98 (below
+  chance, AUC 0.488 in an earlier probe), so this is reported next to the
+  3-feature row, not adopted as a default.
+
 - Logo: the heart-and-arrow mark is replaced by a phi (φ) with a dot above
   it. φ is the "phil" (love) in philanthropy and also the golden ratio; the
   dot is the gift, or the score, rising out of it. Same three places as
@@ -677,7 +591,78 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   to get the old behaviour. The model now also accepts missing values
   (`NaN`) directly, as `RandomForestClassifier` has since scikit-learn 1.4.
 
+### Removed
+- `scripts/issue-drafts/_DISCUSSION_who_is_using_this.md`: the draft was
+  posted as Discussion #158 on 2026-09-05, and its "zero dependents" and
+  "zero usage" lines are now out of date. The Discussion itself is the record.
+
 ### Fixed
+- `scripts/install_hooks.sh` works from a git worktree. It wrote to
+  `$(git rev-parse --git-dir)/hooks`, which in a worktree is a per-worktree
+  directory with no `hooks/` folder, so the install failed. It now uses
+  `git rev-parse --git-path hooks`, which resolves to the shared hooks
+  directory and honours `core.hooksPath`.
+- `FiscalYearGroupedSplitter.get_n_splits` no longer counts a fold that
+  `split` skips for having no training rows before its `gap_years` cutoff
+  (possible with fractional fiscal years). The two disagreed, which made
+  `GridSearchCV` reject the splitter.
+- `check_label_floor` raises a `ValueError` on missing (NaN or None) labels
+  instead of counting them as a class, which let a file of non-lapses and
+  blank outcomes pass the lapse floor with zero lapses.
+
+- `scripts/benchmark_models_vs_baselines.py`'s synthetic `$1K upgrade` bench
+  (`bench_upgrade`) trained `MajorGiftClassifier` on every numeric snapshot
+  column including the raw `fiscal_year` label, unlike the KDD98 upgrade
+  bench and `score_leadership_prospects`, both of which already drop it. The
+  model could partly key on which split a row came from rather than who
+  upgrades. `fiscal_year` is now excluded there too. Regenerated
+  `docs/assets/results/results.json` and the upgrade results page: the
+  synthetic $1K upgrade top-10% hit rate moves from 24.9% to 21.6% model
+  (rule stays 17.7%, random 12.5%); still a win, just a smaller one. The
+  KDD98 upgrade numbers are unchanged, since that bench already excluded
+  `fiscal_year`.
+- Results-page charts (`docs/results/*.md`, the homepage, Start Here) were
+  baked as light-background PNGs only, so on the site's default dark theme
+  each one rendered as a bright rectangle. `scripts/make_results_pages.py`
+  now renders a matching dark variant of every chart, and each page embeds
+  both via Material's `#only-light`/`#only-dark` image switch. Also fixes a
+  reference-line label overlapping the first bar on two charts, and widens
+  the docs layout's content column on pages with both a nav and
+  table-of-contents sidebar (previously squeezed on wide screens).
+- `FiscalYearTransformer` and `EncounterRecencyTransformer` labelled every
+  January-start fiscal year one year ahead of the calendar year (e.g. June
+  2024 came out as FY2025 instead of FY2024). Every other start month was
+  already correct. **Behaviour change** for `fiscal_year_start=1` users: the
+  fiscal year now equals the calendar year, matching the class docs. The
+  same off-by-one existed in `score_leadership_prospects`'s current-fiscal-year
+  calculation and in `build_leadership_snapshots`'s `_fy_end` cutoff; both now
+  share the corrected, vectorised `philanthropy.utils._validation.
+  fiscal_year_and_quarter`/`fiscal_year_for` helpers instead of duplicating
+  the formula (and a per-row `.apply`) in four places.
+- `UpliftTLearner.fit` now rejects a non-``{0, 1}`` `y` instead of silently
+  mis-scoring: `_prob_give` resolves the positive class as the literal
+  integer `1`, so a string-labelled ("yes"/"no") arm that saw only one class
+  during fit produced a sign-flipped uplift score with no error.
+- `WealthScreeningImputerKNN(strategy="knn")` filled every column via
+  `KNNImputer.transform`, not just the columns in `wealth_cols`/
+  `imputed_cols_`, contradicting the documented "subset of columns to
+  impute". It still fits `KNNImputer` on the whole matrix (neighbour
+  distance benefits from every column), but now only writes back the
+  columns it is contracted to impute.
+- `GratefulPatientFeaturizer` counted a missing `service_line` value as a
+  distinct line: `.astype(str)` turned `NaN`/`None` into the literal string
+  `"nan"`, which could be counted in `distinct_service_lines` or win
+  `primary_service_line`. Missing values are now excluded before counting.
+- `FiscalYearGroupedSplitter` counted a `NaN` fiscal year as one more
+  distinct year in `get_n_splits`, while `split` silently produced one fewer
+  fold (every comparison against `NaN` is `False`, so those rows never
+  landed in a train or test fold). `get_n_splits` and `split` now agree, and
+  a `UserWarning` names how many rows were excluded.
+- `gift_concentration_gini`/`top_donor_share` returned `NaN` (with a
+  `RuntimeWarning`) for an infinite gift amount, despite `_clean_nonneg_
+  amounts` documenting that it keeps only finite values. Both now raise
+  `ValueError`, matching the existing negative-amount check.
+
 - `scripts/benchmark_models_vs_baselines.py`: the KDD98 response rule "RFA_2
   frequency then last gift" mapped the string codes `"1"`, `"2"`, `"5"`, but
   `RFA_2F` loads as the integers 1 to 4, so every donor mapped to 0 and the
@@ -725,7 +710,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   invert the decision boundary) once `CalibratedClassifierCV` recalibrates
   probabilities from cross-validated folds.
 
-### Fixed
 - `philanthropy.ingest.map_columns` now raises a `ValueError` naming the
   colliding source columns when a mapping sends two different source columns
   to the same target name, instead of silently producing a duplicate-named
@@ -742,7 +726,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   with no calibration step and is measurably over-confident; the wording now
   matches the accurate note already on `predict_affinity_score`.
 
-### Fixed
 - `score_leadership_prospects` no longer crashes on a single-class historical
   target (no donor ever upgraded, or every one did) or on a training set too
   small for its internal 5-fold calibrated classifier; both now raise a
@@ -758,7 +741,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `average_precision`, and two named baselines ("gave >= X last FY" and
   "top N by FY total") with their own rates and lifts.
 
-### Fixed
 - `npsp_opportunities_to_features` now resolves the donor key explicitly
   when an export carries both `AccountId`/`Account Name` and `Primary
   Contact`: the Account always wins, per NPSP's default Household Account
@@ -775,7 +757,54 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   consistently to match the committed golden file
   (`docs/explanation/benchmark_results.txt`), and the footnote cites 1.8.0.
 
+- `activities_to_features`: `<type>_days_since_last` is now `NaN`, not 0, for
+  a donor with no activity of that type at all; 0 read as "did it today"
+  instead of "never". Counts and distinct still fill 0 for that case.
+- `activities_to_features` raised `TypeError` when `as_of` was tz-aware (e.g.
+  `pd.Timestamp("2024-12-31", tz="UTC")`); activity dates and `as_of` are now
+  both normalised to naive UTC before comparison.
+- `activities_to_features` stringified a float `contact_id` column (what
+  `pd.read_csv` produces once any id cell is blank) as `"123.0"`, which then
+  failed to join against the same donor's `"123"` from a column that never
+  had a blank. Integral floats are now normalised to their bare digits first.
+
+- `RFMTransformer` counted a gift with a NaN `gift_amount` toward `frequency`
+  while silently dropping it from `monetary`, so the two columns described
+  different sets of gifts. **Behaviour change:** a gift with no amount is now
+  excluded from `frequency` as well as from `monetary`, with a `UserWarning`
+  naming how many rows were dropped, so a donor's gift count can drop if some
+  of their gifts have no recorded amount.
+- `RFMTransformer.fit`/`transform` no longer pretend to accept a bare numpy
+  array: the documented `x0..xn` column-naming path was dead code, since
+  `_validate_input` always required `donor_id`/`gift_date`/`gift_amount` by
+  name and so always raised on array input anyway. A numpy array now gets a
+  clear `TypeError` up front instead of failing deeper in `_cut`/
+  `_validate_input`. The docstring also now says outputs are raw R/F/M
+  values, not scores or frozen bins.
+- `LapsePredictor.classes_` is now built with `sklearn.utils.multiclass.
+  unique_labels`, matching the other classifiers, instead of a bare
+  `np.unique(y)`.
+- `FinancialForecastModel`'s module docstring now names its actual backend
+  (`LinearRegression` + `MLPRegressor` on the residuals + a hand-rolled
+  AR(p) roll-forward) up front, alongside the "Hybrid LSTM-ARIMA" title,
+  instead of only in the class docstring further down.
+
 ### Documentation
+- Results: a "How to read these pages" page (the simple rule per question,
+  "random", list lengths with a 10,000-donor worked example from the
+  DonorsChoose retention read, "about the same", and the five bottom lines)
+  and a "The datasets behind these pages" page with one card per file (what it
+  is, who gave to whom and when, how big, what it can and cannot test, terms),
+  including the Karlan and List experiment that is on hand but not yet used.
+- `MajorGiftClassifier` docstring: states the calibration method (sigmoid,
+  5 folds) and that boosting already stops early above 10,000 rows, and
+  records two tuning checks on a KDD Cup 1998 validation fold (five seeds):
+  `learning_rate=0.05, max_iter=300` scored the same as the defaults, and the
+  textbook RFM monotonic constraint lowered ROC-AUC (0.601 to 0.595). No
+  default changed. A `DonorPropensityModel` leaf-fraction check on the same
+  fold (0.01, 0.02, 0.05) also stayed inside the 0.008 default's seed range,
+  so that default stays too.
+
 - README and the docs homepage now cover the Raiser's Edge and NPSP gift
   bridges, `read_gifts` as the one-call entry point over all three CRM
   presets, the `map_columns` / `activities_to_features` multi-file no-code
@@ -861,39 +890,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `pymdownx.tabbed` "===" tab is indented same as the rest of that tab's
   content; this doc is the first one to put a runnable example inside a
   tab.
-### Fixed
-- `activities_to_features`: `<type>_days_since_last` is now `NaN`, not 0, for
-  a donor with no activity of that type at all; 0 read as "did it today"
-  instead of "never". Counts and distinct still fill 0 for that case.
-- `activities_to_features` raised `TypeError` when `as_of` was tz-aware (e.g.
-  `pd.Timestamp("2024-12-31", tz="UTC")`); activity dates and `as_of` are now
-  both normalised to naive UTC before comparison.
-- `activities_to_features` stringified a float `contact_id` column (what
-  `pd.read_csv` produces once any id cell is blank) as `"123.0"`, which then
-  failed to join against the same donor's `"123"` from a column that never
-  had a blank. Integral floats are now normalised to their bare digits first.
-
-### Fixed
-- `RFMTransformer` counted a gift with a NaN `gift_amount` toward `frequency`
-  while silently dropping it from `monetary`, so the two columns described
-  different sets of gifts. **Behaviour change:** a gift with no amount is now
-  excluded from `frequency` as well as from `monetary`, with a `UserWarning`
-  naming how many rows were dropped, so a donor's gift count can drop if some
-  of their gifts have no recorded amount.
-- `RFMTransformer.fit`/`transform` no longer pretend to accept a bare numpy
-  array: the documented `x0..xn` column-naming path was dead code, since
-  `_validate_input` always required `donor_id`/`gift_date`/`gift_amount` by
-  name and so always raised on array input anyway. A numpy array now gets a
-  clear `TypeError` up front instead of failing deeper in `_cut`/
-  `_validate_input`. The docstring also now says outputs are raw R/F/M
-  values, not scores or frozen bins.
-- `LapsePredictor.classes_` is now built with `sklearn.utils.multiclass.
-  unique_labels`, matching the other classifiers, instead of a bare
-  `np.unique(y)`.
-- `FinancialForecastModel`'s module docstring now names its actual backend
-  (`LinearRegression` + `MLPRegressor` on the residuals + a hand-rolled
-  AR(p) roll-forward) up front, alongside the "Hybrid LSTM-ARIMA" title,
-  instead of only in the class docstring further down.
 
 ## [0.8.0] - 2026-09-24
 

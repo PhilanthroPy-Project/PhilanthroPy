@@ -18,13 +18,6 @@ from philanthropy.preprocessing import ShareOfWalletScorer
 # (id, removed_in, callable that should emit exactly one DeprecationWarning)
 DEPRECATIONS = [
     (
-        "ShareOfWalletScorer.get_legacy_feature_names_out",
-        "0.9.0",
-        lambda: ShareOfWalletScorer()
-        .fit(_two_group_X())
-        .get_legacy_feature_names_out(),
-    ),
-    (
         "preprocessing.SolicitationWindowTransformer",
         "1.0.0",
         # Attribute access, not instantiation: the alias resolves through the

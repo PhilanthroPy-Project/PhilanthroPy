@@ -108,7 +108,7 @@ Every domain method returns a number on its own scale. None of them are calibrat
 ## Deprecations
 
 !!! info "This page is built from `main`, which is ahead of the release"
-    `pip install philanthropy` currently gives you **0.8.0**. The tier tables
+    `pip install philanthropy` currently gives you **0.9.0**. The tier tables
     above describe the API as it stands on `main`; the deprecations below are
     live in the version you actually have installed.
 
@@ -178,19 +178,18 @@ both fixes. For a time-varying target such as "gave next year", where the same
 donor correctly appears in both folds, pass `drop_repeat_donors=False`, which
 gives exactly the 0.7.x behaviour.
 
-### Live in 0.7.1, removed in 0.9.0
+### Removed in 0.9.0
 
-| Deprecated | Use instead |
+If you are upgrading from 0.8.x, this went after two published releases of
+`DeprecationWarning`:
+
+| Removed | Use instead |
 |---|---|
-| `ShareOfWalletScorer` output name `sow_score` | `capacity_utilisation_ratio` |
+| `ShareOfWalletScorer.get_legacy_feature_names_out()` (the `sow_score` name) | `get_feature_names_out()`, which names column 0 `capacity_utilisation_ratio` |
 
-`ShareOfWalletScorer.transform` column 0 is now named
-`capacity_utilisation_ratio` in `get_feature_names_out()`: the formula is
-capacity ÷ clipped modelled wealth, which is capacity utilisation. It was never
-share of wallet; the docstring has said so since the class shipped, and the old
-name claimed a quantity the formula does not compute. The values, the column
-order, and the `capacity_tier` encoding are unchanged, so code that reads the
-column positionally needs nothing. Code that spells the name can call
-`get_legacy_feature_names_out()` for one published minor: it returns the old
-`["sow_score", "capacity_tier"]` spelling under a `DeprecationWarning` and is
-removed in 0.9.0.
+`ShareOfWalletScorer.transform` column 0 has been named
+`capacity_utilisation_ratio` since 0.7.1: the formula is capacity ÷ clipped
+modelled wealth, which is capacity utilisation, not share of wallet. The
+values, the column order, and the `capacity_tier` encoding are unchanged, so
+code that reads the column positionally needs nothing. Only code that spelled
+the old `sow_score` name has to change.

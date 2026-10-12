@@ -409,6 +409,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   and registered in the `read_gifts` preset registry.
 
 ### Changed
+- The docs workflow builds on Python 3.13 instead of 3.10. pymdown-extensions
+  12.2 changed `Highlight.__init__`, and the mkdocstrings release that follows
+  it (1.0.7) needs Python 3.11, so on 3.10 the build resolved to mkdocstrings
+  1.0.6 and failed with `Highlight.__init__() missing 1 required positional
+  argument: 'md'`. The library itself still supports 3.10.
 - `tests/test_score_upgrade_prospects.py` shares one module-scoped default
   `score_leadership_prospects` run across the 16 tests that only read its
   output, instead of repeating the same ~4s call in each. The file runs in

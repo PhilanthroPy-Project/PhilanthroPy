@@ -17,6 +17,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   (`check_label_floor`) or fewer than two labelled years all return the rule.
   Verdicts use the Results pages' words. Until now only
   `score_leadership_prospects` compared itself to a rule on the user's file.
+- `philanthropy check --task {upgrade,lapse,ask} --source ... --data ...`
+  runs `compare_to_rule` on a raw CRM gift export and prints the verdict, in
+  the Results pages' words, and which list to use (the model or the rule).
 
 ## [0.9.0] - 2026-10-12
 

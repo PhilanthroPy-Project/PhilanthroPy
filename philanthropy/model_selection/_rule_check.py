@@ -89,6 +89,29 @@ def _bootstrap_difference(
     return float(np.percentile(diffs, 2.5)), float(np.percentile(diffs, 97.5))
 
 
+def _verdict(
+    task: str, y_test: np.ndarray, model_score: np.ndarray, rule_score: np.ndarray,
+    n_bootstrap: int, random_state: int,
+) -> Dict[str, Any]:
+    """Model value, bootstrap interval on ``model - rule``, verdict and
+    method for one test fold. Only a whole interval on the model's side
+    picks the model; a tie goes to the rule."""
+    metric = _mae if task == "ask" else _top_rate
+    lo, hi = _bootstrap_difference(y_test, model_score, rule_score, metric, n_bootstrap, random_state)
+    model_wins = hi < 0 if task == "ask" else lo > 0
+    rule_wins = lo > 0 if task == "ask" else hi < 0
+    return {
+        "model_value": metric(y_test, model_score),
+        "difference_ci": (lo, hi),
+        "verdict": (
+            "Beats the rule" if model_wins
+            else "Loses to the rule" if rule_wins
+            else "About the same as the rule"
+        ),
+        "method": "model" if model_wins else "rule",
+    }
+
+
 def compare_to_rule(
     gifts: Union[Iterable[Mapping], pd.DataFrame],
     *,
@@ -249,17 +272,5 @@ def compare_to_rule(
         model_score = MajorGiftClassifier(random_state=random_state).fit(X_train, y_train).predict_proba(X_test)[:, 1]
     model_score = np.asarray(model_score, dtype="float64")
 
-    lo, hi = _bootstrap_difference(y_test, model_score, rules[best], metric, n_bootstrap, random_state)
-    model_wins = hi < 0 if task == "ask" else lo > 0
-    rule_wins = lo > 0 if task == "ask" else hi < 0
-    report.update({
-        "model_value": metric(y_test, model_score),
-        "difference_ci": (lo, hi),
-        "verdict": (
-            "Beats the rule" if model_wins
-            else "Loses to the rule" if rule_wins
-            else "About the same as the rule"
-        ),
-        "method": "model" if model_wins else "rule",
-    })
+    report.update(_verdict(task, y_test, model_score, rules[best], n_bootstrap, random_state))
     return report

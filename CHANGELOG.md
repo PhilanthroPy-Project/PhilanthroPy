@@ -8,7 +8,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Added
 - `philanthropy.model_selection.compare_to_rule(gifts, task=...)` checks, on
   the caller's own gift log, whether the model or the simple rule should rank
-  donors for upgrade, lapse, response or ask. It trains on every labelled
+  donors for upgrade, lapse or ask. It trains on every labelled
   fiscal year but the last, tests on the last complete one, and compares the
   model against the best of the same fixed rule sets the Results pages use
   (top-10% hit rate, or mean absolute error for ask), with a paired bootstrap

@@ -27,31 +27,16 @@ from philanthropy.utils._validation import fiscal_year_for, validate_fiscal_year
 
 __all__ = ["compare_to_rule"]
 
-TASKS = ("upgrade", "lapse", "response", "ask")
+TASKS = ("upgrade", "lapse", "ask")
 
 _KIND = {
-    "upgrade": "upgrade", "lapse": "lapse", "response": "response_next_year", "ask": "next_amount",
+    "upgrade": "upgrade", "lapse": "lapse", "ask": "next_amount",
 }
 # Lapse is asked about donors with at least two giving years, the donors a
 # retention program can act on, as on the Results pages.
-_MIN_YEARS_GIVEN = {"upgrade": 1, "lapse": 2, "response": 1, "ask": 1}
-_LABEL_FLOOR_TASK = {"upgrade": "major_gift", "lapse": "lapse", "response": "major_gift"}
+_MIN_YEARS_GIVEN = {"upgrade": 1, "lapse": 2, "ask": 1}
+_LABEL_FLOOR_TASK = {"upgrade": "major_gift", "lapse": "lapse"}
 _TOP_FRACTION = 0.10
-
-
-def _rfm_cell_score(recency: np.ndarray, frequency: np.ndarray, monetary: np.ndarray) -> np.ndarray:
-    """Recency + frequency + monetary percentile-rank sum, the segmentation
-    most CRMs implement natively. ``recency`` is time *since* the last gift
-    (lower is better)."""
-    def pct_rank(values: np.ndarray, ascending_is_better: bool) -> np.ndarray:
-        r = pd.Series(values).rank(pct=True, method="average")
-        return (r if ascending_is_better else 1.0 - r).to_numpy()
-
-    return (
-        pct_rank(-np.asarray(recency, dtype="float64"), True)
-        + pct_rank(np.asarray(frequency, dtype="float64"), True)
-        + pct_rank(np.asarray(monetary, dtype="float64"), True)
-    )
 
 
 # The rule sets, fixed here before any run (the same ones
@@ -70,15 +55,6 @@ def _rules(task: str, test: pd.DataFrame, y_train: np.ndarray) -> Dict[str, np.n
             "months since last gift": test["months_since_last_gift"].to_numpy(),
             "shortest giving streak": -test["consecutive_periods_given"].to_numpy(),
             "declining trend": -test["period_trend"].to_numpy(),
-        }
-    if task == "response":
-        return {
-            "lifetime monetary": test["lifetime_total"].to_numpy(),
-            "RFM cell score": _rfm_cell_score(
-                test["months_since_last_gift"].to_numpy(),
-                test["fiscal_years_given"].to_numpy(),
-                test["lifetime_total"].to_numpy(),
-            ),
         }
     last_total = test["period_total"].to_numpy()
     return {
@@ -113,23 +89,6 @@ def _bootstrap_difference(
     return float(np.percentile(diffs, 2.5)), float(np.percentile(diffs, 97.5))
 
 
-def _add_response_columns(
-    snap: pd.DataFrame, pivot_sum: pd.DataFrame
-) -> pd.DataFrame:
-    """Lifetime total and count of fiscal years given, as of each row's
-    period: the two inputs the response rules need that the snapshot
-    builder does not emit."""
-    years = list(range(int(pivot_sum.columns.min()), int(snap["period"].max()) + 1))
-    totals = pivot_sum.reindex(columns=years, fill_value=0.0).fillna(0.0)
-    cum_total = totals.cumsum(axis=1).stack()
-    cum_given = (totals > 0).cumsum(axis=1).stack().astype("float64")
-    key = pd.MultiIndex.from_arrays([snap.index, snap["period"].astype(int)])
-    snap = snap.copy()
-    snap["lifetime_total"] = cum_total.reindex(key).to_numpy()
-    snap["fiscal_years_given"] = cum_given.reindex(key).to_numpy()
-    return snap
-
-
 def compare_to_rule(
     gifts: Union[Iterable[Mapping], pd.DataFrame],
     *,
@@ -160,10 +119,10 @@ def compare_to_rule(
     ----------
     gifts : iterable of mapping, or DataFrame
         Gift-level rows with ``donor_id``, ``gift_date`` and ``gift_amount``.
-    task : {"upgrade", "lapse", "response", "ask"}
+    task : {"upgrade", "lapse", "ask"}
         Which question: will the donor reach ``threshold`` next year (from
-        inside ``band``), stop giving, give again at all, or how much will
-        they give next year given that they do.
+        inside ``band``), stop giving, or how much will they give next year
+        given that they do.
     as_of : str or Timestamp, optional
         Gifts after this date are ignored, and only fiscal years whose
         following year is complete by ``as_of`` can carry a label, so a
@@ -248,8 +207,6 @@ def compare_to_rule(
     if snap.empty or snap["period"].nunique() < 2:
         report["verdict"] = "can't test (fewer than two labelled fiscal years)"
         return report
-    if task == "response":
-        snap = _add_response_columns(snap, _prepare_gifts(df, fiscal_year_start)[1])
 
     test_fy = int(snap["period"].max())
     train, test = snap[snap["period"] < test_fy], snap[snap["period"] == test_fy]
@@ -279,7 +236,7 @@ def compare_to_rule(
     # Imported here: philanthropy.models already imports this subpackage
     # for FiscalYearGroupedSplitter, so a module-level import would cycle.
     from philanthropy.models import (
-        AskAmountRecommender, DonorPropensityModel, LapsePredictor, MajorGiftClassifier,
+        AskAmountRecommender, LapsePredictor, MajorGiftClassifier,
     )
 
     X_train = train[feature_cols].fillna(0.0).to_numpy("float64")
@@ -289,8 +246,7 @@ def compare_to_rule(
     elif task == "lapse":
         model_score = LapsePredictor(random_state=random_state).fit(X_train, y_train).predict_lapse_score(X_test)
     else:
-        cls = MajorGiftClassifier if task == "upgrade" else DonorPropensityModel
-        model_score = cls(random_state=random_state).fit(X_train, y_train).predict_proba(X_test)[:, 1]
+        model_score = MajorGiftClassifier(random_state=random_state).fit(X_train, y_train).predict_proba(X_test)[:, 1]
     model_score = np.asarray(model_score, dtype="float64")
 
     lo, hi = _bootstrap_difference(y_test, model_score, rules[best], metric, n_bootstrap, random_state)

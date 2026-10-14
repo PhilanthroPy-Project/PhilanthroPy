@@ -81,7 +81,7 @@ def test_one_labelled_year_cannot_be_tested():
         "gift_date": ["2019-08-01", "2020-08-01", "2019-08-01", "2020-08-01"],
         "gift_amount": [10, 20, 30, 40],
     })
-    out = compare_to_rule(gifts, task="response")
+    out = compare_to_rule(gifts, task="ask")
     assert out["verdict"].startswith("can't test")
     assert out["method"] == "rule"
     assert compare_to_rule(gifts.iloc[:0], task="lapse")["verdict"].startswith("can't test")
@@ -97,7 +97,7 @@ def test_partial_current_year_never_labels_the_one_before_it():
     assert full["test_fiscal_year"] == 2021
 
 
-@pytest.mark.parametrize("task", ["upgrade", "lapse", "response", "ask"])
+@pytest.mark.parametrize("task", ["upgrade", "lapse", "ask"])
 def test_every_task_reports_the_same_keys(task):
     gifts = make_donor_panel(n_donors=800, n_years=5, random_state=2)["gifts"]
     out = compare_to_rule(gifts, task=task, n_bootstrap=20)
@@ -108,7 +108,7 @@ def test_every_task_reports_the_same_keys(task):
     assert out["method"] in ("model", "rule")
     assert out["verdict"] in VERDICTS or out["verdict"] == "not enough labels"
     assert out["metric"] == ("mae" if task == "ask" else "top10pct_hit_rate")
-    assert out["n_rules_tried"] == (2 if task == "response" else 3)
+    assert out["n_rules_tried"] == 3
     if out["verdict"] in VERDICTS:
         assert (out["method"] == "model") == (out["verdict"] == "Beats the rule")
     else:

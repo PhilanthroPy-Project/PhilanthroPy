@@ -17,6 +17,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   (`check_label_floor`) or fewer than two labelled years all return the rule.
   Verdicts use the Results pages' words. Until now only
   `score_leadership_prospects` compared itself to a rule on the user's file.
+- `score_leadership_prospects`' report has a new `rule_check` key: the
+  `compare_to_rule` verdict and `method` ("model" or "rule") read on the
+  function's own held-out fold and model, against the same three upgrade
+  rules. The existing `baseline_*` and `lift_*` keys are unchanged. Because
+  `train --task leadership` prints every report key, the CLI shows it too.
 
 ## [0.9.0] - 2026-10-12
 

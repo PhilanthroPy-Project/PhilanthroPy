@@ -103,7 +103,7 @@ def test_report_keys_present(default_run):
         "baseline_giving_threshold", "baseline_gave_threshold_upgrade_rate",
         "lift_over_gave_threshold", "overall_upgrade_rate", "deciles",
         "roc_auc", "average_precision", "threshold",
-        "recommended_list_fraction", "recommended_list_size",
+        "recommended_list_fraction", "recommended_list_size", "rule_check",
     ):
         assert key in report
 
@@ -147,6 +147,59 @@ def test_recommended_list_size_is_the_longest_slice_at_1_5x_base(default_run):
 # --------------------------------------------------------------------------- #
 # Validation and errors
 # --------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+# rule_check: compare_to_rule's verdict on this function's own held-out fold
+# --------------------------------------------------------------------------- #
+def test_rule_check_keeps_the_rule_below_the_label_floor(default_run):
+    _, report = default_run
+    check = report["rule_check"]
+    assert check["label_floor"] == "not enough labels"
+    assert check["verdict"] == "not enough labels"
+    assert check["method"] == "rule"
+    assert check["model_value"] is None and check["difference_ci"] is None
+    assert check["rule"] is not None and check["n_rules_tried"] == 3
+
+
+def test_rule_check_picks_the_model_when_no_rule_sees_the_signal():
+    # Upgrades follow how many gifts make up the year (5 small vs 1 large),
+    # which none of the three rules (this-year total, total plus growth,
+    # largest gift) rank by; the single-gift donors even total more.
+    rng = np.random.default_rng(0)
+    rows = []
+    for d in range(1200):
+        many = d % 2 == 0
+        for t in range(7):
+            up = t > 0 and rng.random() < (0.6 if many else 0.05)
+            total = 1500.0 if up else (500.0 if many else 600.0)
+            k = 5 if many else 1
+            rows += [{"donor_id": f"d{d}", "gift_date": f"{2015 + t}-{8 + j:02d}-15",
+                      "gift_amount": total / k} for j in range(k)]
+    _, report = score_leadership_prospects(pd.DataFrame(rows), random_state=0)
+    check = report["rule_check"]
+    assert check["label_floor"] == "run"
+    assert check["verdict"] == "Beats the rule"
+    assert check["method"] == "model"
+    assert check["difference_ci"][0] > 0
+
+
+def test_rule_check_tie_goes_to_the_rule():
+    # Next year crosses $1,000 exactly when this year is above $800, so
+    # "this-year total" is a perfect list and the model can only match it.
+    rng = np.random.default_rng(0)
+    gifts = pd.DataFrame([
+        {"donor_id": f"d{d}", "gift_date": f"{2015 + t}-09-15",
+         "gift_amount": float(rng.integers(100, 1000))}
+        for d in range(1200) for t in range(7)
+    ])
+    prev = gifts.groupby("donor_id")["gift_amount"].shift()
+    gifts.loc[prev > 800, "gift_amount"] = 1200.0
+    _, report = score_leadership_prospects(gifts, random_state=0)
+    check = report["rule_check"]
+    assert check["label_floor"] == "run"
+    assert check["verdict"] == "About the same as the rule"
+    assert check["method"] == "rule"
+
+
 def test_band_low_above_high_raises():
     with pytest.raises(ValueError):
         score_leadership_prospects(_archetype_gifts(), band=(999, 100))

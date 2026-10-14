@@ -37,7 +37,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `PlannedGivingIntentScorer`, `ShareOfWalletRegressor`, `MovesManagementClassifier` | `models` |
 | `PropensityScorer` | `models` |
 | every function in `philanthropy.metrics` | `metrics` |
-| `FiscalYearGroupedSplitter` | `model_selection` |
+| `FiscalYearGroupedSplitter`, `compare_to_rule` | `model_selection` |
 | `generate_synthetic_donor_data`, `load_ciob_fundraising` | `datasets` |
 | `save_model`, `load_model`, `make_donor_dataset` | `utils` |
 | `donor_feature_importance` | `inspection` |

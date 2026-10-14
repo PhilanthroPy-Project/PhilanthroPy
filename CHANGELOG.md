@@ -22,6 +22,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   function's own held-out fold and model, against the same three upgrade
   rules. The existing `baseline_*` and `lift_*` keys are unchanged. Because
   `train --task leadership` prints every report key, the CLI shows it too.
+- `philanthropy check --task {upgrade,lapse,ask} --source ... --data ...`
+  runs `compare_to_rule` on a raw CRM gift export and prints the verdict, in
+  the Results pages' words, and which list to use (the model or the rule).
 
 ## [0.9.0] - 2026-10-12
 

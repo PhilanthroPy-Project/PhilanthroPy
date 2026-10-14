@@ -5,6 +5,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added
+- `philanthropy.model_selection.compare_to_rule(gifts, task=...)` checks, on
+  the caller's own gift log, whether the model or the simple rule should rank
+  donors for upgrade, lapse, response or ask. It trains on every labelled
+  fiscal year but the last, tests on the last complete one, and compares the
+  model against the best of the same fixed rule sets the Results pages use
+  (top-10% hit rate, or mean absolute error for ask), with a paired bootstrap
+  interval on the difference. It returns `method="model"` only when the whole
+  interval is on the model's side; a tie, a loss, too few labels
+  (`check_label_floor`) or fewer than two labelled years all return the rule.
+  Verdicts use the Results pages' words. Until now only
+  `score_leadership_prospects` compared itself to a rule on the user's file.
+
 ## [0.9.0] - 2026-10-12
 
 ### Breaking

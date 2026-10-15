@@ -21,7 +21,7 @@ from sklearn.utils.validation import (
     validate_data,
 )
 
-from philanthropy.utils._validation import resolve_columns
+from philanthropy.utils._validation import resolve_columns, resolve_monotonic_cst
 
 _Self = TypeVar("_Self", bound="PlannedGivingIntentScorer")
 
@@ -64,6 +64,14 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         when ``X`` is a DataFrame. The columns must hold non-negative
         integer codes below 255, as for ``HistGradientBoostingClassifier``.
         ``None`` treats every column as numeric.
+    monotonic_cst : array-like of int or dict, default=None
+        Monotonic constraint on each feature, passed to the underlying
+        :class:`HistGradientBoostingClassifier`: ``1`` means the intent score never falls as
+        that feature rises, ``-1`` that it never rises, ``0`` no
+        constraint. A dict sets only the features it names, keyed by
+        position or, when ``X`` is a DataFrame, column name
+        (``{"total_giving": 1}``). ``None`` applies no constraint
+        (current behaviour).
     """
 
     def __init__(
@@ -72,11 +80,13 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         random_state: int | None = None,
         class_weight: Any = None,
         categorical_features: Any = None,
+        monotonic_cst: Any = None,
     ) -> None:
         self.n_estimators = n_estimators
         self.random_state = random_state
         self.class_weight = class_weight
         self.categorical_features = categorical_features
+        self.monotonic_cst = monotonic_cst
 
     def fit(self: _Self, X: Any, y: Any, sample_weight: Any = None) -> _Self:
         """Fit the calibrated classifier to planned-giving intent labels.
@@ -132,6 +142,7 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
             # shape, so scores match it on sample data; only NaN handling changes.
             max_depth=3,
             categorical_features=resolve_columns(self, self.categorical_features),
+            monotonic_cst=resolve_monotonic_cst(self, self.monotonic_cst),
             random_state=self.random_state
         )
         self.estimator_ = CalibratedClassifierCV(

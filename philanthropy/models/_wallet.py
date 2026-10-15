@@ -55,7 +55,7 @@ from sklearn.utils.validation import (
     validate_data,
 )
 
-from philanthropy.utils._validation import resolve_columns
+from philanthropy.utils._validation import resolve_columns, resolve_monotonic_cst
 
 _Self = TypeVar("_Self", bound="ShareOfWalletRegressor")
 
@@ -117,6 +117,14 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         when ``X`` is a DataFrame. The columns must hold non-negative
         integer codes below 255, as for ``HistGradientBoostingRegressor``.
         ``None`` treats every column as numeric.
+    monotonic_cst : array-like of int or dict, default=None
+        Monotonic constraint on each feature, passed to the underlying
+        :class:`HistGradientBoostingRegressor`: ``1`` means the capacity estimate never falls as
+        that feature rises, ``-1`` that it never rises, ``0`` no
+        constraint. A dict sets only the features it names, keyed by
+        position or, when ``X`` is a DataFrame, column name
+        (``{"total_giving": 1}``). ``None`` applies no constraint
+        (current behaviour).
 
     Attributes
     ----------
@@ -190,6 +198,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         random_state: Optional[int] = None,
         capacity_floor: float = 1.0,
         categorical_features: Any = None,
+        monotonic_cst: Any = None,
     ) -> None:
         # scikit-learn rule: __init__ stores parameters and does NO logic.
         self.learning_rate = learning_rate
@@ -200,6 +209,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         self.random_state = random_state
         self.capacity_floor = capacity_floor
         self.categorical_features = categorical_features
+        self.monotonic_cst = monotonic_cst
 
     def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
@@ -232,6 +242,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
             l2_regularization=self.l2_regularization,
             min_samples_leaf=self.min_samples_leaf,
             categorical_features=resolve_columns(self, self.categorical_features),
+            monotonic_cst=resolve_monotonic_cst(self, self.monotonic_cst),
             random_state=self.random_state,
         )
         if sample_weight is not None:

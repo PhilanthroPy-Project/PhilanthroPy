@@ -6,6 +6,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `monotonic_cst` on `AskAmountRecommender`, `ShareOfWalletRegressor`,
+  `LapsePredictor` (gradient-boosting backend only; the random forest ignores
+  it) and `PlannedGivingIntentScorer`, so a prior such as "more past giving
+  never lowers the score" can be built in. Default `None` changes nothing. A
+  dict may name columns when `X` is a DataFrame (`{"total_giving": 1}`).
+  `AskAmountRecommender` needs `loss="squared_error"` for it and raises
+  otherwise, because sklearn's absolute-error boosting refits leaves as
+  medians and does not enforce the constraint. `MovesManagementClassifier`
+  does not take it: sklearn rejects monotonic constraints for multiclass.
 - `philanthropy.metrics.qini_curve(y_true, uplift, treatment)` and
   `qini_auc_score(...)` evaluate an uplift score on a randomised appeal, so
   `UpliftTLearner` output can finally be checked against a holdout. The curve
@@ -70,6 +79,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `predict_lapse_score`, `predict` on regressors, ...) and with fitted
   pipelines; `NaN` is explained as a value. No new dependencies. New how-to:
   "Explain a donor's score".
+
+### Fixed
+- `MajorGiftClassifier(monotonic_cst={"column": 1})` raised on a DataFrame,
+  because the backend saw a NumPy array without column names. Dict keys are
+  now resolved to positions first, as on the other boosting models.
 
 ## [0.9.0] - 2026-10-12
 

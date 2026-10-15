@@ -149,6 +149,9 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
                 f"y, got {len(self.classes_)} class: {list(self.classes_)}."
             )
 
+        # No monotonic_cst here: stages are multiclass, and sklearn's
+        # HistGradientBoostingClassifier rejects monotonic constraints for
+        # more than two classes.
         self.estimator_ = HistGradientBoostingClassifier(
             learning_rate=self.learning_rate,
             max_iter=self.max_iter,

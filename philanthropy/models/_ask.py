@@ -54,7 +54,11 @@ from sklearn.utils.validation import (
     validate_data,
 )
 
-from philanthropy.utils._validation import resolve_column, resolve_columns
+from philanthropy.utils._validation import (
+    resolve_column,
+    resolve_columns,
+    resolve_monotonic_cst,
+)
 
 _Self = TypeVar("_Self", bound="AskAmountRecommender")
 
@@ -205,6 +209,19 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         when ``X`` is a DataFrame. The columns must hold non-negative
         integer codes below 255, as for ``HistGradientBoostingRegressor``.
         ``None`` treats every column as numeric.
+    monotonic_cst : array-like of int or dict, default=None
+        Monotonic constraint on each feature, passed to the underlying
+        :class:`HistGradientBoostingRegressor`: ``1`` means the ask never falls as
+        that feature rises, ``-1`` that it never rises, ``0`` no
+        constraint. A dict sets only the features it names, keyed by
+        position or, when ``X`` is a DataFrame, column name
+        (``{"total_giving": 1}``). ``None`` applies no constraint
+        (current behaviour).
+        With ``target_mode="relative"`` it constrains the predicted
+        ask-to-reference ratio rather than the dollar ask. Needs
+        ``loss="squared_error"``: with ``"absolute_error"`` the backend
+        resets each leaf to a median after splitting, which breaks the
+        constraint, so :meth:`fit` raises instead.
 
     Attributes
     ----------
@@ -293,6 +310,7 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         last_gift_idx: Optional[int | str] = None,
         avg_gift_idx: Optional[int | str] = None,
         categorical_features: Any = None,
+        monotonic_cst: Any = None,
     ) -> None:
         # scikit-learn rule: __init__ stores parameters and does NO logic.
         self.learning_rate = learning_rate
@@ -307,6 +325,7 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         self.last_gift_idx = last_gift_idx
         self.avg_gift_idx = avg_gift_idx
         self.categorical_features = categorical_features
+        self.monotonic_cst = monotonic_cst
 
     def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
@@ -343,6 +362,13 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
             fit_target = y
         else:
             raise ValueError(f"Unknown target_mode: {self.target_mode!r}")
+        if self.monotonic_cst is not None and self.loss == "absolute_error":
+            # sklearn refits absolute-error leaves as medians after the
+            # constrained split search, so the constraint would not hold.
+            raise ValueError(
+                "monotonic_cst needs loss='squared_error'; with "
+                "loss='absolute_error' the backend does not enforce it."
+            )
 
         est = HistGradientBoostingRegressor(
             learning_rate=self.learning_rate,
@@ -352,6 +378,7 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
             min_samples_leaf=self.min_samples_leaf,
             loss=self.loss,
             categorical_features=resolve_columns(self, self.categorical_features),
+            monotonic_cst=resolve_monotonic_cst(self, self.monotonic_cst),
             random_state=self.random_state,
         )
         return est.fit(X, fit_target, sample_weight=sample_weight)

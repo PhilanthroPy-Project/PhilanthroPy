@@ -36,6 +36,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `philanthropy.models.repeat_giving_summary(gifts, as_of=...)` builds their
   inputs (repeat-gift days, recency, T, mean repeat gift) from a gift table.
   Until now `donor_lifetime_value` was a single NPV on file-wide averages.
+- `philanthropy.inspection.explain_donor_scores(estimator, X, method, baseline=X_train)`
+  explains individual donors' scores: each feature is set to its training
+  median (most frequent value for categorical columns) and the signed change
+  in that donor's score is reported, top `top_k` features per donor. Works
+  with any per-row scoring method (`predict_proba`, `predict_affinity_score`,
+  `predict_lapse_score`, `predict` on regressors, ...) and with fitted
+  pipelines; `NaN` is explained as a value. No new dependencies. New how-to:
+  "Explain a donor's score".
 
 ## [0.9.0] - 2026-10-12
 

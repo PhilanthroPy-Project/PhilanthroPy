@@ -94,7 +94,29 @@ _STANDARD_ESTIMATORS = [
 ]
 
 
-@parametrize_with_checks(_STANDARD_ESTIMATORS)
+_WEIGHT_EQUIVALENCE = "check_sample_weight_equivalence_on_dense_data"
+
+
+def _expected_failed_checks(estimator):
+    """Checks a backend fails on its own; sklearn xfails the same ones.
+
+    Each of these passes ``sample_weight`` straight through, but weighting a
+    row by k is not the same fit as repeating it k times in these backends,
+    so the tests in each model's own file check that weights reach the
+    backend instead.
+    """
+    reasons = {
+        PlannedGivingIntentScorer: "calibration's CV folds split repeated rows differently",
+        LapsePredictor: "the random forest's bootstrap draws rows, not weight",
+        MovesManagementClassifier: 'class_weight="balanced" counts rows, not weight',
+    }
+    reason = reasons.get(type(estimator))
+    return {_WEIGHT_EQUIVALENCE: reason} if reason else {}
+
+
+@parametrize_with_checks(
+    _STANDARD_ESTIMATORS, expected_failed_checks=_expected_failed_checks
+)
 def test_sklearn_compliance(estimator, check):
     """Run standard sklearn check_estimator battery on compliant estimators."""
     check(estimator)

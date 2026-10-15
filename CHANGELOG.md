@@ -25,6 +25,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `philanthropy check --task {upgrade,lapse,ask} --source ... --data ...`
   runs `compare_to_rule` on a raw CRM gift export and prints the verdict, in
   the Results pages' words, and which list to use (the model or the rule).
+- Models take CRM exports as they come. `AskAmountRecommender`'s
+  `last_gift_idx` and `avg_gift_idx` accept a column name when `X` is a
+  DataFrame, resolved in `fit` into the new `last_gift_idx_` and
+  `avg_gift_idx_`, so a reordered export no longer points them at the wrong
+  column; integer positions still work. `AskAmountRecommender`,
+  `ShareOfWalletRegressor`, `LapsePredictor` (HistGradientBoosting backend),
+  `MovesManagementClassifier` and `PlannedGivingIntentScorer` have a
+  `categorical_features` param (positions, a mask or names; default `None`,
+  every column numeric as before) so integer category codes such as region
+  or appeal need no one-hot step, and their `fit` accepts `sample_weight`,
+  passed to the backend. `PlannedGivingIntentScorer` also gets
+  `class_weight`, applied as sample weights like `MajorGiftClassifier`'s.
+  As with sklearn's own HistGradientBoosting, random forest and calibrated
+  models, a zero weight is not exactly the same fit as dropping the row.
 
 ## [0.9.0] - 2026-10-12
 

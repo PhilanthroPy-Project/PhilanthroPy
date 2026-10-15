@@ -13,8 +13,15 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.utils import Tags
+from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.utils.multiclass import check_classification_targets
-from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.utils.validation import (
+    _check_sample_weight,
+    check_is_fitted,
+    validate_data,
+)
+
+from philanthropy.utils._validation import resolve_columns
 
 _Self = TypeVar("_Self", bound="PlannedGivingIntentScorer")
 
@@ -42,17 +49,36 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         the underlying :class:`HistGradientBoostingClassifier`.
     random_state : int, RandomState instance or None, default=None
         Controls the randomness of the estimator.
+    class_weight : dict, "balanced" or None, default=None
+        Weight scheme for the classes, useful when bequest intent is rare.
+        Applied as ``sample_weight`` (multiplied with any ``sample_weight``
+        passed to :meth:`fit`) rather than as the backend's own
+        ``class_weight``, for the same reason as
+        :class:`~philanthropy.models.MajorGiftClassifier`: the calibration
+        folds would otherwise wash the reweighting out. With it set, scores
+        reflect the reweighted class balance, so read them as a ranking.
+    categorical_features : list of int or str, bool mask, or None, default=None
+        Columns the backend should split on as unordered categories (a
+        region, constituency or appeal code) instead of as numbers, so they
+        need no one-hot step. Positions, a boolean mask, or column names
+        when ``X`` is a DataFrame. The columns must hold non-negative
+        integer codes below 255, as for ``HistGradientBoostingClassifier``.
+        ``None`` treats every column as numeric.
     """
 
     def __init__(
         self,
         n_estimators: int = 100,
         random_state: int | None = None,
+        class_weight: Any = None,
+        categorical_features: Any = None,
     ) -> None:
         self.n_estimators = n_estimators
         self.random_state = random_state
+        self.class_weight = class_weight
+        self.categorical_features = categorical_features
 
-    def fit(self: _Self, X: Any, y: Any) -> _Self:
+    def fit(self: _Self, X: Any, y: Any, sample_weight: Any = None) -> _Self:
         """Fit the calibrated classifier to planned-giving intent labels.
 
         Parameters
@@ -61,6 +87,9 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
             Feature matrix.
         y : array-like of shape (n_samples,)
             Binary target labels.
+        sample_weight : array-like of shape (n_samples,), default=None
+            Per-donor weights, used by both the boosting backend and the
+            calibration step.
 
         Returns
         -------
@@ -102,6 +131,7 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
             # The old GradientBoostingClassifier default depth: same tree
             # shape, so scores match it on sample data; only NaN handling changes.
             max_depth=3,
+            categorical_features=resolve_columns(self, self.categorical_features),
             random_state=self.random_state
         )
         self.estimator_ = CalibratedClassifierCV(
@@ -109,7 +139,12 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
             method="sigmoid",
             cv=_CALIBRATION_CV_FOLDS,
         )
-        self.estimator_.fit(X, y)
+        if sample_weight is not None:
+            sample_weight = _check_sample_weight(sample_weight, X)
+        if self.class_weight is not None:
+            class_w = compute_sample_weight(self.class_weight, y)
+            sample_weight = class_w if sample_weight is None else sample_weight * class_w
+        self.estimator_.fit(X, y, sample_weight=sample_weight)
         return self
 
     def predict(self, X: Any) -> np.ndarray:

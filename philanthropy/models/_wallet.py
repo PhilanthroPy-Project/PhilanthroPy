@@ -49,7 +49,13 @@ import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.utils import Tags
-from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.utils.validation import (
+    _check_sample_weight,
+    check_is_fitted,
+    validate_data,
+)
+
+from philanthropy.utils._validation import resolve_columns
 
 _Self = TypeVar("_Self", bound="ShareOfWalletRegressor")
 
@@ -104,6 +110,13 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         Minimum predicted capacity (in dollars).  Predictions are clipped
         to this floor via ``np.maximum`` to prevent negative capacity
         estimates that are semantically meaningless.
+    categorical_features : list of int or str, bool mask, or None, default=None
+        Columns the backend should split on as unordered categories (a
+        region, constituency or appeal code) instead of as numbers, so they
+        need no one-hot step. Positions, a boolean mask, or column names
+        when ``X`` is a DataFrame. The columns must hold non-negative
+        integer codes below 255, as for ``HistGradientBoostingRegressor``.
+        ``None`` treats every column as numeric.
 
     Attributes
     ----------
@@ -176,6 +189,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         min_samples_leaf: int = 20,
         random_state: Optional[int] = None,
         capacity_floor: float = 1.0,
+        categorical_features: Any = None,
     ) -> None:
         # scikit-learn rule: __init__ stores parameters and does NO logic.
         self.learning_rate = learning_rate
@@ -185,6 +199,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         self.min_samples_leaf = min_samples_leaf
         self.random_state = random_state
         self.capacity_floor = capacity_floor
+        self.categorical_features = categorical_features
 
     def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
@@ -202,8 +217,11 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
     # Public API
     # ------------------------------------------------------------------
 
-    def fit(self: _Self, X: Any, y: Any) -> _Self:
-        """Fit the share-of-wallet capacity model to labelled prospect data."""
+    def fit(self: _Self, X: Any, y: Any, sample_weight: Any = None) -> _Self:
+        """Fit the share-of-wallet capacity model to labelled prospect data.
+
+        ``sample_weight``, if given, is passed to the backend.
+        """
         X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
         self.n_features_in_ = X.shape[1]
 
@@ -213,9 +231,12 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
             max_depth=self.max_depth,
             l2_regularization=self.l2_regularization,
             min_samples_leaf=self.min_samples_leaf,
+            categorical_features=resolve_columns(self, self.categorical_features),
             random_state=self.random_state,
         )
-        self.estimator_.fit(X, y)
+        if sample_weight is not None:
+            sample_weight = _check_sample_weight(sample_weight, X)
+        self.estimator_.fit(X, y, sample_weight=sample_weight)
         return self
 
     def predict(self, X: Any) -> np.ndarray:

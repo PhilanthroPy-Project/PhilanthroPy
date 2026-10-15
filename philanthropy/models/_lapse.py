@@ -11,9 +11,15 @@ from typing import Any, TypeVar
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
-from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.utils.validation import (
+    _check_sample_weight,
+    check_is_fitted,
+    validate_data,
+)
 from sklearn.utils import Tags
 from sklearn.utils.multiclass import unique_labels
+
+from philanthropy.utils._validation import resolve_columns
 
 _Self = TypeVar("_Self", bound="LapsePredictor")
 
@@ -49,6 +55,15 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         large files (E.12d); adopt only after it is confirmed to beat "years
         since last gift" at top-10% on one real file without losing on
         another. The default has not changed.
+    categorical_features : list of int or str, bool mask, or None, default=None
+        Columns the backend should split on as unordered categories (a
+        region, constituency or appeal code) instead of as numbers, so they
+        need no one-hot step. Positions, a boolean mask, or column names
+        when ``X`` is a DataFrame. The columns must hold non-negative
+        integer codes below 255, as for ``HistGradientBoostingClassifier``.
+        ``None`` treats every column as numeric.
+        Used only when ``backend="hist_gradient_boosting"``; the random
+        forest has no categorical splits.
 
     Attributes
     ----------
@@ -75,14 +90,16 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         class_weight: Any = None,
         random_state: int | None = None,
         backend: str = "random_forest",
+        categorical_features: Any = None,
     ) -> None:
         self.n_estimators = n_estimators
         self.max_depth = max_depth
         self.class_weight = class_weight
         self.random_state = random_state
         self.backend = backend
+        self.categorical_features = categorical_features
 
-    def fit(self: _Self, X: Any, y: Any) -> _Self:
+    def fit(self: _Self, X: Any, y: Any, sample_weight: Any = None) -> _Self:
         """Fit the LapsePredictor.
 
         Parameters
@@ -91,6 +108,9 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
             Feature matrix.
         y : array-like of shape (n_samples,)
             Binary target: 1 = lapse, 0 = no lapse.
+        sample_weight : array-like of shape (n_samples,), default=None
+            Per-donor weights, passed to the backend (and multiplied there
+            with ``class_weight`` on the random forest).
 
         Returns
         -------
@@ -112,11 +132,14 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         elif self.backend == "hist_gradient_boosting":
             self.estimator_ = HistGradientBoostingClassifier(
                 max_depth=self.max_depth,
+                categorical_features=resolve_columns(self, self.categorical_features),
                 random_state=self.random_state,
             )
         else:
             raise ValueError(f"Unknown backend: {self.backend!r}")
-        self.estimator_.fit(X, y)
+        if sample_weight is not None:
+            sample_weight = _check_sample_weight(sample_weight, X)
+        self.estimator_.fit(X, y, sample_weight=sample_weight)
         return self
 
     def predict(self, X: Any) -> np.ndarray:

@@ -4,8 +4,9 @@ philanthropy.utils._validation
 Shared validation logic for PhilanthroPy estimators.
 """
 
-from typing import TypeVar
+from typing import Any, TypeVar
 
+import numpy as np
 import pandas as pd
 
 _PathT = TypeVar("_PathT")
@@ -146,3 +147,39 @@ def ensure_local_path(path: _PathT, param_name: str = "path") -> _PathT:
             f"got scheme {scheme!r} in {path!r}."
         )
     return path
+
+
+def resolve_column(estimator: object, column: Any) -> Any:
+    """
+    Turn a column name into its position in the data ``estimator`` was fit on.
+
+    Integer positions (and anything else that is not a string, such as a
+    boolean mask entry) come back unchanged. A string is looked up in
+    ``estimator.feature_names_in_``, which ``validate_data`` sets only when
+    ``fit`` received a DataFrame, so a name needs a DataFrame. Call this in
+    ``fit`` after ``validate_data`` and store the result as a fitted
+    attribute: CRM exports do not keep a fixed column order, names do.
+
+    Raises
+    ------
+    ValueError
+        If ``column`` is a string that is not one of the fitted column names.
+    """
+    if not isinstance(column, str):
+        return column
+    names = getattr(estimator, "feature_names_in_", None)
+    if names is None or column not in names:
+        raise ValueError(
+            f"Column {column!r} is not in the data passed to fit; a column "
+            "name needs X to be a DataFrame with that column."
+        )
+    return int(np.flatnonzero(names == column)[0])
+
+
+def resolve_columns(estimator: object, columns: Any) -> Any:
+    """:func:`resolve_column` over a list (a lone string is one name); ``None`` stays ``None``."""
+    if columns is None:
+        return None
+    if isinstance(columns, str):
+        columns = [columns]
+    return [resolve_column(estimator, c) for c in columns]

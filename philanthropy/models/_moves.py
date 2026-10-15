@@ -5,10 +5,16 @@ from typing import Any, TypeVar
 import numpy as np
 from sklearn.base import ClassifierMixin, BaseEstimator
 from sklearn.utils import Tags
-from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.utils.validation import (
+    _check_sample_weight,
+    check_is_fitted,
+    validate_data,
+)
 from sklearn.utils.multiclass import check_classification_targets
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import HistGradientBoostingClassifier
+
+from philanthropy.utils._validation import resolve_columns
 
 MOVES_STAGES = ["IDENTIFY", "QUALIFY", "CULTIVATE", "SOLICIT", "STEWARD"]
 
@@ -41,6 +47,13 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
         inversely proportional to stage frequency.
     random_state : int or None, default=None
         Random seed for reproducibility.
+    categorical_features : list of int or str, bool mask, or None, default=None
+        Columns the backend should split on as unordered categories (a
+        region, constituency or appeal code) instead of as numbers, so they
+        need no one-hot step. Positions, a boolean mask, or column names
+        when ``X`` is a DataFrame. The columns must hold non-negative
+        integer codes below 255, as for ``HistGradientBoostingClassifier``.
+        ``None`` treats every column as numeric.
 
     Attributes
     ----------
@@ -87,13 +100,15 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
         max_iter: int = 200,
         class_weight: str | dict | None = "balanced",
         random_state: int | None = None,
+        categorical_features: Any = None,
     ) -> None:
         self.learning_rate = learning_rate
         self.max_iter = max_iter
         self.class_weight = class_weight
         self.random_state = random_state
+        self.categorical_features = categorical_features
 
-    def fit(self: _Self, X: Any, y: Any) -> _Self:
+    def fit(self: _Self, X: Any, y: Any, sample_weight: Any = None) -> _Self:
         """Fit the classifier to labelled moves-stage data.
 
         Parameters
@@ -102,6 +117,9 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
             Feature matrix.
         y : array-like of shape (n_samples,)
             Moves-stage target labels.
+        sample_weight : array-like of shape (n_samples,), default=None
+            Per-donor weights, passed to the backend and multiplied there
+            with ``class_weight``.
 
         Returns
         -------
@@ -135,9 +153,12 @@ class MovesManagementClassifier(ClassifierMixin, BaseEstimator):
             learning_rate=self.learning_rate,
             max_iter=self.max_iter,
             class_weight=self.class_weight,
+            categorical_features=resolve_columns(self, self.categorical_features),
             random_state=self.random_state,
         )
-        self.estimator_.fit(X, y_encoded)
+        if sample_weight is not None:
+            sample_weight = _check_sample_weight(sample_weight, X)
+        self.estimator_.fit(X, y_encoded, sample_weight=sample_weight)
         # Expose n_iter_ (project convention for any estimator taking max_iter;
         # check_estimator requires it).
         self.n_iter_ = self.estimator_.n_iter_

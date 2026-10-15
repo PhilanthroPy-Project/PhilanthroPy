@@ -97,6 +97,8 @@ def explain_donor_scores(
     is_df = hasattr(X, "columns")
     if not is_df:
         X = np.asarray(X)
+        if X.dtype.kind in "biu":  # so a fractional median is not truncated
+            X = X.astype(float)
     n_samples, n_features = X.shape
     names = list(X.columns) if is_df else list(range(n_features))
 

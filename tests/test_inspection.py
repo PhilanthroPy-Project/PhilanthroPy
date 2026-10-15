@@ -214,3 +214,12 @@ def test_explain_class_index_override():
     a = explain_donor_scores(model, X[:5], baseline=X, class_index=0, top_k=None)
     b = explain_donor_scores(model, X[:5], baseline=X, class_index=2, top_k=None)
     assert not np.allclose(a["contribution"], b["contribution"])
+
+
+def test_explain_int_array_keeps_fractional_median():
+    # An integer array (gift counts) with median 2.5 must not substitute 2.
+    X = np.array([[1, 0], [2, 0], [3, 0], [4, 0]])
+    model = LinearRegression().fit(X, 2.0 * X[:, 0])
+    out = explain_donor_scores(model, X, "predict", baseline=X, top_k=1)
+    np.testing.assert_allclose(out["baseline"].astype(float), 2.5)
+    np.testing.assert_allclose(out["contribution"], 2.0 * (X[:, 0] - 2.5))

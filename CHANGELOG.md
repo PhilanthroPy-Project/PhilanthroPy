@@ -6,6 +6,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `philanthropy.metrics.qini_curve(y_true, uplift, treatment)` and
+  `qini_auc_score(...)` evaluate an uplift score on a randomised appeal, so
+  `UpliftTLearner` output can finally be checked against a holdout. The curve
+  is the Radcliffe / scikit-uplift incremental-gains definition by fraction
+  targeted (tied scores form one cut-off); the score is the area between it
+  and the random-targeting line, not normalised, so it compares models on the
+  same holdout only. `y_true` may be gift amounts as well as 0/1.
+- `philanthropy.metrics.metric_by_group(metric, y_true, y_pred, groups)`
+  computes any `metric(y_true, y_pred)` (e.g. `roc_auc_score`,
+  `recall_score`) within each group and overall, returning a DataFrame with
+  the metric and group count. Fairness checks previously covered selection
+  rate only. A group where the metric is undefined gets NaN.
 - `philanthropy.model_selection.compare_to_rule(gifts, task=...)` checks, on
   the caller's own gift log, whether the model or the simple rule should rank
   donors for upgrade, lapse or ask. It trains on every labelled
@@ -39,6 +51,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `class_weight`, applied as sample weights like `MajorGiftClassifier`'s.
   As with sklearn's own HistGradientBoosting, random forest and calibrated
   models, a zero weight is not exactly the same fit as dropping the row.
+- Per-donor repeat-giving models that need only a gift export (donor id,
+  date, amount), no labels or wealth data. `philanthropy.models.BetaGeoModel`
+  is the BG/NBD model (Fader, Hardie and Lee 2005): `predict_alive_score`
+  gives P(still giving) and `predict_gifts_forecast(X, horizon)` the expected
+  gift count over a horizon. `philanthropy.models.GammaGammaModel` is the
+  gamma-gamma gift-size model: `predict_gift_size_forecast` shrinks each
+  donor's mean repeat gift toward the file's average. Both fit by maximum
+  likelihood with scipy and reproduce the published CDNOW parameters.
+  `philanthropy.models.repeat_giving_summary(gifts, as_of=...)` builds their
+  inputs (repeat-gift days, recency, T, mean repeat gift) from a gift table.
+  Until now `donor_lifetime_value` was a single NPV on file-wide averages.
 - `philanthropy.inspection.explain_donor_scores(estimator, X, method, baseline=X_train)`
   explains individual donors' scores: each feature is set to its training
   median (most frequent value for categorical columns) and the signed change

@@ -74,6 +74,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `load_psid_philanthropy` | `datasets` | Reads a fixed list of PSID ER/S variables for 2001-2023; an extract that omits some of them skips those waves (or raises KeyError for a partially selected wave). |
 | `explain_donor_scores` | `inspection` | New; the one-feature-at-a-time median substitution may gain an interaction-aware option, and the output columns may grow. |
 | `GiftIntervalCalibrator`, `GiftInterval` | `models` | The conformity-score menu is expected to grow (conformalised quantile regression is not shipped), which adds `score` values rather than changing existing ones. |
+| `BetaGeoModel`, `GammaGammaModel`, `repeat_giving_summary` | `models` | New. The BG/NBD and gamma-gamma likelihoods are the published ones and reproduce the CDNOW parameters, but neither has been checked against a real gift file's holdout year yet, and the summary's same-day merge and default time unit (years) may change. |
 | `trailing_slope_features` | `utils` | New, off-by-default helper; the bin width, window set and NaN threshold are a starting recipe and may be refined. |
 | `check_label_floor`, `LABEL_FLOORS` | `utils` | The floor values come from validation-fold learning curves (lapse: PSID and DonorsChoose; major gift: KDD Cup 1998 and PSID, on ROC-AUC and the top-10% hit rate) and will move as more real files are measured; the `"run"` / `"not enough labels"` return values will not. |
 

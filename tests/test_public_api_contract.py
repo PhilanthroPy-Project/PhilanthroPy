@@ -103,8 +103,10 @@ def _small_Xy(n=40, n_features=4, seed=0):
 
 _MODEL_KWARGS = {
     "AskAmountRecommender": dict(max_iter=20, random_state=0),
+    "BetaGeoModel": {},
     "DonorPropensityModel": dict(n_estimators=5, random_state=0),
     "FinancialForecastModel": dict(random_state=0),
+    "GammaGammaModel": {},
     "LapsePredictor": dict(n_estimators=5, random_state=0),
     "MajorGiftClassifier": dict(max_iter=10, random_state=0),
     "MovesManagementClassifier": dict(max_iter=10, random_state=0),
@@ -114,12 +116,28 @@ _MODEL_KWARGS = {
 }
 
 
+# Models whose columns have fixed meanings, built from the same random draw.
+_FIXED_COLUMN_X = {
+    # (frequency, recency, T) with recency <= T.
+    "BetaGeoModel": lambda X: np.column_stack(
+        [np.floor(X[:, 0] * 5), X[:, 1] * X[:, 2] * 4, X[:, 2] * 4]
+    ),
+    # (frequency, monetary_value), every donor a repeat giver.
+    "GammaGammaModel": lambda X: np.column_stack(
+        [1 + np.floor(X[:, 0] * 5), 10 + 100 * X[:, 1]]
+    ),
+}
+
+
 def _fit_model(name):
     from sklearn.base import is_classifier
 
     cls = getattr(models, name)
     est = cls(**_MODEL_KWARGS[name])
     X, y_binary = _small_Xy()
+    if name in _FIXED_COLUMN_X:
+        X = _FIXED_COLUMN_X[name](X)
+        return est.fit(X), X
     y = y_binary if is_classifier(est) else np.random.default_rng(1).uniform(
         100.0, 10_000.0, len(X)
     )

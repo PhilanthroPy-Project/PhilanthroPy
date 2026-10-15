@@ -138,6 +138,7 @@ nav:
     - how-to/score_matching_gift_eligibility.md
     - how-to/measure_campaign_efficiency.md
     - how-to/audit_score_fairness.md
+    - how-to/explain_a_donor_score.md
     - how-to/estimate_appeal_uplift.md
     - how-to/save_and_load_models.md
     - how-to/develop_and_test.md

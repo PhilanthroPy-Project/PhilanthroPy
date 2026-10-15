@@ -12,6 +12,7 @@ How-to guides are task recipes. Each one solves a specific problem and assumes y
 * [Score Matching-Gift Eligibility](score_matching_gift_eligibility.md)
 * [Measure Campaign Efficiency](measure_campaign_efficiency.md)
 * [Audit Score Fairness](audit_score_fairness.md)
+* [Explain a Donor's Score](explain_a_donor_score.md)
 * [Estimate Appeal Uplift](estimate_appeal_uplift.md)
 * [Save and Load Models](save_and_load_models.md)
 * [Develop and Test PhilanthroPy](develop_and_test.md)

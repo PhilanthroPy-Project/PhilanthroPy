@@ -93,6 +93,29 @@ print(sweep.to_string(index=False))
 
 A ratio that swings across the sweep is telling you the disparity is threshold-driven, not structural. One that is flat and low is telling you the model has learned a proxy.
 
+## Check accuracy per group, not just selection
+
+Equal selection rates do not mean the model works equally well for everyone. If it ranks real major donors well in one region and barely better than chance in another, the second region's donors are under-served even at parity. `metric_by_group` computes any `metric(y_true, y_pred)` within each group, plus an `overall` row, with the group size alongside.
+
+```python
+from sklearn.metrics import recall_score, roc_auc_score
+
+from philanthropy.metrics import metric_by_group
+
+y_true = df["is_major_donor"].to_numpy()
+auc = metric_by_group(roc_auc_score, y_true, scores, region)
+print(auc.round(3))
+
+# How many real major donors each region's flagged list catches.
+recall = metric_by_group(recall_score, y_true, flagged, region)
+print(recall.round(3))
+
+assert list(auc.index) == ["east", "north", "south", "west", "overall"]
+assert auc.loc["overall", "count"] == len(df)
+```
+
+Read `count` before the metric: a small group's value is noisy. A group where the metric is undefined, such as ROC AUC on a group with no major donors, gets NaN rather than an error.
+
 ## Missing group labels are refused, not imputed
 
 Silently dropping donors with an unknown protected attribute biases the audit toward whoever your CRM records completely. Both functions raise instead.

@@ -21,6 +21,8 @@ from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.utils.multiclass import unique_labels
 from sklearn.utils.validation import check_is_fitted, validate_data
 
+from philanthropy.utils._validation import resolve_monotonic_cst
+
 _SelfD = TypeVar("_SelfD", bound="DonorPropensityModel")
 _SelfM = TypeVar("_SelfM", bound="MajorGiftClassifier")
 
@@ -408,7 +410,9 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         Monotonic constraint on each feature, passed straight to the
         underlying :class:`HistGradientBoostingClassifier`. ``None`` applies
         no constraint (current behaviour); see sklearn's docs for the
-        ``{-1, 0, 1}`` per-feature encoding. Do not expect the textbook RFM
+        ``{-1, 0, 1}`` per-feature encoding. A dict sets only the features
+        it names, keyed by position or, when ``X`` is a DataFrame, column
+        name (``{"total_giving": 1}``). Do not expect the textbook RFM
         constraint (+1 frequency and monetary, -1 recency) to help: on a
         KDD Cup 1998 validation fold (55/15/30 split, five seeds, response
         target) it lowered mean ROC-AUC from 0.601 to 0.595 and the top-10%
@@ -478,7 +482,7 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
             learning_rate=self.learning_rate,
             min_samples_leaf=self.min_samples_leaf,
             max_leaf_nodes=self.max_leaf_nodes,
-            monotonic_cst=self.monotonic_cst,
+            monotonic_cst=resolve_monotonic_cst(self, self.monotonic_cst),
             random_state=self.random_state
         )
         self.estimator_ = CalibratedClassifierCV(base_estimator)

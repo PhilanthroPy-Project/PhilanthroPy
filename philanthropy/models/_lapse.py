@@ -19,7 +19,7 @@ from sklearn.utils.validation import (
 from sklearn.utils import Tags
 from sklearn.utils.multiclass import unique_labels
 
-from philanthropy.utils._validation import resolve_columns
+from philanthropy.utils._validation import resolve_columns, resolve_monotonic_cst
 
 _Self = TypeVar("_Self", bound="LapsePredictor")
 
@@ -64,6 +64,16 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         ``None`` treats every column as numeric.
         Used only when ``backend="hist_gradient_boosting"``; the random
         forest has no categorical splits.
+    monotonic_cst : array-like of int or dict, default=None
+        Monotonic constraint on each feature, passed to the underlying
+        :class:`HistGradientBoostingClassifier`: ``1`` means the lapse score never falls as
+        that feature rises, ``-1`` that it never rises, ``0`` no
+        constraint. A dict sets only the features it names, keyed by
+        position or, when ``X`` is a DataFrame, column name
+        (``{"total_giving": 1}``). ``None`` applies no constraint
+        (current behaviour).
+        Used only when ``backend="hist_gradient_boosting"``; the random
+        forest ignores it.
 
     Attributes
     ----------
@@ -91,6 +101,7 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         random_state: int | None = None,
         backend: str = "random_forest",
         categorical_features: Any = None,
+        monotonic_cst: Any = None,
     ) -> None:
         self.n_estimators = n_estimators
         self.max_depth = max_depth
@@ -98,6 +109,7 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         self.random_state = random_state
         self.backend = backend
         self.categorical_features = categorical_features
+        self.monotonic_cst = monotonic_cst
 
     def fit(self: _Self, X: Any, y: Any, sample_weight: Any = None) -> _Self:
         """Fit the LapsePredictor.
@@ -133,6 +145,7 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
             self.estimator_ = HistGradientBoostingClassifier(
                 max_depth=self.max_depth,
                 categorical_features=resolve_columns(self, self.categorical_features),
+                monotonic_cst=resolve_monotonic_cst(self, self.monotonic_cst),
                 random_state=self.random_state,
             )
         else:

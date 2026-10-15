@@ -183,3 +183,32 @@ def resolve_columns(estimator: object, columns: Any) -> Any:
     if isinstance(columns, str):
         columns = [columns]
     return [resolve_column(estimator, c) for c in columns]
+
+
+def resolve_monotonic_cst(estimator: object, monotonic_cst: Any) -> Any:
+    """
+    Turn a ``monotonic_cst`` dict into the per-feature list the
+    ``HistGradientBoosting*`` backends take; anything else comes back unchanged.
+
+    Keys may be positions or (with a DataFrame) column names, resolved with
+    :func:`resolve_column`; unlisted features get ``0``. The backend sees a
+    NumPy array after ``validate_data``, so it cannot read names itself.
+
+    Raises
+    ------
+    ValueError
+        If a key is not a column name or a position in the fitted data.
+    """
+    if not isinstance(monotonic_cst, dict):
+        return monotonic_cst
+    n_features = estimator.n_features_in_  # type: ignore[attr-defined]
+    cst = [0] * n_features
+    for column, value in monotonic_cst.items():
+        idx = resolve_column(estimator, column)
+        if not 0 <= idx < n_features:
+            raise ValueError(
+                f"monotonic_cst key {column!r} is not a column position "
+                f"for data with {n_features} features."
+            )
+        cst[idx] = value
+    return cst

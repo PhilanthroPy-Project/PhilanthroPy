@@ -25,8 +25,10 @@ import philanthropy.models as _models
 import philanthropy.preprocessing as _pp
 from philanthropy.models import (
     AskAmountRecommender,
+    BetaGeoModel,
     DonorPropensityModel,
     FinancialForecastModel,
+    GammaGammaModel,
     GiftIntervalCalibrator,
     LapsePredictor,
     MajorGiftClassifier,
@@ -180,6 +182,56 @@ class TestRFMTransformerCompliance:
 
 
 # ---------------------------------------------------------------------------
+# SECTION 1c': BetaGeoModel and GammaGammaModel
+#
+# Their columns have fixed meanings: (frequency, recency, T) with recency <= T,
+# and (frequency, monetary_value). The battery feeds random blobs of 2 to 10
+# columns, so every check that fits on such data fails on the column-count or
+# recency guard, not on a contract violation. Those checks are expected
+# failures here; the rest of the battery runs for real, and
+# tests/test_repeat_giving.py covers fit-returns-self, pickling, row-order and
+# batch invariance, and feature-count mismatch on valid data.
+# ---------------------------------------------------------------------------
+
+_FIXED_COLUMN_XFAIL = {
+    name: "Random blobs violate the fixed column layout; see test_repeat_giving.py."
+    for name in (
+        "check_fit_score_takes_y", "check_estimators_overwrite_params",
+        "check_dont_overwrite_parameters", "check_estimators_fit_returns_self",
+        "check_readonly_memmap_input", "check_n_features_in_after_fitting",
+        "check_positive_only_tag_during_fit", "check_estimators_dtypes",
+        "check_dtype_object", "check_pipeline_consistency",
+        "check_estimators_nan_inf", "check_estimators_pickle",
+        "check_f_contiguous_array_estimator",
+        "check_methods_sample_order_invariance",
+        "check_methods_subset_invariance", "check_fit2d_1sample",
+        "check_dict_unchanged", "check_fit_idempotent",
+        "check_fit_check_is_fitted", "check_n_features_in",
+        "check_fit2d_predict1d",
+    )
+}
+
+
+# These fit on two-column blobs, which GammaGammaModel accepts, so they pass.
+_TWO_COLUMN_CHECKS = {
+    "check_estimators_overwrite_params", "check_estimators_fit_returns_self",
+    "check_readonly_memmap_input", "check_fit_idempotent",
+    "check_fit_check_is_fitted", "check_n_features_in",
+}
+
+
+@parametrize_with_checks(
+    [BetaGeoModel(max_iter=200), GammaGammaModel(max_iter=200)],
+    expected_failed_checks=lambda est: (
+        _FIXED_COLUMN_XFAIL if isinstance(est, BetaGeoModel)
+        else {k: v for k, v in _FIXED_COLUMN_XFAIL.items() if k not in _TWO_COLUMN_CHECKS}
+    ),
+)
+def test_repeat_giving_compliance(estimator, check):
+    check(estimator)
+
+
+# ---------------------------------------------------------------------------
 # SECTION 1d: every public estimator is covered by one of the above
 #
 # Prevents a repeat of the MatchingGiftFeaturizer gap: a class landing in
@@ -222,7 +274,9 @@ def test_every_exemption_carries_a_reason():
 
 
 def test_every_public_estimator_is_covered_by_the_battery_or_documented():
-    covered_by_battery = {type(est) for est in _STANDARD_ESTIMATORS}
+    covered_by_battery = {type(est) for est in _STANDARD_ESTIMATORS} | {
+        BetaGeoModel, GammaGammaModel,
+    }
     covered = covered_by_battery | set(_MANUALLY_COVERED)
 
     uncovered = []

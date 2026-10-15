@@ -25,6 +25,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `philanthropy check --task {upgrade,lapse,ask} --source ... --data ...`
   runs `compare_to_rule` on a raw CRM gift export and prints the verdict, in
   the Results pages' words, and which list to use (the model or the rule).
+- Per-donor repeat-giving models that need only a gift export (donor id,
+  date, amount), no labels or wealth data. `philanthropy.models.BetaGeoModel`
+  is the BG/NBD model (Fader, Hardie and Lee 2005): `predict_alive_score`
+  gives P(still giving) and `predict_gifts_forecast(X, horizon)` the expected
+  gift count over a horizon. `philanthropy.models.GammaGammaModel` is the
+  gamma-gamma gift-size model: `predict_gift_size_forecast` shrinks each
+  donor's mean repeat gift toward the file's average. Both fit by maximum
+  likelihood with scipy and reproduce the published CDNOW parameters.
+  `philanthropy.models.repeat_giving_summary(gifts, as_of=...)` builds their
+  inputs (repeat-gift days, recency, T, mean repeat gift) from a gift table.
+  Until now `donor_lifetime_value` was a single NPV on file-wide averages.
 
 ## [0.9.0] - 2026-10-12
 

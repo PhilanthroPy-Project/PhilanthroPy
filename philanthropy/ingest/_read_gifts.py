@@ -1,8 +1,8 @@
 """
 philanthropy.ingest._read_gifts
 ================================
-One call over the CiviCRM, Raiser's Edge, NPSP, Nonprofit Cloud, Bloomerang
-and DonorPerfect gift bridges.
+One call over the CiviCRM, Raiser's Edge, Blackbaud CRM, NPSP, Nonprofit
+Cloud, Bloomerang and DonorPerfect gift bridges.
 
 Each bridge module pairs its own ``read_<source>_...`` loader with a
 ``<source>_..._to_features`` aggregator, because each CRM's export needs its
@@ -21,6 +21,7 @@ from typing import Any, Callable, Iterable, Mapping, Tuple, Union
 
 import pandas as pd
 
+from ._blackbaud_crm import blackbaud_crm_revenue_to_features, read_blackbaud_crm_revenue
 from ._bloomerang import (
     bloomerang_transactions_to_features,
     read_bloomerang_transactions,
@@ -39,7 +40,7 @@ __all__ = ["GIFT_SOURCES", "read_gifts"]
 #: Valid ``source`` names for :func:`read_gifts`, in the order the CLI's
 #: `--source` choices already list them.
 GIFT_SOURCES: Tuple[str, ...] = (
-    "civicrm", "raisers_edge", "npsp", "nonprofit_cloud", "bloomerang", "donorperfect",
+    "civicrm", "raisers_edge", "npsp", "nonprofit_cloud", "bloomerang", "donorperfect", "blackbaud_crm"
 )
 
 # (reader, aggregator) pair per source, the same shape as the preset dispatch
@@ -51,6 +52,7 @@ _REGISTRY: "dict[str, tuple[Callable[[Union[str, Path]], pd.DataFrame], Callable
     "nonprofit_cloud": (read_nonprofit_cloud_gifts, nonprofit_cloud_gifts_to_features),
     "bloomerang": (read_bloomerang_transactions, bloomerang_transactions_to_features),
     "donorperfect": (read_donorperfect_gifts, donorperfect_gifts_to_features),
+    "blackbaud_crm": (read_blackbaud_crm_revenue, blackbaud_crm_revenue_to_features)
 }
 
 
@@ -63,10 +65,10 @@ def read_gifts(
     """Read (if given a path) and aggregate a CRM gift export in one call.
 
     Looks ``source`` up in a small preset registry mapping each of
-    ``"civicrm"``, ``"raisers_edge"``, ``"npsp"``, and ``"nonprofit_cloud"``
-    to that CRM's ``read_<source>_...`` loader and ``<source>_..._to_features``
-    aggregator, then runs the pair. ``read_gifts("gifts.csv", source="npsp")``
-    is equivalent to
+    ``"civicrm"``, ``"raisers_edge"``, ``"npsp"``, ``"nonprofit_cloud"``, and
+    ``blackbaud_crm`` to that CRM's ``read_<source>_...`` loader and
+    ``<source>_..._to_features`` aggregator, then runs the pair.
+    ``read_gifts("gifts.csv", source="npsp")`` is equivalent to
     ``npsp_opportunities_to_features(read_npsp_opportunities("gifts.csv"))``.
 
     Parameters
@@ -81,10 +83,10 @@ def read_gifts(
     **kwargs
         Passed through to the source's aggregator, e.g. ``statuses=`` for
         ``"civicrm"``, ``exclude_gift_types=`` for ``"raisers_edge"``,
-        ``include_stages=`` for ``"npsp"``, ``include_statuses=`` for
-        ``"nonprofit_cloud"``, ``exclude_entry_types=`` for ``"bloomerang"``,
-        ``exclude_record_types=`` for ``"donorperfect"``, or the
-        ``reference_date=`` every preset accepts.
+        ``include_revenue_types=`` for ``blackbaud_crm``, ``include_stages=``
+        for ``"npsp"``, ``include_statuses=`` for ``"nonprofit_cloud"``,
+        ``exclude_entry_types=`` for ``"bloomerang"``, ``exclude_record_types=``
+        for ``"donorperfect"``, or the ``reference_date=`` every preset accepts.
 
     Returns
     -------

@@ -6,6 +6,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Two how-to guides: "Estimate Donor Lifetime Value" walks a gift export
+  through `repeat_giving_summary`, `BetaGeoModel` and `GammaGammaModel` to
+  expected giving per donor and checks the forecast on a held-out year;
+  "Fit Models to Your CRM Columns" covers column names, `categorical_features`,
+  `sample_weight` and `monotonic_cst`. The `repeat_giving_summary` docstring no
+  longer claims the ingest bridges return a gift table.
 - `monotonic_cst` on `AskAmountRecommender`, `ShareOfWalletRegressor`,
   `LapsePredictor` (gradient-boosting backend only; the random forest ignores
   it) and `PlannedGivingIntentScorer`, so a prior such as "more past giving

@@ -164,4 +164,7 @@ columns like `total_gift_amount`, `gift_count`, and `recency_days`. Feed
 that straight into a model, e.g. `DonorPropensityModel` or
 `LapsePredictor`, the same way the [Results](../results/index.md) pages do,
 or see [Use the CLI](use_the_cli.md) to run this from the command line
-without writing any code.
+without writing any code. If your columns, category codes or weights need
+handling, see [Fit Models to Your CRM Columns](fit_models_to_your_crm_columns.md);
+to forecast each donor's future giving from the gift history alone, see
+[Estimate Donor Lifetime Value](estimate_donor_lifetime_value.md).

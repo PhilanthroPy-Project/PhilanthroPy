@@ -69,8 +69,11 @@ def repeat_giving_summary(
     Parameters
     ----------
     gifts : pandas.DataFrame
-        One row per gift with ``donor_id``, ``gift_date`` and ``gift_amount``,
-        the shape every ``philanthropy.ingest`` bridge returns.
+        One row per gift with ``donor_id``, ``gift_date`` and ``gift_amount``.
+        Rename a CRM export's own columns to these first: the
+        ``philanthropy.ingest`` ``read_*`` functions keep the export's
+        (normalised) column names, and ``read_gifts`` and the
+        ``*_to_features`` bridges return one row per donor, not per gift.
     as_of : str, datetime-like or None, default=None
         End of the observation window. Gifts after it are dropped. ``None``
         uses the latest gift date.

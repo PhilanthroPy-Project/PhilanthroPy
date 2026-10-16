@@ -491,8 +491,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   and NPSP ones. Includes only paid statuses by default (`Paid` via
   `DEFAULT_INCLUDED_GIFT_TRANSACTION_STATUSES`), so only `Unpaid`, `Cancelled`,
   `Failed`, `Pending`, `Written Off`, and `Fully Refunded` installments are not
-  summed as gifts. Wired into the CLI as `philanthropy features --source nonprofit_cloud`
-  and registered in the `read_gifts` preset registry.
+  summed as gifts. Wired into the CLI as `philanthropy features
+  --source nonprofit_cloud` and registered in the `read_gifts` preset registry.
+- `philanthropy.ingest.blackbaud_crm_revenue_to_features` and
+  `read_blackbaud_crm_revenue`: a Blackbaud CRM export bridge, alongside the
+  existing CiviCRM and Raiser's Edge ones. Includes only payment revenue types by
+  default (`Payment` via `DEFAULT_INCLUDED_REVENUE_TYPES`), so only `Payment`
+  revenue types are summed as gifts. The included set is the documented
+  `include_revenue_types` parameter, defaulting to the new
+  `DEFAULT_INCLUDED_REVENUE_TYPES`, because Blackbaud CRM's exports are a fixed
+  schema enumeration. An export with no revenue-type column warns rather than
+  silently double-counting. Registered in the `read_gifts` preset registry.
+  Closes #240.
 
 ### Changed
 - The docs workflow builds on Python 3.13 instead of 3.10. pymdown-extensions

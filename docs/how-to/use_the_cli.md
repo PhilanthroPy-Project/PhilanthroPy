@@ -1,13 +1,13 @@
 # Use the CLI
 
-Installing the package puts a `philanthropy` executable on your PATH. It is a CSV-in / CSV-out interface for analysts who are not primarily Python engineers: turn a raw CRM gift export into a feature table, train a model from it, score a prospect list, and report holdout metrics, no Python file to write.
+Installing the package puts a `philanthropy` executable on your PATH. It is a CSV-in / CSV-out interface for analysts who are not primarily Python engineers: turn a raw CRM gift export into a feature table, train a model from it, score a prospect list, report holdout metrics, and check whether a model beats the simple rule on your own file, no Python file to write.
 
 ```bash
 philanthropy --version
 philanthropy --help
 ```
 
-Four subcommands: `features`, `train`, `score`, `validate`.
+Five subcommands: `features`, `train`, `score`, `validate`, `check`.
 
 ## Build the feature table from a CRM gift export
 
@@ -131,6 +131,25 @@ The decile table sorts donors by predicted probability, splits them into 10
 equal-sized groups, and reports the positive rate and lift over the base rate
 in each; `top N` restates the same thing for whatever cutoff you'd actually
 mail to.
+
+## Check the model against the simple rule on your own file
+
+`check` reads a raw gift export the way `features` does and runs `philanthropy.model_selection.compare_to_rule` on it. It trains on every labelled fiscal year but the last, then compares the model with the best of a few rules fixed in code (for lapse: months since last gift, shortest giving streak, declining trend) on your last complete fiscal year. `--task` is `upgrade`, `lapse` or `ask`.
+
+```bash
+philanthropy check --task lapse --source npsp --data opportunities.csv
+```
+
+```
+verdict: About the same as the rule
+use: the rule
+rule: shortest giving streak (best of 3)
+test fiscal year: 2021 (310 training rows, 156 test rows)
+top10pct_hit_rate: model 0.375, rule 0.438
+model - rule, 95% interval: -0.438 to 0.250
+```
+
+The verdict uses the same words as the [Results pages](../results/how_to_read.md): **Beats the rule**, **About the same as the rule**, **Loses to the rule**, **not enough labels**, or **can't test (reason)**. `use:` is the model only when the model beats the rule; every other verdict, a tie included, says to use the rule, which is free and easy to explain.
 
 ## End to end, in Python
 

@@ -34,11 +34,21 @@ def _archetype_gifts(n_per_group=20):
     return pd.DataFrame(rows)
 
 
+@pytest.fixture(scope="module")
+def default_run():
+    """The default call, shared by the tests that only read its output.
+
+    Each call takes ~4s (most of it permutation importance for
+    ``top_reasons``), and over a dozen tests made the identical call.
+    """
+    return score_leadership_prospects(_archetype_gifts(), random_state=0)
+
+
 # --------------------------------------------------------------------------- #
 # Shape and basic behaviour
 # --------------------------------------------------------------------------- #
-def test_basic_output_shape_and_columns():
-    scores, report = score_leadership_prospects(_archetype_gifts(), random_state=0)
+def test_basic_output_shape_and_columns(default_run):
+    scores, report = default_run
     assert list(scores.columns) == [
         "fiscal_year", "affinity_score", "rank", "decile", "top_reasons", "suggested_ask",
     ]
@@ -46,28 +56,28 @@ def test_basic_output_shape_and_columns():
     assert len(scores) == 40  # flat_high + flat_low, 20 each
 
 
-def test_only_currently_band_qualifying_donors_are_scored():
-    scores, _ = score_leadership_prospects(_archetype_gifts(), random_state=0)
+def test_only_currently_band_qualifying_donors_are_scored(default_run):
+    scores, _ = default_run
     names = {donor_id.rsplit("_", 1)[0] for donor_id in scores.index}
     assert names == {"flat_high", "flat_low"}
 
 
-def test_affinity_score_bounded_0_to_100():
-    scores, _ = score_leadership_prospects(_archetype_gifts(), random_state=0)
+def test_affinity_score_bounded_0_to_100(default_run):
+    scores, _ = default_run
     assert (scores["affinity_score"] >= 0).all()
     assert (scores["affinity_score"] <= 100).all()
 
 
-def test_sorted_descending_with_matching_rank_and_decile():
-    scores, _ = score_leadership_prospects(_archetype_gifts(), random_state=0)
+def test_sorted_descending_with_matching_rank_and_decile(default_run):
+    scores, _ = default_run
     assert list(scores["affinity_score"]) == sorted(scores["affinity_score"], reverse=True)
     assert list(scores["rank"]) == list(range(1, len(scores) + 1))
     assert scores["decile"].min() >= 1
     assert scores["decile"].max() <= 10
 
 
-def test_top_reasons_are_feature_value_pairs():
-    scores, _ = score_leadership_prospects(_archetype_gifts(), random_state=0)
+def test_top_reasons_are_feature_value_pairs(default_run):
+    scores, _ = default_run
     reasons = scores["top_reasons"].iloc[0]
     assert len(reasons) <= 3
     for feature, value in reasons:
@@ -75,15 +85,15 @@ def test_top_reasons_are_feature_value_pairs():
         assert np.isscalar(value)
 
 
-def test_suggested_ask_is_nan_not_forced():
+def test_suggested_ask_is_nan_not_forced(default_run):
     # No ask-amount label exists in this data; see the docstring's "Suggested
     # ask" note for why this is left NaN rather than a fabricated number.
-    scores, _ = score_leadership_prospects(_archetype_gifts(), random_state=0)
+    scores, _ = default_run
     assert scores["suggested_ask"].isna().all()
 
 
-def test_report_keys_present():
-    _, report = score_leadership_prospects(_archetype_gifts(), random_state=0)
+def test_report_keys_present(default_run):
+    _, report = default_run
     for key in (
         "n_training_rows", "n_training_fiscal_years", "low_data_warning",
         "low_data_message", "activity_id_match_warnings", "current_fiscal_year",
@@ -92,14 +102,104 @@ def test_report_keys_present():
         "baseline_topn_fy_total_upgrade_rate", "lift_topn_fy_total",
         "baseline_giving_threshold", "baseline_gave_threshold_upgrade_rate",
         "lift_over_gave_threshold", "overall_upgrade_rate", "deciles",
-        "roc_auc", "average_precision",
+        "roc_auc", "average_precision", "threshold",
+        "recommended_list_fraction", "recommended_list_size", "rule_check",
     ):
         assert key in report
+
+
+def test_percentile_threshold_matches_the_same_dollar_threshold():
+    gifts = _archetype_gifts()
+    _, by_pct = score_leadership_prospects(gifts, threshold="p80", random_state=0)
+    scores, by_dollar = score_leadership_prospects(gifts, threshold=by_pct["threshold"], random_state=0)
+    assert by_pct["threshold"] == by_dollar["threshold"] == 900.0
+    assert by_pct["n_training_rows"] == by_dollar["n_training_rows"]
+
+
+def test_percentile_threshold_never_reads_the_last_label_year():
+    # Historical snapshot years are FY2021-FY2023; FY2024 is only the last
+    # one's label year. Inflating every FY2024 gift must not move "p80".
+    gifts = _archetype_gifts()
+    _, base = score_leadership_prospects(gifts, threshold="p80", random_state=0)
+    inflated = gifts.copy()
+    inflated.loc[inflated["gift_date"] == "2023-08-01", "gift_amount"] *= 100
+    _, moved = score_leadership_prospects(inflated, threshold="p80", random_state=0)
+    assert moved["threshold"] == base["threshold"]
+
+
+@pytest.mark.parametrize("bad", ["p0", "p100", "93", "top10"])
+def test_bad_percentile_threshold_raises(bad):
+    with pytest.raises(ValueError, match="pNN"):
+        score_leadership_prospects(_archetype_gifts(), threshold=bad)
+
+
+def test_recommended_list_size_is_the_longest_slice_at_1_5x_base(default_run):
+    from philanthropy.models._upgrade import _recommended_list_fraction
+    # Base rate 0.4. Top 1: 1.0, top 2: 1.0, top 3: 0.67, top 4: 0.5, top 5: 0.4.
+    y = np.array([1, 1, 0, 0, 0, 0, 0, 0, 1, 1])
+    proba = np.arange(10, 0, -1) / 10.0
+    assert _recommended_list_fraction(proba, y) == 0.3
+    assert _recommended_list_fraction(proba, np.zeros(10, dtype=int)) is None
+    _, report = default_run
+    assert report["recommended_list_size"] == int(np.ceil(report["recommended_list_fraction"] * report["n_scored"]))
 
 
 # --------------------------------------------------------------------------- #
 # Validation and errors
 # --------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+# rule_check: compare_to_rule's verdict on this function's own held-out fold
+# --------------------------------------------------------------------------- #
+def test_rule_check_keeps_the_rule_below_the_label_floor(default_run):
+    _, report = default_run
+    check = report["rule_check"]
+    assert check["label_floor"] == "not enough labels"
+    assert check["verdict"] == "not enough labels"
+    assert check["method"] == "rule"
+    assert check["model_value"] is None and check["difference_ci"] is None
+    assert check["rule"] is not None and check["n_rules_tried"] == 3
+
+
+def test_rule_check_picks_the_model_when_no_rule_sees_the_signal():
+    # Upgrades follow how many gifts make up the year (5 small vs 1 large),
+    # which none of the three rules (this-year total, total plus growth,
+    # largest gift) rank by; the single-gift donors even total more.
+    rng = np.random.default_rng(0)
+    rows = []
+    for d in range(1200):
+        many = d % 2 == 0
+        for t in range(7):
+            up = t > 0 and rng.random() < (0.6 if many else 0.05)
+            total = 1500.0 if up else (500.0 if many else 600.0)
+            k = 5 if many else 1
+            rows += [{"donor_id": f"d{d}", "gift_date": f"{2015 + t}-{8 + j:02d}-15",
+                      "gift_amount": total / k} for j in range(k)]
+    _, report = score_leadership_prospects(pd.DataFrame(rows), random_state=0)
+    check = report["rule_check"]
+    assert check["label_floor"] == "run"
+    assert check["verdict"] == "Beats the rule"
+    assert check["method"] == "model"
+    assert check["difference_ci"][0] > 0
+
+
+def test_rule_check_tie_goes_to_the_rule():
+    # Next year crosses $1,000 exactly when this year is above $800, so
+    # "this-year total" is a perfect list and the model can only match it.
+    rng = np.random.default_rng(0)
+    gifts = pd.DataFrame([
+        {"donor_id": f"d{d}", "gift_date": f"{2015 + t}-09-15",
+         "gift_amount": float(rng.integers(100, 1000))}
+        for d in range(1200) for t in range(7)
+    ])
+    prev = gifts.groupby("donor_id")["gift_amount"].shift()
+    gifts.loc[prev > 800, "gift_amount"] = 1200.0
+    _, report = score_leadership_prospects(gifts, random_state=0)
+    check = report["rule_check"]
+    assert check["label_floor"] == "run"
+    assert check["verdict"] == "About the same as the rule"
+    assert check["method"] == "rule"
+
+
 def test_band_low_above_high_raises():
     with pytest.raises(ValueError):
         score_leadership_prospects(_archetype_gifts(), band=(999, 100))
@@ -128,8 +228,8 @@ def test_no_historical_rows_raises():
         score_leadership_prospects(gifts)
 
 
-def test_low_data_warning_flagged_under_500_rows():
-    _, report = score_leadership_prospects(_archetype_gifts(), random_state=0)
+def test_low_data_warning_flagged_under_500_rows(default_run):
+    _, report = default_run
     assert report["n_training_rows"] < 500
     assert report["low_data_warning"] is True
     assert report["low_data_message"] is not None
@@ -267,10 +367,9 @@ def test_appending_a_far_future_gift_does_not_change_training_or_scores():
     assert report_before["n_training_rows"] == report_after["n_training_rows"]
 
 
-def test_as_of_defaults_to_latest_gift_date():
-    gifts = _archetype_gifts()
-    explicit, _ = score_leadership_prospects(gifts, as_of="2024-08-01", random_state=0)
-    default, _ = score_leadership_prospects(gifts, random_state=0)
+def test_as_of_defaults_to_latest_gift_date(default_run):
+    explicit, _ = score_leadership_prospects(_archetype_gifts(), as_of="2024-08-01", random_state=0)
+    default, _ = default_run
     pd.testing.assert_frame_equal(explicit.sort_index(), default.sort_index())
 
 
@@ -326,8 +425,8 @@ def test_tiny_training_set_raises_clear_value_error():
 # F5: fiscal_year is not donor-specific and sits outside the training range
 # at scoring time, so it must not be a model feature (still an output column)
 # --------------------------------------------------------------------------- #
-def test_fiscal_year_excluded_from_top_reasons():
-    scores, _ = score_leadership_prospects(_archetype_gifts(), random_state=0)
+def test_fiscal_year_excluded_from_top_reasons(default_run):
+    scores, _ = default_run
     for reasons in scores["top_reasons"]:
         assert all(feature != "fiscal_year" for feature, _ in reasons)
 
@@ -336,8 +435,8 @@ def test_fiscal_year_excluded_from_top_reasons():
 # F5: top_n defaults to ~10% of the validation fold, not a fixed count, and
 # the report carries deciles, roc_auc, average_precision and two baselines
 # --------------------------------------------------------------------------- #
-def test_default_top_n_is_roughly_ten_percent_of_validation_fold():
-    _, report = score_leadership_prospects(_archetype_gifts(), random_state=0)
+def test_default_top_n_is_roughly_ten_percent_of_validation_fold(default_run):
+    _, report = default_run
     n_val = report["n_validation_rows"]
     assert report["top_n"] == max(1, round(0.1 * n_val))
 
@@ -354,8 +453,8 @@ def test_larger_validation_fold_does_not_use_a_fixed_top_n():
     assert report["top_n"] > 10
 
 
-def test_deciles_report_shape_and_coverage():
-    _, report = score_leadership_prospects(_archetype_gifts(), random_state=0)
+def test_deciles_report_shape_and_coverage(default_run):
+    _, report = default_run
     deciles = report["deciles"]
     assert len(deciles) == 10
     assert [d["decile"] for d in deciles] == list(range(1, 11))
@@ -366,8 +465,8 @@ def test_deciles_report_shape_and_coverage():
             assert 0.0 <= d["mean_predicted"] <= 1.0
 
 
-def test_roc_auc_and_average_precision_bounded():
-    _, report = score_leadership_prospects(_archetype_gifts(), random_state=0)
+def test_roc_auc_and_average_precision_bounded(default_run):
+    _, report = default_run
     assert report["roc_auc"] is None or 0.0 <= report["roc_auc"] <= 1.0
     assert report["average_precision"] is None or 0.0 <= report["average_precision"] <= 1.0
 
@@ -384,8 +483,8 @@ def test_baseline_giving_threshold_parameter_overrides_default():
     assert report["baseline_giving_threshold"] == 300.0
 
 
-def test_two_named_baselines_and_lifts_reported():
-    _, report = score_leadership_prospects(_archetype_gifts(), random_state=0)
+def test_two_named_baselines_and_lifts_reported(default_run):
+    _, report = default_run
     for rate_key in (
         "baseline_topn_fy_total_upgrade_rate", "baseline_gave_threshold_upgrade_rate",
     ):
@@ -397,8 +496,8 @@ def test_two_named_baselines_and_lifts_reported():
 # --------------------------------------------------------------------------- #
 # Momentum (opt-in)
 # --------------------------------------------------------------------------- #
-def test_momentum_off_by_default_no_slope_features_in_top_reasons():
-    scores, _ = score_leadership_prospects(_archetype_gifts(), random_state=0)
+def test_momentum_off_by_default_no_slope_features_in_top_reasons(default_run):
+    scores, _ = default_run
     for reasons in scores["top_reasons"]:
         assert all("_slope_" not in feature for feature, _ in reasons)
 

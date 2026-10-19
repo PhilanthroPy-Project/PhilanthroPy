@@ -152,3 +152,83 @@ def test_unknown_target_mode_raises(ask_Xy):
     model = AskAmountRecommender(target_mode="bogus", random_state=0)
     with pytest.raises(ValueError):
         model.fit(X, y)
+
+
+# ---------------------------------------------------------------------------
+# suggest_ask and the beats_rule_ self-check
+# ---------------------------------------------------------------------------
+
+from philanthropy.models import suggest_ask  # noqa: E402
+
+
+def test_suggest_ask_takes_max_stretches_and_rounds_up():
+    out = suggest_ask([100, 40, 260], [80, 55, 200])
+    np.testing.assert_array_equal(out, [125.0, 75.0, 300.0])
+    # An exact multiple after the stretch stays put (no float-noise step up).
+    np.testing.assert_array_equal(suggest_ask([100], [0], stretch=0.25), [125.0])
+    np.testing.assert_array_equal(
+        suggest_ask([100], [80], stretch=0.0, round_to=None), [100.0]
+    )
+
+
+def test_suggest_ask_nan_falls_back_to_the_other_column():
+    out = suggest_ask([np.nan, 60, np.nan], [50, np.nan, np.nan], round_to=None)
+    np.testing.assert_allclose(out[:2], [55.0, 66.0])
+    assert np.isnan(out[2])
+
+
+@pytest.mark.parametrize(
+    "kwargs, match",
+    [({"stretch": -0.1}, "stretch"), ({"round_to": 0}, "round_to")],
+)
+def test_suggest_ask_rejects_bad_params(kwargs, match):
+    with pytest.raises(ValueError, match=match):
+        suggest_ask([100], [80], **kwargs)
+
+
+def test_suggest_ask_rejects_length_mismatch():
+    with pytest.raises(ValueError, match="length"):
+        suggest_ask([100, 200], [80])
+
+
+def _sticky_Xy(n=600, seed=0):
+    """Next gift equals the last gift: the rule is exact, the model is not."""
+    rng = np.random.default_rng(seed)
+    last = rng.choice([25.0, 50.0, 100.0, 250.0, 1000.0], n)
+    avg = last * rng.uniform(0.5, 1.0, n)
+    X = np.column_stack([last, avg, rng.normal(size=n)])
+    return X, last.copy()
+
+
+def test_beats_rule_false_when_rule_is_exact():
+    X, y = _sticky_Xy()
+    m = AskAmountRecommender(random_state=0, last_gift_idx=0, avg_gift_idx=1).fit(X, y)
+    assert m.rule_mae_ == 0.0
+    assert m.beats_rule_ is False
+    assert m.model_mae_ > 0.0
+
+
+def test_beats_rule_true_when_another_feature_drives_the_gift():
+    X, _ = _sticky_Xy()
+    y = 500.0 + 400.0 * X[:, 2]  # unrelated to past giving
+    m = AskAmountRecommender(random_state=0, last_gift_idx=0, avg_gift_idx=1).fit(X, y)
+    assert m.beats_rule_ is True
+    assert m.model_mae_ < m.rule_mae_
+
+
+def test_self_check_skipped_without_indices_or_rows(ask_Xy):
+    X, y = ask_Xy
+    m = AskAmountRecommender(random_state=0).fit(X, y)
+    assert m.beats_rule_ is None and m.rule_mae_ is None and m.model_mae_ is None
+    small = AskAmountRecommender(random_state=0, last_gift_idx=0, avg_gift_idx=1)
+    small.fit(X[:99], y[:99])
+    assert small.beats_rule_ is None
+
+
+def test_self_check_does_not_change_the_final_model():
+    X, y = _sticky_Xy()
+    checked = AskAmountRecommender(random_state=0, last_gift_idx=0, avg_gift_idx=1)
+    plain = AskAmountRecommender(random_state=0)
+    np.testing.assert_array_equal(
+        checked.fit(X, y).predict(X), plain.fit(X, y).predict(X)
+    )

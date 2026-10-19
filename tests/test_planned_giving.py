@@ -274,3 +274,14 @@ class TestPlannedGivingIntentScorer:
         m = PlannedGivingIntentScorer(n_estimators=5, random_state=0).fit(X, y)
         predictions = m.predict(X)
         assert predictions.shape == (20,)
+
+    def test_accepts_missing_values(self):
+        """Blank age or wealth columns must fit and score without imputation."""
+        rng = np.random.default_rng(0)
+        X = rng.random((60, 4))
+        y = (X[:, 0] > 0.5).astype(int)
+        X[::7, 1] = np.nan
+
+        m = PlannedGivingIntentScorer(n_estimators=5, random_state=0).fit(X, y)
+        scores = m.predict_intent_score(X)
+        assert np.isfinite(scores).all()

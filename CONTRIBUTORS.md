@@ -76,8 +76,13 @@ contribution. Code, docs, tests, and review all count.
   [#151](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/151)).
 - [@Utkarsh3725](https://github.com/Utkarsh3725): removed the unreachable
   timezone-localisation fallback in `EncounterRecencyTransformer`, preserving
-  the useful invalid-timezone error (closes
-  [#201](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/201)).
+  the useful invalid-timezone error, and added coverage for the optional
+  `RFMTransformer(include_tenure=True)` output contract, then linked the
+  temporal-leakage tutorial to the measured KDD Cup 1998 replication result
+  (closes
+  [#201](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/201),
+  [#150](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/150),
+  [#205](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/205)).
 
 - **Harsh Raj Singhania** ([@HarshRajSinghania](https://github.com/HarshRajSinghania)):
   added DataFrame and array-fit tests so `MovesManagementClassifier.feature_names_in_`
@@ -99,9 +104,10 @@ contribution. Code, docs, tests, and review all count.
   `__getattr__` (closes
   [#153](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/153)).
 
-  **Olayimika** ([@jimoholayinka01] https://github.com/Jimoholayinka01 )
+- **Olayimika** ([@jimoholayinka01] https://github.com/Jimoholayinka01 )
   Added docstrings to `RFMTransformer.fit` and `RFMTransformer.transform` in
   philanthropy/preprocessing/_rfm.py with detailed Parameters, Returns, and Raises
+- [@vridhib](https://github.com/vridhib): added a Salesforce Nonprofit Cloud GiftTransaction ingest reader (closes [#234](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/234))
 
 ## Getting listed
 

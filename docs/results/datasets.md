@@ -77,19 +77,23 @@ household ID or a single-record example.
 
 ## Karlan and List matching-grant experiment
 
-*Real charitable file. On disk, not yet used on these pages.*
+*Real charitable file.*
 
 - **What it is:** a randomised fundraising-letter experiment: prior donors to
   one US nonprofit were sent letters with different matching-grant offers and
   ask amounts, and their response was recorded.
 - **Who gave to whom and when:** individuals to one charity, by mail, one
   letter in 2005.
-- **How big:** about 50,000 prior donors.
-- **Can and cannot test:** can test response and ask amount on a randomised
-  sample, and is the first charitable experiment for uplift. Cannot test
-  lapse or upgrade (one letter, no repeat years).
+- **How big:** 50,083 prior donors, about 2 in 100 of whom gave to the letter.
+- **Can and cannot test:** can test response, the amount given and, because
+  the matching-grant offer was random, uplift. It is a second organisation for
+  response, independent of KDD Cup 1998. Cannot test lapse or upgrade (one
+  letter, no repeat years), or who to mail (no mailing cost). The file has a
+  largest past gift but no last or average gift.
 - **Terms:** openICPSR 113224 (doi:10.3886/E113224V1); data CC BY 4.0, code
-  BSD-3, copyright American Economic Association 2007.
+  BSD-3, copyright American Economic Association 2007. Cite Karlan and List
+  (2007), *American Economic Review* 97(5): 1774-1793. The library reads it
+  from a local path (`load_karlan_list`) and never downloads or ships it.
 
 ## Sample data
 

@@ -1,6 +1,6 @@
 === "PSID (household survey)"
 
-    On this file the model looks at 26 things about each household.
+    On this file the model looks at 30 things about each household.
 
     | What it knows | What that means |
     |---|---|
@@ -16,23 +16,23 @@
 
     | What raises or lowers the score | |
     |---|---|
-    | this wave's giving | ● depends |
-    | last wave's giving | ● depends |
-    | consecutive waves given | ▼ lowers the score |
+    | giving this year (this wave on PSID) | ● depends |
+    | giving the year before (the wave before on PSID) | ● depends |
+    | giving two years before (two waves before on PSID) | ● depends |
     | household wealth, counting home equity | ● depends |
-    | charitable deduction claimed on taxes | ● depends |
+    | consecutive years (or waves) given | ▼ lowers the score |
 
     ??? note "For analysts"
-        Columns: `total_giving`, `itemized_charitable_contrib_amount`, `family_income`, `wealth1`, `wealth2`, `head_volunteer_hours_annual`, `spouse_volunteer_hours_annual`, `household_volunteer_hours_regular`, `head_volunteer_hours_typical_week`, `spouse_volunteer_hours_typical_week`, `giving_checkpoint_other_2001`, `giving_combo`, `giving_community`, `giving_cultural`, `giving_education`, `giving_environment`, `giving_health`, `giving_international`, `giving_needy`, `giving_other`, `giving_religious`, `giving_youth`, `largest_giving_category`, `prior_wave_total`, `trend`, `waves_given_streak`
+        Columns: `period_total`, `period_total_prior1`, `period_total_prior2`, `period_trend`, `largest_gift`, `consecutive_periods_given`, `gave_prior1`, `gave_prior2`, `periods_since_first_gift`, `itemized_charitable_contrib_amount`, `family_income`, `wealth1`, `wealth2`, `head_volunteer_hours_annual`, `spouse_volunteer_hours_annual`, `household_volunteer_hours_regular`, `head_volunteer_hours_typical_week`, `spouse_volunteer_hours_typical_week`, `giving_checkpoint_other_2001`, `giving_combo`, `giving_community`, `giving_cultural`, `giving_education`, `giving_environment`, `giving_health`, `giving_international`, `giving_needy`, `giving_other`, `giving_religious`, `giving_youth`
 
         | Column | Importance | Direction |
         |---|---|---|
-        | `total_giving` | 0.042 | mixed |
-        | `prior_wave_total` | 0.031 | mixed |
-        | `waves_given_streak` | 0.010 | - |
-        | `wealth2` | 0.006 | mixed |
-        | `itemized_charitable_contrib_amount` | 0.005 | mixed |
+        | `period_total` | 0.038 | mixed |
+        | `period_total_prior1` | 0.022 | mixed |
+        | `period_total_prior2` | 0.014 | mixed |
+        | `wealth2` | 0.010 | mixed |
+        | `consecutive_periods_given` | 0.008 | - |
 
-        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (seed=42, last wave fold). Git SHA: `b0122490e6902ce1e5c9f00e3f0d142874a1c72f`.
+        Method: permutation importance (`roc_auc`), partial-dependence sign for direction ("mixed" if it changes sign). Split: walk-forward (seed=42, last wave fold). Git SHA: `d857e8aac5ff4cdbb8c91450cec7583480c1d7af`.
 
     Results on your own file will differ.

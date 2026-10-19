@@ -162,6 +162,17 @@ def test_get_n_splits_matches_the_folds_actually_yielded(n_splits, gap_years):
     assert splitter.get_n_splits(groups=fy) == len(list(splitter.split(X, groups=fy)))
 
 
+def test_get_n_splits_excludes_a_fold_skipped_for_no_training_data():
+    # With a fractional fiscal year, the FY2021 fold's cutoff (2020) leaves
+    # no training rows, so split() skips it. get_n_splits() must not still
+    # count it, or GridSearchCV rejects the splitter as inconsistent.
+    X = np.zeros((4, 1))
+    fy = np.array([2020, 2020.5, 2021, 2022])
+    splitter = FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=2, gap_years=1)
+    assert len(list(splitter.split(X, groups=fy))) == 1
+    assert splitter.get_n_splits(groups=fy) == 1
+
+
 def test_nan_fiscal_year_does_not_inflate_get_n_splits():
     # A NaN fiscal year cannot be placed in any fold (every comparison
     # against it is False), so it must not count as a distinct year either,

@@ -37,7 +37,7 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `PlannedGivingIntentScorer`, `ShareOfWalletRegressor`, `MovesManagementClassifier` | `models` |
 | `PropensityScorer` | `models` |
 | every function in `philanthropy.metrics` | `metrics` |
-| `FiscalYearGroupedSplitter` | `model_selection` |
+| `FiscalYearGroupedSplitter`, `compare_to_rule` | `model_selection` |
 | `generate_synthetic_donor_data`, `load_ciob_fundraising` | `datasets` |
 | `save_model`, `load_model`, `make_donor_dataset` | `utils` |
 | `donor_feature_importance` | `inspection` |
@@ -52,25 +52,31 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `SolicitationWindowTransformer` | `preprocessing` | Supported alias of the above; shares its tier. |
 | `MatchingGiftFeaturizer` | `preprocessing` | The employer-normalisation rules will grow. |
 | `AskAmountRecommender` | `models` | The ask-ladder multipliers are a heuristic. |
+| `suggest_ask` | `models` | New; the default `stretch` (10%) and `round_to` ($25) are policy choices, not estimates, and may change. |
 | `constituent_events_to_features`, `read_constituent_events` | `ingest` | Tracks the UniSchema `ConstituentEvent` schema, which is versioned upstream. |
 | `civicrm_contributions_to_features`, `read_civicrm_contributions` | `ingest` | Tracks CiviCRM's contribution export labels and APIv4 field names, which move with the CRM. |
 | `raisers_edge_gifts_to_features`, `read_raisers_edge_gifts`, `DEFAULT_EXCLUDED_GIFT_TYPES` | `ingest` | Tracks Raiser's Edge export labels and the RE NXT gift-type vocabulary; the excluded-type default will grow as real exports arrive. |
 | `npsp_opportunities_to_features`, `read_npsp_opportunities`, `DEFAULT_INCLUDED_STAGES` | `ingest` | Tracks NPSP Opportunity export labels and a per-org-configurable stage vocabulary; the closed/won allowlist will grow as real exports arrive. |
+| `nonprofit_cloud_gifts_to_features`, `read_nonprofit_cloud_gifts`, `DEFAULT_INCLUDED_GIFT_TRANSACTION_STATUSES` | `ingest` | Tracks Nonprofit Cloud GiftTransaction export labels and a gift status vocabulary; the status allowlist will grow as real exports arrive. |
 | `bloomerang_transactions_to_features`, `read_bloomerang_transactions`, `DEFAULT_EXCLUDED_ENTRY_TYPES` | `ingest` | Tracks Bloomerang's REST API entry-type vocabulary and export labels; the excluded-type default will grow as real exports arrive. |
 | `donorperfect_gifts_to_features`, `read_donorperfect_gifts`, `DEFAULT_EXCLUDED_RECORD_TYPES` | `ingest` | Tracks DonorPerfect's `record_type` vocabulary and export labels; the excluded-type default will grow as real exports arrive. |
 | `map_columns` | `ingest` | The one-error-per-missing-column message shape may still change. |
 | `activities_to_features` | `ingest` | The activity-type feature set (`_count_12m`, `_distinct`, ...) may grow as more source types are onboarded. |
 | `read_gifts`, `GIFT_SOURCES` | `ingest` | A thin preset registry over the CiviCRM, Raiser's Edge and NPSP bridges above; it inherits their tier and grows a new preset name as they do. |
 | `build_leadership_snapshots` | `ingest` | The gift-derived feature set (trend, consecutive years given, ...) is a minimal starting recipe and is likely to be refined. |
+| `build_snapshots` | `ingest` | The kinds (`upgrade`, `lapse`, `response_next_year`, `next_amount`), their populations and the shared column set are new and may grow; the scale-free block stays opt-in until a validation fold adopts it. |
 | `score_leadership_prospects` | `models` | The top-reasons heuristic (z-score within the scored population weighted by global permutation importance) and the top-N/lift report shape are a starting recipe over `build_leadership_snapshots`, likely to be refined; `suggested_ask` is left `NaN` pending a real ask-amount training signal. |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Chart composition is presentation, not contract. |
 | `fetch_kdd98_donors`, `fetch_kdd98_val_donors` | `datasets` | Return the raw upstream columns untyped; may gain as-of date parsing as the real-data leakage replication in #124 lands. The validation fetcher shares the learning fetcher's tier and will follow any change to it. |
 | `make_donor_panel` | `datasets` | The returned dict may gain keys (pledges, appeals, soft credits) as more of the library needs panel-shaped fixtures; existing keys and their columns will not change silently. |
 | `load_donorschoose` | `datasets` | Reads the ICPSR 37898 DS0001 variable names (`DONOR_ID`, `AMOUNT`, `CREATED_MONTH`, ...); may grow a configurable column mapping if a later ICPSR version renames them. |
+| `load_karlan_list` | `datasets` | Reads the published `AERtables1-5.dta` variable names (`gave`, `HPA`, `MRM2`, ...); the returned column names may still be adjusted while the Results rows built on them settle. |
 | `load_psid_philanthropy` | `datasets` | Reads a fixed list of PSID ER/S variables for 2001-2023; an extract that omits some of them skips those waves (or raises KeyError for a partially selected wave). |
+| `explain_donor_scores` | `inspection` | New; the one-feature-at-a-time median substitution may gain an interaction-aware option, and the output columns may grow. |
 | `GiftIntervalCalibrator`, `GiftInterval` | `models` | The conformity-score menu is expected to grow (conformalised quantile regression is not shipped), which adds `score` values rather than changing existing ones. |
+| `BetaGeoModel`, `GammaGammaModel`, `repeat_giving_summary` | `models` | New. The BG/NBD and gamma-gamma likelihoods are the published ones and reproduce the CDNOW parameters, but neither has been checked against a real gift file's holdout year yet, and the summary's same-day merge and default time unit (years) may change. |
 | `trailing_slope_features` | `utils` | New, off-by-default helper; the bin width, window set and NaN threshold are a starting recipe and may be refined. |
-| `check_label_floor`, `LABEL_FLOORS` | `utils` | The floor values come from one validation-fold learning curve per task and will move as more real files are measured; the `"run"` / `"not enough labels"` return values will not. |
+| `check_label_floor`, `LABEL_FLOORS` | `utils` | The floor values come from validation-fold learning curves (lapse: PSID and DonorsChoose; major gift: KDD Cup 1998 and PSID, on ROC-AUC and the top-10% hit rate) and will move as more real files are measured; the `"run"` / `"not enough labels"` return values will not. |
 
 ### Tier 3: Experimental
 
@@ -95,6 +101,7 @@ Every domain method returns a number on its own scale. None of them are calibrat
 | `DischargeToSolicitationWindowTransformer.transform` | `(n, 2)` float | `in_solicitation_window` in {0, 1}; `window_position_score` 0–1 |
 | `GratefulPatientFeaturizer.transform` | `(n, 4)` float | Unbounded counts and weighted sums, all ≥ 0 |
 | `AskAmountRecommender.ask_ladder` | `(n, 3)` float | **Dollars**, not a score: conservative / target / stretch |
+| `suggest_ask` | `(n,)` float | **Dollars**: max(last gift, average gift), stretched and rounded up; no model |
 | `MovesManagementClassifier.action_priority` | `dict` | Not an array: `stage`, `confidence` (0–1), `portfolio_summary` |
 | `score_leadership_prospects` | `DataFrame` | `affinity_score` 0–100 (from `MajorGiftClassifier`), plus `rank`, `decile`; `suggested_ask` is `NaN` (see the stability-tier note) |
 | `FinancialForecastModel.predict_revenue_forecast` | `(horizon,)` float | **Dollars per future period**, length is `horizon`, not `len(X)` |
@@ -103,7 +110,7 @@ Every domain method returns a number on its own scale. None of them are calibrat
 ## Deprecations
 
 !!! info "This page is built from `main`, which is ahead of the release"
-    `pip install philanthropy` currently gives you **0.8.0**. The tier tables
+    `pip install philanthropy` currently gives you **0.9.0**. The tier tables
     above describe the API as it stands on `main`; the deprecations below are
     live in the version you actually have installed.
 
@@ -173,19 +180,18 @@ both fixes. For a time-varying target such as "gave next year", where the same
 donor correctly appears in both folds, pass `drop_repeat_donors=False`, which
 gives exactly the 0.7.x behaviour.
 
-### Live in 0.7.1, removed in 0.9.0
+### Removed in 0.9.0
 
-| Deprecated | Use instead |
+If you are upgrading from 0.8.x, this went after two published releases of
+`DeprecationWarning`:
+
+| Removed | Use instead |
 |---|---|
-| `ShareOfWalletScorer` output name `sow_score` | `capacity_utilisation_ratio` |
+| `ShareOfWalletScorer.get_legacy_feature_names_out()` (the `sow_score` name) | `get_feature_names_out()`, which names column 0 `capacity_utilisation_ratio` |
 
-`ShareOfWalletScorer.transform` column 0 is now named
-`capacity_utilisation_ratio` in `get_feature_names_out()`: the formula is
-capacity ÷ clipped modelled wealth, which is capacity utilisation. It was never
-share of wallet; the docstring has said so since the class shipped, and the old
-name claimed a quantity the formula does not compute. The values, the column
-order, and the `capacity_tier` encoding are unchanged, so code that reads the
-column positionally needs nothing. Code that spells the name can call
-`get_legacy_feature_names_out()` for one published minor: it returns the old
-`["sow_score", "capacity_tier"]` spelling under a `DeprecationWarning` and is
-removed in 0.9.0.
+`ShareOfWalletScorer.transform` column 0 has been named
+`capacity_utilisation_ratio` since 0.7.1: the formula is capacity ÷ clipped
+modelled wealth, which is capacity utilisation, not share of wallet. The
+values, the column order, and the `capacity_tier` encoding are unchanged, so
+code that reads the column positionally needs nothing. Only code that spelled
+the old `sow_score` name has to change.

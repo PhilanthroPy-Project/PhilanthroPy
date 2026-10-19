@@ -10,16 +10,29 @@ import numpy as np
 import pandas as pd
 
 # Counts of the rarer class in the training labels. Each was read off a
-# learning curve on a validation fold (test split untouched), training
-# subsampled to N rarer-class labels at the file's own base rate, 10 seeds:
+# learning curve on a validation fold (no published test fold used),
+# training subsampled to N rarer-class labels at the file's own base rate,
+# 10 seeds, scored on both ROC-AUC and the top-10% hit rate the Results
+# pages use. The best rule is the one with the highest top-10% hit rate.
 #
-# lapse: DonorsChoose (ICPSR 37898), train FY < 2017, validate FY2017. Below
-#   100 retained donors at least one draw in ten scored below the best simple
-#   rule's ROC-AUC; from 100 up, every draw matched or beat it.
-# major_gift: KDD Cup 1998 response (5% positive), 55/15/30 split. Both
-#   DonorPropensityModel and MajorGiftClassifier stayed below the best rule
-#   in every seed up to 400 positives and reached it only at about 800.
-#   This is a weak-signal file, so treat 800 as conservative.
+# lapse: PSID households with 2+ giving waves, train waves < 2013, validate
+#   wave 2013 (20% lapse). From 100 lapsed households up every draw beat the
+#   best rule on both measures (top 10%: 48 vs 42 of 100 at 100 labels).
+#   On DonorsChoose multi-year donors (validate FY2014), ROC-AUC reached
+#   the rule in every draw only at 200 retained donors, and the top-10% hit
+#   rate in every draw only on all training rows (80.5 vs 79.2): there the
+#   model ties the rule at the top of the list at any label count, which is
+#   what the Lapse page reports. A floor is necessary, not sufficient.
+# major_gift: KDD Cup 1998 response (5% positive), 55/15/30 split. At 800
+#   positives DonorPropensityModel beat the rule in 10 of 10 draws on both
+#   measures and MajorGiftClassifier in 10 of 10 on ROC-AUC and 9 of 10 on
+#   the top 10%; at 400, MajorGiftClassifier lost on both in every draw.
+#   On PSID's real $1,000 upgrade label (train waves < 2013, validate wave
+#   2013, 16% positive) MajorGiftClassifier, the leadership model's
+#   backend, beat the best rule's top-10% in every draw from 800 positives
+#   (39 vs 35 of 100) but not at 400 (6 of 10); its ROC-AUC matched the rule
+#   in 7 of 10 draws at 800 and in every draw only on all 2,346.
+#   DonorPropensityModel cleared both measures from 200.
 LABEL_FLOORS: Dict[str, int] = {"lapse": 100, "major_gift": 800}
 
 

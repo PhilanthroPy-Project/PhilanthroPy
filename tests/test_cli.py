@@ -544,3 +544,43 @@ def test_python_and_cli_upgrade_paths_produce_identical_scores(tmp_path):
     )
     assert list(cli_scores["rank"]) == list(direct_sorted["rank"])
     assert list(cli_scores["decile"]) == list(direct_sorted["decile"])
+
+
+# --------------------------------------------------------------------------- #
+# `check`
+# --------------------------------------------------------------------------- #
+def _make_panel_export(tmp_path):
+    from philanthropy.datasets import make_donor_panel
+
+    gifts = make_donor_panel(n_donors=400, n_years=5, random_state=0)["gifts"]
+    path = tmp_path / "panel_gifts.csv"
+    gifts.rename(columns={
+        "donor_id": "Constituent ID", "gift_date": "Gift Date", "gift_amount": "Gift Amount",
+    })[["Constituent ID", "Gift Date", "Gift Amount"]].to_csv(path, index=False)
+    return path
+
+
+@pytest.mark.parametrize("task", ["upgrade", "lapse", "ask"])
+def test_cli_check_prints_the_compare_to_rule_verdict(tmp_path, capsys, task):
+    from philanthropy.model_selection import compare_to_rule
+
+    data = _make_panel_export(tmp_path)
+    main(["check", "--task", task, "--source", "raisers_edge", "--data", str(data)])
+    out = capsys.readouterr().out
+
+    from philanthropy.cli import _read_raw_gifts
+
+    expected = compare_to_rule(_read_raw_gifts("raisers_edge", str(data)), task=task)
+    assert f"verdict: {expected['verdict']}\n" in out
+    assert f"use: the {expected['method']}\n" in out
+    assert f"rule: {expected['rule']} (best of 3)" in out
+
+
+def test_cli_check_one_year_cannot_test(tmp_path, capsys):
+    data = tmp_path / "one_year.csv"
+    data.write_text("Constituent ID,Gift Date,Gift Amount\na,2024-08-01,100\nb,2024-09-01,50\n")
+    main(["check", "--task", "lapse", "--source", "raisers_edge", "--data", str(data)])
+    out = capsys.readouterr().out
+    assert out.startswith("verdict: can't test")
+    assert "use: the rule" in out
+    assert "rule:" not in out.replace("use: the rule", "")

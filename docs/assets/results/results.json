@@ -15,7 +15,6 @@
       "rule": 79.2,
       "random": 44.18666666666667
     },
-    "verdict": "loses",
     "features": {
       "sets": [
         {
@@ -91,7 +90,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
@@ -114,7 +113,6 @@
       "hi": 78.33333333333333,
       "n_seeds": 5
     },
-    "verdict": "loses",
     "method": "momentum = trailing slope of yearly giving, added to the benchmark's own feature panel (philanthropy.utils.trailing_slope_features applied to this script's own per-donor annual series, not the shipped RFMTransformer/activities_to_features path)."
   },
   "lapse_synthetic": {
@@ -133,7 +131,6 @@
       "rule": 83.13333333333333,
       "random": 55.81333333333334
     },
-    "verdict": "loses",
     "features": {
       "sets": [
         {
@@ -209,7 +206,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
@@ -232,13 +229,13 @@
       "hi": 78.66666666666666,
       "n_seeds": 5
     },
-    "verdict": "loses",
     "method": "momentum = trailing slope of yearly giving, added to the benchmark's own feature panel (philanthropy.utils.trailing_slope_features applied to this script's own per-donor annual series, not the shipped RFMTransformer/activities_to_features path)."
   },
   "ask_synthetic": {
     "within25pct_model": 23.11009415644001,
     "within25pct_last_gift": 23.657446585915693,
-    "verdict": "loses",
+    "revenue_top10pct_model": 14.403584683320203,
+    "revenue_top10pct_rule": 10.223648862382788,
     "features": {
       "sets": [
         {
@@ -284,13 +281,12 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "suggested ask"
     }
   },
   "ask_synthetic_momentum": {
     "within25pct_model": 22.845302937912233,
-    "verdict": "loses",
     "method": "momentum = trailing slope of yearly giving, added to the benchmark's own feature panel (philanthropy.utils.trailing_slope_features applied to this script's own per-donor annual series, not the shipped RFMTransformer/activities_to_features path)."
   },
   "upgrade_synthetic": {
@@ -309,7 +305,6 @@
       "rule": 17.744123451670617,
       "random": 12.469678378527826
     },
-    "verdict": "wins",
     "features": {
       "sets": [
         {
@@ -378,7 +373,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward (FiscalYearGroupedSplitter, last split)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
@@ -401,15 +396,14 @@
       "hi": 30.18867924528302,
       "n_seeds": 5
     },
-    "verdict": "wins",
     "method": "momentum = build_leadership_snapshots(include_momentum=True): trailing 3y/5y OLS slope and relative slope per base series (fy_total, gift_count, largest_gift), plus fy_total_growth_ratio. The shipped, opt-in feature set score_leadership_prospects itself can use."
   },
   "planned_giving_synthetic": {
     "n_test": 3000,
     "model": {
-      "0.01": 0.8066666666666666,
-      "0.05": 0.7933333333333333,
-      "0.1": 0.7513333333333333
+      "0.01": 0.78,
+      "0.05": 0.788,
+      "0.1": 0.76
     },
     "random": {
       "0.01": 0.4418666666666667,
@@ -434,34 +428,34 @@
           "column": "total",
           "label": "lifetime giving",
           "group": "giving_history",
-          "importance": 0.18214047423030033,
-          "lo": 0.15535389992270726,
-          "hi": 0.21508706701658603,
+          "importance": 0.1903767787965967,
+          "lo": 0.15533776056908744,
+          "hi": 0.22219628055082946,
           "direction": "+"
         },
         {
           "column": "recent",
           "label": "this year's gift",
           "group": "recency",
-          "importance": 0.017002718821069445,
-          "lo": 0.0005163520505876651,
-          "hi": 0.049766129395344694,
-          "direction": "-"
+          "importance": 0.01867106042236965,
+          "lo": -0.0003577243695160548,
+          "hi": 0.0472433028679484,
+          "direction": "mixed"
         },
         {
           "column": "n",
           "label": "number of gifts",
           "group": "giving_history",
-          "importance": 0.001291395891578886,
-          "lo": -0.00347147449899744,
-          "hi": 0.005428193228005762,
+          "importance": -0.003093836839662227,
+          "lo": -0.007499459727162183,
+          "hi": 0.0012776160370959744,
           "direction": "-"
         }
       ],
       "scoring": "roc_auc",
       "split": "walk-forward (train on fiscal years < T, test on T)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
@@ -591,17 +585,25 @@
   "response_kdd98": {
     "top1pct": {
       "model": 10.13986013986014,
-      "rule": 7.3426573426573425
+      "rule": 7.3426573426573425,
+      "diff_lo": -1.7482517482517475,
+      "diff_hi": 7.342657342657343
     },
     "top5pct": {
       "model": 9.57372466806429,
-      "rule": 7.617051013277429
+      "rule": 7.617051013277429,
+      "diff_lo": 0.06988120195667302,
+      "diff_hi": 3.9849755415793138
     },
     "top10pct": {
       "model": 8.874912648497554,
-      "rule": 8.280922431865829
+      "rule": 8.280922431865829,
+      "diff_lo": -0.42016072676450067,
+      "diff_hi": 1.6072676450034948
     },
     "verdict": "modest",
+    "diff_lo": -0.42016072676450067,
+    "diff_hi": 1.6072676450034948,
     "features": {
       "sets": [
         {
@@ -657,24 +659,32 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
   "upgrade_kdd98": {
     "top1pct": {
       "model": 17.445482866043612,
-      "rule": 23.05295950155763
+      "rule": 23.05295950155763,
+      "diff_lo": -8.566978193146419,
+      "diff_hi": -2.64797507788162
     },
     "top5pct": {
       "model": 14.334683702087878,
-      "rule": 13.836086008102214
+      "rule": 13.836086008102214,
+      "diff_lo": -0.9971953879713308,
+      "diff_hi": 1.2472732938610147
     },
     "top10pct": {
       "model": 10.98473044562169,
-      "rule": 12.153318790900594
+      "rule": 12.153318790900594,
+      "diff_lo": -1.7295107510127763,
+      "diff_hi": -0.5453412277968208
     },
     "verdict": "loses",
+    "diff_lo": -1.7295107510127763,
+    "diff_hi": -0.5453412277968208,
     "features": {
       "sets": [
         {
@@ -743,7 +753,7 @@
       "scoring": "roc_auc",
       "split": "walk-forward by fiscal year (train FY1994, test FY1995)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
@@ -767,22 +777,32 @@
       "n_seeds": 1
     },
     "verdict": "loses",
+    "diff_lo": -1.7295107510127763,
+    "diff_hi": -0.5453412277968208,
     "method": "momentum = build_leadership_snapshots(include_momentum=True): trailing 3y/5y OLS slope and relative slope per base series (fy_total, gift_count, largest_gift), plus fy_total_growth_ratio. The shipped, opt-in feature set score_leadership_prospects itself can use."
   },
   "lapse_kdd98": {
     "base_rate_pct": 94.92411855951033,
-    "verdict": "loses",
+    "verdict": "modest",
+    "diff_lo": -0.8073053139083946,
+    "diff_hi": 0.167959333403204,
     "top1pct": {
       "model": 95.9119496855346,
-      "rule": 96.75052410901468
+      "rule": 96.75052410901468,
+      "diff_lo": -2.9350104821802896,
+      "diff_hi": 0.31708595387840416
     },
     "top5pct": {
       "model": 96.85600503039196,
-      "rule": 96.58352546635925
+      "rule": 96.58352546635925,
+      "diff_lo": -0.5030391951372781,
+      "diff_hi": 0.8593586250262075
     },
     "top10pct": {
       "model": 96.26873493344513,
-      "rule": 96.59364846452154
+      "rule": 96.59364846452154,
+      "diff_lo": -0.8073053139083946,
+      "diff_hi": 0.167959333403204
     },
     "features": {
       "sets": [
@@ -829,29 +849,48 @@
       "scoring": "roc_auc",
       "split": "walk-forward across KDD98 promotion periods (train < period N-1, val=N-1, test=N)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
-    }
+    },
+    "nearly_everyone_lapses": true
   },
   "lapse_kdd98_retention": {
     "top1pct": {
       "model": 9.433962264150944,
-      "rule": 8.90985324947589
+      "rule": 8.90985324947589,
+      "diff_lo": -1.6797693920335428,
+      "diff_hi": 3.3542976939203357
     },
     "top5pct": {
       "model": 7.566547893523371,
-      "rule": 5.9526304757912385
+      "rule": 5.9526304757912385,
+      "diff_lo": 0.5863550618319012,
+      "diff_hi": 2.4523160762942773
     },
     "top10pct": {
       "model": 6.477308458232891,
-      "rule": 5.628340844775181
+      "rule": 5.628340844775181,
+      "diff_lo": 0.27250812283827686,
+      "diff_hi": 1.4673514306676447
     },
-    "verdict": "wins"
+    "verdict": "wins",
+    "diff_lo": 0.27250812283827686,
+    "diff_hi": 1.4673514306676447,
+    "retention_base_rate_pct": 5.075881440489667,
+    "lift_over_random": 1.2760953017074468,
+    "rule_lift_over_random": 1.108840092260354
   },
   "ask_kdd98": {
     "within25pct_model": 64.96902959394356,
     "within25pct_last_gift": 67.44666207845836,
     "verdict": "loses",
+    "diff_lo": -4.198210598761176,
+    "diff_hi": -0.6194081211287061,
+    "revenue_top10pct_model": 22.237729272549824,
+    "revenue_top10pct_rule": 21.74244705676332,
+    "revenue_top10pct_diff_lo": -0.2738222919177452,
+    "revenue_top10pct_diff_hi": 1.0410197978419569,
+    "revenue_top10pct_verdict": "modest",
     "features": {
       "sets": [
         {
@@ -929,7 +968,7 @@
       "scoring": "neg_mean_absolute_error",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "suggested ask"
     }
   },
@@ -937,6 +976,8 @@
     "net_revenue_model": 4541.98,
     "net_revenue_mail_everyone": 3149.0499999999993,
     "verdict": "wins",
+    "diff_lo": 875.2394999999999,
+    "diff_hi": 1841.2652499999995,
     "note": "mail if E[gift]>$0.68; pieces=18704/28624",
     "features": {
       "sets": [
@@ -1015,7 +1056,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     },
     "curve": {
@@ -1107,12 +1148,52 @@
       "stop_k": 18704,
       "stop_net_revenue": 4541.98,
       "everyone_net_revenue": 3149.0499999999993
-    }
+    },
+    "cost_sweep": [
+      {
+        "cost": 0.5,
+        "mailed": 25982,
+        "n_total": 28624,
+        "net_revenue_model": 8107.450000000001,
+        "net_revenue_mail_everyone": 8301.369999999999,
+        "diff_lo": -444.0375,
+        "diff_hi": 29.051999999999953
+      },
+      {
+        "cost": 0.68,
+        "mailed": 18704,
+        "n_total": 28624,
+        "net_revenue_model": 4541.98,
+        "net_revenue_mail_everyone": 3149.0499999999993,
+        "diff_lo": 875.2394999999999,
+        "diff_hi": 1841.2652499999995
+      },
+      {
+        "cost": 1.0,
+        "mailed": 5226,
+        "n_total": 28624,
+        "net_revenue_model": 1629.6999999999998,
+        "net_revenue_mail_everyone": -6010.630000000001,
+        "diff_lo": 6589.8915,
+        "diff_hi": 8591.8195
+      },
+      {
+        "cost": 2.0,
+        "mailed": 466,
+        "n_total": 28624,
+        "net_revenue_model": 433.0,
+        "net_revenue_mail_everyone": -34634.630000000005,
+        "diff_lo": 33789.2445,
+        "diff_hi": 36256.00275000001
+      }
+    ]
   },
   "who_to_mail_cup98val": {
     "net_revenue_model": 13763.730000000003,
     "net_revenue_mail_everyone": 10560.079999999994,
     "verdict": "wins",
+    "diff_lo": 2220.4327499999995,
+    "diff_hi": 4188.319750000001,
     "note": "mail if E[gift]>$0.68; pieces=62703/96367; model fit on cup98LRN's own 55% train split only, scored on KDD98's own held-out validation file (cup98VAL+valtargt), reported next to bench_kdd_cost_aware's random-split number, not replacing it",
     "features": {
       "sets": [
@@ -1191,7 +1272,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score",
       "reused_from_note": "Same response model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     },
@@ -1284,22 +1365,68 @@
       "stop_k": 62703,
       "stop_net_revenue": 13763.729999999996,
       "everyone_net_revenue": 10560.079999999994
-    }
+    },
+    "cost_sweep": [
+      {
+        "cost": 0.5,
+        "mailed": 87424,
+        "n_total": 96367,
+        "net_revenue_model": 28034.14,
+        "net_revenue_mail_everyone": 27906.14,
+        "diff_lo": -264.55,
+        "diff_hi": 533.0749999999999
+      },
+      {
+        "cost": 0.68,
+        "mailed": 62703,
+        "n_total": 96367,
+        "net_revenue_model": 13763.730000000003,
+        "net_revenue_mail_everyone": 10560.079999999994,
+        "diff_lo": 2220.4327499999995,
+        "diff_hi": 4188.319750000001
+      },
+      {
+        "cost": 1.0,
+        "mailed": 17123,
+        "n_total": 96367,
+        "net_revenue_model": 4405.950000000001,
+        "net_revenue_mail_everyone": -20277.36,
+        "diff_lo": 22809.15225,
+        "diff_hi": 26639.937
+      },
+      {
+        "cost": 2.0,
+        "mailed": 1517,
+        "n_total": 96367,
+        "net_revenue_model": 1828.4499999999998,
+        "net_revenue_mail_everyone": -116644.36,
+        "diff_lo": 116240.6755,
+        "diff_hi": 120931.94649999999
+      }
+    ]
   },
   "response_cup98val": {
     "top1pct": {
       "model": 12.344398340248963,
-      "rule": 9.12863070539419
+      "rule": 9.12863070539419,
+      "diff_lo": 0.829875518672199,
+      "diff_hi": 5.601659751037345
     },
     "top5pct": {
       "model": 9.194686591946866,
-      "rule": 7.575757575757576
+      "rule": 7.575757575757576,
+      "diff_lo": 0.684931506849315,
+      "diff_hi": 2.594437525944375
     },
     "top10pct": {
       "model": 8.934315658399917,
-      "rule": 7.398568019093078
+      "rule": 7.398568019093078,
+      "diff_lo": 0.8817578084466119,
+      "diff_hi": 2.0960879941890624
     },
     "verdict": "wins",
+    "diff_lo": 0.8817578084466119,
+    "diff_hi": 2.0960879941890624,
     "features": {
       "sets": [
         {
@@ -1355,7 +1482,7 @@
       "scoring": "roc_auc",
       "split": "55/15/30 stratified (train/validation/test)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score",
       "reused_from_note": "Same model and features as the KDD Cup 1998 tab; cup98VAL supplies new test donors on the same columns, not new columns."
     }
@@ -1363,17 +1490,25 @@
   "upgrade_donorschoose": {
     "top1pct": {
       "model": 27.540666604886788,
-      "rule": 19.61409199023878
+      "rule": 19.61409199023878,
+      "diff_lo": 2.2727272727272734,
+      "diff_hi": 11.000000000000002
     },
     "top5pct": {
       "model": 13.269024846984722,
-      "rule": 13.027147834241603
+      "rule": 13.027147834241603,
+      "diff_lo": 0.0,
+      "diff_hi": 0.5555555555555536
     },
     "top10pct": {
       "model": 8.951565909774356,
-      "rule": 8.295008680068968
+      "rule": 8.295008680068968,
+      "diff_lo": 0.3006012024048099,
+      "diff_hi": 1.2950971322849212
     },
-    "verdict": "modest",
+    "verdict": "wins",
+    "diff_lo": 0.3006012024048099,
+    "diff_hi": 1.2950971322849212,
     "roc_auc": 0.8829083891164378,
     "metadata": {
       "momentum": false,
@@ -1461,25 +1596,33 @@
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
   "lapse_donorschoose": {
     "top1pct": {
-      "model": 87.71967261669961,
-      "rule": 90.38270359988341
+      "model": 82.31477870515303,
+      "rule": 83.56025782496371,
+      "diff_lo": -8.823529411764708,
+      "diff_hi": 5.494505494505497
     },
     "top5pct": {
-      "model": 86.95873388099767,
-      "rule": 89.90205251798189
+      "model": 82.24522585079342,
+      "rule": 81.92196259735553,
+      "diff_lo": -0.33057851239669533,
+      "diff_hi": 0.8810572687224738
     },
     "top10pct": {
-      "model": 88.3451465405215,
-      "rule": 89.75774118662304
+      "model": 81.18662205449971,
+      "rule": 80.52018053747516,
+      "diff_lo": -2.1526418786692814,
+      "diff_hi": 2.094818081587657
     },
-    "verdict": "loses",
-    "roc_auc": 0.6975368983662188,
+    "verdict": "modest",
+    "diff_lo": -2.1526418786692814,
+    "diff_hi": 2.094818081587657,
+    "roc_auc": 0.6913415002683777,
     "metadata": {
       "momentum": false,
       "subsample": 0.1,
@@ -1491,13 +1634,12 @@
         2018
       ],
       "n_per_fold": [
-        35372,
-        43591,
-        49523,
-        52052
+        8076,
+        9073,
+        10215,
+        12108
       ],
-      "base_rate_pct": 83.58406540451317,
-      "note": "84% base rate; see the retention read for the useful list"
+      "base_rate_pct": 64.33927847588163
     },
     "features": {
       "sets": [
@@ -1505,13 +1647,16 @@
           "id": "current",
           "label": "only what the model uses today",
           "columns": [
-            "fy_total",
-            "fy_total_prior1",
-            "fy_total_prior2",
-            "fy_trend",
+            "period_total",
+            "period_total_prior1",
+            "period_total_prior2",
+            "period_trend",
             "largest_gift",
+            "consecutive_periods_given",
+            "gave_prior1",
+            "gave_prior2",
+            "periods_since_first_gift",
             "gift_count",
-            "consecutive_years_given",
             "months_since_last_gift"
           ],
           "chosen": true
@@ -1519,28 +1664,10 @@
       ],
       "drivers": [
         {
-          "column": "fy_total",
-          "label": "this year's giving",
-          "group": "recency",
-          "importance": 0.09088747959140767,
-          "lo": null,
-          "hi": null,
-          "direction": "-"
-        },
-        {
-          "column": "largest_gift",
-          "label": "largest gift this year",
+          "column": "gift_count",
+          "label": "number of gifts this year",
           "group": "giving_history",
-          "importance": 0.0676425361007559,
-          "lo": null,
-          "hi": null,
-          "direction": "-"
-        },
-        {
-          "column": "fy_trend",
-          "label": "giving trend, this year vs last",
-          "group": "momentum",
-          "importance": 0.057446141873625046,
+          "importance": 0.022346184147656222,
           "lo": null,
           "hi": null,
           "direction": "-"
@@ -1549,43 +1676,70 @@
           "column": "months_since_last_gift",
           "label": "months since last gift",
           "group": "recency",
-          "importance": 0.029172083952879603,
+          "importance": 0.021726297916958136,
           "lo": null,
           "hi": null,
           "direction": "+"
         },
         {
-          "column": "fy_total_prior2",
-          "label": "giving two years ago",
+          "column": "period_total",
+          "label": "giving this year (this wave on PSID)",
           "group": "recency",
-          "importance": 0.009773390887971667,
+          "importance": 0.02095260744539843,
           "lo": null,
           "hi": null,
-          "direction": "mixed"
+          "direction": "-"
+        },
+        {
+          "column": "period_total_prior1",
+          "label": "giving the year before (the wave before on PSID)",
+          "group": "recency",
+          "importance": 0.001529701010140916,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "consecutive_periods_given",
+          "label": "consecutive years (or waves) given",
+          "group": "momentum",
+          "importance": 0.0013221922129917352,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
         }
       ],
       "scoring": "roc_auc",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
-    }
+    },
+    "nearly_everyone_lapses": false
   },
   "lapse_donorschoose_retention": {
     "top1pct": {
-      "model": 83.35147227661325,
-      "rule": 74.10593835796324
+      "model": 92.9639046172023,
+      "rule": 84.06264297529896,
+      "diff_lo": 3.703703703703698,
+      "diff_hi": 14.049586776859503
     },
     "top5pct": {
-      "model": 61.208560677871525,
-      "rule": 57.59773886489042
+      "model": 84.02909169285256,
+      "rule": 73.38422267211457,
+      "diff_lo": 8.168316831683175,
+      "diff_hi": 16.74008810572687
     },
     "top10pct": {
-      "model": 50.09322048671865,
-      "rule": 45.25527493395457
+      "model": 74.79593483913287,
+      "rule": 67.65893736703897,
+      "diff_lo": 6.164383561643838,
+      "diff_hi": 7.93825799338479
     },
-    "verdict": "modest",
-    "roc_auc": 0.6975368983662187,
+    "verdict": "wins",
+    "diff_lo": 6.164383561643838,
+    "diff_hi": 7.93825799338479,
+    "roc_auc": 0.6913415002683777,
     "metadata": {
       "momentum": false,
       "subsample": 0.1,
@@ -1597,13 +1751,16 @@
         2018
       ],
       "n_per_fold": [
-        35372,
-        43591,
-        49523,
-        52052
+        8076,
+        9073,
+        10215,
+        12108
       ],
-      "base_rate_pct": 83.58406540451317
-    }
+      "base_rate_pct": 64.33927847588163
+    },
+    "retention_base_rate_pct": 35.66072152411837,
+    "lift_over_random": 2.097431898245419,
+    "rule_lift_over_random": 1.8972958054502427
   },
   "ask_donorschoose": {
     "within25pct_model": 30.025343419661294,
@@ -1611,6 +1768,13 @@
     "mae_model": 210.39943270586866,
     "mae_rule": 209.6484487807661,
     "verdict": "loses",
+    "diff_lo": -2.4364406779661008,
+    "diff_hi": -1.173319729626321,
+    "revenue_top10pct_model": 63.98666143889101,
+    "revenue_top10pct_rule": 64.12135981339728,
+    "revenue_top10pct_diff_lo": -0.57580798453708,
+    "revenue_top10pct_diff_hi": 0.2744188935876579,
+    "revenue_top10pct_verdict": "modest",
     "metadata": {
       "momentum": false,
       "subsample": 0.1,
@@ -1698,24 +1862,32 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (subsample=0.1, seed=42, last fiscal-year fold)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "suggested ask"
     }
   },
   "upgrade_donorschoose_momentum": {
     "top1pct": {
       "model": 25.3442143143978,
-      "rule": 19.61409199023878
+      "rule": 19.61409199023878,
+      "diff_lo": 0.0,
+      "diff_hi": 10.0
     },
     "top5pct": {
       "model": 12.835762786241272,
-      "rule": 13.027147834241603
+      "rule": 13.027147834241603,
+      "diff_lo": -1.366742596810934,
+      "diff_hi": 0.6012024048096185
     },
     "top10pct": {
       "model": 8.873456474883373,
-      "rule": 8.295008680068968
+      "rule": 8.295008680068968,
+      "diff_lo": 0.3420752565564414,
+      "diff_hi": 1.2025901942645703
     },
-    "verdict": "modest",
+    "verdict": "wins",
+    "diff_lo": 0.3420752565564414,
+    "diff_hi": 1.2025901942645703,
     "roc_auc": 0.8840302762122928,
     "metadata": {
       "momentum": true,
@@ -1738,19 +1910,27 @@
   },
   "lapse_donorschoose_momentum": {
     "top1pct": {
-      "model": 87.60367487830261,
-      "rule": 90.38270359988341
+      "model": 82.01325725835531,
+      "rule": 83.56025782496371,
+      "diff_lo": -7.843137254901967,
+      "diff_hi": 6.593406593406592
     },
     "top5pct": {
-      "model": 87.06537890643939,
-      "rule": 89.90205251798189
+      "model": 80.13624137650115,
+      "rule": 81.92196259735553,
+      "diff_lo": -6.188118811881182,
+      "diff_hi": 0.5870841487279788
     },
     "top10pct": {
-      "model": 88.1254679482646,
-      "rule": 89.75774118662304
+      "model": 80.99311021402843,
+      "rule": 80.52018053747516,
+      "diff_lo": -1.4851485148514865,
+      "diff_hi": 2.535832414553474
     },
-    "verdict": "loses",
-    "roc_auc": 0.7010827249312469,
+    "verdict": "modest",
+    "diff_lo": -1.4851485148514865,
+    "diff_hi": 2.535832414553474,
+    "roc_auc": 0.69604132696982,
     "metadata": {
       "momentum": true,
       "subsample": 0.1,
@@ -1762,30 +1942,37 @@
         2018
       ],
       "n_per_fold": [
-        35372,
-        43591,
-        49523,
-        52052
+        8076,
+        9073,
+        10215,
+        12108
       ],
-      "base_rate_pct": 83.58406540451317,
-      "note": "84% base rate; see the retention read for the useful list"
+      "base_rate_pct": 64.33927847588163
     }
   },
   "lapse_donorschoose_retention_momentum": {
     "top1pct": {
-      "model": 82.90879652286588,
-      "rule": 74.10593835796324
+      "model": 90.28706488599536,
+      "rule": 84.06264297529896,
+      "diff_lo": 2.4691358024691357,
+      "diff_hi": 9.090909090909093
     },
     "top5pct": {
-      "model": 61.47463374355871,
-      "rule": 57.59773886489042
+      "model": 83.07700188791074,
+      "rule": 73.38422267211457,
+      "diff_lo": 7.8277886497064575,
+      "diff_hi": 14.09691629955947
     },
     "top10pct": {
-      "model": 50.532089181277826,
-      "rule": 45.25527493395457
+      "model": 74.66628930195996,
+      "rule": 67.65893736703897,
+      "diff_lo": 5.292171995589856,
+      "diff_hi": 7.6732673267326685
     },
-    "verdict": "modest",
-    "roc_auc": 0.7010827249312469,
+    "verdict": "wins",
+    "diff_lo": 5.292171995589856,
+    "diff_hi": 7.6732673267326685,
+    "roc_auc": 0.69604132696982,
     "metadata": {
       "momentum": true,
       "subsample": 0.1,
@@ -1797,12 +1984,12 @@
         2018
       ],
       "n_per_fold": [
-        35372,
-        43591,
-        49523,
-        52052
+        8076,
+        9073,
+        10215,
+        12108
       ],
-      "base_rate_pct": 83.58406540451317
+      "base_rate_pct": 64.33927847588163
     }
   },
   "ask_donorschoose_momentum": {
@@ -1811,6 +1998,13 @@
     "mae_model": 211.50918732314187,
     "mae_rule": 209.6484487807661,
     "verdict": "loses",
+    "diff_lo": -1.7866172256868318,
+    "diff_hi": -1.1198547215496346,
+    "revenue_top10pct_model": 64.06712462651407,
+    "revenue_top10pct_rule": 64.12135981339728,
+    "revenue_top10pct_diff_lo": -0.5675864971770084,
+    "revenue_top10pct_diff_hi": 0.4574238252807228,
+    "revenue_top10pct_verdict": "modest",
     "metadata": {
       "momentum": true,
       "subsample": 0.1,
@@ -1834,17 +2028,25 @@
   "upgrade_psid": {
     "top1pct": {
       "model": 48.2112556561086,
-      "rule": 22.933163650075414
+      "rule": 22.933163650075414,
+      "diff_lo": 12.5,
+      "diff_hi": 41.17647058823529
     },
     "top5pct": {
       "model": 44.861533508685405,
-      "rule": 35.040104937256835
+      "rule": 35.040104937256835,
+      "diff_lo": 0.0,
+      "diff_hi": 14.285714285714285
     },
     "top10pct": {
       "model": 40.61391554305567,
-      "rule": 32.23606515565115
+      "rule": 32.23606515565115,
+      "diff_lo": 0.6369426751592355,
+      "diff_hi": 13.636363636363635
     },
     "verdict": "wins",
+    "diff_lo": 0.6369426751592355,
+    "diff_hi": 13.636363636363635,
     "roc_auc": 0.7325203516407617,
     "metadata": {
       "momentum": false,
@@ -1949,25 +2151,33 @@
       "scoring": "roc_auc",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
     }
   },
   "lapse_psid": {
     "top1pct": {
-      "model": 67.25409862931086,
-      "rule": 43.6517951373639
+      "model": 69.45284498207884,
+      "rule": 48.53974896817639,
+      "diff_lo": 12.5,
+      "diff_hi": 37.03703703703704
     },
     "top5pct": {
-      "model": 63.502105231512175,
-      "rule": 43.81115996858635
+      "model": 58.07151716742403,
+      "rule": 49.1908240845553,
+      "diff_lo": 5.839416058394159,
+      "diff_hi": 12.418300653594772
     },
     "top10pct": {
-      "model": 58.921338813298576,
-      "rule": 43.611824499448694
+      "model": 54.7374528931906,
+      "rule": 47.307164602246566,
+      "diff_lo": 5.9016393442623,
+      "diff_hi": 9.523809523809518
     },
     "verdict": "wins",
-    "roc_auc": 0.742961373131938,
+    "diff_lo": 5.9016393442623,
+    "diff_hi": 9.523809523809518,
+    "roc_auc": 0.7350985594421834,
     "metadata": {
       "momentum": false,
       "seed": 42,
@@ -1978,12 +2188,12 @@
         2021
       ],
       "n_per_fold": [
-        3803,
-        3702,
-        3488,
-        3109
+        3295,
+        3152,
+        3052,
+        2733
       ],
-      "base_rate_pct": 26.435966529570276
+      "base_rate_pct": 22.65369522563767
     },
     "features": {
       "sets": [
@@ -1991,7 +2201,15 @@
           "id": "current",
           "label": "only what the model uses today",
           "columns": [
-            "total_giving",
+            "period_total",
+            "period_total_prior1",
+            "period_total_prior2",
+            "period_trend",
+            "largest_gift",
+            "consecutive_periods_given",
+            "gave_prior1",
+            "gave_prior2",
+            "periods_since_first_gift",
             "itemized_charitable_contrib_amount",
             "family_income",
             "wealth1",
@@ -2012,84 +2230,89 @@
             "giving_needy",
             "giving_other",
             "giving_religious",
-            "giving_youth",
-            "largest_giving_category",
-            "prior_wave_total",
-            "trend",
-            "waves_given_streak"
+            "giving_youth"
           ],
           "chosen": true
         }
       ],
       "drivers": [
         {
-          "column": "total_giving",
-          "label": "this wave's giving",
+          "column": "period_total",
+          "label": "giving this year (this wave on PSID)",
           "group": "recency",
-          "importance": 0.04185445000113147,
+          "importance": 0.037647303258252184,
           "lo": null,
           "hi": null,
           "direction": "mixed"
         },
         {
-          "column": "prior_wave_total",
-          "label": "last wave's giving",
+          "column": "period_total_prior1",
+          "label": "giving the year before (the wave before on PSID)",
           "group": "recency",
-          "importance": 0.030976726030187217,
+          "importance": 0.0219987755122113,
           "lo": null,
           "hi": null,
           "direction": "mixed"
         },
         {
-          "column": "waves_given_streak",
-          "label": "consecutive waves given",
-          "group": "momentum",
-          "importance": 0.009773002421307552,
+          "column": "period_total_prior2",
+          "label": "giving two years before (two waves before on PSID)",
+          "group": "recency",
+          "importance": 0.014276470327890655,
           "lo": null,
           "hi": null,
-          "direction": "-"
+          "direction": "mixed"
         },
         {
           "column": "wealth2",
           "label": "household wealth, counting home equity",
           "group": "wealth",
-          "importance": 0.005978649498766808,
+          "importance": 0.009911097596758312,
           "lo": null,
           "hi": null,
           "direction": "mixed"
         },
         {
-          "column": "itemized_charitable_contrib_amount",
-          "label": "charitable deduction claimed on taxes",
-          "group": "giving_history",
-          "importance": 0.005057845488900548,
+          "column": "consecutive_periods_given",
+          "label": "consecutive years (or waves) given",
+          "group": "momentum",
+          "importance": 0.0082743082135756,
           "lo": null,
           "hi": null,
-          "direction": "mixed"
+          "direction": "-"
         }
       ],
       "scoring": "roc_auc",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "score"
-    }
+    },
+    "nearly_everyone_lapses": false
   },
   "lapse_psid_retention": {
     "top1pct": {
-      "model": 93.52070782885724,
-      "rule": 93.54132388512694
+      "model": 93.38504330943847,
+      "rule": 98.31649831649831,
+      "diff_lo": -9.677419354838712,
+      "diff_hi": 3.0303030303030276
     },
     "top5pct": {
-      "model": 94.38842932271302,
-      "rule": 93.4007334423001
+      "model": 94.05548382938579,
+      "rule": 94.88638950774326,
+      "diff_lo": -1.9607843137254832,
+      "diff_hi": 0.0
     },
     "top10pct": {
-      "model": 94.61315554947919,
-      "rule": 91.86865519833272
+      "model": 94.50052224642388,
+      "rule": 93.62604608506248,
+      "diff_lo": -1.831501831501825,
+      "diff_hi": 2.7272727272727226
     },
     "verdict": "modest",
-    "roc_auc": 0.742961373131938,
+    "diff_lo": -1.831501831501825,
+    "diff_hi": 2.7272727272727226,
+    "roc_auc": 0.7350985594421834,
     "metadata": {
       "momentum": false,
       "seed": 42,
@@ -2100,13 +2323,16 @@
         2021
       ],
       "n_per_fold": [
-        3803,
-        3702,
-        3488,
-        3109
+        3295,
+        3152,
+        3052,
+        2733
       ],
-      "base_rate_pct": 26.435966529570276
-    }
+      "base_rate_pct": 22.65369522563767
+    },
+    "retention_base_rate_pct": 77.34630477436232,
+    "lift_over_random": 1.22178457680822,
+    "rule_lift_over_random": 1.2104785918111027
   },
   "ask_psid": {
     "within25pct_model": 28.80893062134209,
@@ -2114,6 +2340,13 @@
     "mae_model": 1878.231719343879,
     "mae_rule": 2166.250074632968,
     "verdict": "modest",
+    "diff_lo": -0.4237288135593209,
+    "diff_hi": 1.2495661228740074,
+    "revenue_top10pct_model": 42.97133325652199,
+    "revenue_top10pct_rule": 41.62919280700324,
+    "revenue_top10pct_diff_lo": 0.10305688317119865,
+    "revenue_top10pct_diff_hi": 3.7765560636127016,
+    "revenue_top10pct_verdict": "wins",
     "metadata": {
       "momentum": false,
       "seed": 42,
@@ -2218,24 +2451,32 @@
       "scoring": "neg_mean_absolute_error",
       "split": "walk-forward (seed=42, last wave fold)",
       "n_configs": 1,
-      "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
       "target_label": "suggested ask"
     }
   },
   "upgrade_psid_momentum": {
     "top1pct": {
       "model": 62.03179989944696,
-      "rule": 22.933163650075414
+      "rule": 22.933163650075414,
+      "diff_lo": 35.29411764705882,
+      "diff_hi": 43.75
     },
     "top5pct": {
       "model": 45.683838840484405,
-      "rule": 35.040104937256835
+      "rule": 35.040104937256835,
+      "diff_lo": 2.5316455696202556,
+      "diff_hi": 14.285714285714285
     },
     "top10pct": {
       "model": 42.15388989990901,
-      "rule": 32.23606515565115
+      "rule": 32.23606515565115,
+      "diff_lo": 5.0955414012738895,
+      "diff_hi": 15.909090909090912
     },
     "verdict": "wins",
+    "diff_lo": 5.0955414012738895,
+    "diff_hi": 15.909090909090912,
     "roc_auc": 0.7453952463855555,
     "metadata": {
       "momentum": true,
@@ -2257,19 +2498,27 @@
   },
   "lapse_psid_momentum": {
     "top1pct": {
-      "model": 67.92693918755039,
-      "rule": 43.6517951373639
+      "model": 62.07063918757466,
+      "rule": 48.53974896817639,
+      "diff_lo": 7.4074074074074066,
+      "diff_hi": 21.21212121212121
     },
     "top5pct": {
-      "model": 64.01871765214075,
-      "rule": 43.81115996858635
+      "model": 57.06687110683774,
+      "rule": 49.1908240845553,
+      "diff_lo": 5.10948905109489,
+      "diff_hi": 10.303030303030303
     },
     "top10pct": {
-      "model": 60.73783992753514,
-      "rule": 43.611824499448694
+      "model": 53.67368969827987,
+      "rule": 47.307164602246566,
+      "diff_lo": 5.5737704918032875,
+      "diff_hi": 7.301587301587303
     },
     "verdict": "wins",
-    "roc_auc": 0.7510791934994014,
+    "diff_lo": 5.5737704918032875,
+    "diff_hi": 7.301587301587303,
+    "roc_auc": 0.7372513568434551,
     "metadata": {
       "momentum": true,
       "seed": 42,
@@ -2280,29 +2529,37 @@
         2021
       ],
       "n_per_fold": [
-        3803,
-        3702,
-        3488,
-        3109
+        3295,
+        3152,
+        3052,
+        2733
       ],
-      "base_rate_pct": 26.435966529570276
+      "base_rate_pct": 22.65369522563767
     }
   },
   "lapse_psid_retention_momentum": {
     "top1pct": {
-      "model": 95.79434090894193,
-      "rule": 93.54132388512694
+      "model": 92.67634340719019,
+      "rule": 98.31649831649831,
+      "diff_lo": -9.375,
+      "diff_hi": -3.0303030303030276
     },
     "top5pct": {
-      "model": 94.56893123437821,
-      "rule": 93.4007334423001
+      "model": 93.6972330223223,
+      "rule": 94.88638950774326,
+      "diff_lo": -2.1897810218978075,
+      "diff_hi": 0.0
     },
     "top10pct": {
-      "model": 94.32379379087172,
-      "rule": 91.86865519833272
+      "model": 94.45459822509004,
+      "rule": 93.62604608506248,
+      "diff_lo": -1.46520146520146,
+      "diff_hi": 3.2786885245901676
     },
     "verdict": "modest",
-    "roc_auc": 0.7510791934994014,
+    "diff_lo": -1.46520146520146,
+    "diff_hi": 3.2786885245901676,
+    "roc_auc": 0.7372513568434551,
     "metadata": {
       "momentum": true,
       "seed": 42,
@@ -2313,12 +2570,12 @@
         2021
       ],
       "n_per_fold": [
-        3803,
-        3702,
-        3488,
-        3109
+        3295,
+        3152,
+        3052,
+        2733
       ],
-      "base_rate_pct": 26.435966529570276
+      "base_rate_pct": 22.65369522563767
     }
   },
   "ask_psid_momentum": {
@@ -2327,6 +2584,13 @@
     "mae_model": 1867.0857655825323,
     "mae_rule": 2166.250074632968,
     "verdict": "modest",
+    "diff_lo": -0.2966101694915235,
+    "diff_hi": 2.4297119055883387,
+    "revenue_top10pct_model": 42.885667698211684,
+    "revenue_top10pct_rule": 41.62919280700324,
+    "revenue_top10pct_diff_lo": 0.23501973985952662,
+    "revenue_top10pct_diff_hi": 3.5501082615678916,
+    "revenue_top10pct_verdict": "wins",
     "metadata": {
       "momentum": true,
       "seed": 42,
@@ -2346,14 +2610,526 @@
       "target": "next-wave total, given the household gives again"
     }
   },
+  "upgrade_transfer_psid": {
+    "top1pct": {
+      "model": 40.76640271493213,
+      "rule": 22.933163650075414,
+      "diff_lo": 6.25,
+      "diff_hi": 30.76923076923077
+    },
+    "top5pct": {
+      "model": 38.95504548194422,
+      "rule": 35.040104937256835,
+      "diff_lo": 0.0,
+      "diff_hi": 8.333333333333337
+    },
+    "top10pct": {
+      "model": 35.91536038271707,
+      "rule": 32.23606515565115,
+      "diff_lo": 1.14285714285714,
+      "diff_hi": 6.8181818181818175
+    },
+    "verdict": "wins",
+    "diff_lo": 1.14285714285714,
+    "diff_hi": 6.8181818181818175,
+    "roc_auc": 0.6956076762361468,
+    "metadata": {
+      "momentum": false,
+      "fit_on": "donorschoose",
+      "features": [
+        "total_over_largest",
+        "largest_over_prior_total",
+        "gifts_per_streak_period",
+        "period_total_pct_rank",
+        "consecutive_periods_given",
+        "gave_prior1",
+        "gave_prior2",
+        "periods_since_first_gift"
+      ]
+    }
+  },
+  "upgrade_transfer_kdd98": {
+    "top1pct": {
+      "model": 4.517133956386292,
+      "rule": 23.05295950155763,
+      "diff_lo": -22.27803738317757,
+      "diff_hi": -14.953271028037381
+    },
+    "top5pct": {
+      "model": 5.546899345590527,
+      "rule": 13.836086008102214,
+      "diff_lo": -9.848083515113743,
+      "diff_hi": -7.105017139295732
+    },
+    "top10pct": {
+      "model": 5.1729510751012775,
+      "rule": 12.153318790900594,
+      "diff_lo": -7.744234964163291,
+      "diff_hi": -6.154565285135556
+    },
+    "verdict": "loses",
+    "diff_lo": -7.744234964163291,
+    "diff_hi": -6.154565285135556,
+    "roc_auc": 0.6510899381591092,
+    "metadata": {
+      "momentum": false,
+      "fit_on": "donorschoose",
+      "features": [
+        "total_over_largest",
+        "largest_over_prior_total",
+        "gifts_per_streak_period",
+        "period_total_pct_rank",
+        "consecutive_periods_given",
+        "gave_prior1",
+        "gave_prior2",
+        "periods_since_first_gift"
+      ]
+    }
+  },
   "response_donorschoose_note": "No mailing/appeal log in this file, so a response model has nothing to predict response to.",
   "response_psid_note": "No mailing/appeal log in this extract, so a response model has nothing to predict response to.",
   "who_to_mail_donorschoose_note": "No per-contact mailing cost in this file, so cost-aware selection has no cost side to weigh.",
   "who_to_mail_psid_note": "No per-contact mailing cost in this extract, so cost-aware selection has no cost side to weigh.",
   "planned_giving_donorschoose_note": "No bequest/estate-intent signal in this file.",
   "planned_giving_psid_note": "No bequest/estate-intent signal in this extract.",
+  "upgrade_karlan_list_note": "One letter and no later giving in this file, so there is no next year to predict.",
+  "lapse_karlan_list_note": "One letter and no later giving in this file, so there is no next year to predict.",
+  "who_to_mail_karlan_list_note": "No per-contact mailing cost in this file, so cost-aware selection has no cost side to weigh.",
+  "planned_giving_karlan_list_note": "No bequest/estate-intent signal in this file.",
+  "response_karlan_list": {
+    "top1pct": {
+      "model": 22.666666666666664,
+      "rule": 13.333333333333334,
+      "diff_lo": 2.6666666666666643,
+      "diff_hi": 15.333333333333332
+    },
+    "top5pct": {
+      "model": 11.717709720372836,
+      "rule": 6.92410119840213,
+      "diff_lo": 2.659786950732357,
+      "diff_hi": 6.790945406125165
+    },
+    "top10pct": {
+      "model": 7.989347536617843,
+      "rule": 5.525965379494008,
+      "diff_lo": 1.1984021304926762,
+      "diff_hi": 3.6634487350199723
+    },
+    "verdict": "wins",
+    "diff_lo": 1.1984021304926762,
+    "diff_hi": 3.6634487350199723,
+    "roc_auc": 0.7485298082930518,
+    "metadata": {
+      "n_donors": 50083,
+      "base_rate_pct": 2.0645728091368327,
+      "split": "55/15/30 stratified (train/validation/test)"
+    },
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "prior_gifts",
+            "highest_previous_amount",
+            "months_since_last_gift",
+            "years_since_first_gift",
+            "female",
+            "couple",
+            "red_state",
+            "red_county"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "prior_gifts",
+          "label": "number of past gifts",
+          "group": "giving_history",
+          "importance": 0.12171915863777358,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "months_since_last_gift",
+          "label": "months since last gift",
+          "group": "recency",
+          "importance": 0.08169706137033746,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "highest_previous_amount",
+          "label": "largest past gift",
+          "group": "giving_history",
+          "importance": 0.06367597250994704,
+          "lo": null,
+          "hi": null,
+          "direction": "mixed"
+        },
+        {
+          "column": "years_since_first_gift",
+          "label": "years as a donor",
+          "group": "giving_history",
+          "importance": 0.015870101827189686,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "red_state",
+          "label": "state voted Republican in 2004",
+          "group": "wealth",
+          "importance": 0.0013972685322196532,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        }
+      ],
+      "scoring": "roc_auc",
+      "split": "55/15/30 stratified (train/validation/test)",
+      "n_configs": 1,
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
+      "target_label": "score"
+    }
+  },
+  "ask_karlan_list": {
+    "within25pct_model": 44.516129032258064,
+    "within25pct_last_gift": 40.96774193548387,
+    "mae_model": 16.950014898485783,
+    "mae_rule": 23.164516129032258,
+    "mae_diff_lo": -10.891461190415038,
+    "mae_diff_hi": -1.6903833623744102,
+    "verdict": "modest",
+    "diff_lo": -4.193548387096774,
+    "diff_hi": 10.653225806451605,
+    "revenue_top10pct_model": 26.925130121446685,
+    "revenue_top10pct_rule": 27.592419591618842,
+    "revenue_top10pct_diff_lo": -7.150004421947107,
+    "revenue_top10pct_diff_hi": 1.1378731778984486,
+    "revenue_top10pct_verdict": "modest",
+    "metadata": {
+      "n_donors": 50083,
+      "base_rate_pct": 2.0645728091368327,
+      "split": "55/15/30 stratified (train/validation/test)",
+      "target": "amount given, among donors who gave",
+      "rule": "highest previous gift",
+      "n_test": 310
+    },
+    "features": {
+      "sets": [
+        {
+          "id": "current",
+          "label": "only what the model uses today",
+          "columns": [
+            "prior_gifts",
+            "highest_previous_amount",
+            "months_since_last_gift",
+            "years_since_first_gift",
+            "female",
+            "couple",
+            "red_state",
+            "red_county"
+          ],
+          "chosen": true
+        }
+      ],
+      "drivers": [
+        {
+          "column": "highest_previous_amount",
+          "label": "largest past gift",
+          "group": "giving_history",
+          "importance": 20.795978575204142,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        },
+        {
+          "column": "prior_gifts",
+          "label": "number of past gifts",
+          "group": "giving_history",
+          "importance": 0.8507293442361654,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "female",
+          "label": "donor is a woman",
+          "group": "wealth",
+          "importance": 0.020767206658138092,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "couple",
+          "label": "donor record is a couple",
+          "group": "wealth",
+          "importance": -0.02031938072744772,
+          "lo": null,
+          "hi": null,
+          "direction": "-"
+        },
+        {
+          "column": "months_since_last_gift",
+          "label": "months since last gift",
+          "group": "recency",
+          "importance": -0.05630052813649762,
+          "lo": null,
+          "hi": null,
+          "direction": "+"
+        }
+      ],
+      "scoring": "neg_mean_absolute_error",
+      "split": "55/15/30 stratified (train/validation/test)",
+      "n_configs": 1,
+      "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
+      "target_label": "suggested ask"
+    }
+  },
+  "uplift_karlan_list": {
+    "top10pct": {
+      "model": 1.3351317538509662,
+      "rule": 0.9964699048214842,
+      "diff_lo": -2.279692217289866,
+      "diff_hi": 2.9382626000781755,
+      "verdict": "modest"
+    },
+    "top30pct": {
+      "model": 0.5688440538895674,
+      "rule": 0.45695589389860913,
+      "diff_lo": -1.0266091677982254,
+      "diff_hi": 1.1439070264011162,
+      "verdict": "modest"
+    },
+    "everyone": 0.4279,
+    "rule": "most recent",
+    "metadata": {
+      "n_donors": 50083,
+      "base_rate_pct": 2.0645728091368327,
+      "split": "55/15/30 stratified (train/validation/test)"
+    }
+  },
+  "interval_kdd98": {
+    "levels": {
+      "80": {
+        "requested": 80.0,
+        "attained": 79.1465932553338,
+        "attained_lo": null,
+        "attained_hi": null,
+        "median_width": 10.860671730964263,
+        "verdict": "wins"
+      },
+      "90": {
+        "requested": 90.0,
+        "attained": 89.60770818995184,
+        "attained_lo": null,
+        "attained_hi": null,
+        "median_width": 19.125756230864063,
+        "verdict": "wins"
+      },
+      "95": {
+        "requested": 95.0,
+        "attained": 93.805918788713,
+        "attained_lo": null,
+        "attained_hi": null,
+        "median_width": 24.432281111866068,
+        "verdict": "wins"
+      }
+    },
+    "metadata": {
+      "note": "split=55/15/30 stratified (train/validation/test); n_test=1453"
+    }
+  },
+  "interval_donorschoose": {
+    "levels": {
+      "80": {
+        "requested": 80.0,
+        "attained": 79.03674373189583,
+        "attained_lo": 77.90556900726392,
+        "attained_hi": 80.04382268666778,
+        "median_width": 171.7010012505125,
+        "verdict": "wins"
+      },
+      "90": {
+        "requested": 90.0,
+        "attained": 89.31634312483024,
+        "attained_lo": 88.54418886198548,
+        "attained_hi": 90.0219113433339,
+        "median_width": 322.5982773459622,
+        "verdict": "wins"
+      },
+      "95": {
+        "requested": 95.0,
+        "attained": 94.65741281224246,
+        "attained_lo": 94.27966101694916,
+        "attained_hi": 94.91136334651192,
+        "median_width": 599.0058598179493,
+        "verdict": "wins"
+      }
+    },
+    "metadata": {
+      "note": "walk-forward: fit < 2014, calibrate 2014, test 2015; n_test=5933"
+    }
+  },
+  "interval_psid": {
+    "levels": {
+      "80": {
+        "requested": 80.0,
+        "attained": 78.1064405265081,
+        "attained_lo": 75.16949152542372,
+        "attained_hi": 81.1864406779661,
+        "median_width": 3158.821586871506,
+        "verdict": "wins"
+      },
+      "90": {
+        "requested": 90.0,
+        "attained": 88.82388983783103,
+        "attained_lo": 86.94915254237287,
+        "attained_hi": 90.63559322033899,
+        "median_width": 4829.611882886571,
+        "verdict": "wins"
+      },
+      "95": {
+        "requested": 95.0,
+        "attained": 94.3436546855037,
+        "attained_lo": 92.71186440677967,
+        "attained_hi": 95.50847457627118,
+        "median_width": 7157.205052110766,
+        "verdict": "wins"
+      }
+    },
+    "metadata": {
+      "note": "walk-forward: fit < 2013, calibrate 2013, test 2015; n_test=2881"
+    }
+  },
+  "interval_karlan_list": {
+    "levels": {
+      "80": {
+        "requested": 80.0,
+        "attained": 80.96774193548387,
+        "attained_lo": null,
+        "attained_hi": null,
+        "median_width": 49.30148541670826,
+        "verdict": "wins"
+      },
+      "90": {
+        "requested": 90.0,
+        "attained": 89.03225806451613,
+        "attained_lo": null,
+        "attained_hi": null,
+        "median_width": 68.68783910216939,
+        "verdict": "wins"
+      },
+      "95": {
+        "requested": 95.0,
+        "attained": 94.83870967741936,
+        "attained_lo": null,
+        "attained_hi": null,
+        "median_width": 83.30333888316498,
+        "verdict": "wins"
+      }
+    },
+    "metadata": {
+      "note": "split=55/15/30 stratified (train/validation/test); n_test=310"
+    }
+  },
+  "interval_synthetic": {
+    "levels": {
+      "80": {
+        "requested": 80.0,
+        "attained": 79.74977341424221,
+        "attained_lo": 78.97435897435898,
+        "attained_hi": 81.10419906687403,
+        "median_width": null
+      },
+      "90": {
+        "requested": 90.0,
+        "attained": 91.2059941512329,
+        "attained_lo": 89.77443609022556,
+        "attained_hi": 92.10526315789474,
+        "median_width": null
+      },
+      "95": {
+        "requested": 95.0,
+        "attained": 95.38382572947353,
+        "attained_lo": 94.60895975702354,
+        "attained_hi": 96.3452566096423,
+        "median_width": null
+      }
+    },
+    "metadata": {
+      "note": "n_test=1286, n_calibration=3720"
+    }
+  },
+  "_index": {
+    "upgrade": {
+      "bottom_line": "Use the model",
+      "cells": {
+        "kdd98": "Proxy question ($50 threshold), not counted: loses 11 vs 12 of 100",
+        "cup98val": "not run",
+        "donorschoose": "Beats the rule: 9.0 vs 8.3 of 100",
+        "psid": "Beats the rule: 41 vs 32 of 100",
+        "karlan_list": "can't test (one letter and no later giving)"
+      }
+    },
+    "response": {
+      "bottom_line": "Use the model",
+      "cells": {
+        "kdd98": "About the same as the rule: 8.9 vs 8.3 of 100, ahead in the top 1% or 5%",
+        "cup98val": "Beats the rule: 8.9 vs 7.4 of 100",
+        "donorschoose": "can't test (no mailing/appeal log)",
+        "psid": "can't test (no mailing/appeal log)",
+        "karlan_list": "Beats the rule: 8.0 vs 5.5 of 100"
+      }
+    },
+    "lapse": {
+      "bottom_line": "Use the model",
+      "cells": {
+        "kdd98": "Nearly everyone lapses here (95 of 100). Who keeps giving: beats the rule, 6.5 vs 5.6 of 100 (1.3x random)",
+        "cup98val": "not run",
+        "donorschoose": "About the same as the rule: 81 vs 81 of 100",
+        "psid": "Beats the rule: 55 vs 47 of 100",
+        "karlan_list": "can't test (one letter and no later giving)"
+      }
+    },
+    "ask": {
+      "bottom_line": "Use the simple rule",
+      "cells": {
+        "kdd98": "Loses to the rule: 65 vs 67 of 100 within 25%",
+        "cup98val": "not run",
+        "donorschoose": "Loses to the rule: 30 vs 32 of 100 within 25%",
+        "psid": "About the same as the rule: 29 vs 28 of 100 within 25%",
+        "karlan_list": "About the same as the rule: 45 vs 41 of 100 within 25%"
+      }
+    },
+    "planned_giving": {
+      "bottom_line": "Can't tell yet",
+      "cells": {
+        "kdd98": "can't test (no bequest-intent label)",
+        "cup98val": "not run",
+        "donorschoose": "can't test (no bequest/estate-intent signal)",
+        "psid": "can't test (no bequest/estate-intent signal)",
+        "karlan_list": "can't test (no bequest/estate-intent signal)"
+      }
+    },
+    "who_to_mail": {
+      "bottom_line": "Use the model (tested on one organisation so far)",
+      "cells": {
+        "kdd98": "Beats mailing everyone: $4,542 vs $3,149 net",
+        "cup98val": "Beats mailing everyone: $13,764 vs $10,560 net",
+        "donorschoose": "can't test (no per-contact mailing cost)",
+        "psid": "can't test (no per-contact mailing cost)",
+        "karlan_list": "can't test (no per-contact mailing cost)"
+      }
+    }
+  },
   "_env": {
-    "git_sha": "b0122490e6902ce1e5c9f00e3f0d142874a1c72f",
+    "git_sha": "d857e8aac5ff4cdbb8c91450cec7583480c1d7af",
     "sklearn": "1.8.0",
     "numpy": "2.4.2",
     "pandas": "2.3.3"

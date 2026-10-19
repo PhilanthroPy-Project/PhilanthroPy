@@ -46,10 +46,89 @@ from typing import Any, Optional, TypeVar
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.model_selection import train_test_split
 from sklearn.utils import Tags
-from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.utils.validation import (
+    _check_sample_weight,
+    check_is_fitted,
+    validate_data,
+)
+
+from philanthropy.utils._validation import (
+    resolve_column,
+    resolve_columns,
+    resolve_monotonic_cst,
+)
 
 _Self = TypeVar("_Self", bound="AskAmountRecommender")
+
+# Fewer rows than this and the self-check's holdout is too small to say
+# anything, so ``beats_rule_`` stays ``None``.
+_SELF_CHECK_MIN_ROWS = 100
+
+
+def suggest_ask(
+    last_gift: Any,
+    avg_gift: Any,
+    stretch: float = 0.10,
+    round_to: Optional[float] = 25,
+) -> np.ndarray:
+    """Suggest an ask from giving history alone: the simple rule, no model.
+
+    Takes the larger of the donor's last gift and average gift, raises it by
+    ``stretch``, and rounds **up** to the next multiple of ``round_to``. With
+    ``stretch=0`` and ``round_to=None`` this is the rule the Results pages
+    test; on no real file there does :class:`AskAmountRecommender` land
+    within 25% of the next gift reliably more often than this rule, so it is
+    the place to start.
+
+    Parameters
+    ----------
+    last_gift, avg_gift : array-like of shape (n_samples,)
+        Each donor's most recent and average gift amount. A ``NaN`` in one is
+        ignored in favour of the other; ``NaN`` in both gives ``NaN``.
+    stretch : float, default=0.10
+        Fractional increase over the larger amount (0.10 asks for 10% more).
+        A policy choice, not an estimate: no observational file can say what
+        stretch works best.
+    round_to : float or None, default=25
+        Round up to a multiple of this amount. ``None`` skips rounding.
+
+    Returns
+    -------
+    ndarray of shape (n_samples,)
+        The suggested ask per donor, in the same currency as the input.
+
+    Raises
+    ------
+    ValueError
+        If ``stretch`` is negative, ``round_to`` is not positive, or the two
+        inputs differ in length.
+
+    Examples
+    --------
+    >>> from philanthropy.models import suggest_ask
+    >>> suggest_ask([100, 40, 260], [80, 55, 200])
+    array([125.,  75., 300.])
+    >>> suggest_ask([100], [80], stretch=0.0, round_to=None)
+    array([100.])
+    """
+    if stretch < 0:
+        raise ValueError(f"`stretch` must be >= 0, got {stretch!r}.")
+    if round_to is not None and not round_to > 0:
+        raise ValueError(f"`round_to` must be > 0 or None, got {round_to!r}.")
+    last = np.asarray(last_gift, dtype=float).ravel()
+    avg = np.asarray(avg_gift, dtype=float).ravel()
+    if last.shape != avg.shape:
+        raise ValueError(
+            f"`last_gift` and `avg_gift` differ in length: {last.size} vs {avg.size}."
+        )
+    ask = np.fmax(last, avg) * (1.0 + stretch)
+    if round_to is not None:
+        # Round to cents first so float noise (110.00000000000001) does not
+        # push an exact multiple up a whole step.
+        ask = np.ceil(np.round(ask / round_to, 6)) * round_to
+    return ask
 
 
 class AskAmountRecommender(RegressorMixin, BaseEstimator):
@@ -113,19 +192,56 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         simple rule this model is meant to beat (max of last and average
         gift) rather than the raw dollar amount. Requires ``last_gift_idx``
         and ``avg_gift_idx``.
-    last_gift_idx : int or None, default=None
-        Column index of the donor's last gift amount in ``X``. Required when
-        ``target_mode="relative"``.
-    avg_gift_idx : int or None, default=None
-        Column index of the donor's average gift amount in ``X``. Required
-        when ``target_mode="relative"``.
+    last_gift_idx : int, str or None, default=None
+        Column of the donor's last gift amount in ``X``: a position, or a
+        column name when ``X`` is a DataFrame (names survive a CRM export
+        reordering its columns). Required when ``target_mode="relative"``.
+    avg_gift_idx : int, str or None, default=None
+        Column of the donor's average gift amount in ``X``, as for
+        ``last_gift_idx``. Required when ``target_mode="relative"``.
+
+        When both ``last_gift_idx`` and ``avg_gift_idx`` are set, :meth:`fit`
+        also runs a self-check against the simple rule (see ``beats_rule_``).
+    categorical_features : list of int or str, bool mask, or None, default=None
+        Columns the backend should split on as unordered categories (a
+        region, constituency or appeal code) instead of as numbers, so they
+        need no one-hot step. Positions, a boolean mask, or column names
+        when ``X`` is a DataFrame. The columns must hold non-negative
+        integer codes below 255, as for ``HistGradientBoostingRegressor``.
+        ``None`` treats every column as numeric.
+    monotonic_cst : array-like of int or dict, default=None
+        Monotonic constraint on each feature, passed to the underlying
+        :class:`HistGradientBoostingRegressor`: ``1`` means the ask never falls as
+        that feature rises, ``-1`` that it never rises, ``0`` no
+        constraint. A dict sets only the features it names, keyed by
+        position or, when ``X`` is a DataFrame, column name
+        (``{"total_giving": 1}``). ``None`` applies no constraint
+        (current behaviour).
+        With ``target_mode="relative"`` it constrains the predicted
+        ask-to-reference ratio rather than the dollar ask. Needs
+        ``loss="squared_error"``: with ``"absolute_error"`` the backend
+        resets each leaf to a median after splitting, which breaks the
+        constraint, so :meth:`fit` raises instead.
 
     Attributes
     ----------
     estimator_ : HistGradientBoostingRegressor
-        The fitted backend estimator.
+        The fitted backend estimator, trained on all of ``X``.
     n_features_in_ : int
         Number of features seen during :meth:`fit`.
+    last_gift_idx_, avg_gift_idx_ : int or None
+        Column positions ``last_gift_idx`` and ``avg_gift_idx`` resolved to
+        in the data passed to :meth:`fit`.
+    beats_rule_ : bool or None
+        Whether the model's mean absolute error beat the simple rule
+        max(last gift, average gift) on a 20% holdout of the training data.
+        The holdout model is a separate fit on the other 80%; the returned
+        model is then refit on everything. ``None`` when either column index
+        is unset or ``X`` has fewer than 100 rows. When ``False``, use
+        :func:`suggest_ask` instead of this model.
+    rule_mae_, model_mae_ : float or None
+        The two holdout mean absolute errors behind ``beats_rule_``, in the
+        target's currency. ``None`` whenever ``beats_rule_`` is.
 
     Examples
     --------
@@ -191,8 +307,10 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         random_state: Optional[int] = None,
         ask_floor: float = 1.0,
         target_mode: str = "absolute",
-        last_gift_idx: Optional[int] = None,
-        avg_gift_idx: Optional[int] = None,
+        last_gift_idx: Optional[int | str] = None,
+        avg_gift_idx: Optional[int | str] = None,
+        categorical_features: Any = None,
+        monotonic_cst: Any = None,
     ) -> None:
         # scikit-learn rule: __init__ stores parameters and does NO logic.
         self.learning_rate = learning_rate
@@ -206,6 +324,8 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         self.target_mode = target_mode
         self.last_gift_idx = last_gift_idx
         self.avg_gift_idx = avg_gift_idx
+        self.categorical_features = categorical_features
+        self.monotonic_cst = monotonic_cst
 
     def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()
@@ -225,18 +345,16 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
 
     def _relative_reference(self, X: np.ndarray) -> np.ndarray:
         """max(last gift, average gift) per row, floored to avoid log(0)."""
-        if self.last_gift_idx is None or self.avg_gift_idx is None:
+        if self.last_gift_idx_ is None or self.avg_gift_idx_ is None:
             raise ValueError(
                 "target_mode='relative' requires both last_gift_idx and avg_gift_idx."
             )
-        ref = np.maximum(X[:, self.last_gift_idx], X[:, self.avg_gift_idx])
+        ref = np.maximum(X[:, self.last_gift_idx_], X[:, self.avg_gift_idx_])
         return np.maximum(ref, self.ask_floor)
 
-    def fit(self: _Self, X: Any, y: Any) -> _Self:
-        """Fit the ask-amount recommender to labelled prospect data."""
-        X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
-        self.n_features_in_ = X.shape[1]
-
+    def _fit_backend(
+        self, X: np.ndarray, y: np.ndarray, sample_weight: Optional[np.ndarray]
+    ) -> HistGradientBoostingRegressor:
         if self.target_mode == "relative":
             ref = self._relative_reference(X)
             fit_target = np.log(np.maximum(y, self.ask_floor) / ref)
@@ -244,27 +362,82 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
             fit_target = y
         else:
             raise ValueError(f"Unknown target_mode: {self.target_mode!r}")
+        if self.monotonic_cst is not None and self.loss == "absolute_error":
+            # sklearn refits absolute-error leaves as medians after the
+            # constrained split search, so the constraint would not hold.
+            raise ValueError(
+                "monotonic_cst needs loss='squared_error'; with "
+                "loss='absolute_error' the backend does not enforce it."
+            )
 
-        self.estimator_ = HistGradientBoostingRegressor(
+        est = HistGradientBoostingRegressor(
             learning_rate=self.learning_rate,
             max_iter=self.max_iter,
             max_depth=self.max_depth,
             l2_regularization=self.l2_regularization,
             min_samples_leaf=self.min_samples_leaf,
             loss=self.loss,
+            categorical_features=resolve_columns(self, self.categorical_features),
+            monotonic_cst=resolve_monotonic_cst(self, self.monotonic_cst),
             random_state=self.random_state,
         )
-        self.estimator_.fit(X, fit_target)
+        return est.fit(X, fit_target, sample_weight=sample_weight)
+
+    def _predict_backend(
+        self, est: HistGradientBoostingRegressor, X: np.ndarray
+    ) -> np.ndarray:
+        raw = est.predict(X)
+        if self.target_mode == "relative":
+            raw = np.exp(raw) * self._relative_reference(X)
+        return np.maximum(raw, self.ask_floor)
+
+    def fit(self: _Self, X: Any, y: Any, sample_weight: Any = None) -> _Self:
+        """Fit the ask-amount recommender to labelled prospect data.
+
+        With ``last_gift_idx`` and ``avg_gift_idx`` set, first compares the
+        model to the simple rule on a holdout (see ``beats_rule_``).
+        ``sample_weight`` is passed to the backend, and the holdout MAEs are
+        weighted by it too.
+        """
+        X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
+        self.n_features_in_ = X.shape[1]
+        if sample_weight is not None:
+            sample_weight = _check_sample_weight(sample_weight, X)
+        self.last_gift_idx_ = resolve_column(self, self.last_gift_idx)
+        self.avg_gift_idx_ = resolve_column(self, self.avg_gift_idx)
+
+        self.beats_rule_: Optional[bool] = None
+        self.rule_mae_: Optional[float] = None
+        self.model_mae_: Optional[float] = None
+        has_idx = self.last_gift_idx_ is not None and self.avg_gift_idx_ is not None
+        if has_idx and X.shape[0] >= _SELF_CHECK_MIN_ROWS:
+            w = np.ones(X.shape[0]) if sample_weight is None else sample_weight
+            X_tr, X_ho, y_tr, y_ho, w_tr, w_ho = train_test_split(
+                X, y, w, test_size=0.2, random_state=self.random_state
+            )
+            model_pred = self._predict_backend(
+                self._fit_backend(X_tr, y_tr, w_tr), X_ho
+            )
+            rule_pred = suggest_ask(
+                X_ho[:, self.last_gift_idx_],
+                X_ho[:, self.avg_gift_idx_],
+                stretch=0.0,
+                round_to=None,
+            )
+            rule_pred = np.where(np.isnan(rule_pred), self.ask_floor, rule_pred)
+            rule_pred = np.maximum(rule_pred, self.ask_floor)
+            self.rule_mae_ = float(np.average(np.abs(y_ho - rule_pred), weights=w_ho))
+            self.model_mae_ = float(np.average(np.abs(y_ho - model_pred), weights=w_ho))
+            self.beats_rule_ = self.model_mae_ < self.rule_mae_
+
+        self.estimator_ = self._fit_backend(X, y, sample_weight)
         return self
 
     def predict(self, X: Any) -> np.ndarray:
         """Predict the base ask amount for each prospect."""
         check_is_fitted(self, ["estimator_"])
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
-        raw = self.estimator_.predict(X)
-        if self.target_mode == "relative":
-            raw = np.exp(raw) * self._relative_reference(X)
-        return np.maximum(raw, self.ask_floor)
+        return self._predict_backend(self.estimator_, X)
 
     def ask_ladder(
         self,

@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Test covering the CLI's `_score_array` fallback to `predict_proba(X)[:, 1]`
+  for a model with no `predict_affinity_score` (closes #53).
 - Two how-to guides: "Estimate Donor Lifetime Value" walks a gift export
   through `repeat_giving_summary`, `BetaGeoModel` and `GammaGammaModel` to
   expected giving per donor and checks the forecast on a held-out year;

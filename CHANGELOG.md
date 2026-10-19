@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Test covering the CLI's `_score_array` fallback to `predict_proba(X)[:, 1]`
+  for a model with no `predict_affinity_score` (closes #53).
 - Test covering `FiscalYearGroupedSplitter.split` skipping a fold that has
   no training rows left after `gap_years` (closes #55).
 - Two how-to guides: "Estimate Donor Lifetime Value" walks a gift export

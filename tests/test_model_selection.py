@@ -74,6 +74,21 @@ def test_gap_years_withholds_the_year_before_each_test_fold():
         assert fy[train_idx].max() < test_fy - 1
 
 
+def test_split_skips_fold_with_no_prior_training_data():
+    groups = np.array([2020.0, 2020.5, 2021.0, 2022.0])
+    X = np.zeros((len(groups), 2))
+    splitter = FiscalYearGroupedSplitter(
+        drop_repeat_donors=False, n_splits=2, gap_years=1
+    )
+
+    splits = list(splitter.split(X, groups=groups))
+
+    assert len(splits) == 1
+    train_idx, test_idx = splits[0]
+    assert list(train_idx) == [0, 1]
+    assert list(test_idx) == [3]
+
+
 def test_default_splitter_no_leakage_gap_years_zero():
     """Default gap_years=0: training fold never contains a FY at or after the test FY,
     and each test fold is exactly one fiscal year."""

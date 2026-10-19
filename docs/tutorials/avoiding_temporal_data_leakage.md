@@ -18,6 +18,10 @@ The feature was the outcome. Validation looked perfect and the field did not, be
 
 The same trap catches any feature built by aggregating a source table that runs past the outcome: a `total_lifetime_giving` attached to historical donor snapshots, a wealth-capacity field refreshed to today's value, a clinical encounter that had not happened yet.
 
+### What leakage costs in practice
+
+Leakage is not a stylistic concern. On [Real-Data Replication](../explanation/real_data_replication.md), the KDD Cup 1998 file has 95,412 donors with a 24-mailing history, reshaped to a 22-period donor-period panel. Building features as of each decision point scored 0.482 walk-forward ROC-AUC; building the same features over the whole export scored 0.858, an inflation of +0.376. The same inflation on the synthetic panel is +0.126, so the real donor file shows the risk can be larger than the tutorial example alone suggests.
+
 ## The cutoff: `as_of`
 
 Every transformer that reads a dated source table takes an `as_of` date and removes the rows dated after it *before* any feature is computed. `RFMTransformer` rolls a gift log up to one row per donor, so it is where Pelletier's case lands:

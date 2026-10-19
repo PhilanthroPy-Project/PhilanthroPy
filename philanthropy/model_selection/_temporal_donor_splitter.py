@@ -417,7 +417,17 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
             unique_fy = np.unique(groups[~_missing_mask(groups)])
             n_fy = len(unique_fy)
             max_splits = max(0, n_fy - 1 - gap_years)
-            return min(n_splits, max_splits)
+            n_splits = min(n_splits, max_splits)
+            if n_splits == 0:
+                return 0
+            try:
+                unique_fy = np.sort(unique_fy.astype(float))
+            except (TypeError, ValueError):
+                # Non-numeric years: split() raises the descriptive error.
+                return n_splits
+            # split() skips a test year with no training rows before its
+            # cutoff (possible with fractional fiscal years), so don't count it.
+            return int(np.count_nonzero(unique_fy[-n_splits:] - gap_years > unique_fy[0]))
         return n_splits
 
     # ------------------------------------------------------------------

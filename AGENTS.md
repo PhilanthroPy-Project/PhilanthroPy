@@ -61,7 +61,7 @@ otherwise shadow your edits under pytest and silently run stale code.
 ## Local gate: exact commands
 ```bash
 python -m pip install -e ".[dev]"   # editable only; see the gotcha above
-sh scripts/install_hooks.sh         # pre-push hook runs the FULL suite on every push
+sh scripts/install_hooks.sh         # pre-push hook: collection check + flake8 (seconds)
 make ci                             # flake8 + mypy + doctests + tests + the coverage floor
 make riskcov                        # the risk-tier floor CI also enforces
 ```
@@ -97,5 +97,7 @@ person has merge rights, go back to leaving every merge to review.
 - Add the PR's human author to CONTRIBUTORS.md if they are not already listed
   and want to be (the PR template makes it optional). Agents don't list
   themselves.
-- Never `git push --no-verify`: the pre-push hook is the local copy of the
-  test gate.
+- Run `make ci` once before opening the PR (or marking it ready), not
+  before every push; CI runs the full suite on each push to the PR.
+- Never `git push --no-verify`: the pre-push hook catches collection and lint
+  errors in seconds.

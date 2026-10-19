@@ -43,9 +43,9 @@ One toolkit, two audiences:
 
 ### Maturity
 
-Single-maintainer MIT project. **`pip install philanthropy` gives you `0.7.0`**, the current release.
+Single-maintainer MIT project. **`pip install philanthropy` gives you `0.9.0`**, the current release.
 
-`main` is ahead of it: `1.0.0` (freezes the API) is merged and green but deliberately unreleased, so 0.7.0 gets a real usage window before that promise takes effect. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
+`main` is ahead of it: `1.0.0` (freezes the API) is merged and green but deliberately unreleased, so the 0.x line gets a real usage window before that promise takes effect. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
 
 Preprocessing and the core classifiers are Tier 1; grateful-patient featurization and `philanthropy.ingest` are Tier 2 (Beta); `FinancialForecastModel` and `philanthropy.experimental.*` are Tier 3 (Experimental) and carry no API guarantees. From `1.0.0`, Tier 1 becomes semver-protected: breaking one requires a major release preceded by a full published minor of `DeprecationWarning`. Per-symbol tiers are in the [API reference](docs/reference/index.md).
 
@@ -377,7 +377,7 @@ and documentation, in an agentic workflow rather than line completion alone.
 runs flake8, mypy, the docstring examples, and the test suite against a 92%
 coverage floor (`pyproject.toml`). CI additionally enforces a 93% coverage floor
 on the risk-tier subtree, runs the suite across an OS and Python-version matrix,
-installs at the declared dependency floors on Python 3.9, builds the
+installs at the declared dependency floors on Python 3.10, builds the
 distributions and checks their metadata with `twine`, and verifies the package
 imports without a plotting stack installed. Public estimators are exercised by
 a `parametrize_with_checks` battery over
@@ -407,7 +407,7 @@ it is done. Comment on the issue to claim it; ask there if anything is unclear.
 
 See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the fork-and-PR workflow, the full
 local test gate, and pre-push hook setup. In short: fork, branch, run `make ci`
-before every push, and never use `git push --no-verify`. Setup plus a first green
+before opening the PR, and never use `git push --no-verify`. Setup plus a first green
 `make ci` takes about eight minutes.
 
 Everyone who has landed a change is credited in

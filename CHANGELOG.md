@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Test covering `FiscalYearGroupedSplitter.split` skipping a fold that has
+  no training rows left after `gap_years` (closes #55).
 - Two how-to guides: "Estimate Donor Lifetime Value" walks a gift export
   through `repeat_giving_summary`, `BetaGeoModel` and `GammaGammaModel` to
   expected giving per donor and checks the forecast on a held-out year;

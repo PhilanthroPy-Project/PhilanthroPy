@@ -161,8 +161,14 @@ def test_unknown_source_raises_a_clear_error():
 
 def test_gift_sources_lists_all_eight_presets():
     assert set(GIFT_SOURCES) == {
-        "civicrm", "raisers_edge", "npsp", "nonprofit_cloud",
-        "bloomerang", "donorperfect", "blackbaud_crm", "little_green_light"
+        "civicrm",
+        "raisers_edge",
+        "npsp",
+    "nonprofit_cloud",
+        "bloomerang",
+        "donorperfect",
+    "blackbaud_crm",
+        "little_green_light",
     }
 
 
@@ -241,7 +247,6 @@ def test_blackbaud_crm_kwarg_reaches_the_underlying_aggregator():
     # include_revenue_types=None disables the filter and sums both rows.
     unfiltered = read_gifts(rows, source="blackbaud_crm", include_revenue_types=None)
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0
-
 
 def test_little_green_light_path_matches_direct_call(tmp_path):
     path = _write_csv(

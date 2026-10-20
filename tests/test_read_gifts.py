@@ -28,7 +28,7 @@ from philanthropy.ingest import (
     read_npsp_opportunities,
     read_raisers_edge_gifts,
     little_green_light_gifts_to_features,
-read_little_green_light_gifts,
+    read_little_green_light_gifts,
 )
 
 
@@ -133,7 +133,12 @@ def test_unknown_source_raises_a_clear_error():
 
 def test_gift_sources_lists_the_six_presets():
     assert set(GIFT_SOURCES) == {
-        "civicrm", "raisers_edge", "npsp", "bloomerang", "donorperfect",  "little_green_light",
+        "civicrm",
+        "raisers_edge",
+        "npsp",
+        "bloomerang",
+        "donorperfect",
+        "little_green_light",
     }
 
 
@@ -184,6 +189,7 @@ def test_donorperfect_kwarg_reaches_the_underlying_aggregator():
     unfiltered = read_gifts(rows, source="donorperfect", exclude_record_types=None)
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0
 
+
 def test_little_green_light_path_matches_direct_call(tmp_path):
     path = _write_csv(
         tmp_path,
@@ -196,7 +202,8 @@ def test_little_green_light_path_matches_direct_call(tmp_path):
         read_little_green_light_gifts(path)
     )
     pd.testing.assert_frame_equal(via_registry, direct)
-    
+
+
 def test_little_green_light_kwarg_reaches_the_underlying_aggregator():
     rows = [
         {

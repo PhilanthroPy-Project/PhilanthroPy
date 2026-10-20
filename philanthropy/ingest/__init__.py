@@ -95,20 +95,21 @@ from ._read_gifts import GIFT_SOURCES, read_gifts
 from ._upgrade_snapshots import build_leadership_snapshots
 from ._snapshots import build_snapshots
 
-
 __all__ = [
-    "DEFAULT_EXCLUDED_ENTRY_TYPES",
-    "DEFAULT_EXCLUDED_GIFT_TYPES",
-    "DEFAULT_EXCLUDED_RECORD_TYPES",
-    "DEFAULT_INCLUDED_STAGES",
-    "GIFT_SOURCES",
     "activities_to_features",
     "bloomerang_transactions_to_features",
     "build_leadership_snapshots",
     "build_snapshots",
     "civicrm_contributions_to_features",
     "constituent_events_to_features",
+    "DEFAULT_EXCLUDED_ENTRY_TYPES",
+    "DEFAULT_EXCLUDED_GIFT_TYPES",
+    "DEFAULT_EXCLUDED_LGL_GIFT_TYPES",
+    "DEFAULT_EXCLUDED_RECORD_TYPES",
+    "DEFAULT_INCLUDED_STAGES",
     "donorperfect_gifts_to_features",
+    "GIFT_SOURCES",
+    "little_green_light_gifts_to_features",
     "map_columns",
     "npsp_opportunities_to_features",
     "raisers_edge_gifts_to_features",
@@ -117,9 +118,7 @@ __all__ = [
     "read_constituent_events",
     "read_donorperfect_gifts",
     "read_gifts",
+    "read_little_green_light_gifts",
     "read_npsp_opportunities",
     "read_raisers_edge_gifts",
-    "read_little_green_light_gifts",
-    "DEFAULT_EXCLUDED_LGL_GIFT_TYPES",
-    "little_green_light_gifts_to_features",
 ]

@@ -36,6 +36,7 @@ from ._little_green_light import (
     little_green_light_gifts_to_features,
     read_little_green_light_gifts,
 )
+
 __all__ = ["GIFT_SOURCES", "read_gifts"]
 
 #: Valid ``source`` names for :func:`read_gifts`, in the order the CLI's
@@ -58,9 +59,9 @@ _REGISTRY: "dict[str, tuple[Callable[[Union[str, Path]], pd.DataFrame], Callable
     "bloomerang": (read_bloomerang_transactions, bloomerang_transactions_to_features),
     "donorperfect": (read_donorperfect_gifts, donorperfect_gifts_to_features),
     "little_green_light": (
-    read_little_green_light_gifts,
-    little_green_light_gifts_to_features,
-),
+        read_little_green_light_gifts,
+        little_green_light_gifts_to_features,
+    ),
 }
 
 
@@ -93,7 +94,8 @@ def read_gifts(
         ``"civicrm"``, ``exclude_gift_types=`` for ``"raisers_edge"``,
         ``include_stages=`` for ``"npsp"``, ``exclude_entry_types=`` for
         ``"bloomerang"``, ``exclude_record_types=`` for ``"donorperfect"``,
-        or the ``reference_date=`` every preset accepts.
+        ``exclude_gift_types=`` for ``"little_green_light"``, or the
+        ``reference_date=`` every preset accepts.
 
     Returns
     -------

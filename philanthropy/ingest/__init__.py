@@ -12,6 +12,12 @@ CiviCRM: ``read_civicrm_contributions`` loads a contribution export CSV;
 ``civicrm_contributions_to_features`` aggregates it the same way, dropping
 test-mode and non-``Completed`` rows first.
 
+Blackbaud CRM: ``read_blackbaud_crm_revenue`` loads a Blackbaud revenue
+export CSV; ``blackbaud_crm_revenue_to_features`` aggregates it, dropping the
+commitment rows (pledges, matching gift claims, recurring gifts, etc.) first
+so a pledged dollar is not counted both as the promise and as the payments
+against it.
+
 Raiser's Edge: ``read_raisers_edge_gifts`` loads a Blackbaud gift export CSV;
 ``raisers_edge_gifts_to_features`` aggregates it, dropping the commitment rows
 (pledges, matching gift pledges, recurring gift templates) first so a pledged
@@ -63,6 +69,11 @@ column set, with an optional minimum number of giving years.
 """
 
 from ._activities import activities_to_features
+from ._blackbaud_crm import (
+    DEFAULT_INCLUDED_REVENUE_TYPES,
+    blackbaud_crm_revenue_to_features,
+    read_blackbaud_crm_revenue,
+)
 from ._bloomerang import (
     DEFAULT_EXCLUDED_ENTRY_TYPES,
     bloomerang_transactions_to_features,
@@ -106,9 +117,11 @@ __all__ = [
     "DEFAULT_EXCLUDED_GIFT_TYPES",
     "DEFAULT_EXCLUDED_RECORD_TYPES",
     "DEFAULT_INCLUDED_GIFT_TRANSACTION_STATUSES",
+    "DEFAULT_INCLUDED_REVENUE_TYPES",
     "DEFAULT_INCLUDED_STAGES",
     "GIFT_SOURCES",
     "activities_to_features",
+    "blackbaud_crm_revenue_to_features",
     "bloomerang_transactions_to_features",
     "build_leadership_snapshots",
     "build_snapshots",
@@ -119,6 +132,7 @@ __all__ = [
     "nonprofit_cloud_gifts_to_features",
     "npsp_opportunities_to_features",
     "raisers_edge_gifts_to_features",
+    "read_blackbaud_crm_revenue",
     "read_bloomerang_transactions",
     "read_civicrm_contributions",
     "read_constituent_events",

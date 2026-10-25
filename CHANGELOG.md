@@ -497,6 +497,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `Failed`, `Pending`, `Written Off`, and `Fully Refunded` installments are not
   summed as gifts. Wired into the CLI as `philanthropy features --source nonprofit_cloud`
   and registered in the `read_gifts` preset registry.
+- `philanthropy.ingest.blackbaud_crm_revenue_to_features` and
+  `read_blackbaud_crm_revenue`: a Blackbaud CRM revenue export bridge, alongside
+  the existing CiviCRM and Raiser's Edge ones. Reads a revenue acknowledgement
+  export, keeping only `Payment` revenue types by default
+  (`DEFAULT_INCLUDED_REVENUE_TYPES`); the `include_revenue_types` parameter
+  overrides the allowlist. An export with no revenue-type column warns rather
+  than summing pledges alongside their payments. Registered in the `read_gifts`
+  preset registry.
+
 
 ### Changed
 - The docs workflow builds on Python 3.13 instead of 3.10. pymdown-extensions

@@ -1,15 +1,14 @@
 """
 tests/test_read_gifts.py
 Tests for philanthropy.ingest.read_gifts, the preset-registry entry point
-over the CiviCRM, Raiser's Edge, NPSP, Nonprofit Cloud, Bloomerang and
-DonorPerfect gift bridges.
+over the CiviCRM, Raiser's Edge, Blackbaud CRM, NPSP, Nonprofit Cloud,
+Bloomerang and DonorPerfect gift bridges.
 
 The point of this module is that `read_gifts(x, source=name)` is exactly
 equivalent to calling that source's own reader-and-aggregator pair directly;
-each preset's own filtering behaviour is already covered by
-tests/test_civicrm.py, tests/test_raisers_edge.py, tests/test_npsp.py,
-tests/test_nonprofit_cloud.py, tests/test_bloomerang.py and
-tests/test_donorperfect.py.
+each preset's own filtering behaviour is already covered by tests/test_civicrm.py,
+tests/test_raisers_edge.py, tests/test_blackbaud_crm.py, tests/test_npsp.py,
+tests/test_nonprofit_cloud.py, tests/test_bloomerang.py and tests/test_donorperfect.py.
 """
 
 import pandas as pd
@@ -17,12 +16,14 @@ import pytest
 
 from philanthropy.ingest import (
     GIFT_SOURCES,
+    blackbaud_crm_revenue_to_features,
     bloomerang_transactions_to_features,
     civicrm_contributions_to_features,
     donorperfect_gifts_to_features,
     nonprofit_cloud_gifts_to_features,
     npsp_opportunities_to_features,
     raisers_edge_gifts_to_features,
+    read_blackbaud_crm_revenue,
     read_bloomerang_transactions,
     read_civicrm_contributions,
     read_donorperfect_gifts,
@@ -62,6 +63,18 @@ def test_raisers_edge_path_matches_direct_call(tmp_path):
     )
     via_registry = read_gifts(path, source="raisers_edge")
     direct = raisers_edge_gifts_to_features(read_raisers_edge_gifts(path))
+    pd.testing.assert_frame_equal(via_registry, direct)
+
+
+def test_blackbaud_crm_path_matches_direct_call(tmp_path):
+    path = _write_csv(
+        tmp_path,
+        "Constituent ID,Date,Amount,Revenue Type",
+        "88,2025-01-10,1200.00,Payment",
+        "88,2025-02-10,100.00,Pledge",
+    )
+    via_registry = read_gifts(path, source="blackbaud_crm")
+    direct = blackbaud_crm_revenue_to_features(read_blackbaud_crm_revenue(path))
     pd.testing.assert_frame_equal(via_registry, direct)
 
 
@@ -144,9 +157,10 @@ def test_unknown_source_raises_a_clear_error():
         read_gifts([], source="salesforce_classic")
 
 
-def test_gift_sources_lists_the_six_presets():
+def test_gift_sources_lists_the_seven_presets():
     assert set(GIFT_SOURCES) == {
-        "civicrm", "raisers_edge", "npsp", "nonprofit_cloud", "bloomerang", "donorperfect",
+        "civicrm", "raisers_edge", "npsp", "nonprofit_cloud",
+        "bloomerang", "donorperfect", "blackbaud_crm"
     }
 
 
@@ -210,4 +224,19 @@ def test_donorperfect_kwarg_reaches_the_underlying_aggregator():
     assert float(default.loc["88", "total_gift_amount"]) == 100.0
     # exclude_record_types=None disables the filter and sums both rows.
     unfiltered = read_gifts(rows, source="donorperfect", exclude_record_types=None)
+    assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0
+
+
+def test_blackbaud_crm_kwarg_reaches_the_underlying_aggregator():
+    rows = [
+        {"Constituent ID": "88", "Date": "2025-01-10", "Amount": "1200.00",
+         "Revenue Type": "Pledge"},
+        {"Constituent ID": "88", "Date": "2025-02-10", "Amount": "100.00",
+         "Revenue Type": "Payment"},
+    ]
+    # Default keeps the Payment row only: the Pledge row does not count.
+    default = read_gifts(rows, source="blackbaud_crm")
+    assert float(default.loc["88", "total_gift_amount"]) == 100.0
+    # include_revenue_types=None disables the filter and sums both rows.
+    unfiltered = read_gifts(rows, source="blackbaud_crm", include_revenue_types=None)
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0

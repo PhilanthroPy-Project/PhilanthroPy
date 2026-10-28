@@ -33,8 +33,6 @@ from philanthropy.ingest import (
     read_nonprofit_cloud_gifts,
     read_npsp_opportunities,
     read_raisers_edge_gifts,
-    little_green_light_gifts_to_features,
-    read_little_green_light_gifts,
 )
 
 
@@ -162,11 +160,6 @@ def test_unknown_source_raises_a_clear_error():
 
 
 def test_gift_sources_lists_all_eight_presets():
-
-    assert set(GIFT_SOURCES) == {
-        "civicrm",
-        "raisers_edge",
-        "npsp",
     assert set(GIFT_SOURCES) == {
         "civicrm",
         "raisers_edge",
@@ -175,9 +168,6 @@ def test_gift_sources_lists_all_eight_presets():
         "bloomerang",
         "donorperfect",
         "blackbaud_crm",
-        "little_green_light",
-    }
-
         "little_green_light",
     }
 
@@ -243,6 +233,7 @@ def test_donorperfect_kwarg_reaches_the_underlying_aggregator():
     # exclude_record_types=None disables the filter and sums both rows.
     unfiltered = read_gifts(rows, source="donorperfect", exclude_record_types=None)
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0
+
 
 def test_blackbaud_crm_kwarg_reaches_the_underlying_aggregator():
     rows = [

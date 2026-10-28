@@ -38,10 +38,6 @@ from ._little_green_light import (
 from ._nonprofit_cloud import nonprofit_cloud_gifts_to_features, read_nonprofit_cloud_gifts
 from ._npsp import npsp_opportunities_to_features, read_npsp_opportunities
 from ._raisers_edge import raisers_edge_gifts_to_features, read_raisers_edge_gifts
-from ._little_green_light import (
-    little_green_light_gifts_to_features,
-    read_little_green_light_gifts,
-)
 
 __all__ = ["GIFT_SOURCES", "read_gifts"]
 
@@ -56,8 +52,6 @@ GIFT_SOURCES: Tuple[str, ...] = (
     "donorperfect",
     "blackbaud_crm",
     "little_green_light",
-
-    "little_green_light",
 )
 
 # (reader, aggregator) pair per source, the same shape as the preset dispatch
@@ -70,10 +64,6 @@ _REGISTRY: "dict[str, tuple[Callable[[Union[str, Path]], pd.DataFrame], Callable
     "bloomerang": (read_bloomerang_transactions, bloomerang_transactions_to_features),
     "donorperfect": (read_donorperfect_gifts, donorperfect_gifts_to_features),
     "blackbaud_crm": (read_blackbaud_crm_revenue, blackbaud_crm_revenue_to_features),
-    "little_green_light": (
-        read_little_green_light_gifts,
-        little_green_light_gifts_to_features,
-
     "little_green_light": (
         read_little_green_light_gifts,
         little_green_light_gifts_to_features,
@@ -113,7 +103,6 @@ def read_gifts(
         ``exclude_record_types=`` for ``"donorperfect"``,
         ``exclude_gift_types=`` for ``"little_green_light"``, or the
         ``reference_date=`` every preset accepts.
-
 
     Returns
     -------

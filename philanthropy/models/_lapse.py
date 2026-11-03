@@ -7,6 +7,7 @@ default (RandomForestClassifier opt-in).
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, TypeVar
 
 import numpy as np
@@ -145,6 +146,16 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
                 random_state=self.random_state,
             )
         elif self.backend == "hist_gradient_boosting":
+            # n_estimators predates the boosting default; a caller still
+            # setting it expects a forest, so say it has no effect.
+            if self.n_estimators != 100:
+                warnings.warn(
+                    f"n_estimators={self.n_estimators} has no effect with "
+                    f"backend='hist_gradient_boosting', now the default. "
+                    f"Pass backend='random_forest' to keep the forest.",
+                    UserWarning,
+                    stacklevel=2,
+                )
             self.estimator_ = HistGradientBoostingClassifier(
                 max_depth=self.max_depth,
                 class_weight=self.class_weight,

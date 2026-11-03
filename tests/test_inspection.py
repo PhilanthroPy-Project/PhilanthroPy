@@ -128,8 +128,8 @@ SCORERS = [
     (DonorPropensityModel(n_estimators=20, random_state=0), "predict_affinity_score"),
     (DonorPropensityModel(n_estimators=20, random_state=0), "decision_function"),
     (MajorGiftClassifier(random_state=0), "predict_proba"),
-    (LapsePredictor(n_estimators=20, random_state=0), "predict_lapse_score"),
-    (LapsePredictor(n_estimators=20, random_state=0), "predict_retention_score"),
+    (LapsePredictor(random_state=0), "predict_lapse_score"),
+    (LapsePredictor(random_state=0), "predict_retention_score"),
     (PlannedGivingIntentScorer(n_estimators=20, random_state=0), "predict_intent_score"),
     (PropensityScorer(), "predict_proba"),
     (MovesManagementClassifier(max_iter=20, random_state=0), "predict_proba"),
@@ -166,7 +166,7 @@ def test_explain_uses_stored_fill_values():
 
 def test_explain_handles_nan():
     X, y, _ = _driver_data()
-    model = LapsePredictor(n_estimators=20, random_state=0).fit(X, y)
+    model = LapsePredictor(random_state=0).fit(X, y)
     Xq = X[:5].copy()
     Xq[0, 2] = np.nan
     out = explain_donor_scores(model, Xq, "predict_lapse_score", baseline=X, top_k=None)
@@ -187,7 +187,7 @@ def test_explain_categorical_dataframe_pipeline():
         make_column_transformer(
             (OneHotEncoder(), ["region"]), remainder="passthrough"
         ),
-        LapsePredictor(n_estimators=20, random_state=0),
+        LapsePredictor(random_state=0),
     ).fit(df, y)
     out = explain_donor_scores(pipe, df.iloc[:20], baseline=df, top_k=1)
     mode = df["region"].mode().iloc[0]

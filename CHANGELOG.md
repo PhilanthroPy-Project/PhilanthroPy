@@ -105,6 +105,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `n_estimators`, which the boosting backend ignores). `class_weight` now
   reaches the boosting backend too, and `predict_proba` returns one column per
   entry of `classes_` when the training fold held a single class.
+  Setting `n_estimators` without `backend="random_forest"` now warns that
+  it has no effect, so code tuned for the old forest default doesn't
+  silently fit a different model.
 
 ### Fixed
 - `MajorGiftClassifier(monotonic_cst={"column": 1})` raised on a DataFrame,

@@ -1,4 +1,7 @@
+import warnings
+
 import numpy as np
+import pytest
 
 from philanthropy.models import LapsePredictor
 
@@ -11,7 +14,7 @@ def _dummy_X(n):
 def test_lapse_predictor_binary_classes():
     X = _dummy_X(20)
     y = np.array([0, 1] * 10)
-    clf = LapsePredictor(n_estimators=5, random_state=0)
+    clf = LapsePredictor(random_state=0)
     clf.fit(X, y)
     assert list(clf.classes_) == [0, 1]
 
@@ -28,7 +31,7 @@ def test_lapse_predictor_classes_built_with_unique_labels():
 
     X = _dummy_X(20)
     y = np.array([1, 0] * 10)
-    clf = LapsePredictor(n_estimators=5, random_state=0)
+    clf = LapsePredictor(random_state=0)
     clf.fit(X, y)
     assert np.array_equal(clf.classes_, unique_labels(y))
 
@@ -36,7 +39,7 @@ def test_lapse_predictor_classes_built_with_unique_labels():
 def test_retention_score_is_complement_of_lapse_score():
     X = _dummy_X(20)
     y = np.array([0, 1] * 10)
-    clf = LapsePredictor(n_estimators=5, random_state=0).fit(X, y)
+    clf = LapsePredictor(random_state=0).fit(X, y)
     lapse = clf.predict_lapse_score(X)
     retention = clf.predict_retention_score(X)
     np.testing.assert_allclose(lapse + retention, 100.0, atol=1e-9)
@@ -45,7 +48,7 @@ def test_retention_score_is_complement_of_lapse_score():
 def test_retention_read_flag_low_lapse_rate():
     X = _dummy_X(20)
     y = np.array([0] * 15 + [1] * 5)  # 25% lapse rate
-    clf = LapsePredictor(n_estimators=5, random_state=0).fit(X, y)
+    clf = LapsePredictor(random_state=0).fit(X, y)
     assert clf.training_lapse_rate_ == 0.25
     assert clf.retention_read_ is False
 
@@ -53,7 +56,7 @@ def test_retention_read_flag_low_lapse_rate():
 def test_retention_read_flag_high_lapse_rate():
     X = _dummy_X(20)
     y = np.array([1] * 17 + [0] * 3)  # 85% lapse rate
-    clf = LapsePredictor(n_estimators=5, random_state=0).fit(X, y)
+    clf = LapsePredictor(random_state=0).fit(X, y)
     assert clf.training_lapse_rate_ == 0.85
     assert clf.retention_read_ is True
 
@@ -99,3 +102,14 @@ def test_unknown_backend_raises():
     y = np.array([0, 1] * 5)
     with pytest.raises(ValueError):
         LapsePredictor(backend="bogus", random_state=0).fit(X, y)
+
+
+def test_n_estimators_without_the_forest_backend_warns():
+    X, y = np.random.default_rng(0).normal(size=(60, 3)), np.tile([0, 1], 30)
+    with pytest.warns(UserWarning, match="n_estimators=300 has no effect"):
+        LapsePredictor(n_estimators=300).fit(X, y)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        LapsePredictor(n_estimators=300, backend="random_forest", random_state=0).fit(X, y)
+        LapsePredictor().fit(X, y)
+

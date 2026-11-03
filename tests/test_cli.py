@@ -640,3 +640,13 @@ def test_raw_gift_log_names_missing_fields_instead_of_a_traceback(tmp_path):
     path.write_text("Constituent ID,Gift Amount\n1,100\n")
     with pytest.raises(SystemExit, match="missing"):
         _read_raw_gifts("raisers_edge", str(path))
+
+def test_cli_features_accepts_every_gift_source(tmp_path):
+    """``--source`` must accept every name in ``GIFT_SOURCES``, so a new
+    reader is picked up without editing the CLI (see issue #338)."""
+    from philanthropy.ingest import GIFT_SOURCES
+
+    for source in GIFT_SOURCES:
+        with pytest.raises(SystemExit, match="Data file not found"):
+            main(["features", "--source", source,
+                  "--data", str(tmp_path / "nope.csv")])

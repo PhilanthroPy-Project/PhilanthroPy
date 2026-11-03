@@ -17,6 +17,14 @@
 </p>
 
 <p align="center">
+  <strong><a href="https://philanthropy-project.github.io/PhilanthroPy/results/">See whether each model beats the rule your shop already uses, on a real donor file &rarr;</a></strong>
+</p>
+
+<p align="center">
+  <img src="docs/assets/results/scoreboard.png" alt="How each model compares to the simple rule your shop already uses: one dot per dataset, left of center is worse than the rule, right is better" width="640"/>
+</p>
+
+<p align="center">
   <strong><a href="https://PhilanthroPy-Project.github.io/PhilanthroPy/">🚀 View the Full Documentation Site</a></strong>
 </p>
 
@@ -35,9 +43,9 @@ One toolkit, two audiences:
 
 ### Maturity
 
-Single-maintainer MIT project. **`pip install philanthropy` gives you `0.7.0`**, the current release.
+Single-maintainer MIT project. **`pip install philanthropy` gives you `0.9.0`**, the current release.
 
-`main` is ahead of it: `1.0.0` (freezes the API) is merged and green but deliberately unreleased, so 0.7.0 gets a real usage window before that promise takes effect. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
+`main` is ahead of it: `1.0.0` (freezes the API) is merged and green but deliberately unreleased, so the 0.x line gets a real usage window before that promise takes effect. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
 
 Preprocessing and the core classifiers are Tier 1; grateful-patient featurization and `philanthropy.ingest` are Tier 2 (Beta); `FinancialForecastModel` and `philanthropy.experimental.*` are Tier 3 (Experimental) and carry no API guarantees. From `1.0.0`, Tier 1 becomes semver-protected: breaking one requires a major release preceded by a full published minor of `DeprecationWarning`. Per-symbol tiers are in the [API reference](docs/reference/index.md).
 
@@ -178,16 +186,16 @@ philanthropy features --source raisers_edge --data gifts.csv \
   --as-of 2025-06-30 --out features.csv
 ```
 
-And `train --task upgrade` skips the "define your own label" step entirely for one specific, common question: which of your current $100–999 donors is likely to cross $1,000 next fiscal year? It reads the raw gift export directly, trains and validates on your fiscal-year history, and writes a scored, ranked CSV with a suggested next ask:
+And `train --task leadership` skips the "define your own label" step entirely for one specific, common question: which of your current $100–999 donors is likely to cross $1,000 next fiscal year? It reads the raw gift export directly, trains and validates on your fiscal-year history, and writes a scored, ranked CSV with a suggested next ask:
 
 ```bash
-philanthropy train --task upgrade --source raisers_edge --data gifts.csv \
+philanthropy train --task leadership --source raisers_edge --data gifts.csv \
   --activity event=events.csv --donors donors.csv \
   --threshold 1000 --band 100 999 --fiscal-year-start 7 \
   --out upgrade_scores.csv
 ```
 
-The recipe behind it (`philanthropy.models.score_upgrade_prospects`) is walked through end to end, on synthetic data, in **[`05_leadership_upgrade.ipynb`](examples/notebooks/05_leadership_upgrade.ipynb)**.
+The recipe behind it (`philanthropy.models.score_leadership_prospects`) is walked through end to end, on synthetic data, in **[`05_leadership_upgrade.ipynb`](examples/notebooks/05_leadership_upgrade.ipynb)**.
 
 ### Your data never leaves your machine
 
@@ -213,7 +221,7 @@ The script had a prediction written into it before it ran, that real leakage wou
 
 **Salesforce NPSP.** `read_npsp_opportunities()` → `npsp_opportunities_to_features()`, counting only closed/won Opportunity stages by default (`DEFAULT_INCLUDED_STAGES`: `Closed Won`, `Awarded`, `Posted`). A `Pledged` instalment, an open pipeline stage, and `Closed Lost` are not gifts.
 
-All three gift bridges are also reachable through one function, `philanthropy.ingest.read_gifts(path_or_df, source="civicrm" | "raisers_edge" | "npsp")`, for code that needs to support more than one CRM without an `if/elif` per source.
+All gift bridges are also reachable through one function, `philanthropy.ingest.read_gifts(path_or_df, source=...)`, for code that needs to support more than one CRM without an `if/elif` per source. The `source` argument accepts every preset registered in `GIFT_SOURCES`.
 
 **UniSchema.** PhilanthroPy is also the modeling half of an ecosystem. [UniSchema](https://github.com/PhilanthroPy-Project/UniSchema) normalizes fragmented advancement webhooks (GiveCampus, Slate, NPSP, Cvent, …) into a single `ConstituentEvent` stream. Webhooks → UniSchema egress → `read_constituent_events()` → `constituent_events_to_features()` → `predict_affinity_score()`. Worked, runnable version with the full diagram: **[Ingest UniSchema events](docs/how-to/ingest_unischema_events.md)**.
 
@@ -221,7 +229,7 @@ All three gift bridges are also reachable through one function, `philanthropy.in
 
 A no-code upload flow rarely gets one clean CRM export; it gets a gift file, an events file, a volunteer-hours file, each with its own headers. `philanthropy.ingest.map_columns()` renames whatever headers a user picked to the canonical names the bridges above expect, raising one error that lists every column still missing rather than failing on the first. `philanthropy.ingest.activities_to_features()` then folds any number of tagged activity files (event attendance, volunteer shifts, email clicks, ...) into one donor-level table, per-type, per-cutoff, so a new activity type never needs new model code.
 
-`philanthropy.ingest.build_upgrade_snapshots()` and `philanthropy.models.score_upgrade_prospects()` build directly on that: given a gift log (plus, optionally, an activity log and static donor attributes), they train and validate a `MajorGiftClassifier` on your own fiscal-year history and score which of today's mid-level donors is likely to upgrade next year, everything cut at an `as_of` date so nothing dated after it can leak in. See **[the CLI walkthrough](docs/how-to/use_the_cli.md)** for the no-Python version, or **[`05_leadership_upgrade.ipynb`](examples/notebooks/05_leadership_upgrade.ipynb)** for the Python one.
+`philanthropy.ingest.build_leadership_snapshots()` and `philanthropy.models.score_leadership_prospects()` build directly on that: given a gift log (plus, optionally, an activity log and static donor attributes), they train and validate a `MajorGiftClassifier` on your own fiscal-year history and score which of today's mid-level donors is likely to upgrade next year, everything cut at an `as_of` date so nothing dated after it can leak in. See **[the CLI walkthrough](docs/how-to/use_the_cli.md)** for the no-Python version, or **[`05_leadership_upgrade.ipynb`](examples/notebooks/05_leadership_upgrade.ipynb)** for the Python one.
 
 ---
 
@@ -255,7 +263,7 @@ Full parameter documentation for every symbol below is rendered in the [API refe
 | `DonorPropensityModel` | Random Forest with `predict_affinity_score()` on a 0–100 scale |
 | `MajorGiftClassifier` | Calibrated `HistGradientBoostingClassifier`, NaN-native |
 | `LapsePredictor` | Random Forest for donor lapse, with `predict_lapse_score()` |
-| `PlannedGivingIntentScorer` | Calibrated bequest-intent scorer, `predict_intent_score()` |
+| `PlannedGivingIntentScorer` | Calibrated bequest-intent scorer, NaN-native, `predict_intent_score()` |
 | `ShareOfWalletRegressor` | Total giving capacity and untapped-potential ratio |
 | `AskAmountRecommender` | Conservative / target / stretch ask ladder via `ask_ladder()` |
 | `MovesManagementClassifier` | Multi-class portfolio stage predictor |
@@ -277,11 +285,15 @@ Full parameter documentation for every symbol below is rendered in the [API refe
 | `civicrm_contributions_to_features`, `read_civicrm_contributions` | `ingest` | CiviCRM contribution-export bridge |
 | `raisers_edge_gifts_to_features`, `read_raisers_edge_gifts` | `ingest` | Blackbaud Raiser's Edge / RE NXT bridge; drops pledge and recurring-template rows by default |
 | `npsp_opportunities_to_features`, `read_npsp_opportunities` | `ingest` | Salesforce NPSP Opportunity bridge; counts closed/won stages only (`Closed Won`, `Awarded`, `Posted`) |
-| `read_gifts` | `ingest` | One entry point over the CiviCRM / Raiser's Edge / NPSP presets (`GIFT_SOURCES`) |
+| `nonprofit_cloud_gifts_to_features`, `read_nonprofit_cloud_gifts` | `ingest` | Salesforce Nonprofit Cloud GiftTransaction bridge; keeps only `Paid` status by default |
+| `bloomerang_transactions_to_features`, `read_bloomerang_transactions` | `ingest` | Bloomerang transaction bridge; drops `Pledge` and `Recurring Donation` commitment rows by default |
+| `donorperfect_gifts_to_features`, `read_donorperfect_gifts` | `ingest` | DonorPerfect gift bridge; drops `P` (Pledge) and `M` (Main split) record types by default |
+| `blackbaud_crm_revenue_to_features`, `read_blackbaud_crm_revenue` | `ingest` | Blackbaud CRM revenue bridge; keeps only `Payment` transaction type by default |
+| `read_gifts` | `ingest` | One entry point over every preset registered in `GIFT_SOURCES` |
 | `map_columns` | `ingest` | Renames a user-mapped header set to the canonical names the bridges expect |
 | `activities_to_features` | `ingest` | Long, multi-source activity log (events, volunteering, ...) → per-donor, per-type engagement features |
-| `build_upgrade_snapshots` | `ingest` | Per-donor, per-fiscal-year training table for a mid-level-to-leadership upgrade model |
-| `score_upgrade_prospects` | `models` | Trains, validates, and scores the upgrade model in one call; powers `train --task upgrade` |
+| `build_leadership_snapshots` | `ingest` | Per-donor, per-fiscal-year training table for a mid-level-to-leadership upgrade model |
+| `score_leadership_prospects` | `models` | Trains, validates, and scores the upgrade model in one call; powers `train --task leadership` |
 | `generate_synthetic_donor_data`, `load_ciob_fundraising` | `datasets` | Synthetic pool and a real CIOB series |
 | `make_donor_dataset`, `save_model`, `load_model` | `utils` | Labelled fixtures and pipeline persistence |
 | `plot_affinity_distribution`, `plot_retention_waterfall` | `visualisation` | Matplotlib is imported lazily, per function |
@@ -369,7 +381,7 @@ and documentation, in an agentic workflow rather than line completion alone.
 runs flake8, mypy, the docstring examples, and the test suite against a 92%
 coverage floor (`pyproject.toml`). CI additionally enforces a 93% coverage floor
 on the risk-tier subtree, runs the suite across an OS and Python-version matrix,
-installs at the declared dependency floors on Python 3.9, builds the
+installs at the declared dependency floors on Python 3.10, builds the
 distributions and checks their metadata with `twine`, and verifies the package
 imports without a plotting stack installed. Public estimators are exercised by
 a `parametrize_with_checks` battery over
@@ -399,7 +411,7 @@ it is done. Comment on the issue to claim it; ask there if anything is unclear.
 
 See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the fork-and-PR workflow, the full
 local test gate, and pre-push hook setup. In short: fork, branch, run `make ci`
-before every push, and never use `git push --no-verify`. Setup plus a first green
+before opening the PR, and never use `git push --no-verify`. Setup plus a first green
 `make ci` takes about eight minutes.
 
 Everyone who has landed a change is credited in

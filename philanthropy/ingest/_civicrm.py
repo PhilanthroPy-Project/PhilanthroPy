@@ -174,32 +174,7 @@ def civicrm_contributions_to_features(
             f"{sorted(df.columns)}."
         )
 
-    df = df.copy()
-
-    # Two rows sharing a CiviCRM contribution id are the same contribution;
-    # concatenating overlapping monthly exports is how that happens. Collapse
-    # only rows with a real id: pandas' duplicated() treats NaN == NaN, which
-    # would drop every id-less gift once any row carries one.
-    if "id" in df.columns:
-        df = df[~(df["id"].notna() & df.duplicated(subset="id"))]
-
-    if "is_test" in df.columns:
-        df = df[~_to_bool(df["is_test"])]
-
-    if statuses is not None:
-        if "contribution_status" in df.columns:
-            wanted = {str(s).strip().casefold() for s in statuses}
-            status = df["contribution_status"].astype("string").str.strip().str.casefold()
-            df = df[status.isin(wanted)]
-        else:
-            warnings.warn(
-                f"CiviCRM contribution log has no contribution_status column, so "
-                f"statuses={tuple(statuses)!r} could not be applied: Pending, "
-                f"Failed, Refunded and Cancelled gifts (if any) are counted in "
-                f"total_gift_amount. Add the 'Contribution Status' field to the "
-                f"export, or pass statuses=None to accept every row.",
-                stacklevel=2,
-            )
+    df = _civicrm_received_rows(df, statuses).copy()
 
     # total_gift_amount is a plain sum; CiviCRM carries a per-row `currency` but
     # the export has no FX rates, so a mixed-currency batch would add apples to
@@ -259,6 +234,42 @@ def civicrm_contributions_to_features(
 
     out.index.name = "contact_id"
     return _coerce_schema(out)
+
+
+def _civicrm_received_rows(
+    df: pd.DataFrame, statuses: Optional[Sequence[str]] = ("Completed",)
+) -> pd.DataFrame:
+    """Drop the rows of a normalised contribution log that are not money
+    received: duplicate ids, test-mode rows, and statuses outside ``statuses``.
+
+    Shared by :func:`civicrm_contributions_to_features` and the CLI's raw gift
+    log, so both count the same gifts.
+    """
+    # Two rows sharing a CiviCRM contribution id are the same contribution;
+    # concatenating overlapping monthly exports is how that happens. Collapse
+    # only rows with a real id: pandas' duplicated() treats NaN == NaN, which
+    # would drop every id-less gift once any row carries one.
+    if "id" in df.columns:
+        df = df[~(df["id"].notna() & df.duplicated(subset="id"))]
+
+    if "is_test" in df.columns:
+        df = df[~_to_bool(df["is_test"])]
+
+    if statuses is not None:
+        if "contribution_status" in df.columns:
+            wanted = {str(s).strip().casefold() for s in statuses}
+            status = df["contribution_status"].astype("string").str.strip().str.casefold()
+            df = df[status.isin(wanted)]
+        else:
+            warnings.warn(
+                f"CiviCRM contribution log has no contribution_status column, so "
+                f"statuses={tuple(statuses)!r} could not be applied: Pending, "
+                f"Failed, Refunded and Cancelled gifts (if any) are counted in "
+                f"total_gift_amount. Add the 'Contribution Status' field to the "
+                f"export, or pass statuses=None to accept every row.",
+                stacklevel=3,
+            )
+    return df
 
 
 def read_civicrm_contributions(path: Union[str, Path]) -> pd.DataFrame:

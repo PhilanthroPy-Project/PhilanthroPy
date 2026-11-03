@@ -333,9 +333,27 @@ def blackbaud_crm_revenue_to_features(
     >>> int(feats.loc["88", "gift_count"])
     2
     """
-    df = _normalise_headers(_to_frame(revenue), _canonical_blackbaud_crm)
+    df = _blackbaud_crm_received_rows(revenue, include_revenue_types)
     if df.empty:
         return _empty_feature_frame()
+    return civicrm_contributions_to_features(
+        df, reference_date=reference_date, statuses=None
+    )
+
+
+def _blackbaud_crm_received_rows(
+    revenue: Union[Iterable[Mapping], pd.DataFrame],
+    include_revenue_types: Optional[Sequence[str]] = DEFAULT_INCLUDED_REVENUE_TYPES,
+) -> pd.DataFrame:
+    """Normalise a Blackbaud CRM revenue export and keep only the rows
+    recording money received, the rows
+    :func:`blackbaud_crm_revenue_to_features` counts.
+
+    Shared with the CLI's raw gift log so both count the same gifts.
+    """
+    df = _normalise_headers(_to_frame(revenue), _canonical_blackbaud_crm)
+    if df.empty:
+        return df
 
     missing = [col for col in _REQUIRED if col not in df.columns]
     if missing:
@@ -362,11 +380,7 @@ def blackbaud_crm_revenue_to_features(
                 stacklevel=2,
             )
 
-    if df.empty:
-        return _empty_feature_frame()
-    return civicrm_contributions_to_features(
-        df, reference_date=reference_date, statuses=None
-    )
+    return df
 
 
 def read_blackbaud_crm_revenue(path: Union[str, Path]) -> pd.DataFrame:

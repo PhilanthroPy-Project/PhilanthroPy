@@ -120,6 +120,8 @@ contribution. Code, docs, tests, and review all count.
 - [@ShahadatTest](https://github.com/ShahadatTest): CLI gift-source registry support
   and regression tests for `features --source` (#338; AI-assisted).
 
+- [@Sudhakar7J](https://github.com/Sudhakar7J): extended `philanthropy check` and `philanthropy train --task leadership` to every `read_gifts` source, reading each through the same row filter `features` uses (closes #341).
+
 ## Getting listed
 
 Add yourself here in the same pull request as your change: one line, your name

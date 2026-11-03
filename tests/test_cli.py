@@ -321,6 +321,20 @@ def test_cli_features_missing_data_file_exits(tmp_path):
               "--data", str(tmp_path / "nope.csv")])
 
 
+def test_cli_features_accepts_every_gift_source():
+    """Argparse choices must track ingest.GIFT_SOURCES so a new reader is
+    accepted without another CLI edit (#338)."""
+    from philanthropy.cli import _build_parser
+    from philanthropy.ingest import GIFT_SOURCES
+
+    parser = _build_parser()
+    for source in GIFT_SOURCES:
+        args = parser.parse_args(
+            ["features", "--source", source, "--data", "gifts.csv"]
+        )
+        assert args.source == source
+
+
 def test_cli_features_help_lists_the_columns_it_actually_emits(tmp_path):
     """The help text is what tells an analyst what to pass to `train
     --features`, so it must not drift from the real frame."""

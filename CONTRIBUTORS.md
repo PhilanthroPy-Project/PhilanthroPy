@@ -110,6 +110,8 @@ contribution. Code, docs, tests, and review all count.
 - [@vridhib](https://github.com/vridhib): added a Salesforce Nonprofit Cloud GiftTransaction ingest reader (closes [#234](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/234)), and added a Blackbaud CRM Revenue ingest reader (closes
   [#240](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/240))
 
+- [@Sudhakar7J](https://github.com/Sudhakar7J): fixed `philanthropy features --source` to accept all seven gift presets by using the shared `read_gifts` registry (closes #338).
+
 ## Getting listed
 
 Add yourself here in the same pull request as your change: one line, your name

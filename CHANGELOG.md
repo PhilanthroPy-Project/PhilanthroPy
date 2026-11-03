@@ -107,6 +107,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   column, and an NPSP export carrying both Account ID and Primary Contact is
   keyed by Account, as `features` keys it, instead of by whichever column came
   first.
+- `philanthropy features --source` now accepts all seven gift presets (civicrm, raisers_edge, npsp, nonprofit_cloud, bloomerang, donorperfect, blackbaud_crm) instead of only four; the hardcoded source dispatch was replaced by the shared `read_gifts` registry (closes #338).
 
 ## [0.9.0] - 2026-10-12
 

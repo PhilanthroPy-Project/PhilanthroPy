@@ -212,9 +212,27 @@ def raisers_edge_gifts_to_features(
     >>> int(feats.loc["88", "gift_count"])
     2
     """
-    df = _normalise_headers(_to_frame(gifts), _canonical_raisers_edge)
+    df = _raisers_edge_received_rows(gifts, exclude_gift_types)
     if df.empty:
         return _empty_feature_frame()
+    return civicrm_contributions_to_features(
+        df, reference_date=reference_date, statuses=None
+    )
+
+
+def _raisers_edge_received_rows(
+    gifts: Union[Iterable[Mapping], pd.DataFrame],
+    exclude_gift_types: Optional[Sequence[str]] = DEFAULT_EXCLUDED_GIFT_TYPES,
+) -> pd.DataFrame:
+    """Normalise a Raiser's Edge gift export and keep only the rows
+    recording money received, the rows
+    :func:`raisers_edge_gifts_to_features` counts.
+
+    Shared with the CLI's raw gift log so both count the same gifts.
+    """
+    df = _normalise_headers(_to_frame(gifts), _canonical_raisers_edge)
+    if df.empty:
+        return df
 
     missing = [col for col in _REQUIRED if col not in df.columns]
     if missing:
@@ -237,14 +255,9 @@ def raisers_edge_gifts_to_features(
                 f"summed alongside the payments made against them, which counts "
                 f"every committed dollar twice. Add the 'Gift Type' field to the "
                 f"export.",
-                stacklevel=2,
+                stacklevel=3,
             )
-
-    if df.empty:
-        return _empty_feature_frame()
-    return civicrm_contributions_to_features(
-        df, reference_date=reference_date, statuses=None
-    )
+    return df
 
 
 def read_raisers_edge_gifts(path: Union[str, Path]) -> pd.DataFrame:

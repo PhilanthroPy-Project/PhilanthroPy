@@ -94,6 +94,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - `MajorGiftClassifier(monotonic_cst={"column": 1})` raised on a DataFrame,
   because the backend saw a NumPy array without column names. Dict keys are
   now resolved to positions first, as on the other boosting models.
+- `philanthropy check` and `philanthropy train --task leadership` counted rows
+  that `philanthropy features` drops (closes #337). Their gift log only
+  renamed headers, so a Raiser's Edge pledge was summed next to the payments
+  against it, and cancelled, pending or test-mode CiviCRM contributions, NPSP
+  open stages and unpaid Nonprofit Cloud schedules were counted as gifts. On a
+  Raiser's Edge file with a $1,000 pledge and its $1,000 payment, the log held
+  $2,000. Each bridge's row filter now lives in one private helper that both
+  the `*_to_features` aggregator and the CLI call, so the labels and verdicts
+  from `check` and the leadership snapshots come from the same received gifts.
+  The CLI now also warns when the export has no gift-type, stage or status
+  column, and an NPSP export carrying both Account ID and Primary Contact is
+  keyed by Account, as `features` keys it, instead of by whichever column came
+  first.
 
 ## [0.9.0] - 2026-10-12
 

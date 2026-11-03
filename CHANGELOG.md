@@ -95,10 +95,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   counts `gift_count_prior1` and `gift_count_trend`. `compare_to_rule(task="lapse")`
   and the lapse benchmarks on DonorsChoose and PSID now use them. Default
   `False` leaves every other caller's columns unchanged.
-- Little Green Light gift-export ingest support via
-  `little_green_light_gifts_to_features`, `read_little_green_light_gifts`, and
-  the `read_gifts(..., source="little_green_light")` preset, with pledge
-  commitments excluded from received-gift roll-ups by default.
 
 ### Changed
 - `LapsePredictor` now defaults to `backend="hist_gradient_boosting"`. Picked

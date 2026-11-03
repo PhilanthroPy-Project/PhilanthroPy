@@ -141,7 +141,7 @@ def test_categorical_feature_name_needs_a_frame():
 @pytest.mark.parametrize("name", list(_MODELS) + ["lapse_forest"])
 def test_sample_weight_reaches_the_backend_unchanged(name):
     if name == "lapse_forest":
-        make, key = (lambda: LapsePredictor(n_estimators=20, random_state=0)), "binary"
+        make, key = (lambda: LapsePredictor(backend="random_forest", n_estimators=20, random_state=0)), "binary"
     else:
         make, key, _ = _MODELS[name]
     X, *targets = _export()
@@ -161,7 +161,7 @@ def test_sample_weight_reaches_the_backend_unchanged(name):
 
 @pytest.mark.parametrize("make", [
     lambda **kw: PlannedGivingIntentScorer(n_estimators=30, random_state=0, **kw),
-    lambda **kw: LapsePredictor(n_estimators=20, random_state=0, **kw),
+    lambda **kw: LapsePredictor(random_state=0, **kw),
 ])
 def test_class_weight_equals_the_same_sample_weight(make):
     X, _, y, _ = _export()

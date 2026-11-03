@@ -86,9 +86,9 @@ def test_ask_absolute_error_refuses_constraint():
 
 def test_random_forest_lapse_ignores_constraint():
     X, y = _data(False)
-    plain = LapsePredictor(random_state=0).fit(X, y)
+    plain = LapsePredictor(backend="random_forest", random_state=0).fit(X, y)
     constrained = LapsePredictor(
-        monotonic_cst={"total_giving": 1}, random_state=0
+        backend="random_forest", monotonic_cst={"total_giving": 1}, random_state=0
     ).fit(X, y)
     np.testing.assert_array_equal(
         plain.predict_proba(X), constrained.predict_proba(X)

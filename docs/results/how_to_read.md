@@ -38,10 +38,10 @@ A worked example from DonorsChoose ("who keeps giving next year", on the
 
 - **Random:** a random 1,000 names include about 360 who give again.
 - **The simple rule:** the rule's first 1,000 names include about 680.
-- **The model:** the model's first 1,000 names include about 750.
+- **The model:** the model's first 1,000 names include about 850.
 
 Both lists are far ahead of random. The model is ahead of the rule by about
-70 donors in 1,000, which is the kind of gap the next section is about.
+170 donors in 1,000, which is the kind of gap the next section is about.
 
 ## About the same
 

@@ -9,7 +9,7 @@ Every CRM export looks a little different: columns come in a different order, re
 | `sample_weight` in `fit` | Count some donors more than others | the same five |
 | `monotonic_cst` | Force the score to only rise (or only fall) with a feature | `AskAmountRecommender`, `ShareOfWalletRegressor`, `LapsePredictor`, `PlannedGivingIntentScorer`, `MajorGiftClassifier` |
 
-`LapsePredictor` uses these only with `backend="hist_gradient_boosting"`; its default random forest has no categorical splits or constraints.
+`LapsePredictor` uses these only with its default `backend="hist_gradient_boosting"`; the opt-in `backend="random_forest"` has no categorical splits or constraints.
 
 All four default to `None`, which keeps the behaviour unchanged.
 

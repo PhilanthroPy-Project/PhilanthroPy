@@ -28,7 +28,9 @@ from philanthropy.utils._validation import validate_fiscal_year_start
 
 from ._upgrade_snapshots import _fy_end, _prepare_gifts
 
-__all__ = ["build_snapshots", "period_snapshots", "SNAPSHOT_KINDS", "CORE_COLUMNS", "SCALE_FREE_COLUMNS"]
+__all__ = [
+    "build_snapshots", "period_snapshots", "SNAPSHOT_KINDS", "CORE_COLUMNS", "SCALE_FREE_COLUMNS", "CADENCE_COLUMNS",
+]
 
 SNAPSHOT_KINDS = ("upgrade", "lapse", "response_next_year", "next_amount")
 
@@ -43,6 +45,12 @@ SCALE_FREE_COLUMNS = (
     "total_over_largest", "largest_over_prior_total", "gifts_per_streak_period", "period_total_pct_rank",
 )
 
+#: Giving-cadence columns: how steadily the donor has given so far. They lift
+#: the lapse model on DonorsChoose and PSID (see the Lapse Results page).
+CADENCE_COLUMNS = (
+    "periods_given", "share_periods_given", "period_total_slope", "gift_count_prior1", "gift_count_trend",
+)
+
 
 def build_snapshots(
     gifts: Union[Iterable[Mapping], pd.DataFrame],
@@ -54,6 +62,7 @@ def build_snapshots(
     min_years_given: int = 1,
     fiscal_year_start: int = 7,
     scale_free: bool = False,
+    cadence: bool = False,
 ) -> pd.DataFrame:
     """Build labelled donor x fiscal-year snapshots for one question.
 
@@ -83,6 +92,9 @@ def build_snapshots(
         Month (1-12) the fiscal year begins.
     scale_free : bool, default=False
         Also emit :data:`SCALE_FREE_COLUMNS`.
+    cadence : bool, default=False
+        Also emit :data:`CADENCE_COLUMNS` (see :func:`period_snapshots`).
+        Recommended for ``kind="lapse"``.
 
     Returns
     -------
@@ -124,6 +136,7 @@ def build_snapshots(
     snap = period_snapshots(
         totals, kind=kind, largest=largest, counts=counts, periods=fiscal_years,
         threshold=threshold, band=band, min_years_given=min_years_given, scale_free=scale_free,
+        cadence=cadence,
     )
     if snap.empty:
         return snap
@@ -153,6 +166,7 @@ def period_snapshots(
     band: Tuple[float, float] = (100.0, 999.0),
     min_years_given: int = 1,
     scale_free: bool = False,
+    cadence: bool = False,
 ) -> pd.DataFrame:
     """Labelled snapshots from a donor x period table of total giving.
 
@@ -178,13 +192,22 @@ def period_snapshots(
     Every kind then keeps only donors who gave in at least
     ``min_years_given`` periods up to and including T.
 
+    With ``cadence``, each row also gets :data:`CADENCE_COLUMNS`:
+    ``periods_given`` (periods with giving up to and including T),
+    ``share_periods_given`` (that count over the periods since the first
+    gift, T included), ``period_total_slope`` (half the change from T-2 to
+    T, a three-period trend; an unobserved or missing period counts as 0)
+    and, with ``counts``, ``gift_count_prior1`` and ``gift_count_trend``
+    (gifts in T-1, and the change in gift count from T-1 to T).
+
     Returns
     -------
     snapshots : pandas.DataFrame
         Indexed like ``totals``, with ``period``, :data:`CORE_COLUMNS`,
         ``gift_count`` when ``counts`` is given, the scale-free columns when
         ``scale_free`` (``gifts_per_streak_period`` only with ``counts``),
-        and ``target``.
+        the cadence columns when ``cadence`` (the two count columns only
+        with ``counts``), and ``target``.
     """
     if kind not in SNAPSHOT_KINDS:
         raise ValueError(f"kind must be one of {SNAPSHOT_KINDS}; got {kind!r}.")
@@ -243,6 +266,14 @@ def period_snapshots(
                     snap["consecutive_periods_given"] > 0
                 )
             snap["period_total_pct_rank"] = snap["period_total"].rank(pct=True)
+        if cadence:
+            snap["periods_given"] = n_given[period][ids].astype("int64")
+            snap["share_periods_given"] = snap["periods_given"] / (snap["periods_since_first_gift"] + 1)
+            snap["period_total_slope"] = (snap["period_total"] - snap["period_total_prior2"].fillna(0.0)) / 2.0
+            if counts is not None:
+                prior_count = counts[cols[i - 1]][ids] if i >= 1 else 0
+                snap["gift_count_prior1"] = pd.Series(prior_count, index=ids).fillna(0).astype("int64")
+                snap["gift_count_trend"] = snap["gift_count"] - snap["gift_count_prior1"]
 
         nxt_ids = nxt[ids]
         if kind == "upgrade":

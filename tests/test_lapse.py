@@ -67,6 +67,31 @@ def test_hist_gradient_boosting_backend_fits_and_predicts():
     assert ((score >= 0) & (score <= 100)).all()
 
 
+def test_default_backend_is_hist_gradient_boosting():
+    from sklearn.ensemble import HistGradientBoostingClassifier
+
+    X = _dummy_X(40)
+    y = np.array([0, 1] * 20)
+    clf = LapsePredictor(random_state=0).fit(X, y)
+    assert isinstance(clf.estimator_, HistGradientBoostingClassifier)
+
+
+def test_class_weight_reaches_hist_gradient_boosting():
+    X = _dummy_X(40)
+    y = np.array([0] * 30 + [1] * 10)
+    clf = LapsePredictor(class_weight="balanced", random_state=0).fit(X, y)
+    assert clf.estimator_.class_weight == "balanced"
+
+
+def test_random_forest_backend_still_available():
+    from sklearn.ensemble import RandomForestClassifier
+
+    X = _dummy_X(40)
+    y = np.array([0, 1] * 20)
+    clf = LapsePredictor(backend="random_forest", n_estimators=5, class_weight="balanced_subsample", random_state=0)
+    assert isinstance(clf.fit(X, y).estimator_, RandomForestClassifier)
+
+
 def test_unknown_backend_raises():
     import pytest
 

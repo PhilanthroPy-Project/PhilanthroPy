@@ -805,6 +805,12 @@ FEATURE_INFO = {
     "gave_prior1": ("gave the year (or wave) before", "recency"),
     "gave_prior2": ("gave two years (or waves) before", "recency"),
     "periods_since_first_gift": ("years (or waves) since first gift", "giving_history"),
+    # build_snapshots(cadence=True), used by the lapse benches
+    "periods_given": ("years (or waves) with any giving", "giving_history"),
+    "share_periods_given": ("share of years (or waves) given since the first gift", "giving_history"),
+    "period_total_slope": ("giving trend over the last three years (or waves)", "momentum"),
+    "gift_count_prior1": ("number of gifts the year before", "giving_history"),
+    "gift_count_trend": ("change in number of gifts, this year vs the one before", "momentum"),
     # PSID household x wave snapshots (bm._psid_wave_period_snapshots)
     "total_giving": ("this wave's giving", "recency"),
     "prior_wave_total": ("last wave's giving", "recency"),

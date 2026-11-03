@@ -19,10 +19,10 @@ fundraiser would have known at the time, not what happened afterward.
 
 ## What we found, wins and losses together
 
-Two things beat the rule on real files: picking who to mail (more money,
-fewer letters) and picking the top slice of likely givers again next year.
-Two do not: predicting lapse, and suggesting an ask amount; use the rule you
-already have for those, and we say so on those pages. The rest are not
+Three things beat the rule on real files: picking who to mail (more money,
+fewer letters), picking the top slice of likely givers again next year, and
+picking multi-year donors about to lapse. One does not: suggesting an ask
+amount; use the rule you already have for that, and we say so on that page. The rest are not
 testable on public data yet, and we say that too, rather than show a number
 that isn't real.
 
@@ -51,9 +51,10 @@ built the second way.
   skip the donors least likely to respond, before your next appeal goes out.
 - **Prioritize your call list.** Use [Response](results/response.md) to rank
   who to call first for renewed giving.
-- **Keep using your own rule for ask amounts and lapse.** [Suggested
-  ask](results/ask.md) and [Lapse](results/lapse.md) don't beat what you're
-  already doing there, so don't switch.
+- **Find who is about to stop giving.** Use [Lapse](results/lapse.md) to rank
+  multi-year donors by lapse risk, or flip it to find who will keep giving.
+- **Keep using your own rule for ask amounts.** [Suggested ask](results/ask.md)
+  doesn't beat what you're already doing there, so don't switch.
 
 ## Try it on your file
 

@@ -226,6 +226,7 @@ def compare_to_rule(
         fiscal_years=range(int(df["_fy"].min()), last_complete),
         threshold=threshold, band=band,
         min_years_given=_MIN_YEARS_GIVEN[task], fiscal_year_start=fiscal_year_start,
+        cadence=task == "lapse",
     )
     if snap.empty or snap["period"].nunique() < 2:
         report["verdict"] = "can't test (fewer than two labelled fiscal years)"

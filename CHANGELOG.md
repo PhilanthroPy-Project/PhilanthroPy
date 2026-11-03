@@ -89,6 +89,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `predict_lapse_score`, `predict` on regressors, ...) and with fitted
   pipelines; `NaN` is explained as a value. No new dependencies. New how-to:
   "Explain a donor's score".
+- `build_snapshots(..., cadence=True)` and `period_snapshots(..., cadence=True)`
+  add five giving-cadence columns, all as of the snapshot period:
+  `periods_given`, `share_periods_given`, `period_total_slope`, and with gift
+  counts `gift_count_prior1` and `gift_count_trend`. `compare_to_rule(task="lapse")`
+  and the lapse benchmarks on DonorsChoose and PSID now use them. Default
+  `False` leaves every other caller's columns unchanged.
+
+### Changed
+- `LapsePredictor` now defaults to `backend="hist_gradient_boosting"`. Picked
+  on a validation year held out from every published test year, it ranked
+  likely lapsers better than the old unbounded random forest on every
+  DonorsChoose and PSID test year, and the Lapse Results page is regenerated
+  with it. `backend="random_forest"` keeps the old behaviour (and
+  `n_estimators`, which the boosting backend ignores). `class_weight` now
+  reaches the boosting backend too, and `predict_proba` returns one column per
+  entry of `classes_` when the training fold held a single class.
 
 ### Fixed
 - `MajorGiftClassifier(monotonic_cst={"column": 1})` raised on a DataFrame,

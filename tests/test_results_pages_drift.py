@@ -252,8 +252,8 @@ NUMBER_MAP = [
     ("lapse.md", r"About (\d+) out of every 100 of them gave nothing in the following fiscal year",
      lambda: [_get("lapse_donorschoose.metadata.base_rate_pct")]),
     ("lapse.md", r"Of the model's top 10% of picks, (\d+) out of every 100 lapsed\. The best simple rule found (\d+) "
-     r"out of every 100\. About the same as the rule here\. The two are level at the top 1% too \((\d+) "
-     r"vs (\d+)\)",
+     r"out of every 100\. Beats the rule here, in every test year\. At the top 1% the two are too close to "
+     r"call \((\d+) vs (\d+)\)",
      lambda: [_get("lapse_donorschoose.top10pct.model"), _get("lapse_donorschoose.top10pct.rule"),
               _get("lapse_donorschoose.top1pct.model"), _get("lapse_donorschoose.top1pct.rule")]),
     ("lapse.md", r"At the top 10% of that ranking, (\d+) out of every 100 gave again, against (\d+) out of every 100 "

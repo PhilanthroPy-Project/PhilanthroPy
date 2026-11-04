@@ -130,6 +130,18 @@ def test_donorperfect_path_matches_direct_call(tmp_path):
     pd.testing.assert_frame_equal(via_registry, direct)
 
 
+def test_neon_path_matches_direct_call(tmp_path):
+    path = _write_csv(
+        tmp_path,
+        "Account ID,Donation Date,Donation Amount,Donation Type",
+        "88,2025-01-10,1200.00,Pledge",
+        "88,2025-02-10,100.00,Pledge Payment",
+    )
+    via_registry = read_gifts(path, source="neon")
+    direct = neon_donations_to_features(read_neon_donations(path))
+    pd.testing.assert_frame_equal(via_registry, direct)
+
+
 # --------------------------------------------------------------------------- #
 # In-memory input: no file read, straight to the aggregator
 # --------------------------------------------------------------------------- #
@@ -295,3 +307,16 @@ def test_little_green_light_kwarg_reaches_the_underlying_aggregator():
     )
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0
 
+
+
+def test_neon_kwarg_reaches_the_underlying_aggregator():
+    rows = [
+        {"Account ID": "88", "Donation Date": "2025-01-10",
+         "Donation Amount": "1200.00", "Donation Type": "Pledge"},
+        {"Account ID": "88", "Donation Date": "2025-02-10",
+         "Donation Amount": "100.00", "Donation Type": "Pledge Payment"},
+    ]
+    default = read_gifts(rows, source="neon")
+    assert float(default.loc["88", "total_gift_amount"]) == 100.0
+    unfiltered = read_gifts(rows, source="neon", exclude_donation_types=None)
+    assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0

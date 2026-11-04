@@ -432,9 +432,9 @@ Questions are welcome in
 **Already using PhilanthroPy?** There is no telemetry in this package and there
 never will be, so
 [Are you using PhilanthroPy?](https://github.com/PhilanthroPy-Project/PhilanthroPy/discussions/158)
-is the only place adoption is visible. One reply is enough, and "evaluated it and
-passed" is more useful than a star. If you are happy to be named, add yourself to
-[ADOPTERS.md](ADOPTERS.md) through the
+and [ADOPTERS.md](ADOPTERS.md) are the only places adoption is visible. One reply
+is enough, and "evaluated it and passed" is more useful than a star. If you are
+happy to be named, add yourself to the adopters list through the
 [adopter form](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/new?template=adopter.yml).
 
 ---

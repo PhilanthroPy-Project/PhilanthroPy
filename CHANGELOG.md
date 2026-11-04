@@ -15,6 +15,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - A Markdown "Question or something else" issue template. GitHub's community
   profile counts only Markdown templates, so with just the two YAML forms the
   Community tab reported no issue template at all (#365).
+- Ellucian CRM Advance transaction-export ingest via
+  `ellucian_advance_gifts_to_features`, `read_ellucian_advance_gifts` and the
+  `read_gifts(..., source="ellucian_advance")` preset. Pledge types
+  (`Straight Pledge`, `Bequest Intention`, ...) are dropped by default and
+  pledge payments kept, matching the `Type` column's documented
+  `Straight Pledge (Primary)` form; the receipt number after `Date` is
+  stripped, and only the `Legal` (hard credit) amount is summed (#241).
 - Little Green Light gift-export ingest support via
   `little_green_light_gifts_to_features`, `read_little_green_light_gifts`, and
   the `read_gifts(..., source="little_green_light")` preset, with pledge

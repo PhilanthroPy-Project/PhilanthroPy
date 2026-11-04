@@ -46,6 +46,11 @@ records and split-gift Main totals (``record_type`` ``P`` / ``M``) first so
 a pledged or split dollar is not counted both as the promise/total and as
 the payments/splits against it.
 
+Ellucian CRM Advance: ``read_ellucian_advance_gifts`` loads an Advance
+transaction export CSV; ``ellucian_advance_gifts_to_features`` aggregates it,
+dropping pledge commitments first so a promised dollar is not counted both as
+the promise and as the payments against it.
+
 ``map_columns`` renames a user-supplied export's headers to the canonical
 names a bridge above expects, raising one error listing every column still
 missing after the rename.
@@ -92,6 +97,11 @@ from ._donorperfect import (
     donorperfect_gifts_to_features,
     read_donorperfect_gifts,
 )
+from ._ellucian_advance import (
+    DEFAULT_EXCLUDED_ADVANCE_TRANSACTION_TYPES,
+    ellucian_advance_gifts_to_features,
+    read_ellucian_advance_gifts,
+)
 from ._little_green_light import (
     DEFAULT_EXCLUDED_LGL_GIFT_TYPES,
     little_green_light_gifts_to_features,
@@ -118,6 +128,7 @@ from ._upgrade_snapshots import build_leadership_snapshots
 from ._snapshots import build_snapshots
 
 __all__ = [
+    "DEFAULT_EXCLUDED_ADVANCE_TRANSACTION_TYPES",
     "DEFAULT_EXCLUDED_ENTRY_TYPES",
     "DEFAULT_EXCLUDED_GIFT_TYPES",
     "DEFAULT_EXCLUDED_LGL_GIFT_TYPES",
@@ -134,6 +145,7 @@ __all__ = [
     "civicrm_contributions_to_features",
     "constituent_events_to_features",
     "donorperfect_gifts_to_features",
+    "ellucian_advance_gifts_to_features",
     "little_green_light_gifts_to_features",
     "map_columns",
     "nonprofit_cloud_gifts_to_features",
@@ -144,6 +156,7 @@ __all__ = [
     "read_civicrm_contributions",
     "read_constituent_events",
     "read_donorperfect_gifts",
+    "read_ellucian_advance_gifts",
     "read_gifts",
     "read_little_green_light_gifts",
     "read_nonprofit_cloud_gifts",

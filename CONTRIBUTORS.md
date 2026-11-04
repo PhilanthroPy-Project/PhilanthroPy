@@ -78,7 +78,9 @@ contribution. Code, docs, tests, and review all count.
   timezone-localisation fallback in `EncounterRecencyTransformer`, preserving
   the useful invalid-timezone error, and added coverage for the optional
   `RFMTransformer(include_tenure=True)` output contract, then linked the
-  temporal-leakage tutorial to the measured KDD Cup 1998 replication result
+  temporal-leakage tutorial to the measured KDD Cup 1998 replication result,
+  and added the Ellucian CRM Advance gift reader
+  ([#241](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/241))
   (closes
   [#201](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/201),
   [#150](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/150),

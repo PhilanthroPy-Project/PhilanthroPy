@@ -20,6 +20,7 @@ from philanthropy.ingest import (
     bloomerang_transactions_to_features,
     civicrm_contributions_to_features,
     donorperfect_gifts_to_features,
+    ellucian_advance_gifts_to_features,
     little_green_light_gifts_to_features,
     nonprofit_cloud_gifts_to_features,
     npsp_opportunities_to_features,
@@ -28,6 +29,7 @@ from philanthropy.ingest import (
     read_bloomerang_transactions,
     read_civicrm_contributions,
     read_donorperfect_gifts,
+    read_ellucian_advance_gifts,
     read_gifts,
     read_little_green_light_gifts,
     read_nonprofit_cloud_gifts,
@@ -159,7 +161,7 @@ def test_unknown_source_raises_a_clear_error():
         read_gifts([], source="salesforce_classic")
 
 
-def test_gift_sources_lists_all_eight_presets():
+def test_gift_sources_lists_all_nine_presets():
     assert set(GIFT_SOURCES) == {
         "civicrm",
         "raisers_edge",
@@ -169,6 +171,7 @@ def test_gift_sources_lists_all_eight_presets():
         "donorperfect",
         "blackbaud_crm",
         "little_green_light",
+        "ellucian_advance",
     }
 
 
@@ -292,3 +295,32 @@ def test_little_green_light_kwarg_reaches_the_underlying_aggregator():
     )
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0
 
+
+
+def test_ellucian_advance_path_matches_direct_call(tmp_path):
+    path = _write_csv(
+        tmp_path,
+        "Entity ID,Date,Legal,Type",
+        "88,01/10/2025 #0001234,1200.00,Straight Pledge (Primary)",
+        "88,02/10/2025 #0001301,100.00,Pledge Payment (Primary)",
+    )
+    via_registry = read_gifts(path, source="ellucian_advance")
+    direct = ellucian_advance_gifts_to_features(
+        read_ellucian_advance_gifts(path)
+    )
+    pd.testing.assert_frame_equal(via_registry, direct)
+
+
+def test_ellucian_advance_kwarg_reaches_the_underlying_aggregator():
+    rows = [
+        {"Entity ID": "88", "Date": "01/10/2025 #0001234", "Legal": "1200.00",
+         "Type": "Straight Pledge (Primary)"},
+        {"Entity ID": "88", "Date": "02/10/2025 #0001301", "Legal": "100.00",
+         "Type": "Pledge Payment (Primary)"},
+    ]
+    default = read_gifts(rows, source="ellucian_advance")
+    assert float(default.loc["88", "total_gift_amount"]) == 100.0
+    unfiltered = read_gifts(
+        rows, source="ellucian_advance", exclude_transaction_types=None
+    )
+    assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0

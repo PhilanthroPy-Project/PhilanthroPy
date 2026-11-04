@@ -82,14 +82,11 @@ def _read_csv(path: str) -> pd.DataFrame:
         raise SystemExit(f"Data file not found: {path}")
 
 
-def _require_columns(
-    df: pd.DataFrame, columns: Sequence[str], path: str
-) -> None:
+def _require_columns(df: pd.DataFrame, columns: Sequence[str], path: str) -> None:
     missing = [c for c in columns if c not in df.columns]
     if missing:
         raise SystemExit(
-            f"Column(s) {missing} not found in {path}. "
-            f"Available: {list(df.columns)}."
+            f"Column(s) {missing} not found in {path}. Available: {list(df.columns)}."
         )
 
 
@@ -136,6 +133,7 @@ def _raw_gift_readers() -> Dict[str, Callable[[str], pd.DataFrame]]:
     from .ingest._blackbaud_crm import _blackbaud_crm_received_rows
     from .ingest._bloomerang import _bloomerang_received_rows
     from .ingest._donorperfect import _donorperfect_received_rows
+    from .ingest._little_green_light import _little_green_light_received_rows
     from .ingest._nonprofit_cloud import _nonprofit_cloud_received_rows
     from .ingest._npsp import _npsp_received_rows
     from .ingest._raisers_edge import _raisers_edge_received_rows
@@ -158,6 +156,9 @@ def _raw_gift_readers() -> Dict[str, Callable[[str], pd.DataFrame]]:
         "blackbaud_crm": lambda path: _blackbaud_crm_received_rows(
             ingest.read_blackbaud_crm_revenue(path)
         ),
+        "little_green_light": lambda path: _little_green_light_received_rows(
+            ingest.read_little_green_light_gifts(path)
+        ),
     }
 
 
@@ -170,9 +171,9 @@ def _read_raw_gifts(source: str, path: str) -> pd.DataFrame:
     through the same row-filter helpers: a Raiser's Edge pledge, an NPSP open
     stage, an unpaid Nonprofit Cloud schedule, a cancelled or test-mode
     CiviCRM contribution, a Bloomerang commitment, a DonorPerfect pledge or
-    split, or a Blackbaud CRM pledge or recurring schedule is not a gift here
-    either. Renaming the three canonical columns to the gift-log names is the
-    only new logic.
+    split, a Blackbaud CRM pledge or recurring schedule, or a Little Green
+    Light pledge is not a gift here either. Renaming the three canonical
+    columns to the gift-log names is the only new logic.
     """
     from .ingest._civicrm import _civicrm_received_rows
     from .utils._validation import ensure_local_path
@@ -193,7 +194,11 @@ def _read_raw_gifts(source: str, path: str) -> pd.DataFrame:
         # Same as `features`: the bridge names the missing export fields.
         raise SystemExit(str(exc.args[0] if exc.args else exc))
 
-    missing = [c for c in ("contact_id", "receive_date", "total_amount") if c not in raw.columns]
+    missing = [
+        c
+        for c in ("contact_id", "receive_date", "total_amount")
+        if c not in raw.columns
+    ]
     if missing:
         raise SystemExit(
             f"Column(s) {missing} not found in {path} after normalisation. "
@@ -203,7 +208,11 @@ def _read_raw_gifts(source: str, path: str) -> pd.DataFrame:
     # status filter is CiviCRM's alone (the other bridges filtered above).
     raw = _civicrm_received_rows(raw, ("Completed",) if source == "civicrm" else None)
     return raw.rename(
-        columns={"contact_id": "donor_id", "receive_date": "gift_date", "total_amount": "gift_amount"}
+        columns={
+            "contact_id": "donor_id",
+            "receive_date": "gift_date",
+            "total_amount": "gift_amount",
+        }
     )
 
 
@@ -368,8 +377,12 @@ def _cmd_validate(args: argparse.Namespace) -> None:
     base_rate = y.mean()
     top_n = _parse_top_n(args.top_n, n_rows)
 
-    print(f"precision (at threshold 0.5) {precision_score(y, y_pred, zero_division=0):.3f}")
-    print(f"recall    (at threshold 0.5) {recall_score(y, y_pred, zero_division=0):.3f}")
+    print(
+        f"precision (at threshold 0.5) {precision_score(y, y_pred, zero_division=0):.3f}"
+    )
+    print(
+        f"recall    (at threshold 0.5) {recall_score(y, y_pred, zero_division=0):.3f}"
+    )
     print(f"f1        (at threshold 0.5) {f1_score(y, y_pred, zero_division=0):.3f}")
     print(f"roc_auc                      {roc_auc_score(y, y_proba):.3f}")
     print(f"average_precision            {average_precision_score(y, y_proba):.3f}")
@@ -392,7 +405,9 @@ def _cmd_validate(args: argparse.Namespace) -> None:
     total_positives = y_sorted.sum()
     captured_share = top_chunk.sum() / total_positives if total_positives else 0.0
     print()
-    print(f"top {top_n} of {n_rows}: hit_rate {top_hit_rate:.3f}, captures {captured_share:.3f} of all positives")
+    print(
+        f"top {top_n} of {n_rows}: hit_rate {top_hit_rate:.3f}, captures {captured_share:.3f} of all positives"
+    )
 
 
 def _cmd_features(args: argparse.Namespace) -> None:
@@ -411,8 +426,13 @@ def _cmd_features(args: argparse.Namespace) -> None:
 
     if args.activity:
         activities = _read_activities(args.activity)
-        as_of = args.as_of or pd.to_datetime(activities["activity_date"], errors="coerce").max()
-        act_feats = ingest.activities_to_features(activities, as_of=as_of, donors=features)
+        as_of = (
+            args.as_of
+            or pd.to_datetime(activities["activity_date"], errors="coerce").max()
+        )
+        act_feats = ingest.activities_to_features(
+            activities, as_of=as_of, donors=features
+        )
         # Both sides already key on contact_id: a plain left join, no rename.
         features = features.join(act_feats, how="left")
 
@@ -445,16 +465,20 @@ def _cmd_check(args: argparse.Namespace) -> None:
     if r["rule"] is None:  # can't test: nothing was scored
         return
     print(f"rule: {r['rule']} (best of {r['n_rules_tried']})")
-    print(f"test fiscal year: {r['test_fiscal_year']} "
-          f"({r['n_train']} training rows, {r['n_test']} test rows)")
+    print(
+        f"test fiscal year: {r['test_fiscal_year']} "
+        f"({r['n_train']} training rows, {r['n_test']} test rows)"
+    )
 
     def num(v: Optional[float]) -> str:
         return "not fit" if v is None else f"{v:.3f}"
 
     print(f"{r['metric']}: model {num(r['model_value'])}, rule {num(r['rule_value'])}")
     ci = r["difference_ci"]
-    print("model - rule, 95% interval: "
-          + ("none" if ci is None else f"{ci[0]:.3f} to {ci[1]:.3f}"))
+    print(
+        "model - rule, 95% interval: "
+        + ("none" if ci is None else f"{ci[0]:.3f} to {ci[1]:.3f}")
+    )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -488,51 +512,110 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     features.add_argument(
-        "--source", required=True, choices=GIFT_SOURCES,
+        "--source",
+        required=True,
+        choices=GIFT_SOURCES,
         help="which CRM the export came from",
     )
     features.add_argument(
         "--data", required=True, help="gift export CSV, or a directory of them"
     )
     features.add_argument(
-        "--activity", action="append", default=[], metavar="TYPE=PATH",
+        "--activity",
+        action="append",
+        default=[],
+        metavar="TYPE=PATH",
         help="an activity log CSV tagged with its type, e.g. event=events.csv; "
         "repeatable. Adds activities_to_features columns to the output.",
     )
     features.add_argument(
-        "--as-of", default=None, dest="as_of",
+        "--as-of",
+        default=None,
+        dest="as_of",
         help="cutoff date for --activity features (default: the latest "
         "activity_date in the combined activity log)",
     )
-    features.add_argument("--out", default=None, help="output CSV path (default: stdout)")
+    features.add_argument(
+        "--out", default=None, help="output CSV path (default: stdout)"
+    )
     features.set_defaults(func=_cmd_features)
 
-    train = sub.add_parser("train", help="Train a model from a labelled CSV and save it.")
-    train.add_argument("--task", choices=("plain", "leadership"), default="plain",
-                        help="'plain': fit --model on --features/--target (default). "
-                        "'leadership': read a raw gift export via --source and call "
-                        "score_leadership_prospects, writing scored donors to --out.")
-    train.add_argument("--data", required=True, help="labelled CSV (plain) or raw gift export (leadership)")
-    train.add_argument("--target", default=None, help="name of the label column (plain)")
-    train.add_argument("--features", default=None, help="comma-separated feature columns (plain)")
-    train.add_argument("--model", default="DonorPropensityModel", choices=_MODEL_CHOICES)
-    train.add_argument("--out", required=True, help="output model bundle (plain) or scored CSV (leadership)")
+    train = sub.add_parser(
+        "train", help="Train a model from a labelled CSV and save it."
+    )
+    train.add_argument(
+        "--task",
+        choices=("plain", "leadership"),
+        default="plain",
+        help="'plain': fit --model on --features/--target (default). "
+        "'leadership': read a raw gift export via --source and call "
+        "score_leadership_prospects, writing scored donors to --out.",
+    )
+    train.add_argument(
+        "--data",
+        required=True,
+        help="labelled CSV (plain) or raw gift export (leadership)",
+    )
+    train.add_argument(
+        "--target", default=None, help="name of the label column (plain)"
+    )
+    train.add_argument(
+        "--features", default=None, help="comma-separated feature columns (plain)"
+    )
+    train.add_argument(
+        "--model", default="DonorPropensityModel", choices=_MODEL_CHOICES
+    )
+    train.add_argument(
+        "--out",
+        required=True,
+        help="output model bundle (plain) or scored CSV (leadership)",
+    )
     train.add_argument("--random-state", type=int, default=0, dest="random_state")
-    train.add_argument("--source", default=None, choices=GIFT_SOURCES,
-                        help="which CRM the gift export came from (leadership)")
-    train.add_argument("--threshold", type=float, default=1000.0,
-                        help="leadership-giving level an upgrade crosses into (leadership)")
-    train.add_argument("--band", type=float, nargs=2, default=(100.0, 999.0),
-                        metavar=("LOW", "HIGH"),
-                        help="upgrade-candidate FY-total band (leadership)")
-    train.add_argument("--fiscal-year-start", type=int, default=7, dest="fiscal_year_start",
-                        help="month (1-12) the fiscal year begins (leadership)")
-    train.add_argument("--activity", action="append", default=[], metavar="TYPE=PATH",
-                        help="an activity log CSV tagged with its type; repeatable (leadership)")
-    train.add_argument("--donors", default=None,
-                        help="optional donor-attributes CSV with a donor_id column (leadership)")
-    train.add_argument("--as-of", default=None, dest="as_of",
-                        help="scoring cutoff (default: the latest gift date) (leadership)")
+    train.add_argument(
+        "--source",
+        default=None,
+        choices=GIFT_SOURCES,
+        help="which CRM the gift export came from (leadership)",
+    )
+    train.add_argument(
+        "--threshold",
+        type=float,
+        default=1000.0,
+        help="leadership-giving level an upgrade crosses into (leadership)",
+    )
+    train.add_argument(
+        "--band",
+        type=float,
+        nargs=2,
+        default=(100.0, 999.0),
+        metavar=("LOW", "HIGH"),
+        help="upgrade-candidate FY-total band (leadership)",
+    )
+    train.add_argument(
+        "--fiscal-year-start",
+        type=int,
+        default=7,
+        dest="fiscal_year_start",
+        help="month (1-12) the fiscal year begins (leadership)",
+    )
+    train.add_argument(
+        "--activity",
+        action="append",
+        default=[],
+        metavar="TYPE=PATH",
+        help="an activity log CSV tagged with its type; repeatable (leadership)",
+    )
+    train.add_argument(
+        "--donors",
+        default=None,
+        help="optional donor-attributes CSV with a donor_id column (leadership)",
+    )
+    train.add_argument(
+        "--as-of",
+        default=None,
+        dest="as_of",
+        help="scoring cutoff (default: the latest gift date) (leadership)",
+    )
     train.set_defaults(func=_cmd_train)
 
     score = sub.add_parser("score", help="Score a CSV with a saved model.")
@@ -543,7 +626,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "load and can execute arbitrary code; only load bundles you trust.",
     )
     score.add_argument("--data", required=True, help="path to a CSV to score")
-    score.add_argument("--features", default=None, help="override the bundle's features")
+    score.add_argument(
+        "--features", default=None, help="override the bundle's features"
+    )
     score.add_argument("--out", default=None, help="output CSV path (default: stdout)")
     score.set_defaults(func=_cmd_score)
 
@@ -559,9 +644,13 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     validate.add_argument("--data", required=True, help="path to a labelled CSV")
     validate.add_argument("--target", default=None, help="label column (else bundle's)")
-    validate.add_argument("--features", default=None, help="override the bundle's features")
     validate.add_argument(
-        "--top-n", default="10%", dest="top_n",
+        "--features", default=None, help="override the bundle's features"
+    )
+    validate.add_argument(
+        "--top-n",
+        default="10%",
+        dest="top_n",
         help="rows to report hit-rate/capture for, as a count or a percentage "
         "like '10%%' (default: 10%% of rows)",
     )
@@ -579,18 +668,40 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     check.add_argument("--task", required=True, choices=("upgrade", "lapse", "ask"))
-    check.add_argument("--source", required=True, choices=GIFT_SOURCES,
-                        help="which CRM the gift export came from")
+    check.add_argument(
+        "--source",
+        required=True,
+        choices=GIFT_SOURCES,
+        help="which CRM the gift export came from",
+    )
     check.add_argument("--data", required=True, help="raw gift export CSV")
-    check.add_argument("--threshold", type=float, default=1000.0,
-                        help="leadership-giving level an upgrade crosses into (upgrade)")
-    check.add_argument("--band", type=float, nargs=2, default=(100.0, 999.0),
-                        metavar=("LOW", "HIGH"),
-                        help="upgrade-candidate FY-total band (upgrade)")
-    check.add_argument("--fiscal-year-start", type=int, default=7, dest="fiscal_year_start",
-                        help="month (1-12) the fiscal year begins")
-    check.add_argument("--as-of", default=None, dest="as_of",
-                        help="ignore gifts after this date (default: the latest gift date)")
+    check.add_argument(
+        "--threshold",
+        type=float,
+        default=1000.0,
+        help="leadership-giving level an upgrade crosses into (upgrade)",
+    )
+    check.add_argument(
+        "--band",
+        type=float,
+        nargs=2,
+        default=(100.0, 999.0),
+        metavar=("LOW", "HIGH"),
+        help="upgrade-candidate FY-total band (upgrade)",
+    )
+    check.add_argument(
+        "--fiscal-year-start",
+        type=int,
+        default=7,
+        dest="fiscal_year_start",
+        help="month (1-12) the fiscal year begins",
+    )
+    check.add_argument(
+        "--as-of",
+        default=None,
+        dest="as_of",
+        help="ignore gifts after this date (default: the latest gift date)",
+    )
     check.add_argument("--random-state", type=int, default=0, dest="random_state")
     check.set_defaults(func=_cmd_check)
 

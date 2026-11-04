@@ -27,9 +27,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   the `read_gifts(..., source="little_green_light")` preset, with pledge
   commitments excluded from received-gift roll-ups by default.
 - `philanthropy check` and `philanthropy train --task leadership` accept all
-  seven `read_gifts` presets (adding `bloomerang`, `donorperfect` and
-  `blackbaud_crm`), and read each one through the same row filter `features`
-  uses (closes #341).
+  eight `read_gifts` presets (adding `bloomerang`, `donorperfect`,
+  `blackbaud_crm` and `little_green_light`), and read each one through the same
+  row filter `features` uses (closes #341).
 - Test covering the CLI's `_score_array` fallback to `predict_proba(X)[:, 1]`
   for a model with no `predict_affinity_score` (closes #53).
 - Test covering `FiscalYearGroupedSplitter.split` skipping a fold that has

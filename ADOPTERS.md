@@ -2,7 +2,7 @@
 
 Organisations, research groups, courses and practitioners who use PhilanthroPy
 and are happy to say so. The package has no telemetry and never will, so this
-list and [Discussion #158](https://github.com/PhilanthroPy-Project/PhilanthroPy/discussions/158)
+list and [#369](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/369)
 are the only places use is visible.
 
 ## Who can be listed
@@ -10,7 +10,7 @@ are the only places use is visible.
 Anyone who has run PhilanthroPy on real work: a nonprofit or advancement
 office, an academic medical center foundation, a research group, a course, a
 consultant, or one analyst. Evaluating it and deciding against it is useful to
-hear too, but say that on Discussion #158 rather than here.
+hear too, but say that on #369 rather than here.
 
 ## How to be added
 

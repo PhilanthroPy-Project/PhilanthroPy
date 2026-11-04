@@ -1,0 +1,33 @@
+name: I use PhilanthroPy
+description: Tell us you use PhilanthroPy, and whether we may list you in ADOPTERS.md
+title: "[Adopter] "
+labels: ["adopter"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for telling us. ADOPTERS.md only lists organizations that confirm their use here. Pick the listing option you are comfortable with below; "No" is a fine answer and nothing will be published.
+  - type: input
+    id: organization
+    attributes:
+      label: Organization
+      description: Optional. Only used if you choose to be listed by name.
+    validations:
+      required: false
+  - type: textarea
+    id: usage
+    attributes:
+      label: What do you use PhilanthroPy for?
+      description: For example, scoring a major-gift prospect list, lapse prediction, or checking a model against your current rule.
+    validations:
+      required: true
+  - type: dropdown
+    id: listing
+    attributes:
+      label: May we list you in ADOPTERS.md?
+      options:
+        - Yes, with my organization's name
+        - Yes, anonymously (sector and size only)
+        - No, do not list me
+    validations:
+      required: true

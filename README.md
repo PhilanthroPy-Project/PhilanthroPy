@@ -43,13 +43,17 @@ One toolkit, two audiences:
 
 ### Maturity
 
-Single-maintainer MIT project. **`pip install philanthropy` gives you `0.9.0`**, the current release.
+Single-maintainer MIT project. `pip install philanthropy` installs the latest PyPI release (see the version badge above, or the [releases page](https://github.com/PhilanthroPy-Project/PhilanthroPy/releases)).
 
 `main` is ahead of it: `1.0.0` (freezes the API) is merged and green but deliberately unreleased, so the 0.x line gets a real usage window before that promise takes effect. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
 
 Preprocessing and the core classifiers are Tier 1; grateful-patient featurization and `philanthropy.ingest` are Tier 2 (Beta); `FinancialForecastModel` and `philanthropy.experimental.*` are Tier 3 (Experimental) and carry no API guarantees. From `1.0.0`, Tier 1 becomes semver-protected: breaking one requires a major release preceded by a full published minor of `DeprecationWarning`. Per-symbol tiers are in the [API reference](docs/reference/index.md).
 
 > **Maintenance:** maintained by one person on a best-effort basis. For vendor / OSS risk reviews: the bus factor is 1.
+
+### Who uses this
+
+[`ADOPTERS.md`](ADOPTERS.md) lists organizations that use PhilanthroPy. It only includes organizations that confirmed their use and agreed to be listed. If you use it, [tell us](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/new?template=adopter.yml); you can choose to be listed by name, listed anonymously, or not listed.
 
 ---
 
@@ -72,6 +76,20 @@ pip install -e ".[dev]"
 ---
 
 ## Quick Start
+
+No Python? One command takes a raw gift export to a verdict on whether a model beats your current rule (training on your own label and scoring are in [No Python? Use the CLI](#no-python-use-the-cli)):
+
+```bash
+philanthropy check --task lapse --source raisers_edge --data gifts.csv
+```
+
+<!-- Demo GIF: maintainer renders it with `vhs docs/assets/demo.tape` (target under 2 MB), then uncomment.
+<p align="center">
+  <img src="docs/assets/demo.gif" alt="Terminal recording of philanthropy check printing its verdict on a sample gift export" width="720"/>
+</p>
+-->
+
+The Python quick start:
 
 ```python
 import pandas as pd

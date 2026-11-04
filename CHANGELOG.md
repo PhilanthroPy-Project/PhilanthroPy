@@ -101,6 +101,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `False` leaves every other caller's columns unchanged.
 
 ### Changed
+- README: dropped the hardcoded release number from the Maturity section so it
+  cannot go stale, added a one-command CLI teaser at the top of Quick Start,
+  and added a "Who uses this" section. Added `ADOPTERS.md`, an "I use
+  PhilanthroPy" issue form (`.github/ISSUE_TEMPLATE/adopter.yml`), and
+  `docs/assets/demo.tape`, a `vhs` script for a `philanthropy check` demo GIF.
 - `LapsePredictor` now defaults to `backend="hist_gradient_boosting"`. Picked
   on a validation year held out from every published test year, it ranked
   likely lapsers better than the old unbounded random forest on every

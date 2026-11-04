@@ -1,16 +1,14 @@
 """
 tests/test_read_gifts.py
 Tests for philanthropy.ingest.read_gifts, the preset-registry entry point
-over the CiviCRM, Raiser's Edge, NPSP, Bloomerang, DonorPerfect and Ellucian
-CRM Advance gift
-bridges.
+over the CiviCRM, Raiser's Edge, Blackbaud CRM, NPSP, Nonprofit Cloud,
+Bloomerang and DonorPerfect gift bridges.
 
 The point of this module is that `read_gifts(x, source=name)` is exactly
 equivalent to calling that source's own reader-and-aggregator pair directly;
-each preset's own filtering behaviour is already covered by
-tests/test_civicrm.py, tests/test_raisers_edge.py, tests/test_npsp.py,
-tests/test_bloomerang.py, tests/test_donorperfect.py and
-tests/test_ellucian_advance.py.
+each preset's own filtering behaviour is already covered by tests/test_civicrm.py,
+tests/test_raisers_edge.py, tests/test_blackbaud_crm.py, tests/test_npsp.py,
+tests/test_nonprofit_cloud.py, tests/test_bloomerang.py and tests/test_donorperfect.py.
 """
 
 import pandas as pd
@@ -18,17 +16,23 @@ import pytest
 
 from philanthropy.ingest import (
     GIFT_SOURCES,
+    blackbaud_crm_revenue_to_features,
     bloomerang_transactions_to_features,
     civicrm_contributions_to_features,
     donorperfect_gifts_to_features,
     ellucian_advance_gifts_to_features,
+    little_green_light_gifts_to_features,
+    nonprofit_cloud_gifts_to_features,
     npsp_opportunities_to_features,
     raisers_edge_gifts_to_features,
+    read_blackbaud_crm_revenue,
     read_bloomerang_transactions,
     read_civicrm_contributions,
     read_donorperfect_gifts,
     read_ellucian_advance_gifts,
     read_gifts,
+    read_little_green_light_gifts,
+    read_nonprofit_cloud_gifts,
     read_npsp_opportunities,
     read_raisers_edge_gifts,
 )
@@ -66,6 +70,18 @@ def test_raisers_edge_path_matches_direct_call(tmp_path):
     pd.testing.assert_frame_equal(via_registry, direct)
 
 
+def test_blackbaud_crm_path_matches_direct_call(tmp_path):
+    path = _write_csv(
+        tmp_path,
+        "Constituent ID,Date,Amount,Revenue Type",
+        "88,2025-01-10,1200.00,Payment",
+        "88,2025-02-10,100.00,Pledge",
+    )
+    via_registry = read_gifts(path, source="blackbaud_crm")
+    direct = blackbaud_crm_revenue_to_features(read_blackbaud_crm_revenue(path))
+    pd.testing.assert_frame_equal(via_registry, direct)
+
+
 def test_npsp_path_matches_direct_call(tmp_path):
     path = _write_csv(
         tmp_path,
@@ -75,6 +91,18 @@ def test_npsp_path_matches_direct_call(tmp_path):
     )
     via_registry = read_gifts(path, source="npsp")
     direct = npsp_opportunities_to_features(read_npsp_opportunities(path))
+    pd.testing.assert_frame_equal(via_registry, direct)
+
+
+def test_nonprofit_cloud_path_matches_direct_call(tmp_path):
+    path = _write_csv(
+        tmp_path,
+        "Donor ID,Transaction Date,Current Amount,Status",
+        "88,2025-01-10,100.00,Unpaid",
+        "88,2025-02-10,100.00,Paid",
+    )
+    via_registry = read_gifts(path, source="nonprofit_cloud")
+    direct = nonprofit_cloud_gifts_to_features(read_nonprofit_cloud_gifts(path))
     pd.testing.assert_frame_equal(via_registry, direct)
 
 
@@ -99,20 +127,6 @@ def test_donorperfect_path_matches_direct_call(tmp_path):
     )
     via_registry = read_gifts(path, source="donorperfect")
     direct = donorperfect_gifts_to_features(read_donorperfect_gifts(path))
-    pd.testing.assert_frame_equal(via_registry, direct)
-
-
-def test_ellucian_advance_path_matches_direct_call(tmp_path):
-    path = _write_csv(
-        tmp_path,
-        "Entity ID,Date,Legal,Type",
-        "88,2025-01-10,1200.00,Pledge",
-        "88,2025-02-10,100.00,Pledge Payment",
-    )
-    via_registry = read_gifts(path, source="ellucian_advance")
-    direct = ellucian_advance_gifts_to_features(
-        read_ellucian_advance_gifts(path)
-    )
     pd.testing.assert_frame_equal(via_registry, direct)
 
 
@@ -147,9 +161,16 @@ def test_unknown_source_raises_a_clear_error():
         read_gifts([], source="salesforce_classic")
 
 
-def test_gift_sources_lists_the_presets():
+def test_gift_sources_lists_all_nine_presets():
     assert set(GIFT_SOURCES) == {
-        "civicrm", "raisers_edge", "npsp", "bloomerang", "donorperfect",
+        "civicrm",
+        "raisers_edge",
+        "npsp",
+        "nonprofit_cloud",
+        "bloomerang",
+        "donorperfect",
+        "blackbaud_crm",
+        "little_green_light",
         "ellucian_advance",
     }
 
@@ -169,6 +190,21 @@ def test_source_specific_kwarg_reaches_the_underlying_aggregator():
     assert float(default.loc["88", "total_gift_amount"]) == 100.0
     # include_stages=None disables the filter and sums both rows.
     unfiltered = read_gifts(rows, source="npsp", include_stages=None)
+    assert float(unfiltered.loc["88", "total_gift_amount"]) == 200.0
+
+
+def test_nonprofit_cloud_kwarg_reaches_the_underlying_aggregator():
+    rows = [
+        {"Donor ID": "88", "Transaction Date": "2025-01-10",
+         "Current Amount": "100.00", "Status": "Unpaid"},
+        {"Donor ID": "88", "Transaction Date": "2025-02-10",
+         "Current Amount": "100.00", "Status": "Paid"},
+    ]
+    # Default keeps Paid only: the Unpaid row does not count.
+    default = read_gifts(rows, source="nonprofit_cloud")
+    assert float(default.loc["88", "total_gift_amount"]) == 100.0
+    # include_statuses=None disables the filter and sums both rows.
+    unfiltered = read_gifts(rows, source="nonprofit_cloud", include_statuses=None)
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 200.0
 
 
@@ -202,12 +238,85 @@ def test_donorperfect_kwarg_reaches_the_underlying_aggregator():
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0
 
 
+def test_blackbaud_crm_kwarg_reaches_the_underlying_aggregator():
+    rows = [
+        {"Constituent ID": "88", "Date": "2025-01-10", "Amount": "1200.00",
+         "Revenue Type": "Pledge"},
+        {"Constituent ID": "88", "Date": "2025-02-10", "Amount": "100.00",
+         "Revenue Type": "Payment"},
+    ]
+    # Default keeps the Payment row only: the Pledge row does not count.
+    default = read_gifts(rows, source="blackbaud_crm")
+    assert float(default.loc["88", "total_gift_amount"]) == 100.0
+    # include_revenue_types=None disables the filter and sums both rows.
+    unfiltered = read_gifts(rows, source="blackbaud_crm", include_revenue_types=None)
+    assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0
+
+
+def test_little_green_light_path_matches_direct_call(tmp_path):
+    path = _write_csv(
+        tmp_path,
+        "LGL Constituent ID,Gift date,Amount,Gift type",
+        "88,2025-01-10,1200.00,Pledge",
+        "88,2025-02-10,100.00,Gift",
+    )
+    via_registry = read_gifts(path, source="little_green_light")
+    direct = little_green_light_gifts_to_features(
+        read_little_green_light_gifts(path)
+    )
+    pd.testing.assert_frame_equal(via_registry, direct)
+
+
+def test_little_green_light_kwarg_reaches_the_underlying_aggregator():
+    rows = [
+        {
+            "LGL Constituent ID": "88",
+            "Gift date": "2025-01-10",
+            "Amount": "1200.00",
+            "Gift type": "Pledge",
+        },
+        {
+            "LGL Constituent ID": "88",
+            "Gift date": "2025-02-10",
+            "Amount": "100.00",
+            "Gift type": "Gift",
+        },
+    ]
+
+    # Default excludes the pledge; only the received gift counts.
+    default = read_gifts(rows, source="little_green_light")
+    assert float(default.loc["88", "total_gift_amount"]) == 100.0
+
+    # None disables the pledge filter and sums both rows.
+    unfiltered = read_gifts(
+        rows,
+        source="little_green_light",
+        exclude_gift_types=None,
+    )
+    assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0
+
+
+
+def test_ellucian_advance_path_matches_direct_call(tmp_path):
+    path = _write_csv(
+        tmp_path,
+        "Entity ID,Date,Legal,Type",
+        "88,01/10/2025 #0001234,1200.00,Straight Pledge (Primary)",
+        "88,02/10/2025 #0001301,100.00,Pledge Payment (Primary)",
+    )
+    via_registry = read_gifts(path, source="ellucian_advance")
+    direct = ellucian_advance_gifts_to_features(
+        read_ellucian_advance_gifts(path)
+    )
+    pd.testing.assert_frame_equal(via_registry, direct)
+
+
 def test_ellucian_advance_kwarg_reaches_the_underlying_aggregator():
     rows = [
-        {"Entity ID": "88", "Date": "2025-01-10", "Legal": "1200.00",
-         "Type": "Pledge"},
-        {"Entity ID": "88", "Date": "2025-02-10", "Legal": "100.00",
-         "Type": "Pledge Payment"},
+        {"Entity ID": "88", "Date": "01/10/2025 #0001234", "Legal": "1200.00",
+         "Type": "Straight Pledge (Primary)"},
+        {"Entity ID": "88", "Date": "02/10/2025 #0001301", "Legal": "100.00",
+         "Type": "Pledge Payment (Primary)"},
     ]
     default = read_gifts(rows, source="ellucian_advance")
     assert float(default.loc["88", "total_gift_amount"]) == 100.0

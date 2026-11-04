@@ -362,8 +362,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
            "how much of this donor's modelled wealth is estimated to be
            philanthropic capacity". Until 0.7.1 the column was named
            ``sow_score``, which claimed a quantity the formula does not
-           compute; :meth:`get_legacy_feature_names_out` still spells it that
-           way, under a `DeprecationWarning`, until 0.9.0 removes it.
+           compute; 0.9.0 removed the last way to get the old name.
 
         The denominator is clipped at the fit-time 95th percentile, so the
         wealthiest rows share one denominator and are pushed toward the top of
@@ -571,38 +570,6 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         return np.array(
             ["capacity_utilisation_ratio", "capacity_tier"], dtype=object
         )
-
-    def get_legacy_feature_names_out(self) -> np.ndarray:
-        """Return the pre-0.7.1 output names, ``sow_score`` first.
-
-        The formula behind column 0 is capacity utilisation, not share of
-        wallet, so the column is now named ``capacity_utilisation_ratio``
-        (see :meth:`get_feature_names_out`). This method keeps the old
-        spelling reachable for one published minor release: it emits a
-        `DeprecationWarning` and returns ``["sow_score", "capacity_tier"]``.
-        Removed in 0.9.0.
-
-        Returns
-        -------
-        feature_names_out : ndarray of str
-            ``["sow_score", "capacity_tier"]``.
-
-        Raises
-        ------
-        NotFittedError
-            If the scorer has not been fitted.
-        """
-        check_is_fitted(self)
-        warnings.warn(
-            "ShareOfWalletScorer output name 'sow_score' is deprecated since "
-            "0.7.1 and will be removed in 0.9.0; the column measures capacity "
-            "utilisation, not share of wallet. Use "
-            "get_feature_names_out(), which reports "
-            "'capacity_utilisation_ratio' first.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return np.array(["sow_score", "capacity_tier"], dtype=object)
 
     def get_tier_labels(self, X: Any) -> np.ndarray:
         """Return human-readable tier labels for each row.

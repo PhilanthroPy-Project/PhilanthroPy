@@ -407,16 +407,11 @@ def test_capacity_utilisation_ratio_is_the_new_column_name():
     np.testing.assert_allclose(out[:, 0], [100.0 / 201.0, 50.0 / 201.0])
 
 
-def test_sow_score_still_works_and_warns():
-    # One published minor of grace: the old spelling stays reachable and
-    # describes the same column, under a DeprecationWarning saying when it
-    # goes.
-    X = np.array([[100.0, 100.0], [50.0, 150.0]])
-    scorer = ShareOfWalletScorer(capacity_col_idx=0).fit(X)
-    with pytest.warns(DeprecationWarning, match="removed in 0.9.0"):
-        legacy = scorer.get_legacy_feature_names_out()
-    assert list(legacy) == ["sow_score", "capacity_tier"]
-    # The rename is a spelling change only: column 0 holds the same ratio.
-    np.testing.assert_allclose(
-        scorer.transform(X)[:, 0], [100.0 / 201.0, 50.0 / 201.0]
+def test_legacy_sow_score_name_is_removed():
+    # Deprecated in 0.7.1 and removed in 0.9.0: the only spelling left is
+    # capacity_utilisation_ratio, from get_feature_names_out().
+    scorer = ShareOfWalletScorer(capacity_col_idx=0).fit(
+        np.array([[100.0, 100.0], [50.0, 150.0]])
     )
+    assert not hasattr(scorer, "get_legacy_feature_names_out")
+    assert "sow_score" not in scorer.get_feature_names_out()

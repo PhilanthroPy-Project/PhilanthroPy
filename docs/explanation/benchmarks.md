@@ -92,7 +92,7 @@ parentheses.**
 | `PropensityScorer` (baseline) | 0.000 (0.000–0.000) | 0.000 (0.000–0.000) | 0.000 (0.000–0.000) | 0.500 (0.500–0.500) |
 | `DonorPropensityModel` | 0.714 (0.684–0.724) | 0.637 (0.622–0.660) | 0.673 (0.652–0.689) | 0.841 (0.837–0.844) |
 | `MajorGiftClassifier` | 0.732 (0.693–0.752) | 0.565 (0.544–0.593) | 0.638 (0.614–0.663) | 0.828 (0.819–0.832) |
-| `LapsePredictor` | 0.669 (0.625–0.707) | 0.607 (0.588–0.632) | 0.636 (0.623–0.645) | 0.810 (0.802–0.815) |
+| `LapsePredictor` | 0.700 (0.684–0.720) | 0.608 (0.581–0.631) | 0.651 (0.636–0.667) | 0.823 (0.813–0.826) |
 | `PlannedGivingIntentScorer` | 0.727 (0.706–0.738) | 0.610 (0.592–0.639) | 0.663 (0.653–0.683) | 0.842 (0.836–0.846) |
 
 *(Measured with scikit-learn 1.8.0 on the synthetic dataset; your numbers will
@@ -116,14 +116,14 @@ turns on the third decimal is reading noise.
   `argmax(predict_proba) == predict`, and `argmax` of a tied `[0.5, 0.5]` row is
   index 0. Either choice is arbitrary for a constant scorer; only the ROC-AUC of
   0.500 carries information.
-- **`DonorPropensityModel` now edges out `LapsePredictor`** on this task (ROC-AUC
-  0.841 vs 0.810). Both wrap a `RandomForestClassifier` with the same
-  `random_state` and features, and used to report identical numbers; the gap is
-  `DonorPropensityModel`'s larger default leaf size (`min_samples_leaf=0.008`,
-  a fraction of the training rows), which stops its trees memorising the
-  training set. `LapsePredictor` still uses sklearn's default of 1 leaf sample.
-  It is purpose-built for a lapse label, not `is_major_donor`, and appears here
-  only because its estimator is applicable.
+- **`DonorPropensityModel` edges out `LapsePredictor`** on this task (ROC-AUC
+  0.841 vs 0.823). `DonorPropensityModel` wraps a `RandomForestClassifier`
+  with a larger default leaf size (`min_samples_leaf=0.008`, a fraction of the
+  training rows), which stops its trees memorising the training set.
+  `LapsePredictor` now boosts with `HistGradientBoostingClassifier` by default
+  (its unbounded random forest scored 0.810 here). It is purpose-built for a
+  lapse label, not `is_major_donor`, and appears here only because its
+  estimator is applicable.
 - **ROC-AUC is the most transferable metric** across base rates. Precision and
   recall depend on the 0.5 decision threshold and this pool's 0.378 positive
   rate, which is still far higher than a real major-donor base rate of a few

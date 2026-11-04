@@ -158,8 +158,8 @@ which is the model reciting its training set, not a result.
 
 Get up and running in seconds:
 
-!!! info "Current release: 0.7.0"
-    `pip install philanthropy` gives you **0.7.0**. These docs are built from
+!!! info "Current release: 0.9.0"
+    `pip install philanthropy` gives you **0.9.0**. These docs are built from
     `main`, which also carries the merged-but-unreleased 1.0.0 work.
     See [Deprecations](reference/index.md#deprecations) for the handful of
     differences that affect you today.
@@ -193,7 +193,7 @@ A comprehensive suite of tools, easy to understand and use:
 <div class="ap-ledger-list" markdown>
 
 <div class="ap-ledger-row" markdown>
-**Messy data cleaning.** Standardises raw CRM exports (Salesforce NPSP, Raiser's Edge), fixing dates and currency amounts without crashing.
+**Messy data cleaning.** Standardises raw CRM exports (Salesforce NPSP, Raiser's Edge, Nonprofit Cloud), fixing dates and currency amounts without crashing.
 
 `CRMCleaner`
 </div>

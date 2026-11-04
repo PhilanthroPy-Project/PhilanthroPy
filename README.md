@@ -43,9 +43,9 @@ One toolkit, two audiences:
 
 ### Maturity
 
-Single-maintainer MIT project. **`pip install philanthropy` gives you `0.7.0`**, the current release.
+Single-maintainer MIT project. **`pip install philanthropy` gives you `0.9.0`**, the current release.
 
-`main` is ahead of it: `1.0.0` (freezes the API) is merged and green but deliberately unreleased, so 0.7.0 gets a real usage window before that promise takes effect. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
+`main` is ahead of it: `1.0.0` (freezes the API) is merged and green but deliberately unreleased, so the 0.x line gets a real usage window before that promise takes effect. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
 
 Preprocessing and the core classifiers are Tier 1; grateful-patient featurization and `philanthropy.ingest` are Tier 2 (Beta); `FinancialForecastModel` and `philanthropy.experimental.*` are Tier 3 (Experimental) and carry no API guarantees. From `1.0.0`, Tier 1 becomes semver-protected: breaking one requires a major release preceded by a full published minor of `DeprecationWarning`. Per-symbol tiers are in the [API reference](docs/reference/index.md).
 
@@ -262,7 +262,7 @@ Full parameter documentation for every symbol below is rendered in the [API refe
 |---|---|
 | `DonorPropensityModel` | Random Forest with `predict_affinity_score()` on a 0–100 scale |
 | `MajorGiftClassifier` | Calibrated `HistGradientBoostingClassifier`, NaN-native |
-| `LapsePredictor` | Random Forest for donor lapse, with `predict_lapse_score()` |
+| `LapsePredictor` | `HistGradientBoostingClassifier` for donor lapse, NaN-native, with `predict_lapse_score()` |
 | `PlannedGivingIntentScorer` | Calibrated bequest-intent scorer, NaN-native, `predict_intent_score()` |
 | `ShareOfWalletRegressor` | Total giving capacity and untapped-potential ratio |
 | `AskAmountRecommender` | Conservative / target / stretch ask ladder via `ask_ladder()` |

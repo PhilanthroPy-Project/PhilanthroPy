@@ -53,13 +53,13 @@ def test_lapse_predictor_single_class_no_indexerror():
     X = rng.random((20, 3))
 
     # All-negative training fold: score must be all zeros, not an IndexError.
-    m0 = LapsePredictor(n_estimators=5, random_state=0).fit(X, np.zeros(20, dtype=int))
+    m0 = LapsePredictor(random_state=0).fit(X, np.zeros(20, dtype=int))
     scores0 = m0.predict_lapse_score(X)
     assert scores0.shape == (20,)
     assert np.all(scores0 == 0.0)
 
     # All-positive fold: the sole class is the positive one → 100.0.
-    m1 = LapsePredictor(n_estimators=5, random_state=0).fit(X, np.ones(20, dtype=int))
+    m1 = LapsePredictor(random_state=0).fit(X, np.ones(20, dtype=int))
     assert np.all(m1.predict_lapse_score(X) == 100.0)
 
 
@@ -72,7 +72,7 @@ def test_lapse_predictor_rejects_column_reordered_dataframe():
         "c": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
     })
     y = np.array([0, 1, 0, 1, 0, 1])
-    clf = LapsePredictor(n_estimators=5, random_state=0).fit(train, y)
+    clf = LapsePredictor(random_state=0).fit(train, y)
     assert hasattr(clf, "feature_names_in_")
 
     with pytest.raises(ValueError, match="feature names"):

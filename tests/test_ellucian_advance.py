@@ -33,10 +33,10 @@ def _export(*rows):
 def gifts():
     return [
         {"Entity ID": "88", "Date": "2025-01-10", "Legal": "1200.00",
-         "Type": "Pledge", "Allocation": "Annual Fund",
+         "Type": "Straight Pledge (Primary)", "Allocation": "Annual Fund",
          "Email": "ada@univ.edu", "First Name": "Ada", "Last Name": "Lovelace"},
         {"Entity ID": "88", "Date": "2025-02-10", "Legal": "100.00",
-         "Type": "Pledge Payment", "Allocation": "Annual Fund",
+         "Type": "Pledge Payment (Primary)", "Allocation": "Annual Fund",
          "Email": "ada@univ.edu", "First Name": "Ada", "Last Name": "Lovelace"},
         {"Entity ID": "88", "Date": "2025-03-10", "Legal": "100.00",
          "Type": "Gift", "Allocation": "Scholarship",
@@ -52,7 +52,7 @@ def test_pledge_is_excluded_and_payments_are_kept(gifts):
 
 @pytest.mark.parametrize(
     "gift_type",
-    ["Pledge", "Planned Gift", "Recurring Pledge"],
+    [f"{t} (Primary)" for t in DEFAULT_EXCLUDED_ADVANCE_TRANSACTION_TYPES],
 )
 def test_default_excluded_types_are_dropped(gift_type):
     rows = [
@@ -67,7 +67,8 @@ def test_default_excluded_types_are_dropped(gift_type):
 
 @pytest.mark.parametrize(
     "gift_type",
-    ["Gift", "Cash", "Pledge Payment", "Matching Gift Payment"],
+    ["Gift", "Outright Gift (Primary)", "Pledge Payment (Joint)",
+     "Realized Bequest (Primary)", "Grant (Primary)"],
 )
 def test_payment_and_outright_types_are_kept(gift_type):
     rows = [
@@ -80,7 +81,8 @@ def test_payment_and_outright_types_are_kept(gift_type):
 
 @pytest.mark.parametrize(
     "gift_type",
-    ["PlannedGift", "recurring_pledge", "  PLEDGE  "],
+    ["StraightPledge", "straight_pledge", "  STRAIGHT PLEDGE  ",
+     "Straight Pledge (Covering Account)"],
 )
 def test_exclusion_matching_ignores_case_spacing_and_punctuation(gift_type):
     rows = [
@@ -110,7 +112,7 @@ def test_custom_exclude_set_replaces_the_default(gifts):
 
 def test_missing_type_column_warns():
     rows = [{"Entity ID": "1", "Date": "2025-01-01", "Legal": "10.00"}]
-    with pytest.warns(UserWarning, match="no transaction type column"):
+    with pytest.warns(UserWarning, match="no Type column"):
         feats = ellucian_advance_gifts_to_features(rows)
     assert float(feats.loc["1", "total_gift_amount"]) == 10.0
 
@@ -125,23 +127,26 @@ def test_exclude_none_does_not_warn_about_missing_type_column():
 
 
 def test_default_excluded_set_is_documented_and_non_empty():
-    assert "Pledge" in DEFAULT_EXCLUDED_ADVANCE_TRANSACTION_TYPES
+    assert "Straight Pledge" in DEFAULT_EXCLUDED_ADVANCE_TRANSACTION_TYPES
+    # Grant is both a pledge type and a received-gift type in Advance, so the
+    # Type column alone cannot say which; it is deliberately not excluded.
+    assert "Grant" not in DEFAULT_EXCLUDED_ADVANCE_TRANSACTION_TYPES
 
 
-def test_api_style_field_names_are_accepted():
+def test_snake_case_field_names_are_accepted():
     rows = [
-        {"constituent_id": "7", "transaction_date": "2025-05-01",
+        {"id_number": "7", "date": "2025-05-01",
          "legal_amount": "300.00", "transaction_type": "Gift",
-         "designation": "Scholarship"},
-        {"constituent_id": "7", "transaction_date": "2025-05-02",
-         "legal_amount": "999.00", "transaction_type": "Pledge",
-         "designation": "Scholarship"},
+         "allocation": "Scholarship"},
+        {"id_number": "7", "date": "2025-05-02",
+         "legal_amount": "999.00", "transaction_type": "Straight Pledge",
+         "allocation": "Scholarship"},
     ]
     feats = ellucian_advance_gifts_to_features(rows)
     assert float(feats.loc["7", "total_gift_amount"]) == 300.0
 
 
-@pytest.mark.parametrize("id_label", ["Entity ID", "ID Number", "ID", "Donor ID"])
+@pytest.mark.parametrize("id_label", ["Entity ID", "ID Number"])
 def test_every_entity_id_alias_is_accepted(id_label):
     rows = [{id_label: "1", "Date": "2025-01-01", "Legal": "42.00",
              "Type": "Gift"}]
@@ -155,6 +160,41 @@ def test_every_amount_alias_is_accepted(amount_label):
              "Type": "Gift"}]
     feats = ellucian_advance_gifts_to_features(rows)
     assert float(feats.loc["1", "total_gift_amount"]) == 42.0
+
+
+def test_bare_id_column_is_not_taken_as_the_entity():
+    # A bare "ID" in a transaction export may be the receipt number, so it
+    # must not key donors; the entity column wins and "ID" is ignored.
+    rows = [
+        {"ID": "R1", "Entity ID": "1", "Date": "2025-01-01", "Legal": "5.00",
+         "Type": "Gift"},
+        {"ID": "R2", "Entity ID": "1", "Date": "2025-01-02", "Legal": "7.00",
+         "Type": "Gift"},
+    ]
+    feats = ellucian_advance_gifts_to_features(rows)
+    assert list(feats.index) == ["1"]
+    assert float(feats.loc["1", "total_gift_amount"]) == 12.0
+
+
+def test_soft_credit_is_not_summed():
+    rows = [{"Entity ID": "1", "Date": "2025-01-01", "Legal": "100.00",
+             "Credit": "900.00", "Type": "Gift"}]
+    feats = ellucian_advance_gifts_to_features(rows)
+    assert float(feats.loc["1", "total_gift_amount"]) == 100.0
+
+
+def test_receipt_number_after_the_date_is_stripped():
+    rows = [
+        {"Entity ID": "1", "Date": "01/10/2025 #0001234", "Legal": "10.00",
+         "Type": "Gift (Primary)"},
+        {"Entity ID": "1", "Date": "03/15/2025 #0001301", "Legal": "20.00",
+         "Type": "Gift (Primary)"},
+    ]
+    feats = ellucian_advance_gifts_to_features(
+        rows, reference_date="2025-03-25"
+    )
+    assert int(feats.loc["1", "gift_count"]) == 2
+    assert int(feats.loc["1", "recency_days"]) == 10
 
 
 def test_currency_formatted_amounts_parse():
@@ -189,7 +229,7 @@ def test_empty_input_returns_a_typed_empty_frame():
 
 def test_every_row_filtered_out_returns_a_typed_empty_frame():
     rows = [{"Entity ID": "1", "Date": "2025-01-01", "Legal": "500.00",
-             "Type": "Pledge"}]
+             "Type": "Straight Pledge (Primary)"}]
     feats = ellucian_advance_gifts_to_features(rows)
     assert feats.empty
     assert list(feats.columns) == list(_FEATURE_DTYPES)
@@ -210,8 +250,10 @@ def test_read_single_csv(tmp_path):
     path = tmp_path / "gifts.csv"
     path.write_text(
         _export(
-            _row("88", "2025-01-10", "1200.00", "Pledge"),
-            _row("88", "2025-02-10", "100.00", "Pledge Payment"),
+            _row("88", "01/10/2025 #0001234", "1200.00",
+                 "Straight Pledge (Primary)"),
+            _row("88", "02/10/2025 #0001301", "100.00",
+                 "Pledge Payment (Primary)"),
         )
     )
     raw = read_ellucian_advance_gifts(path)

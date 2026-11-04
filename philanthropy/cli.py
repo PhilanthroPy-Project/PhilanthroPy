@@ -2,13 +2,14 @@
 philanthropy.cli
 ================
 A CSV-in / CSV-out command line for analysts who aren't primarily Python
-engineers. Four subcommands:
+engineers. Five subcommands:
 
     philanthropy features --source raisers_edge --data gifts.csv --out features.csv
     philanthropy train    --data features.csv --target is_major_donor \\
                           --features total_gift_amount,years_active --out model.joblib
     philanthropy score    --model model.joblib --data prospects.csv --out scores.csv
     philanthropy validate --model model.joblib --data holdout.csv --target is_major_donor
+    philanthropy check    --task lapse --source npsp --data gifts.csv
 
 `features` rolls a raw CRM gift export up into the donor-level table the models
 consume, so the path from an export to a scored CSV needs no Python. It does not
@@ -25,6 +26,9 @@ export (not a pre-built features CSV) and calls
 `philanthropy.models.score_leadership_prospects` directly, which trains on
 history and scores today's prospects in one call, so `--out` there is a
 scored CSV, not a saved model bundle.
+`check` runs `philanthropy.model_selection.compare_to_rule` on a raw gift
+export: it tests the model against fixed simple rules on the file's own last
+complete fiscal year and prints the verdict and which list to use.
 """
 
 from __future__ import annotations
@@ -40,7 +44,7 @@ from . import __version__
 
 # Gift-export readers `features` can front. Each name maps to a
 # (reader, aggregator) pair in _cmd_features.
-_FEATURE_SOURCES = ("civicrm", "raisers_edge", "npsp", "ellucian_advance")
+_FEATURE_SOURCES = ("civicrm", "raisers_edge", "npsp", "nonprofit_cloud")
 
 # The donor-level columns `features` emits, in order. Named here so
 # `philanthropy features --help` answers "what do I pass to --features?"
@@ -124,36 +128,34 @@ def _read_raw_gifts(source: str, path: str) -> pd.DataFrame:
     ``gift_date`` / ``gift_amount``, the shape ``score_leadership_prospects``
     (via ``build_leadership_snapshots``) needs.
 
-    Reuses each source's own header-canonicalisation function (the same one
-    its ``*_to_features`` aggregator calls internally) rather than
-    re-deriving the CRM's column aliases here; renaming its three canonical
-    columns to the gift-log names is the only new logic.
+    Keeps exactly the rows the source's ``*_to_features`` aggregator counts,
+    through the same row-filter helpers: a Raiser's Edge pledge, an NPSP open
+    stage, an unpaid Nonprofit Cloud schedule, or a cancelled or test-mode
+    CiviCRM contribution is not a gift here either. Renaming the three
+    canonical columns to the gift-log names is the only new logic.
     """
     from . import ingest
-    from .ingest._civicrm import _normalise_headers
+    from .ingest._civicrm import _civicrm_received_rows
+    from .ingest._nonprofit_cloud import _nonprofit_cloud_received_rows
+    from .ingest._npsp import _npsp_received_rows
+    from .ingest._raisers_edge import _raisers_edge_received_rows
     from .utils._validation import ensure_local_path
 
     ensure_local_path(path, "data")
     try:
         if source == "raisers_edge":
-            from .ingest._raisers_edge import _canonical_raisers_edge
-
-            raw = _normalise_headers(ingest.read_raisers_edge_gifts(path), _canonical_raisers_edge)
+            raw = _raisers_edge_received_rows(ingest.read_raisers_edge_gifts(path))
         elif source == "npsp":
-            from .ingest._npsp import _canonical_npsp
-
-            raw = _normalise_headers(ingest.read_npsp_opportunities(path), _canonical_npsp)
-        elif source == "ellucian_advance":
-            from .ingest._ellucian_advance import _canonical_ellucian_advance
-
-            raw = _normalise_headers(
-                ingest.read_ellucian_advance_gifts(path),
-                _canonical_ellucian_advance,
-            )
+            raw = _npsp_received_rows(ingest.read_npsp_opportunities(path))
+        elif source == "nonprofit_cloud":
+            raw = _nonprofit_cloud_received_rows(ingest.read_nonprofit_cloud_gifts(path))
         else:
             raw = ingest.read_civicrm_contributions(path)
     except FileNotFoundError:
         raise SystemExit(f"Data file not found: {path}")
+    except KeyError as exc:
+        # Same as `features`: the bridge names the missing export fields.
+        raise SystemExit(str(exc.args[0] if exc.args else exc))
 
     missing = [c for c in ("contact_id", "receive_date", "total_amount") if c not in raw.columns]
     if missing:
@@ -161,6 +163,9 @@ def _read_raw_gifts(source: str, path: str) -> pd.DataFrame:
             f"Column(s) {missing} not found in {path} after normalisation. "
             f"Available: {list(raw.columns)}."
         )
+    # Dedup by id and drop test-mode rows for every source; the Completed
+    # status filter is CiviCRM's alone (the other bridges filtered above).
+    raw = _civicrm_received_rows(raw, ("Completed",) if source == "civicrm" else None)
     return raw.rename(
         columns={"contact_id": "donor_id", "receive_date": "gift_date", "total_amount": "gift_amount"}
     )
@@ -366,9 +371,9 @@ def _cmd_features(args: argparse.Namespace) -> None:
     elif args.source == "npsp":
         read = ingest.read_npsp_opportunities
         to_features = ingest.npsp_opportunities_to_features
-    elif args.source == "ellucian_advance":
-        read = ingest.read_ellucian_advance_gifts
-        to_features = ingest.ellucian_advance_gifts_to_features
+    elif args.source == "nonprofit_cloud":
+        read = ingest.read_nonprofit_cloud_gifts
+        to_features = ingest.nonprofit_cloud_gifts_to_features
     else:
         read = ingest.read_civicrm_contributions
         to_features = ingest.civicrm_contributions_to_features
@@ -403,6 +408,36 @@ def _cmd_features(args: argparse.Namespace) -> None:
         out.to_csv(sys.stdout, index=False)
 
 
+def _cmd_check(args: argparse.Namespace) -> None:
+    from .model_selection import compare_to_rule
+
+    gifts = _read_raw_gifts(args.source, args.data)
+    r = compare_to_rule(
+        gifts,
+        task=args.task,
+        as_of=args.as_of,
+        fiscal_year_start=args.fiscal_year_start,
+        threshold=args.threshold,
+        band=tuple(args.band),
+        random_state=args.random_state,
+    )
+    print(f"verdict: {r['verdict']}")
+    print(f"use: {'the model' if r['method'] == 'model' else 'the rule'}")
+    if r["rule"] is None:  # can't test: nothing was scored
+        return
+    print(f"rule: {r['rule']} (best of {r['n_rules_tried']})")
+    print(f"test fiscal year: {r['test_fiscal_year']} "
+          f"({r['n_train']} training rows, {r['n_test']} test rows)")
+
+    def num(v: Optional[float]) -> str:
+        return "not fit" if v is None else f"{v:.3f}"
+
+    print(f"{r['metric']}: model {num(r['model_value'])}, rule {num(r['rule_value'])}")
+    ci = r["difference_ci"]
+    print("model - rule, 95% interval: "
+          + ("none" if ci is None else f"{ci[0]:.3f} to {ci[1]:.3f}"))
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="philanthropy",
@@ -423,9 +458,12 @@ def _build_parser() -> argparse.ArgumentParser:
             "rows (pledges, recurring gift templates) are dropped for "
             "raisers_edge. For npsp only closed/won stages (Closed Won, "
             "Awarded, Posted) are kept, so Pledged, open pipeline, and "
-            "Closed Lost are not counted as gifts. Test-mode and "
-            "non-Completed rows are dropped for civicrm. No label is "
-            "produced: `train --target` needs a column you define yourself."
+            "Closed Lost are not counted as gifts. Only Paid rows are kept "
+            "for nonprofit_cloud, so Unpaid, Cancelled, Pending, Failed, "
+            "Written Off, and Fully Refunded are not counted as gifts. "
+            "Test-mode and non-Completed rows are dropped for civicrm. No "
+            "label is produced: `train --target` needs a column you define "
+            "yourself. "
         ),
     )
     features.add_argument(
@@ -507,6 +545,33 @@ def _build_parser() -> argparse.ArgumentParser:
         "like '10%%' (default: 10%% of rows)",
     )
     validate.set_defaults(func=_cmd_validate)
+
+    check = sub.add_parser(
+        "check",
+        help="Test the model against the simple rule on your own gift export.",
+        description=(
+            "Train on every labelled fiscal year but the last, then compare "
+            "the model with the best of a few fixed rules on the last one. "
+            "Prints the verdict (Beats the rule, About the same as the rule, "
+            "Loses to the rule, not enough labels, or can't test) and which "
+            "list to use. A tie goes to the rule."
+        ),
+    )
+    check.add_argument("--task", required=True, choices=("upgrade", "lapse", "ask"))
+    check.add_argument("--source", required=True, choices=_FEATURE_SOURCES,
+                        help="which CRM the gift export came from")
+    check.add_argument("--data", required=True, help="raw gift export CSV")
+    check.add_argument("--threshold", type=float, default=1000.0,
+                        help="leadership-giving level an upgrade crosses into (upgrade)")
+    check.add_argument("--band", type=float, nargs=2, default=(100.0, 999.0),
+                        metavar=("LOW", "HIGH"),
+                        help="upgrade-candidate FY-total band (upgrade)")
+    check.add_argument("--fiscal-year-start", type=int, default=7, dest="fiscal_year_start",
+                        help="month (1-12) the fiscal year begins")
+    check.add_argument("--as-of", default=None, dest="as_of",
+                        help="ignore gifts after this date (default: the latest gift date)")
+    check.add_argument("--random-state", type=int, default=0, dest="random_state")
+    check.set_defaults(func=_cmd_check)
 
     return parser
 

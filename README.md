@@ -43,7 +43,7 @@ One toolkit, two audiences:
 
 ### Maturity
 
-Single-maintainer MIT project. **`pip install philanthropy` gives you `0.9.0`**, the current release.
+Single-maintainer MIT project. `pip install philanthropy` installs the latest PyPI release (see the version badge above, or the [releases page](https://github.com/PhilanthroPy-Project/PhilanthroPy/releases)).
 
 `main` may be ahead of it; read the [CHANGELOG](CHANGELOG.md) for what is queued. `1.0.0`, which freezes the API, is planned but not cut, so the 0.x line gets a real usage window before that promise takes effect. What still stands between `main` and 1.0 is tracked in [#351](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/351).
 

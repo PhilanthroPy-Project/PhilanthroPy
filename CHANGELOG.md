@@ -117,6 +117,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `False` leaves every other caller's columns unchanged.
 
 ### Changed
+- README: the Maturity section no longer hardcodes the release number, so it
+  cannot go stale; it points to the PyPI badge and the releases page.
 - `LapsePredictor` now defaults to `backend="hist_gradient_boosting"`. Picked
   on a validation year held out from every published test year, it ranked
   likely lapsers better than the old unbounded random forest on every

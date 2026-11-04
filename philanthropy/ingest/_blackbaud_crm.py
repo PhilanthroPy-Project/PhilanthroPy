@@ -377,7 +377,7 @@ def _blackbaud_crm_received_rows(
                 f"alongside the payments made against it, which counts every "
                 f"committed dollar twice. Add the 'Revenue Type' field to the "
                 f"export.",
-                stacklevel=2,
+                stacklevel=3,
             )
 
     return df

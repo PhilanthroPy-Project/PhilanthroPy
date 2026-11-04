@@ -258,7 +258,7 @@ def _donorperfect_received_rows(
                 f"any) are summed alongside the payments/splits made "
                 f"against them, which counts every committed or split "
                 f"dollar twice. Add the 'Record Type' field to the export.",
-                stacklevel=2,
+                stacklevel=3,
             )
 
     return df

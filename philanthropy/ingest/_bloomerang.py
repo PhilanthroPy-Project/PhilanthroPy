@@ -246,7 +246,7 @@ def _bloomerang_received_rows(
                 f"any) are summed alongside the payments made against them, "
                 f"which counts every committed dollar twice. Add the "
                 f"'Transaction Type' field to the export.",
-                stacklevel=2,
+                stacklevel=3,
             )
 
     return df

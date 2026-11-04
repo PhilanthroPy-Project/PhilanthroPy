@@ -6,6 +6,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- README: a "Quick start without Python" right after Installation, with a
+  recorded demo of `features` and `check` running on a synthetic CiviCRM export.
+  `scripts/record_demo_gif.py` re-records it from the real CLI output with
+  Pillow, so the GIF cannot drift from what the commands print (#363).
+- `ADOPTERS.md` and an "I use PhilanthroPy" issue form, linked from the README,
+  so a user has one place to say they use it (#364).
+- A Markdown "Question or something else" issue template. GitHub's community
+  profile counts only Markdown templates, so with just the two YAML forms the
+  Community tab reported no issue template at all (#365).
 - Ellucian CRM Advance transaction-export ingest via
   `ellucian_advance_gifts_to_features`, `read_ellucian_advance_gifts` and the
   `read_gifts(..., source="ellucian_advance")` preset. Pledge types
@@ -121,6 +130,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   silently fit a different model.
 
 ### Fixed
+- The README's Maturity block no longer says `1.0.0` is merged on `main`; it
+  is planned, with its blockers in #351. The bug form's version placeholder no
+  longer suggests `0.7.0` (#362).
 - `MajorGiftClassifier(monotonic_cst={"column": 1})` raised on a DataFrame,
   because the backend saw a NumPy array without column names. Dict keys are
   now resolved to positions first, as on the other boosting models.

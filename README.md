@@ -45,15 +45,11 @@ One toolkit, two audiences:
 
 Single-maintainer MIT project. `pip install philanthropy` installs the latest PyPI release (see the version badge above, or the [releases page](https://github.com/PhilanthroPy-Project/PhilanthroPy/releases)).
 
-`main` is ahead of it: `1.0.0` (freezes the API) is merged and green but deliberately unreleased, so the 0.x line gets a real usage window before that promise takes effect. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
+`main` may be ahead of it; read the [CHANGELOG](CHANGELOG.md) for what is queued. `1.0.0`, which freezes the API, is planned but not cut, so the 0.x line gets a real usage window before that promise takes effect. What still stands between `main` and 1.0 is tracked in [#351](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/351).
 
 Preprocessing and the core classifiers are Tier 1; grateful-patient featurization and `philanthropy.ingest` are Tier 2 (Beta); `FinancialForecastModel` and `philanthropy.experimental.*` are Tier 3 (Experimental) and carry no API guarantees. From `1.0.0`, Tier 1 becomes semver-protected: breaking one requires a major release preceded by a full published minor of `DeprecationWarning`. Per-symbol tiers are in the [API reference](docs/reference/index.md).
 
 > **Maintenance:** maintained by one person on a best-effort basis. For vendor / OSS risk reviews: the bus factor is 1.
-
-### Who uses this
-
-[`ADOPTERS.md`](ADOPTERS.md) lists organizations that use PhilanthroPy. It only includes organizations that confirmed their use and agreed to be listed. If you use it, [tell us](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/new?template=adopter.yml); you can choose to be listed by name, listed anonymously, or not listed.
 
 ---
 
@@ -73,23 +69,22 @@ pip install -e ".[dev]"
 ```
 </details>
 
+### Quick start without Python
+
+Installing also gives you a `philanthropy` command. Point it at a CRM gift export: `features` rolls it up to one row per donor, and `check` tells you whether a model beats the simple rule on your own file before you trust either.
+
+```bash
+philanthropy features --source civicrm --data gifts.csv --out features.csv
+philanthropy check --task lapse --source civicrm --data gifts.csv
+```
+
+![The two commands above running on a synthetic CiviCRM export: features writes one row per donor, and check reports that the model is about the same as the months-since-last-gift rule, so use the rule](https://raw.githubusercontent.com/PhilanthroPy-Project/PhilanthroPy/main/docs/assets/cli_demo.gif)
+
+*Synthetic data from `make_donor_panel`; recorded with [`scripts/record_demo_gif.py`](scripts/record_demo_gif.py).* More commands, including training and scoring: [No Python? Use the CLI](#no-python-use-the-cli) and the [CLI guide](docs/how-to/use_the_cli.md).
+
 ---
 
 ## Quick Start
-
-No Python? One command takes a raw gift export to a verdict on whether a model beats your current rule (training on your own label and scoring are in [No Python? Use the CLI](#no-python-use-the-cli)):
-
-```bash
-philanthropy check --task lapse --source raisers_edge --data gifts.csv
-```
-
-<!-- Demo GIF: maintainer renders it with `vhs docs/assets/demo.tape` (target under 2 MB), then uncomment.
-<p align="center">
-  <img src="docs/assets/demo.gif" alt="Terminal recording of philanthropy check printing its verdict on a sample gift export" width="720"/>
-</p>
--->
-
-The Python quick start:
 
 ```python
 import pandas as pd
@@ -437,8 +432,10 @@ Questions are welcome in
 **Already using PhilanthroPy?** There is no telemetry in this package and there
 never will be, so
 [Are you using PhilanthroPy?](https://github.com/PhilanthroPy-Project/PhilanthroPy/discussions/158)
-is the only place adoption is visible. One reply is enough, and "evaluated it and
-passed" is more useful than a star.
+and [ADOPTERS.md](ADOPTERS.md) are the only places adoption is visible. One reply
+is enough, and "evaluated it and passed" is more useful than a star. If you are
+happy to be named, add yourself to the adopters list through the
+[adopter form](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/new?template=adopter.yml).
 
 ---
 

@@ -2,7 +2,8 @@
 philanthropy.ingest._read_gifts
 ================================
 One call over the CiviCRM, Raiser's Edge, Blackbaud CRM, NPSP, Nonprofit
-Cloud, Bloomerang and DonorPerfect gift bridges.
+Cloud, Bloomerang, DonorPerfect, Little Green Light and Ellucian CRM
+Advance gift bridges.
 
 Each bridge module pairs its own ``read_<source>_...`` loader with a
 ``<source>_..._to_features`` aggregator, because each CRM's export needs its
@@ -31,6 +32,10 @@ from ._donorperfect import (
     donorperfect_gifts_to_features,
     read_donorperfect_gifts,
 )
+from ._ellucian_advance import (
+    ellucian_advance_gifts_to_features,
+    read_ellucian_advance_gifts,
+)
 from ._little_green_light import (
     little_green_light_gifts_to_features,
     read_little_green_light_gifts,
@@ -52,6 +57,7 @@ GIFT_SOURCES: Tuple[str, ...] = (
     "donorperfect",
     "blackbaud_crm",
     "little_green_light",
+    "ellucian_advance",
 )
 
 # (reader, aggregator) pair per source, the same shape as the preset dispatch
@@ -67,6 +73,10 @@ _REGISTRY: "dict[str, tuple[Callable[[Union[str, Path]], pd.DataFrame], Callable
     "little_green_light": (
         read_little_green_light_gifts,
         little_green_light_gifts_to_features,
+    ),
+    "ellucian_advance": (
+        read_ellucian_advance_gifts,
+        ellucian_advance_gifts_to_features,
     ),
 }
 
@@ -101,7 +111,8 @@ def read_gifts(
         for ``"npsp"``, ``include_statuses=`` for ``"nonprofit_cloud"``,
         ``exclude_entry_types=`` for ``"bloomerang"``,
         ``exclude_record_types=`` for ``"donorperfect"``,
-        ``exclude_gift_types=`` for ``"little_green_light"``, or the
+        ``exclude_gift_types=`` for ``"little_green_light"``,
+        ``exclude_transaction_types=`` for ``"ellucian_advance"``, or the
         ``reference_date=`` every preset accepts.
 
     Returns

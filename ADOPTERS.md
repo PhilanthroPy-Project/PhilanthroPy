@@ -1,22 +1,28 @@
 # Adopters
 
-This file lists organizations that use PhilanthroPy. It exists so that people evaluating the library, including advancement teams that need to justify a new tool to their leadership, can see who else relies on it.
+Organisations, research groups, courses and practitioners who use PhilanthroPy
+and are happy to say so. The package has no telemetry and never will, so this
+list and [Discussion #158](https://github.com/PhilanthroPy-Project/PhilanthroPy/discussions/158)
+are the only places use is visible.
 
-The list only includes organizations that confirmed their use and agreed to be listed. Nobody is added from a download count, a star, or a guess.
+## Who can be listed
+
+Anyone who has run PhilanthroPy on real work: a nonprofit or advancement
+office, an academic medical center foundation, a research group, a course, a
+consultant, or one analyst. Evaluating it and deciding against it is useful to
+hear too, but say that on Discussion #158 rather than here.
 
 ## How to be added
 
-Open an issue with the ["I use PhilanthroPy" form](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/new?template=adopter.yml). It asks what you use the library for and how you want to be listed. You can also be listed by a pull request that adds a row to the table below, if the row matches the option you choose.
+Either open the
+[adopter form](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/new?template=adopter.yml),
+and a maintainer adds the row, or open a pull request that adds your row
+yourself. Name only your own organisation, and only if you are allowed to.
+Nothing in the row should describe donor or patient data.
 
-## Listing options
+To be removed, open an issue or a pull request; no reason needed.
 
-1. **By name.** Your organization's name appears in the table.
-2. **Anonymously.** Only sector and size appear (for example, "university advancement office, mid-size").
-3. **Not listed.** You tell us you use it, and nothing is published.
+## Adopters
 
-You can ask to change or remove your row at any time by opening an issue.
-
-## Organizations
-
-| Organization | Sector | What it is used for | Since |
-| --- | --- | --- | --- |
+| Name | Type | What it is used for | Link |
+|---|---|---|---|

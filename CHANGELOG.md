@@ -6,6 +6,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- README: a "Quick start without Python" right after Installation, with a
+  recorded demo of `features` and `check` running on a synthetic CiviCRM export.
+  `scripts/record_demo_gif.py` re-records it from the real CLI output with
+  Pillow, so the GIF cannot drift from what the commands print (#363).
+- `ADOPTERS.md` and an "I use PhilanthroPy" issue form, linked from the README,
+  so a user has one place to say they use it (#364).
+- A Markdown "Question or something else" issue template. GitHub's community
+  profile counts only Markdown templates, so with just the two YAML forms the
+  Community tab reported no issue template at all (#365).
+- Ellucian CRM Advance transaction-export ingest via
+  `ellucian_advance_gifts_to_features`, `read_ellucian_advance_gifts` and the
+  `read_gifts(..., source="ellucian_advance")` preset. Pledge types
+  (`Straight Pledge`, `Bequest Intention`, ...) are dropped by default and
+  pledge payments kept, matching the `Type` column's documented
+  `Straight Pledge (Primary)` form; the receipt number after `Date` is
+  stripped, and only the `Legal` (hard credit) amount is summed (#241).
 - Little Green Light gift-export ingest support via
   `little_green_light_gifts_to_features`, `read_little_green_light_gifts`, and
   the `read_gifts(..., source="little_green_light")` preset, with pledge
@@ -101,11 +117,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `False` leaves every other caller's columns unchanged.
 
 ### Changed
-- README: dropped the hardcoded release number from the Maturity section so it
-  cannot go stale, added a one-command CLI teaser at the top of Quick Start,
-  and added a "Who uses this" section. Added `ADOPTERS.md`, an "I use
-  PhilanthroPy" issue form (`.github/ISSUE_TEMPLATE/adopter.yml`), and
-  `docs/assets/demo.tape`, a `vhs` script for a `philanthropy check` demo GIF.
+- README: the Maturity section no longer hardcodes the release number, so it
+  cannot go stale; it points to the PyPI badge and the releases page.
 - `LapsePredictor` now defaults to `backend="hist_gradient_boosting"`. Picked
   on a validation year held out from every published test year, it ranked
   likely lapsers better than the old unbounded random forest on every
@@ -119,6 +132,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   silently fit a different model.
 
 ### Fixed
+- The README's Maturity block no longer says `1.0.0` is merged on `main`; it
+  is planned, with its blockers in #351. The bug form's version placeholder no
+  longer suggests `0.7.0` (#362).
 - `MajorGiftClassifier(monotonic_cst={"column": 1})` raised on a DataFrame,
   because the backend saw a NumPy array without column names. Dict keys are
   now resolved to positions first, as on the other boosting models.

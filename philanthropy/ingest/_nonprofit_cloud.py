@@ -315,9 +315,27 @@ def nonprofit_cloud_gifts_to_features(
     >>> int(feats.loc["88", "gift_count"])
     2
     """
-    df = _normalise_headers(_prefer_donor_key(_to_frame(gifts)), _canonical_nonprofit_cloud)
+    df = _nonprofit_cloud_received_rows(gifts, include_statuses)
     if df.empty:
         return _empty_feature_frame()
+    return civicrm_contributions_to_features(
+        df, reference_date=reference_date, statuses=None
+    )
+
+
+def _nonprofit_cloud_received_rows(
+    gifts: Union[Iterable[Mapping], pd.DataFrame],
+    include_statuses: Optional[Sequence[str]] = DEFAULT_INCLUDED_GIFT_TRANSACTION_STATUSES,
+) -> pd.DataFrame:
+    """Normalise a Nonprofit Cloud GiftTransaction export and keep only
+    the rows recording money received, the rows
+    :func:`nonprofit_cloud_gifts_to_features` counts.
+
+    Shared with the CLI's raw gift log so both count the same gifts.
+    """
+    df = _normalise_headers(_prefer_donor_key(_to_frame(gifts)), _canonical_nonprofit_cloud)
+    if df.empty:
+        return df
 
     missing = [col for col in _REQUIRED if col not in df.columns]
     if missing:
@@ -341,14 +359,9 @@ def nonprofit_cloud_gifts_to_features(
                 f"present) are summed alongside the receipts that have actually "
                 f"landed, which counts money that has not yet been given. Add "
                 f"the 'Status' field to the export.",
-                stacklevel=2,
+                stacklevel=3,
             )
-
-    if df.empty:
-        return _empty_feature_frame()
-    return civicrm_contributions_to_features(
-        df, reference_date=reference_date, statuses=None
-    )
+    return df
 
 
 def read_nonprofit_cloud_gifts(path: Union[str, Path]) -> pd.DataFrame:

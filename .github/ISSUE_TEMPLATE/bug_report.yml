@@ -54,7 +54,7 @@ body:
     attributes:
       label: PhilanthroPy version
       description: "`python -c \"import philanthropy; print(philanthropy.__version__)\"`"
-      placeholder: "0.7.0"
+      placeholder: "e.g. the output of the command above"
     validations:
       required: true
 

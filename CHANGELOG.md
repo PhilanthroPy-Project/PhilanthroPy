@@ -6,6 +6,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- README: a "Quick start without Python" right after Installation, with a
+  recorded demo of `features` and `check` running on a synthetic CiviCRM export.
+  `scripts/record_demo_gif.py` re-records it from the real CLI output with
+  Pillow, so the GIF cannot drift from what the commands print (#363).
+- `ADOPTERS.md` and an "I use PhilanthroPy" issue form, linked from the README,
+  so a user has one place to say they use it (#364).
+- A Markdown "Question or something else" issue template. GitHub's community
+  profile counts only Markdown templates, so with just the two YAML forms the
+  Community tab reported no issue template at all (#365).
+- Ellucian CRM Advance transaction-export ingest via
+  `ellucian_advance_gifts_to_features`, `read_ellucian_advance_gifts` and the
+  `read_gifts(..., source="ellucian_advance")` preset. Pledge types
+  (`Straight Pledge`, `Bequest Intention`, ...) are dropped by default and
+  pledge payments kept, matching the `Type` column's documented
+  `Straight Pledge (Primary)` form; the receipt number after `Date` is
+  stripped, and only the `Legal` (hard credit) amount is summed (#241).
+- Little Green Light gift-export ingest support via
+  `little_green_light_gifts_to_features`, `read_little_green_light_gifts`, and
+  the `read_gifts(..., source="little_green_light")` preset, with pledge
+  commitments excluded from received-gift roll-ups by default.
 - Test covering the CLI's `_score_array` fallback to `predict_proba(X)[:, 1]`
   for a model with no `predict_affinity_score` (closes #53).
 - Test covering `FiscalYearGroupedSplitter.split` skipping a fold that has
@@ -89,11 +109,50 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `predict_lapse_score`, `predict` on regressors, ...) and with fitted
   pipelines; `NaN` is explained as a value. No new dependencies. New how-to:
   "Explain a donor's score".
+- `build_snapshots(..., cadence=True)` and `period_snapshots(..., cadence=True)`
+  add five giving-cadence columns, all as of the snapshot period:
+  `periods_given`, `share_periods_given`, `period_total_slope`, and with gift
+  counts `gift_count_prior1` and `gift_count_trend`. `compare_to_rule(task="lapse")`
+  and the lapse benchmarks on DonorsChoose and PSID now use them. Default
+  `False` leaves every other caller's columns unchanged.
+
+### Changed
+- README: the Maturity section no longer hardcodes the release number, so it
+  cannot go stale; it points to the PyPI badge and the releases page.
+- `LapsePredictor` now defaults to `backend="hist_gradient_boosting"`. Picked
+  on a validation year held out from every published test year, it ranked
+  likely lapsers better than the old unbounded random forest on every
+  DonorsChoose and PSID test year, and the Lapse Results page is regenerated
+  with it. `backend="random_forest"` keeps the old behaviour (and
+  `n_estimators`, which the boosting backend ignores). `class_weight` now
+  reaches the boosting backend too, and `predict_proba` returns one column per
+  entry of `classes_` when the training fold held a single class.
+  Setting `n_estimators` without `backend="random_forest"` now warns that
+  it has no effect, so code tuned for the old forest default doesn't
+  silently fit a different model.
 
 ### Fixed
+- The README's Maturity block no longer says `1.0.0` is merged on `main`; it
+  is planned, with its blockers in #351. The bug form's version placeholder no
+  longer suggests `0.7.0` (#362).
 - `MajorGiftClassifier(monotonic_cst={"column": 1})` raised on a DataFrame,
   because the backend saw a NumPy array without column names. Dict keys are
   now resolved to positions first, as on the other boosting models.
+- `philanthropy check` and `philanthropy train --task leadership` counted rows
+  that `philanthropy features` drops (closes #337). Their gift log only
+  renamed headers, so a Raiser's Edge pledge was summed next to the payments
+  against it, and cancelled, pending or test-mode CiviCRM contributions, NPSP
+  open stages and unpaid Nonprofit Cloud schedules were counted as gifts. On a
+  Raiser's Edge file with a $1,000 pledge and its $1,000 payment, the log held
+  $2,000. Each bridge's row filter now lives in one private helper that both
+  the `*_to_features` aggregator and the CLI call, so the labels and verdicts
+  from `check` and the leadership snapshots come from the same received gifts.
+  The CLI now also warns when the export has no gift-type, stage or status
+  column, and an NPSP export carrying both Account ID and Primary Contact is
+  keyed by Account, as `features` keys it, instead of by whichever column came
+  first.
+- `philanthropy features --source` accepts every `GIFT_SOURCES` preset, including
+  `bloomerang`, `donorperfect` and `blackbaud_crm`, through `read_gifts` (closes #338).
 
 ## [0.9.0] - 2026-10-12
 

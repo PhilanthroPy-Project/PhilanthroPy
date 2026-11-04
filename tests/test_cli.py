@@ -425,12 +425,12 @@ _UPGRADE_ARCHETYPES = {
 
 
 def _make_upgrade_gift_export(tmp_path, name="upgrade_gifts.csv", n_per_group=20):
-    rows = ["Constituent ID,Gift Date,Gift Amount\n"]
+    rows = ["Constituent ID,Gift Date,Gift Amount,Gift Type\n"]
     for archetype, amounts in _UPGRADE_ARCHETYPES.items():
         for i in range(n_per_group):
             donor_id = f"{archetype}_{i}"
             for year, amount in zip(_UPGRADE_YEARS, amounts):
-                rows.append(f"{donor_id},{year},{amount}.00\n")
+                rows.append(f"{donor_id},{year},{amount}.00,Cash\n")
     path = tmp_path / name
     path.write_text("".join(rows))
     return path
@@ -570,7 +570,9 @@ def _make_panel_export(tmp_path):
     path = tmp_path / "panel_gifts.csv"
     gifts.rename(columns={
         "donor_id": "Constituent ID", "gift_date": "Gift Date", "gift_amount": "Gift Amount",
-    })[["Constituent ID", "Gift Date", "Gift Amount"]].to_csv(path, index=False)
+    })[["Constituent ID", "Gift Date", "Gift Amount"]].assign(**{"Gift Type": "Cash"}).to_csv(
+        path, index=False
+    )
     return path
 
 
@@ -592,9 +594,63 @@ def test_cli_check_prints_the_compare_to_rule_verdict(tmp_path, capsys, task):
 
 def test_cli_check_one_year_cannot_test(tmp_path, capsys):
     data = tmp_path / "one_year.csv"
-    data.write_text("Constituent ID,Gift Date,Gift Amount\na,2024-08-01,100\nb,2024-09-01,50\n")
+    data.write_text(
+        "Constituent ID,Gift Date,Gift Amount,Gift Type\na,2024-08-01,100,Cash\nb,2024-09-01,50,Cash\n"
+    )
     main(["check", "--task", "lapse", "--source", "raisers_edge", "--data", str(data)])
     out = capsys.readouterr().out
     assert out.startswith("verdict: can't test")
     assert "use: the rule" in out
     assert "rule:" not in out.replace("use: the rule", "")
+
+
+# One row each source counts as a gift and one it does not (a pledge, an open
+# stage, an unpaid schedule, a cancelled contribution). `check` and
+# `train --task leadership` read through `_read_raw_gifts`, so it must drop the
+# same rows `features` does (#337).
+_RAW_GIFT_EXPORTS = {
+    "raisers_edge": (
+        "Constituent ID,Gift Date,Gift Amount,Gift Type",
+        "1,2025-01-10,1000,Pledge",
+        "1,2025-02-10,100,Pay-Cash",
+    ),
+    "npsp": (
+        "Account ID,Close Date,Amount,Stage",
+        "1,2025-01-10,1000,Pledged",
+        "1,2025-02-10,100,Closed Won",
+    ),
+    "nonprofit_cloud": (
+        "Donor ID,Transaction Date,Current Amount,Status",
+        "1,2025-01-10,1000,Unpaid",
+        "1,2025-02-10,100,Paid",
+    ),
+    "civicrm": (
+        "Contact ID,Contribution Date,Total Amount,Contribution Status",
+        "1,2025-01-10,1000,Cancelled",
+        "1,2025-02-10,100,Completed",
+    ),
+}
+
+
+@pytest.mark.parametrize("source", sorted(_RAW_GIFT_EXPORTS))
+def test_raw_gift_log_drops_the_rows_features_drops(tmp_path, source):
+    from philanthropy.cli import _read_raw_gifts
+    from philanthropy.ingest import read_gifts
+
+    path = tmp_path / f"{source}.csv"
+    path.write_text("\n".join(_RAW_GIFT_EXPORTS[source]) + "\n")
+
+    gifts = _read_raw_gifts(source, str(path))
+    assert list(gifts["gift_amount"].astype(float)) == [100.0]
+    assert float(gifts["gift_amount"].astype(float).sum()) == float(
+        read_gifts(str(path), source=source)["total_gift_amount"].sum()
+    )
+
+
+def test_raw_gift_log_names_missing_fields_instead_of_a_traceback(tmp_path):
+    from philanthropy.cli import _read_raw_gifts
+
+    path = tmp_path / "re.csv"
+    path.write_text("Constituent ID,Gift Amount\n1,100\n")
+    with pytest.raises(SystemExit, match="missing"):
+        _read_raw_gifts("raisers_edge", str(path))

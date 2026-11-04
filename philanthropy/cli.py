@@ -41,7 +41,6 @@ import numpy as np
 import pandas as pd
 
 from . import __version__
-from .ingest import GIFT_SOURCES
 
 # Sources `train --task leadership` and `check` can read today via
 # `_read_raw_gifts` (header canonicalisers; see #337). `features` uses the
@@ -130,33 +129,34 @@ def _read_raw_gifts(source: str, path: str) -> pd.DataFrame:
     ``gift_date`` / ``gift_amount``, the shape ``score_leadership_prospects``
     (via ``build_leadership_snapshots``) needs.
 
-    Reuses each source's own header-canonicalisation function (the same one
-    its ``*_to_features`` aggregator calls internally) rather than
-    re-deriving the CRM's column aliases here; renaming its three canonical
-    columns to the gift-log names is the only new logic.
+    Keeps exactly the rows the source's ``*_to_features`` aggregator counts,
+    through the same row-filter helpers: a Raiser's Edge pledge, an NPSP open
+    stage, an unpaid Nonprofit Cloud schedule, or a cancelled or test-mode
+    CiviCRM contribution is not a gift here either. Renaming the three
+    canonical columns to the gift-log names is the only new logic.
     """
     from . import ingest
-    from .ingest._civicrm import _normalise_headers
+    from .ingest._civicrm import _civicrm_received_rows
+    from .ingest._nonprofit_cloud import _nonprofit_cloud_received_rows
+    from .ingest._npsp import _npsp_received_rows
+    from .ingest._raisers_edge import _raisers_edge_received_rows
     from .utils._validation import ensure_local_path
 
     ensure_local_path(path, "data")
     try:
         if source == "raisers_edge":
-            from .ingest._raisers_edge import _canonical_raisers_edge
-
-            raw = _normalise_headers(ingest.read_raisers_edge_gifts(path), _canonical_raisers_edge)
+            raw = _raisers_edge_received_rows(ingest.read_raisers_edge_gifts(path))
         elif source == "npsp":
-            from .ingest._npsp import _canonical_npsp
-
-            raw = _normalise_headers(ingest.read_npsp_opportunities(path), _canonical_npsp)
+            raw = _npsp_received_rows(ingest.read_npsp_opportunities(path))
         elif source == "nonprofit_cloud":
-            from .ingest._nonprofit_cloud import _canonical_nonprofit_cloud
-
-            raw = _normalise_headers(ingest.read_nonprofit_cloud_gifts(path), _canonical_nonprofit_cloud)
+            raw = _nonprofit_cloud_received_rows(ingest.read_nonprofit_cloud_gifts(path))
         else:
             raw = ingest.read_civicrm_contributions(path)
     except FileNotFoundError:
         raise SystemExit(f"Data file not found: {path}")
+    except KeyError as exc:
+        # Same as `features`: the bridge names the missing export fields.
+        raise SystemExit(str(exc.args[0] if exc.args else exc))
 
     missing = [c for c in ("contact_id", "receive_date", "total_amount") if c not in raw.columns]
     if missing:
@@ -164,6 +164,9 @@ def _read_raw_gifts(source: str, path: str) -> pd.DataFrame:
             f"Column(s) {missing} not found in {path} after normalisation. "
             f"Available: {list(raw.columns)}."
         )
+    # Dedup by id and drop test-mode rows for every source; the Completed
+    # status filter is CiviCRM's alone (the other bridges filtered above).
+    raw = _civicrm_received_rows(raw, ("Completed",) if source == "civicrm" else None)
     return raw.rename(
         columns={"contact_id": "donor_id", "receive_date": "gift_date", "total_amount": "gift_amount"}
     )
@@ -420,6 +423,8 @@ def _cmd_check(args: argparse.Namespace) -> None:
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    from .ingest import GIFT_SOURCES
+
     parser = argparse.ArgumentParser(
         prog="philanthropy",
         description="Train, score, and validate PhilanthroPy models from CSV files.",

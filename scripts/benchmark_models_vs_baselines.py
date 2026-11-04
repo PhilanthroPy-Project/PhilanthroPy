@@ -1023,7 +1023,7 @@ def _join_extras(snap: pd.DataFrame, extra: pd.DataFrame, id_col: str, period_co
 
 
 def _donorschoose_lapse_snapshots(gifts: pd.DataFrame, include_momentum: bool) -> pd.DataFrame:
-    snap = build_snapshots(gifts, kind="lapse", min_years_given=LAPSE_MIN_YEARS_GIVEN, fiscal_year_start=7)
+    snap = build_snapshots(gifts, kind="lapse", min_years_given=LAPSE_MIN_YEARS_GIVEN, fiscal_year_start=7, cadence=True)
     snap = snap.reset_index()
     if include_momentum:
         extra = _gift_log_period_snapshots(gifts, 7, "lapse", True, 1000.0, (100.0, 999.0))
@@ -1044,7 +1044,9 @@ def _psid_lapse_snapshots(data_path: str, do_path: str, include_momentum: bool) 
         .pivot(index="household_key", columns="year", values="_largest")
         .reindex(index=totals.index, columns=totals.columns)
     )
-    snap = period_snapshots(totals, kind="lapse", largest=largest, min_years_given=LAPSE_MIN_YEARS_GIVEN).reset_index()
+    snap = period_snapshots(
+        totals, kind="lapse", largest=largest, min_years_given=LAPSE_MIN_YEARS_GIVEN, cadence=True,
+    ).reset_index()
     extra = _psid_wave_period_snapshots(data_path, do_path, "lapse", include_momentum, 1000.0, (100.0, 999.0))
     return _join_extras(snap, extra, "household_key", "wave")
 

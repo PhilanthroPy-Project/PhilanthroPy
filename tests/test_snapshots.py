@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from philanthropy.ingest import build_snapshots
-from philanthropy.ingest._snapshots import CORE_COLUMNS, SCALE_FREE_COLUMNS, period_snapshots
+from philanthropy.ingest._snapshots import CADENCE_COLUMNS, CORE_COLUMNS, SCALE_FREE_COLUMNS, period_snapshots
 
 
 def _gifts():
@@ -88,6 +88,40 @@ def test_scale_free_block():
     assert b["total_over_largest"] == pytest.approx(250 / 200)
     assert b["gifts_per_streak_period"] == pytest.approx(1.0)
     assert "total_over_largest" not in build_snapshots(_gifts(), kind="lapse").columns
+
+
+def test_cadence_block():
+    snaps = build_snapshots(_gifts(), kind="response_next_year", cadence=True)
+    assert set(CADENCE_COLUMNS) <= set(snaps.columns)
+    fy20 = snaps[snaps["period"] == 2020]
+    b, d = fy20.loc["b"], fy20.loc["d"]
+    # b gave FY19 (1 gift) and FY20 (2 gifts); FY18 is not in the file.
+    assert b["periods_given"] == 2 and b["share_periods_given"] == 1.0
+    assert b["period_total_slope"] == pytest.approx(125.0)
+    assert b["gift_count_prior1"] == 1 and b["gift_count_trend"] == 1
+    # d gave FY19, skipped FY20: one giving year out of two since the first.
+    assert d["periods_given"] == 1 and d["share_periods_given"] == 0.5
+    assert d["gift_count_prior1"] == 1 and d["gift_count_trend"] == -1
+    assert "periods_given" not in build_snapshots(_gifts(), kind="lapse").columns
+
+
+def test_cadence_ignores_future_gifts():
+    base = build_snapshots(_gifts(), kind="response_next_year", cadence=True)
+    later = pd.concat([_gifts(), pd.DataFrame(
+        [("b", "2020-09-01", 10), ("b", "2020-10-01", 10), ("d", "2020-11-01", 5)],
+        columns=["donor_id", "gift_date", "gift_amount"],
+    )])
+    changed = build_snapshots(later, kind="response_next_year", cadence=True)
+    pd.testing.assert_frame_equal(base[list(CADENCE_COLUMNS)], changed[list(CADENCE_COLUMNS)])
+
+
+def test_period_table_cadence_without_counts():
+    totals = pd.DataFrame({1: [10.0, 0.0], 2: [0.0, 5.0], 3: [20.0, 5.0], 4: [0.0, 0.0]}, index=["x", "y"])
+    snap = period_snapshots(totals, kind="lapse", cadence=True)
+    x = snap[snap["period"] == 3].loc["x"]
+    assert x["periods_given"] == 2 and x["share_periods_given"] == pytest.approx(2 / 3)
+    assert x["period_total_slope"] == pytest.approx(5.0)
+    assert "gift_count_prior1" not in snap.columns
 
 
 def test_bad_arguments():

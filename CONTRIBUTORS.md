@@ -78,7 +78,9 @@ contribution. Code, docs, tests, and review all count.
   timezone-localisation fallback in `EncounterRecencyTransformer`, preserving
   the useful invalid-timezone error, and added coverage for the optional
   `RFMTransformer(include_tenure=True)` output contract, then linked the
-  temporal-leakage tutorial to the measured KDD Cup 1998 replication result
+  temporal-leakage tutorial to the measured KDD Cup 1998 replication result,
+  and added the Ellucian CRM Advance gift reader
+  ([#241](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/241))
   (closes
   [#201](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/201),
   [#150](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/150),
@@ -104,9 +106,14 @@ contribution. Code, docs, tests, and review all count.
   `__getattr__` (closes
   [#153](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/153)).
 
-- **Olayimika** ([@jimoholayinka01] https://github.com/Jimoholayinka01 )
-  Added docstrings to `RFMTransformer.fit` and `RFMTransformer.transform` in
-  philanthropy/preprocessing/_rfm.py with detailed Parameters, Returns, and Raises
+- **Olayimika** ([@jimoholayinka01](https://github.com/jimoholayinka01)): added
+  docstrings to `RFMTransformer.fit` and `RFMTransformer.transform` in
+  `philanthropy/preprocessing/_rfm.py` with detailed Parameters, Returns, and
+  Raises (closes
+  [#52](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/52)); added
+  the Little Green Light gift ingest reader and registry preset, with tests and
+  documentation (closes
+  [#238](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/238)).
 - [@vridhib](https://github.com/vridhib): added a Salesforce Nonprofit Cloud GiftTransaction ingest reader (closes [#234](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/234)), and added a Blackbaud CRM Revenue ingest reader (closes
   [#240](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/240))
 

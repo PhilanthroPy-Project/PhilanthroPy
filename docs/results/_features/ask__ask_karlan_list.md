@@ -31,6 +31,6 @@
         | `couple` | -0.020 | - |
         | `months_since_last_gift` | -0.056 | + |
 
-        Method: permutation importance (`neg_mean_absolute_error`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Git SHA: `d857e8aac5ff4cdbb8c91450cec7583480c1d7af`.
+        Method: permutation importance (`neg_mean_absolute_error`), partial-dependence sign for direction ("mixed" if it changes sign). Split: 55/15/30 stratified (train/validation/test). Git SHA: `9a237d8447d2bc12d9906204807a9611eb48f06e`.
 
     Results on your own file will differ.

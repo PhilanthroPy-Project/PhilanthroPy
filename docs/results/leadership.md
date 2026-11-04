@@ -144,7 +144,8 @@ on your own donors before relying on it.
 - On a file where upgrading is rare, like DonorsChoose, the gain is at the very top: the model's
   first 100 names out of 10,000 include about 28 upgraders, against about 20 for the rule.
 - Your file is not one of these. `score_leadership_prospects` reports how its own list did on your
-  most recent year, and how long a list is still worth working (`recommended_list_size`).
+  most recent year, whether it beat the simple rule there (`rule_check`), and how long a list is
+  still worth working (`recommended_list_size`).
 
 ## Try it on your own donors
 
@@ -162,6 +163,7 @@ gifts = make_donor_panel(random_state=0)["gifts"]
 
 scored, report = score_leadership_prospects(gifts, random_state=0)
 scored.head(10)                          # today's best prospects, ranked
+report["rule_check"]["method"]           # "model", or "rule" when the model didn't beat it
 report["recommended_list_size"]          # how far down the list to work
 ```
 

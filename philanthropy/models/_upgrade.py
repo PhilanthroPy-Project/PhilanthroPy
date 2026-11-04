@@ -41,6 +41,8 @@ from philanthropy.ingest._upgrade_snapshots import (
 )
 from philanthropy.inspection import donor_feature_importance
 from philanthropy.model_selection import FiscalYearGroupedSplitter
+from philanthropy.model_selection._rule_check import _rules, _top_rate, _verdict
+from philanthropy.utils._label_floor import check_label_floor
 from philanthropy.utils._validation import fiscal_year_for
 
 from ._propensity import MajorGiftClassifier
@@ -58,6 +60,31 @@ _MIN_TRAINING_ROWS = 5
 # recommended_list_size: the longest list whose held-out hit rate is still
 # this many times the fold's base rate.
 _LIST_LIFT = 1.5
+
+
+def _rule_check(
+    test: pd.DataFrame, y_train: np.ndarray, y_test: np.ndarray,
+    proba_test: np.ndarray, random_state: int,
+) -> Dict[str, Any]:
+    """``compare_to_rule``'s upgrade verdict, read on this function's own
+    held-out fold and model, so the verdict is about the list it returns."""
+    rules = _rules(
+        "upgrade",
+        test.rename(columns={"fy_total": "period_total", "fy_trend": "period_trend"}),
+        y_train,
+    )
+    y_test = y_test.astype("float64")
+    scored = {name: _top_rate(y_test, score) for name, score in rules.items()}
+    best = max(scored, key=lambda name: scored[name])
+    out: Dict[str, Any] = {
+        "verdict": "not enough labels", "method": "rule", "rule": best,
+        "n_rules_tried": len(rules), "metric": "top10pct_hit_rate",
+        "model_value": None, "rule_value": scored[best], "difference_ci": None,
+        "label_floor": check_label_floor(y_train, "major_gift"),
+    }
+    if out["label_floor"] == "run":
+        out.update(_verdict("upgrade", y_test, proba_test, rules[best], 1000, random_state))
+    return out
 
 
 def score_leadership_prospects(
@@ -195,6 +222,16 @@ def score_leadership_prospects(
           ``rank <= recommended_list_size``). ``None`` when no slice gets
           there. On a rare outcome this is the honest list length: past it
           the model is close to picking at random.
+
+        Always present: ``rule_check``, the
+        :func:`~philanthropy.model_selection.compare_to_rule` verdict read on
+        the same held-out fold and model: a dict with ``verdict`` (the
+        Results pages' words), ``method`` (``"model"`` only when the model
+        beats the best of the three upgrade rules on top-10% hit rate across
+        a 1,000-resample bootstrap; otherwise ``"rule"``), ``rule``,
+        ``n_rules_tried``, ``metric``, ``model_value``, ``rule_value``,
+        ``difference_ci`` and ``label_floor``. Without a held-out fold the
+        verdict is ``"can't test (fewer than two labelled fiscal years)"``.
 
     Raises
     ------
@@ -408,6 +445,12 @@ def score_leadership_prospects(
         "average_precision": None,
         "recommended_list_fraction": None,
         "recommended_list_size": None,
+        "rule_check": {
+            "verdict": "can't test (fewer than two labelled fiscal years)",
+            "method": "rule", "rule": None, "n_rules_tried": 0,
+            "metric": "top10pct_hit_rate", "model_value": None, "rule_value": None,
+            "difference_ci": None, "label_floor": None,
+        },
     }
 
     if n_unique_fys >= 2:
@@ -467,6 +510,10 @@ def score_leadership_prospects(
             "average_precision": average_precision,
             "recommended_list_fraction": _recommended_list_fraction(proba_test, y_test),
         })
+        report["rule_check"] = _rule_check(
+            historical_snap.iloc[test_idx], y[train_idx], y_test, proba_test,
+            0 if random_state is None else random_state,
+        )
         importance_df = donor_feature_importance(
             eval_model, X[test_idx], y[test_idx], feature_names=feature_cols,
             random_state=random_state,

@@ -1,9 +1,10 @@
 """tests/test_cli.py: end-to-end CLI (train -> score -> validate)."""
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from philanthropy.cli import main
+from philanthropy.cli import _score_array, main
 from philanthropy.datasets import generate_synthetic_donor_data
 
 FEATURES = "total_gift_amount,years_active,event_attendance_count"
@@ -115,6 +116,19 @@ def test_cli_score_writes_to_stdout_by_default(tmp_path, capsys):
     out = capsys.readouterr().out
     assert out.splitlines()[0].endswith(",score")
     assert len(out.strip().splitlines()) == 21  # header + 20 rows
+
+
+def test_score_array_falls_back_to_predict_proba_positive_class():
+    class ProbaOnlyModel:
+        def predict_proba(self, X):
+            return np.column_stack([1 - X[:, 0], X[:, 0]])
+
+    X = np.array([[0.2], [0.7], [0.9]])
+
+    np.testing.assert_allclose(
+        _score_array(ProbaOnlyModel(), X),
+        np.array([0.2, 0.7, 0.9]),
+    )
 
 
 @pytest.mark.parametrize("model_name", [
@@ -397,12 +411,12 @@ _UPGRADE_ARCHETYPES = {
 
 
 def _make_upgrade_gift_export(tmp_path, name="upgrade_gifts.csv", n_per_group=20):
-    rows = ["Constituent ID,Gift Date,Gift Amount\n"]
+    rows = ["Constituent ID,Gift Date,Gift Amount,Gift Type\n"]
     for archetype, amounts in _UPGRADE_ARCHETYPES.items():
         for i in range(n_per_group):
             donor_id = f"{archetype}_{i}"
             for year, amount in zip(_UPGRADE_YEARS, amounts):
-                rows.append(f"{donor_id},{year},{amount}.00\n")
+                rows.append(f"{donor_id},{year},{amount}.00,Cash\n")
     path = tmp_path / name
     path.write_text("".join(rows))
     return path
@@ -530,3 +544,99 @@ def test_python_and_cli_upgrade_paths_produce_identical_scores(tmp_path):
     )
     assert list(cli_scores["rank"]) == list(direct_sorted["rank"])
     assert list(cli_scores["decile"]) == list(direct_sorted["decile"])
+
+
+# --------------------------------------------------------------------------- #
+# `check`
+# --------------------------------------------------------------------------- #
+def _make_panel_export(tmp_path):
+    from philanthropy.datasets import make_donor_panel
+
+    gifts = make_donor_panel(n_donors=400, n_years=5, random_state=0)["gifts"]
+    path = tmp_path / "panel_gifts.csv"
+    gifts.rename(columns={
+        "donor_id": "Constituent ID", "gift_date": "Gift Date", "gift_amount": "Gift Amount",
+    })[["Constituent ID", "Gift Date", "Gift Amount"]].assign(**{"Gift Type": "Cash"}).to_csv(
+        path, index=False
+    )
+    return path
+
+
+@pytest.mark.parametrize("task", ["upgrade", "lapse", "ask"])
+def test_cli_check_prints_the_compare_to_rule_verdict(tmp_path, capsys, task):
+    from philanthropy.model_selection import compare_to_rule
+
+    data = _make_panel_export(tmp_path)
+    main(["check", "--task", task, "--source", "raisers_edge", "--data", str(data)])
+    out = capsys.readouterr().out
+
+    from philanthropy.cli import _read_raw_gifts
+
+    expected = compare_to_rule(_read_raw_gifts("raisers_edge", str(data)), task=task)
+    assert f"verdict: {expected['verdict']}\n" in out
+    assert f"use: the {expected['method']}\n" in out
+    assert f"rule: {expected['rule']} (best of 3)" in out
+
+
+def test_cli_check_one_year_cannot_test(tmp_path, capsys):
+    data = tmp_path / "one_year.csv"
+    data.write_text(
+        "Constituent ID,Gift Date,Gift Amount,Gift Type\na,2024-08-01,100,Cash\nb,2024-09-01,50,Cash\n"
+    )
+    main(["check", "--task", "lapse", "--source", "raisers_edge", "--data", str(data)])
+    out = capsys.readouterr().out
+    assert out.startswith("verdict: can't test")
+    assert "use: the rule" in out
+    assert "rule:" not in out.replace("use: the rule", "")
+
+
+# One row each source counts as a gift and one it does not (a pledge, an open
+# stage, an unpaid schedule, a cancelled contribution). `check` and
+# `train --task leadership` read through `_read_raw_gifts`, so it must drop the
+# same rows `features` does (#337).
+_RAW_GIFT_EXPORTS = {
+    "raisers_edge": (
+        "Constituent ID,Gift Date,Gift Amount,Gift Type",
+        "1,2025-01-10,1000,Pledge",
+        "1,2025-02-10,100,Pay-Cash",
+    ),
+    "npsp": (
+        "Account ID,Close Date,Amount,Stage",
+        "1,2025-01-10,1000,Pledged",
+        "1,2025-02-10,100,Closed Won",
+    ),
+    "nonprofit_cloud": (
+        "Donor ID,Transaction Date,Current Amount,Status",
+        "1,2025-01-10,1000,Unpaid",
+        "1,2025-02-10,100,Paid",
+    ),
+    "civicrm": (
+        "Contact ID,Contribution Date,Total Amount,Contribution Status",
+        "1,2025-01-10,1000,Cancelled",
+        "1,2025-02-10,100,Completed",
+    ),
+}
+
+
+@pytest.mark.parametrize("source", sorted(_RAW_GIFT_EXPORTS))
+def test_raw_gift_log_drops_the_rows_features_drops(tmp_path, source):
+    from philanthropy.cli import _read_raw_gifts
+    from philanthropy.ingest import read_gifts
+
+    path = tmp_path / f"{source}.csv"
+    path.write_text("\n".join(_RAW_GIFT_EXPORTS[source]) + "\n")
+
+    gifts = _read_raw_gifts(source, str(path))
+    assert list(gifts["gift_amount"].astype(float)) == [100.0]
+    assert float(gifts["gift_amount"].astype(float).sum()) == float(
+        read_gifts(str(path), source=source)["total_gift_amount"].sum()
+    )
+
+
+def test_raw_gift_log_names_missing_fields_instead_of_a_traceback(tmp_path):
+    from philanthropy.cli import _read_raw_gifts
+
+    path = tmp_path / "re.csv"
+    path.write_text("Constituent ID,Gift Amount\n1,100\n")
+    with pytest.raises(SystemExit, match="missing"):
+        _read_raw_gifts("raisers_edge", str(path))

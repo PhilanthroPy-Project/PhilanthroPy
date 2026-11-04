@@ -246,9 +246,27 @@ def npsp_opportunities_to_features(
     >>> int(feats.loc["88", "gift_count"])
     2
     """
-    df = _normalise_headers(_prefer_account_donor_key(_to_frame(opportunities)), _canonical_npsp)
+    df = _npsp_received_rows(opportunities, include_stages)
     if df.empty:
         return _empty_feature_frame()
+    return civicrm_contributions_to_features(
+        df, reference_date=reference_date, statuses=None
+    )
+
+
+def _npsp_received_rows(
+    opportunities: Union[Iterable[Mapping], pd.DataFrame],
+    include_stages: Optional[Sequence[str]] = DEFAULT_INCLUDED_STAGES,
+) -> pd.DataFrame:
+    """Normalise an NPSP Opportunity export and keep only the rows
+    recording money received, the rows
+    :func:`npsp_opportunities_to_features` counts.
+
+    Shared with the CLI's raw gift log so both count the same gifts.
+    """
+    df = _normalise_headers(_prefer_account_donor_key(_to_frame(opportunities)), _canonical_npsp)
+    if df.empty:
+        return df
 
     missing = [col for col in _REQUIRED if col not in df.columns]
     if missing:
@@ -272,14 +290,9 @@ def npsp_opportunities_to_features(
                 f"any) is summed alongside the Closed Won row recording a "
                 f"gift's receipt, which counts money that was never given. "
                 f"Add the 'Stage' field to the export.",
-                stacklevel=2,
+                stacklevel=3,
             )
-
-    if df.empty:
-        return _empty_feature_frame()
-    return civicrm_contributions_to_features(
-        df, reference_date=reference_date, statuses=None
-    )
+    return df
 
 
 def read_npsp_opportunities(path: Union[str, Path]) -> pd.DataFrame:

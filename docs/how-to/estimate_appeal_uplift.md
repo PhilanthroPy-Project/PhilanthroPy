@@ -100,6 +100,34 @@ print(f"{solicit.sum()} of {n} donors worth soliciting")
 np.testing.assert_array_equal(solicit, (uplift > 0).astype(int))
 ```
 
+## Check the ranking on a held-out sample
+
+Uplift cannot be scored with ROC AUC, because no donor is observed both solicited and not solicited. The Qini curve does it instead: rank donors by uplift score, and at each cut-off count the extra responders the appeal produced among the donors targeted so far (treated responses minus control responses rescaled to the treated count). `qini_auc_score` is the area between that curve and the straight line random targeting would give. Positive beats random, about zero is no better than random.
+
+Score a sample the model did not train on, and keep the randomised `treatment` for it.
+
+```python
+from sklearn.model_selection import train_test_split
+
+from philanthropy.metrics import qini_auc_score, qini_curve
+
+X_tr, X_te, y_tr, y_te, t_tr, t_te = train_test_split(
+    X.to_numpy(), y, treatment, test_size=0.5, random_state=0
+)
+holdout_model = UpliftTLearner(n_estimators=100, random_state=0).fit(X_tr, y_tr, t_tr)
+holdout_uplift = holdout_model.predict_uplift_score(X_te)
+
+fraction, gains = qini_curve(y_te, holdout_uplift, t_te)
+model_qini = qini_auc_score(y_te, holdout_uplift, t_te)
+random_qini = qini_auc_score(y_te, rng.random(len(y_te)), t_te)
+print(f"Qini area  model: {model_qini:.2f}  random order: {random_qini:.2f}")
+
+assert fraction[0] == 0.0 and fraction[-1] == 1.0
+assert model_qini > random_qini
+```
+
+The score is not normalised: its unit is extra responders times fraction targeted, so it grows with the size of the holdout. Compare models on the same holdout, not across datasets. `y_true` can be gift amounts instead of 0/1, which turns the curve into extra dollars.
+
 ## Uplift ranking is not propensity ranking
 
 The point of the exercise: the two orderings disagree, and acting on propensity alone wastes the appeal on people who were going to give regardless.

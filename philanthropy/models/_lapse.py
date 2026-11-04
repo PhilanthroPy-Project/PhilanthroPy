@@ -1,19 +1,27 @@
 """
 philanthropy.models._lapse
 ==========================
-Predictive model for donor lapse using RandomForestClassifier.
+Predictive model for donor lapse, on HistGradientBoostingClassifier by
+default (RandomForestClassifier opt-in).
 """
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, TypeVar
 
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
-from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.utils.validation import (
+    _check_sample_weight,
+    check_is_fitted,
+    validate_data,
+)
 from sklearn.utils import Tags
 from sklearn.utils.multiclass import unique_labels
+
+from philanthropy.utils._validation import resolve_columns, resolve_monotonic_cst
 
 _Self = TypeVar("_Self", bound="LapsePredictor")
 
@@ -27,28 +35,49 @@ and :meth:`LapsePredictor.predict_retention_score`."""
 class LapsePredictor(ClassifierMixin, BaseEstimator):
     """
     Predicts whether a donor will lapse within a configurable window.
-    Uses RandomForestClassifier backend by default.
+    Uses a HistGradientBoostingClassifier backend by default.
 
     Parameters
     ----------
     n_estimators : int, default=100
-        Number of trees in the RandomForestClassifier. Ignored when
-        ``backend="hist_gradient_boosting"``.
+        Number of trees in the RandomForestClassifier. Used only when
+        ``backend="random_forest"``.
     max_depth : int or None, default=None
-        Maximum depth of trees. None means nodes expand until pure
-        (unbounded for ``RandomForestClassifier``; the backend's own default
-        depth limit for ``HistGradientBoostingRegressor``).
+        Maximum depth of trees. None means the backend's own default (no
+        depth limit for either backend; ``HistGradientBoostingClassifier``
+        still caps each tree at 31 leaves).
     class_weight : dict, "balanced", "balanced_subsample" or None, default=None
-        Class weights for imbalanced lapse prediction. Ignored when
-        ``backend="hist_gradient_boosting"`` (that backend has no
-        ``class_weight`` parameter).
+        Class weights for imbalanced lapse prediction, passed to the
+        backend. ``"balanced_subsample"`` exists only on
+        ``backend="random_forest"``.
     random_state : int or None, default=None
         Random seed for reproducibility.
-    backend : {"random_forest", "hist_gradient_boosting"}, default="random_forest"
-        ``"hist_gradient_boosting"`` handles ``NaN`` natively and is faster on
-        large files (E.12d); adopt only after it is confirmed to beat "years
-        since last gift" at top-10% on one real file without losing on
-        another. The default has not changed.
+    backend : {"hist_gradient_boosting", "random_forest"}, default="hist_gradient_boosting"
+        ``"hist_gradient_boosting"`` handles ``NaN`` natively and, on the
+        multi-year-donor lapse question, ranked lapsers better than the
+        unbounded random forest on every DonorsChoose and PSID test year,
+        after being picked on a held-out validation year (see the Lapse
+        Results page). ``"random_forest"`` was the default through 0.9.0 and
+        stays available.
+    categorical_features : list of int or str, bool mask, or None, default=None
+        Columns the backend should split on as unordered categories (a
+        region, constituency or appeal code) instead of as numbers, so they
+        need no one-hot step. Positions, a boolean mask, or column names
+        when ``X`` is a DataFrame. The columns must hold non-negative
+        integer codes below 255, as for ``HistGradientBoostingClassifier``.
+        ``None`` treats every column as numeric.
+        Used only when ``backend="hist_gradient_boosting"``; the random
+        forest has no categorical splits.
+    monotonic_cst : array-like of int or dict, default=None
+        Monotonic constraint on each feature, passed to the underlying
+        :class:`HistGradientBoostingClassifier`: ``1`` means the lapse score never falls as
+        that feature rises, ``-1`` that it never rises, ``0`` no
+        constraint. A dict sets only the features it names, keyed by
+        position or, when ``X`` is a DataFrame, column name
+        (``{"total_giving": 1}``). ``None`` applies no constraint
+        (current behaviour).
+        Used only when ``backend="hist_gradient_boosting"``; the random
+        forest ignores it.
 
     Attributes
     ----------
@@ -74,15 +103,19 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         max_depth: int | None = None,
         class_weight: Any = None,
         random_state: int | None = None,
-        backend: str = "random_forest",
+        backend: str = "hist_gradient_boosting",
+        categorical_features: Any = None,
+        monotonic_cst: Any = None,
     ) -> None:
         self.n_estimators = n_estimators
         self.max_depth = max_depth
         self.class_weight = class_weight
         self.random_state = random_state
         self.backend = backend
+        self.categorical_features = categorical_features
+        self.monotonic_cst = monotonic_cst
 
-    def fit(self: _Self, X: Any, y: Any) -> _Self:
+    def fit(self: _Self, X: Any, y: Any, sample_weight: Any = None) -> _Self:
         """Fit the LapsePredictor.
 
         Parameters
@@ -91,6 +124,9 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
             Feature matrix.
         y : array-like of shape (n_samples,)
             Binary target: 1 = lapse, 0 = no lapse.
+        sample_weight : array-like of shape (n_samples,), default=None
+            Per-donor weights, passed to the backend (and multiplied there
+            with ``class_weight`` on the random forest).
 
         Returns
         -------
@@ -110,13 +146,28 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
                 random_state=self.random_state,
             )
         elif self.backend == "hist_gradient_boosting":
+            # n_estimators predates the boosting default; a caller still
+            # setting it expects a forest, so say it has no effect.
+            if self.n_estimators != 100:
+                warnings.warn(
+                    f"n_estimators={self.n_estimators} has no effect with "
+                    f"backend='hist_gradient_boosting', now the default. "
+                    f"Pass backend='random_forest' to keep the forest.",
+                    UserWarning,
+                    stacklevel=2,
+                )
             self.estimator_ = HistGradientBoostingClassifier(
                 max_depth=self.max_depth,
+                class_weight=self.class_weight,
+                categorical_features=resolve_columns(self, self.categorical_features),
+                monotonic_cst=resolve_monotonic_cst(self, self.monotonic_cst),
                 random_state=self.random_state,
             )
         else:
             raise ValueError(f"Unknown backend: {self.backend!r}")
-        self.estimator_.fit(X, y)
+        if sample_weight is not None:
+            sample_weight = _check_sample_weight(sample_weight, X)
+        self.estimator_.fit(X, y, sample_weight=sample_weight)
         return self
 
     def predict(self, X: Any) -> np.ndarray:
@@ -129,7 +180,9 @@ class LapsePredictor(ClassifierMixin, BaseEstimator):
         """Return class probabilities of shape (n_samples, 2)."""
         check_is_fitted(self)
         X = validate_data(self, X, ensure_all_finite="allow-nan", reset=False)
-        return self.estimator_.predict_proba(X)
+        # HistGradientBoostingClassifier fit on one class still returns two
+        # columns; keep one per entry of classes_, as the forest does.
+        return self.estimator_.predict_proba(X)[:, : len(self.classes_)]
 
     def predict_lapse_score(self, X: Any) -> np.ndarray:
         """Return P(lapse) × 100 rounded to 2 decimal places (0–100 scale)."""

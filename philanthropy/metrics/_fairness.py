@@ -13,7 +13,7 @@ See ``docs/explanation/compliance_considerations.md``.
 
 from __future__ import annotations
 
-from typing import Any, Collection, Dict
+from typing import Any, Callable, Collection, Dict
 
 import numpy as np
 import pandas as pd
@@ -150,3 +150,81 @@ def demographic_parity_difference(
     rates = selection_rate_by_group(y_pred, sensitive_features, pos_label=pos_label)
     values = np.array(list(rates.values()), dtype=float)
     return float(values.max() - values.min())
+
+
+def metric_by_group(
+    metric: Callable[..., float],
+    y_true: Collection,
+    y_pred: Collection,
+    groups: Collection,
+) -> pd.DataFrame:
+    """Any ``metric(y_true, y_pred)`` computed within each group and overall.
+
+    :func:`selection_rate_by_group` only answers "who gets flagged". This
+    answers "how well does the model work for each group", for whatever
+    metric matters to the decision, e.g. ``roc_auc_score`` on scores or
+    ``recall_score`` on thresholded decisions (a group where the model misses
+    most real donors is under-served even at equal selection rates). Pass
+    extra metric arguments with :func:`functools.partial`.
+
+    Like the other functions here, this is a **diagnostic, not a fairness
+    guarantee**. Small groups give noisy values; read ``count`` first.
+
+    Parameters
+    ----------
+    metric : callable
+        ``metric(y_true, y_pred) -> float``, e.g. any sklearn metric.
+    y_true : array-like of shape (n_samples,)
+        Observed outcome.
+    y_pred : array-like of shape (n_samples,)
+        Prediction or score, as ``metric`` expects it.
+    groups : array-like of shape (n_samples,)
+        Group label per sample (e.g. race, age band, region).
+
+    Returns
+    -------
+    pandas.DataFrame
+        Indexed by group, with a final ``"overall"`` row computed on all
+        samples. Columns ``metric`` (float) and ``count`` (int). ``metric``
+        is NaN where it is undefined for a group, e.g. ``roc_auc_score`` on
+        a group with only one class (a ``ValueError`` from ``metric`` is
+        caught and reported as NaN).
+
+    Raises
+    ------
+    ValueError
+        If inputs have mismatched lengths, are empty, contain missing group
+        labels, or a group is itself labelled ``"overall"``.
+    """
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    groups = np.asarray(groups)
+    if not (y_true.shape[0] == y_pred.shape[0] == groups.shape[0]):
+        raise ValueError(
+            f"y_true, y_pred and groups must be the same length, got "
+            f"{y_true.shape[0]}, {y_pred.shape[0]} and {groups.shape[0]}."
+        )
+    if y_true.shape[0] == 0:
+        raise ValueError("y_true is empty; nothing to score.")
+    if pd.isna(groups).any():
+        raise ValueError(
+            "groups contains missing (NaN/None) labels; drop or impute those "
+            "rows before computing per-group metrics."
+        )
+    labels = np.unique(groups)
+    if "overall" in labels.tolist():
+        raise ValueError(
+            "A group is labelled 'overall', which collides with the overall "
+            "row; rename it first."
+        )
+
+    def _score(mask: np.ndarray) -> float:
+        try:
+            return float(metric(y_true[mask], y_pred[mask]))
+        except ValueError:
+            return float("nan")
+
+    rows = {g: (_score(groups == g), int((groups == g).sum())) for g in labels}
+    everyone = np.ones(groups.shape[0], dtype=bool)
+    rows["overall"] = (_score(everyone), int(groups.shape[0]))
+    return pd.DataFrame.from_dict(rows, orient="index", columns=["metric", "count"])

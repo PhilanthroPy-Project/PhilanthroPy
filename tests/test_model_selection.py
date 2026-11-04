@@ -74,6 +74,21 @@ def test_gap_years_withholds_the_year_before_each_test_fold():
         assert fy[train_idx].max() < test_fy - 1
 
 
+def test_split_skips_fold_with_no_prior_training_data():
+    groups = np.array([2020.0, 2020.5, 2021.0, 2022.0])
+    X = np.zeros((len(groups), 2))
+    splitter = FiscalYearGroupedSplitter(
+        drop_repeat_donors=False, n_splits=2, gap_years=1
+    )
+
+    splits = list(splitter.split(X, groups=groups))
+
+    assert len(splits) == 1
+    train_idx, test_idx = splits[0]
+    assert list(train_idx) == [0, 1]
+    assert list(test_idx) == [3]
+
+
 def test_default_splitter_no_leakage_gap_years_zero():
     """Default gap_years=0: training fold never contains a FY at or after the test FY,
     and each test fold is exactly one fiscal year."""
@@ -160,6 +175,17 @@ def test_get_n_splits_matches_the_folds_actually_yielded(n_splits, gap_years):
     fy = np.array([2018] * 30 + [2019] * 30 + [2020] * 30 + [2021] * 30 + [2022] * 30)
     splitter = FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=n_splits, gap_years=gap_years)
     assert splitter.get_n_splits(groups=fy) == len(list(splitter.split(X, groups=fy)))
+
+
+def test_get_n_splits_excludes_a_fold_skipped_for_no_training_data():
+    # With a fractional fiscal year, the FY2021 fold's cutoff (2020) leaves
+    # no training rows, so split() skips it. get_n_splits() must not still
+    # count it, or GridSearchCV rejects the splitter as inconsistent.
+    X = np.zeros((4, 1))
+    fy = np.array([2020, 2020.5, 2021, 2022])
+    splitter = FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=2, gap_years=1)
+    assert len(list(splitter.split(X, groups=fy))) == 1
+    assert splitter.get_n_splits(groups=fy) == 1
 
 
 def test_nan_fiscal_year_does_not_inflate_get_n_splits():

@@ -14,8 +14,10 @@ from ._financial import donor_lifetime_value
 from ._fairness import (
     demographic_parity_difference,
     disparate_impact_ratio,
+    metric_by_group,
     selection_rate_by_group,
 )
+from ._uplift import qini_auc_score, qini_curve
 from ._concentration import gift_concentration_gini, top_donor_share
 from ._conformal import (
     IntervalReport,
@@ -36,6 +38,9 @@ __all__ = [
     "disparate_impact_ratio",
     "demographic_parity_difference",
     "selection_rate_by_group",
+    "metric_by_group",
+    "qini_curve",
+    "qini_auc_score",
     "gift_concentration_gini",
     "top_donor_share",
     "conformal_pvalue",

@@ -12,10 +12,22 @@ CiviCRM: ``read_civicrm_contributions`` loads a contribution export CSV;
 ``civicrm_contributions_to_features`` aggregates it the same way, dropping
 test-mode and non-``Completed`` rows first.
 
+Blackbaud CRM: ``read_blackbaud_crm_revenue`` loads a Blackbaud revenue
+export CSV; ``blackbaud_crm_revenue_to_features`` aggregates it, dropping the
+commitment rows (pledges, matching gift claims, recurring gifts, etc.) first
+so a pledged dollar is not counted both as the promise and as the payments
+against it.
+
 Raiser's Edge: ``read_raisers_edge_gifts`` loads a Blackbaud gift export CSV;
 ``raisers_edge_gifts_to_features`` aggregates it, dropping the commitment rows
 (pledges, matching gift pledges, recurring gift templates) first so a pledged
 dollar is not counted both as the promise and as the payments against it.
+
+Nonprofit Cloud: ``read_nonprofit_cloud_gifts`` loads a Salesforce Nonprofit Cloud
+GiftTransaction export CSV; ``nonprofit_cloud_gifts_to_features`` aggregates it,
+keeping only paid statuses (``Paid``), so all other documented statuses (``Unpaid``,
+``Failed``, ``Pending``, ``Written Off``, ``Fully Refunded``, ``Cancelled``) are
+not counted as received gifts.
 
 NPSP: ``read_npsp_opportunities`` loads a Salesforce Nonprofit Success Pack
 Opportunity export CSV; ``npsp_opportunities_to_features`` aggregates it,
@@ -47,9 +59,9 @@ missing after the rename.
 per-type engagement features, generalising the pattern above to an
 open-ended set of activity types discovered from the data itself.
 
-``read_gifts(path_or_df, source=...)`` looks up the CiviCRM, Raiser's Edge or
-NPSP reader-and-aggregator pair by name, for a caller working with more than
-one CRM export format.
+``read_gifts(path_or_df, source=...)`` looks up the CiviCRM, Raiser's Edge,
+Nonprofit Cloud or NPSP reader-and-aggregator pair by name, for a caller
+working with more than one CRM export format.
 
 ``build_leadership_snapshots`` builds a per-donor, per-fiscal-year training
 table for an upgrade model: one row per (donor, fiscal year T) for every
@@ -61,6 +73,11 @@ column set, with an optional minimum number of giving years.
 """
 
 from ._activities import activities_to_features
+from ._blackbaud_crm import (
+    DEFAULT_INCLUDED_REVENUE_TYPES,
+    blackbaud_crm_revenue_to_features,
+    read_blackbaud_crm_revenue,
+)
 from ._bloomerang import (
     DEFAULT_EXCLUDED_ENTRY_TYPES,
     bloomerang_transactions_to_features,
@@ -79,11 +96,21 @@ from ._donorperfect import (
     donorperfect_gifts_to_features,
     read_donorperfect_gifts,
 )
+from ._little_green_light import (
+    DEFAULT_EXCLUDED_LGL_GIFT_TYPES,
+    little_green_light_gifts_to_features,
+    read_little_green_light_gifts,
+)
 from ._map_columns import map_columns
 from ._neon import (
     DEFAULT_EXCLUDED_NEON_DONATION_TYPES,
     neon_donations_to_features,
     read_neon_donations,
+)
+from ._nonprofit_cloud import (
+    DEFAULT_INCLUDED_GIFT_TRANSACTION_STATUSES,
+    nonprofit_cloud_gifts_to_features,
+    read_nonprofit_cloud_gifts,
 )
 from ._npsp import (
     DEFAULT_INCLUDED_STAGES,
@@ -96,33 +123,42 @@ from ._raisers_edge import (
     read_raisers_edge_gifts,
 )
 from ._read_gifts import GIFT_SOURCES, read_gifts
-from ._snapshots import build_snapshots
 from ._upgrade_snapshots import build_leadership_snapshots
+from ._snapshots import build_snapshots
 
 __all__ = [
     "DEFAULT_EXCLUDED_ENTRY_TYPES",
     "DEFAULT_EXCLUDED_GIFT_TYPES",
+    "DEFAULT_EXCLUDED_LGL_GIFT_TYPES",
     "DEFAULT_EXCLUDED_NEON_DONATION_TYPES",
     "DEFAULT_EXCLUDED_RECORD_TYPES",
+    "DEFAULT_INCLUDED_GIFT_TRANSACTION_STATUSES",
+    "DEFAULT_INCLUDED_REVENUE_TYPES",
     "DEFAULT_INCLUDED_STAGES",
     "GIFT_SOURCES",
     "activities_to_features",
+    "blackbaud_crm_revenue_to_features",
     "bloomerang_transactions_to_features",
     "build_leadership_snapshots",
     "build_snapshots",
     "civicrm_contributions_to_features",
     "constituent_events_to_features",
     "donorperfect_gifts_to_features",
+    "little_green_light_gifts_to_features",
     "map_columns",
     "neon_donations_to_features",
+    "nonprofit_cloud_gifts_to_features",
     "npsp_opportunities_to_features",
     "raisers_edge_gifts_to_features",
+    "read_blackbaud_crm_revenue",
     "read_bloomerang_transactions",
     "read_civicrm_contributions",
     "read_constituent_events",
     "read_donorperfect_gifts",
     "read_gifts",
+    "read_little_green_light_gifts",
     "read_neon_donations",
+    "read_nonprofit_cloud_gifts",
     "read_npsp_opportunities",
     "read_raisers_edge_gifts",
 ]

@@ -102,7 +102,7 @@ Python ecosystem:
 
 `matplotlib` and `seaborn` are needed only for the plotting helpers and are
 optional; CI includes a job asserting the package imports without `matplotlib`
-installed. Supported Python is 3.9 and newer.
+installed. Supported Python is 3.10 and newer.
 
 There are no deep-learning dependencies. That is a deliberate constraint, not an
 omission: heavier methods are approximated with the stack above so the install

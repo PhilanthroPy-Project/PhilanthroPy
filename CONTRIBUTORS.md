@@ -117,6 +117,9 @@ contribution. Code, docs, tests, and review all count.
 - [@vridhib](https://github.com/vridhib): added a Salesforce Nonprofit Cloud GiftTransaction ingest reader (closes [#234](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/234)), and added a Blackbaud CRM Revenue ingest reader (closes
   [#240](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/240))
 
+- [@ShahadatTest](https://github.com/ShahadatTest): CLI gift-source registry support
+  and regression tests for `features --source` (#338; AI-assisted).
+
 ## Getting listed
 
 Add yourself here in the same pull request as your change: one line, your name

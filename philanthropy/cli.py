@@ -35,15 +35,16 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 import pandas as pd
 
 from . import __version__
 
-# Gift-export readers `features` can front. Each name maps to a
-# (reader, aggregator) pair in _cmd_features.
+# Sources `train --task leadership` and `check` can read today via
+# `_read_raw_gifts` (header canonicalisers; see #337). `features` uses the
+# fuller :data:`GIFT_SOURCES` list through :func:`ingest.read_gifts`.
 _FEATURE_SOURCES = ("civicrm", "raisers_edge", "npsp", "nonprofit_cloud")
 
 # The donor-level columns `features` emits, in order. Named here so
@@ -363,28 +364,11 @@ def _cmd_features(args: argparse.Namespace) -> None:
     from . import ingest
     from .utils._validation import ensure_local_path
 
-    read: Callable[..., pd.DataFrame]
-    to_features: Callable[..., pd.DataFrame]
-    if args.source == "raisers_edge":
-        read = ingest.read_raisers_edge_gifts
-        to_features = ingest.raisers_edge_gifts_to_features
-    elif args.source == "npsp":
-        read = ingest.read_npsp_opportunities
-        to_features = ingest.npsp_opportunities_to_features
-    elif args.source == "nonprofit_cloud":
-        read = ingest.read_nonprofit_cloud_gifts
-        to_features = ingest.nonprofit_cloud_gifts_to_features
-    else:
-        read = ingest.read_civicrm_contributions
-        to_features = ingest.civicrm_contributions_to_features
-
     ensure_local_path(args.data, "data")
     try:
-        gifts = read(args.data)
+        features = ingest.read_gifts(args.data, source=args.source)
     except FileNotFoundError:
         raise SystemExit(f"Data file not found: {args.data}")
-    try:
-        features = to_features(gifts)
     except KeyError as exc:
         # The aggregators name the missing export fields; that message is the
         # whole answer, so surface it instead of a traceback.
@@ -439,6 +423,8 @@ def _cmd_check(args: argparse.Namespace) -> None:
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    from .ingest import GIFT_SOURCES
+
     parser = argparse.ArgumentParser(
         prog="philanthropy",
         description="Train, score, and validate PhilanthroPy models from CSV files.",
@@ -467,7 +453,7 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     features.add_argument(
-        "--source", required=True, choices=_FEATURE_SOURCES,
+        "--source", required=True, choices=GIFT_SOURCES,
         help="which CRM the export came from",
     )
     features.add_argument(

@@ -132,6 +132,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   silently fit a different model.
 
 ### Fixed
+- README and `ADOPTERS.md` point to the pinned adopter issue (#369)
+  instead of Discussion #158, which is now closed.
 - The README's Maturity block no longer says `1.0.0` is merged on `main`; it
   is planned, with its blockers in #351. The bug form's version placeholder no
   longer suggests `0.7.0` (#362).

@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `philanthropy.ingest.neon_donations_to_features()` and
+  `read_neon_donations()` now provide a Neon CRM donation-export preset,
+  excluding pledge commitments by default while keeping pledge payments.
 - Little Green Light gift-export ingest support via
   `little_green_light_gifts_to_features`, `read_little_green_light_gifts`, and
   the `read_gifts(..., source="little_green_light")` preset, with pledge

@@ -21,6 +21,7 @@ from philanthropy.ingest import (
     civicrm_contributions_to_features,
     donorperfect_gifts_to_features,
     little_green_light_gifts_to_features,
+    neon_donations_to_features,
     nonprofit_cloud_gifts_to_features,
     npsp_opportunities_to_features,
     raisers_edge_gifts_to_features,
@@ -30,6 +31,7 @@ from philanthropy.ingest import (
     read_donorperfect_gifts,
     read_gifts,
     read_little_green_light_gifts,
+    read_neon_donations,
     read_nonprofit_cloud_gifts,
     read_npsp_opportunities,
     read_raisers_edge_gifts,
@@ -159,7 +161,7 @@ def test_unknown_source_raises_a_clear_error():
         read_gifts([], source="salesforce_classic")
 
 
-def test_gift_sources_lists_all_eight_presets():
+def test_gift_sources_lists_all_nine_presets():
     assert set(GIFT_SOURCES) == {
         "civicrm",
         "raisers_edge",
@@ -169,6 +171,7 @@ def test_gift_sources_lists_all_eight_presets():
         "donorperfect",
         "blackbaud_crm",
         "little_green_light",
+        "neon",
     }
 
 

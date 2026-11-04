@@ -6,6 +6,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Little Green Light gift-export ingest support via
+  `little_green_light_gifts_to_features`, `read_little_green_light_gifts`, and
+  the `read_gifts(..., source="little_green_light")` preset, with pledge
+  commitments excluded from received-gift roll-ups by default.
 - Test covering the CLI's `_score_array` fallback to `predict_proba(X)[:, 1]`
   for a model with no `predict_affinity_score` (closes #53).
 - Test covering `FiscalYearGroupedSplitter.split` skipping a fold that has

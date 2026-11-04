@@ -1,0 +1,61 @@
+name: I use PhilanthroPy
+description: Tell us you use it, and optionally be listed in ADOPTERS.md
+title: "[Adopter] "
+labels: ["adopter"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. The package has no telemetry, so this is how use becomes
+        visible. Keep it to what you are comfortable making public: this issue
+        is public, and nothing here should describe donor or patient data.
+
+  - type: input
+    id: name
+    attributes:
+      label: Organisation or name
+      description: As you would like it to appear. Your own name is fine.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Type
+      options:
+        - Nonprofit or advancement office
+        - Academic medical center or hospital foundation
+        - Research group
+        - Course or teaching
+        - Consultant or vendor
+        - Individual practitioner
+    validations:
+      required: true
+
+  - type: textarea
+    id: use
+    attributes:
+      label: What you use it for
+      description: >
+        One or two sentences, e.g. "scoring lapse risk on our annual-fund file
+        before each spring appeal" or "a teaching notebook on temporal leakage".
+    validations:
+      required: true
+
+  - type: input
+    id: link
+    attributes:
+      label: Link (optional)
+      description: Your organisation's site, a paper, a talk, or a notebook.
+
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Listing
+      options:
+        - label: >
+            I am allowed to name this organisation, and I am happy for this
+            entry to be added to ADOPTERS.md.
+          required: false
+        - label: This issue contains no donor, patient, or otherwise identifiable data.
+          required: true

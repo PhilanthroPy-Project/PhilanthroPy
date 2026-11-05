@@ -163,35 +163,9 @@ default=DEFAULT_EXCLUDED_ADVANCE_TRANSACTION_TYPES
     >>> float(features.loc["88", "total_gift_amount"])
     100.0
     """
-    df = _normalise_headers(_to_frame(gifts), _canonical_ellucian_advance)
-    if df.empty:
-        return _empty_feature_frame()
-
-    missing = [col for col in _REQUIRED if col not in df.columns]
-    if missing:
-        raise KeyError(
-            f"Ellucian CRM Advance transaction export is missing {missing}. "
-            f"Export the 'Entity ID', 'Date' and 'Legal' fields; got "
-            f"{sorted(df.columns)}."
-        )
-
-    if exclude_transaction_types:
-        if "gift_type" in df.columns:
-            unwanted = {
-                _transaction_type_key(t) for t in exclude_transaction_types
-            }
-            keys = df["gift_type"].map(_transaction_type_key)
-            df = df[~keys.isin(unwanted)]
-        else:
-            warnings.warn(
-                f"Ellucian CRM Advance transaction export has no Type column, "
-                f"so exclude_transaction_types="
-                f"{tuple(exclude_transaction_types)!r} could not be applied: "
-                f"pledge commitments, if present, are summed alongside the "
-                f"payments made against them. Add the 'Type' field to the "
-                f"export.",
-                stacklevel=2,
-            )
+    df = _ellucian_advance_received_rows(
+        gifts, exclude_transaction_types=exclude_transaction_types
+    )
 
     if df.empty:
         return _empty_feature_frame()
@@ -227,3 +201,44 @@ def _transaction_type_key(value: object) -> str:
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return ""
     return _NON_ALNUM_ALL.sub("", _DONOR_TYPE_SUFFIX.sub("", str(value)).lower())
+
+
+def _ellucian_advance_received_rows(
+    gifts: Iterable[Mapping] | pd.DataFrame,
+    exclude_transaction_types: Sequence[str] | None = DEFAULT_EXCLUDED_ADVANCE_TRANSACTION_TYPES,
+) -> pd.DataFrame:
+    """Normalise an Ellucian CRM Advance transaction export and keep only the
+    rows recording money received, the rows
+    :func:`ellucian_advance_gifts_to_features` counts.
+
+    Shared with the CLI's raw gift log so both count the same gifts.
+    """
+    df = _normalise_headers(_to_frame(gifts), _canonical_ellucian_advance)
+    if df.empty:
+        return df
+
+    missing = [col for col in _REQUIRED if col not in df.columns]
+    if missing:
+        raise KeyError(
+            f"Ellucian CRM Advance transaction export is missing {missing}. "
+            f"Export the 'Entity ID', 'Date' and 'Legal' fields; got "
+            f"{sorted(df.columns)}."
+        )
+
+    if exclude_transaction_types:
+        if "gift_type" in df.columns:
+            unwanted = {_transaction_type_key(t) for t in exclude_transaction_types}
+            keys = df["gift_type"].map(_transaction_type_key)
+            df = df[~keys.isin(unwanted)]
+        else:
+            warnings.warn(
+                f"Ellucian CRM Advance transaction export has no Type column, "
+                f"so exclude_transaction_types="
+                f"{tuple(exclude_transaction_types)!r} could not be applied: "
+                f"pledge commitments, if present, are summed alongside the "
+                f"payments made against them. Add the 'Type' field to the "
+                f"export.",
+                stacklevel=3,
+            )
+
+    return df

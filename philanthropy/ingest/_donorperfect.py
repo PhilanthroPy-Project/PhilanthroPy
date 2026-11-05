@@ -216,9 +216,26 @@ def donorperfect_gifts_to_features(
     >>> int(feats.loc["88", "gift_count"])
     2
     """
-    df = _normalise_headers(_to_frame(gifts), _canonical_donorperfect)
+    df = _donorperfect_received_rows(gifts, exclude_record_types)
     if df.empty:
         return _empty_feature_frame()
+    return civicrm_contributions_to_features(
+        df, reference_date=reference_date, statuses=None
+    )
+
+
+def _donorperfect_received_rows(
+    gifts: Union[Iterable[Mapping], pd.DataFrame],
+    exclude_record_types: Optional[Sequence[str]] = DEFAULT_EXCLUDED_RECORD_TYPES,
+) -> pd.DataFrame:
+    """Normalise a DonorPerfect gift export and keep only the rows recording
+    money received, the rows :func:`donorperfect_gifts_to_features` counts.
+
+    Shared with the CLI's raw gift log so both count the same gifts.
+    """
+    df = _normalise_headers(_to_frame(gifts), _canonical_donorperfect)
+    if df.empty:
+        return df
 
     missing = [col for col in _REQUIRED if col not in df.columns]
     if missing:
@@ -241,14 +258,10 @@ def donorperfect_gifts_to_features(
                 f"any) are summed alongside the payments/splits made "
                 f"against them, which counts every committed or split "
                 f"dollar twice. Add the 'Record Type' field to the export.",
-                stacklevel=2,
+                stacklevel=3,
             )
 
-    if df.empty:
-        return _empty_feature_frame()
-    return civicrm_contributions_to_features(
-        df, reference_date=reference_date, statuses=None
-    )
+    return df
 
 
 def read_donorperfect_gifts(path: Union[str, Path]) -> pd.DataFrame:

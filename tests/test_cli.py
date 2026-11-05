@@ -629,6 +629,31 @@ _RAW_GIFT_EXPORTS = {
         "1,2025-01-10,1000,Cancelled",
         "1,2025-02-10,100,Completed",
     ),
+    "bloomerang": (
+        "Account Number,Date,Amount,Transaction Type",
+        "1,2025-01-10,1000,Pledge",
+        "1,2025-02-10,100,PledgePayment",
+    ),
+    "donorperfect": (
+        "Donor ID,Gift Date,Gift Amount,Record Type",
+        "1,2025-01-10,1000,P",
+        "1,2025-02-10,100,G",
+    ),
+    "blackbaud_crm": (
+        "Constituent ID,Date,Amount,Revenue Type",
+        "1,2025-01-10,1000,Pledge",
+        "1,2025-02-10,100,Payment",
+    ),
+    "little_green_light": (
+        "LGL Constituent ID,Gift date,Amount,Gift type",
+        "1,2025-01-10,1000,Pledge",
+        "1,2025-02-10,100,Gift",
+    ),
+    "ellucian_advance": (
+        "Entity ID,Date,Legal,Type",
+        "1,2025-01-10,1000,Straight Pledge (Primary)",
+        "1,2025-02-10,100,Pledge Payment",
+    ),
 }
 
 
@@ -654,3 +679,33 @@ def test_raw_gift_log_names_missing_fields_instead_of_a_traceback(tmp_path):
     path.write_text("Constituent ID,Gift Amount\n1,100\n")
     with pytest.raises(SystemExit, match="missing"):
         _read_raw_gifts("raisers_edge", str(path))
+
+
+def test_raw_gift_readers_cover_every_gift_source():
+    from philanthropy.cli import _raw_gift_readers
+    from philanthropy.ingest import GIFT_SOURCES
+
+    assert set(_raw_gift_readers()) == set(GIFT_SOURCES)
+
+
+def test_read_raw_gifts_rejects_an_unknown_source(tmp_path):
+    from philanthropy.cli import _read_raw_gifts
+
+    path = tmp_path / "gifts.csv"
+    path.write_text("Constituent ID,Gift Date,Gift Amount\n1,2025-01-10,100\n")
+    with pytest.raises(SystemExit, match="Unknown gift source"):
+        _read_raw_gifts("not_a_source", str(path))
+
+
+@pytest.mark.parametrize("source", sorted(_RAW_GIFT_EXPORTS))
+def test_check_and_train_accept_every_gift_source(tmp_path, capsys, source):
+    from philanthropy.cli import _build_parser
+
+    path = tmp_path / f"{source}.csv"
+    path.write_text("\n".join(_RAW_GIFT_EXPORTS[source]) + "\n")
+    main(["check", "--task", "lapse", "--source", source, "--data", str(path)])
+    assert capsys.readouterr().out.startswith("verdict: can't test")
+    args = _build_parser().parse_args(
+        ["train", "--task", "leadership", "--source", source, "--data", str(path), "--out", "m.joblib"]
+    )
+    assert args.source == source

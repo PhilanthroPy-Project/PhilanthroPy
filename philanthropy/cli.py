@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
 import pandas as pd
@@ -133,6 +133,7 @@ def _raw_gift_readers() -> Dict[str, Callable[[str], pd.DataFrame]]:
     from .ingest._blackbaud_crm import _blackbaud_crm_received_rows
     from .ingest._bloomerang import _bloomerang_received_rows
     from .ingest._donorperfect import _donorperfect_received_rows
+    from .ingest._ellucian_advance import _ellucian_advance_received_rows
     from .ingest._little_green_light import _little_green_light_received_rows
     from .ingest._nonprofit_cloud import _nonprofit_cloud_received_rows
     from .ingest._npsp import _npsp_received_rows
@@ -155,6 +156,9 @@ def _raw_gift_readers() -> Dict[str, Callable[[str], pd.DataFrame]]:
         ),
         "blackbaud_crm": lambda path: _blackbaud_crm_received_rows(
             ingest.read_blackbaud_crm_revenue(path)
+        ),
+        "ellucian_advance": lambda path: _ellucian_advance_received_rows(
+            ingest.read_ellucian_advance_gifts(path)
         ),
         "little_green_light": lambda path: _little_green_light_received_rows(
             ingest.read_little_green_light_gifts(path)

@@ -42,11 +42,6 @@ import pandas as pd
 
 from . import __version__
 
-# Sources `train --task leadership` and `check` can read today via
-# `_read_raw_gifts` (header canonicalisers; see #337). `features` uses the
-# fuller :data:`GIFT_SOURCES` list through :func:`ingest.read_gifts`.
-_FEATURE_SOURCES = ("civicrm", "raisers_edge", "npsp", "nonprofit_cloud")
-
 # The donor-level columns `features` emits, in order. Named here so
 # `philanthropy features --help` answers "what do I pass to --features?"
 # without a guess; tests/test_cli.py checks it against the real frame.
@@ -513,7 +508,7 @@ def _build_parser() -> argparse.ArgumentParser:
     train.add_argument("--model", default="DonorPropensityModel", choices=_MODEL_CHOICES)
     train.add_argument("--out", required=True, help="output model bundle (plain) or scored CSV (leadership)")
     train.add_argument("--random-state", type=int, default=0, dest="random_state")
-    train.add_argument("--source", default=None, choices=_FEATURE_SOURCES,
+    train.add_argument("--source", default=None, choices=GIFT_SOURCES,
                         help="which CRM the gift export came from (leadership)")
     train.add_argument("--threshold", type=float, default=1000.0,
                         help="leadership-giving level an upgrade crosses into (leadership)")
@@ -574,7 +569,7 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     check.add_argument("--task", required=True, choices=("upgrade", "lapse", "ask", "response"))
-    check.add_argument("--source", required=True, choices=_FEATURE_SOURCES,
+    check.add_argument("--source", required=True, choices=GIFT_SOURCES,
                         help="which CRM the gift export came from")
     check.add_argument("--data", required=True, help="raw gift export CSV")
     check.add_argument("--threshold", type=float, default=1000.0,

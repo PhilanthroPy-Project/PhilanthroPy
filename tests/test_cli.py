@@ -695,3 +695,17 @@ def test_read_raw_gifts_rejects_an_unknown_source(tmp_path):
     path.write_text("Constituent ID,Gift Date,Gift Amount\n1,2025-01-10,100\n")
     with pytest.raises(SystemExit, match="Unknown gift source"):
         _read_raw_gifts("not_a_source", str(path))
+
+
+@pytest.mark.parametrize("source", sorted(_RAW_GIFT_EXPORTS))
+def test_check_and_train_accept_every_gift_source(tmp_path, capsys, source):
+    from philanthropy.cli import _build_parser
+
+    path = tmp_path / f"{source}.csv"
+    path.write_text("\n".join(_RAW_GIFT_EXPORTS[source]) + "\n")
+    main(["check", "--task", "lapse", "--source", source, "--data", str(path)])
+    assert capsys.readouterr().out.startswith("verdict: can't test")
+    args = _build_parser().parse_args(
+        ["train", "--task", "leadership", "--source", source, "--data", str(path), "--out", "m.joblib"]
+    )
+    assert args.source == source

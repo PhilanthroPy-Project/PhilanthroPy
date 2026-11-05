@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Documentation
+- `CITATION.cff` now cites 0.10.0, the newest published release (Zenodo
+  version DOI 10.5281/zenodo.23990995). The concept DOI is unchanged.
+
 ## [0.10.0] - 2026-11-05
 
 ### Added

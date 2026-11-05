@@ -203,7 +203,9 @@ def compare_to_rule(
         The upgrade question's leadership level and candidate band; ignored
         by the other tasks.
     n_bootstrap : int, default=1000
-        Resamples behind the interval.
+        Resamples behind the interval. Most of the run time is the model
+        fit, not the resamples: in Pyodide 0.29 a response check with a
+        90,000-row test year took about 40 s at 1000 and 24 s at 200.
     random_state : int, default=0
         Seed for the model fit and the bootstrap.
 

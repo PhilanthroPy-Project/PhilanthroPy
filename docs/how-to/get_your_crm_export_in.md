@@ -157,6 +157,33 @@ so treat them as a starting point, not exact click-by-click instructions.
     path instead of a list of rows: `read_gifts("gifts.csv",
     source="civicrm")`.
 
+## One row per gift instead of per donor
+
+`read_gift_rows` reads the same export with the same filters as `read_gifts`
+(pledges, open stages, unpaid schedules, test-mode and non-`Completed`
+CiviCRM rows are all dropped the same way), but returns one row per counted
+gift with `donor_id`, `gift_date` and `gift_amount`. That is the input
+`build_snapshots` and `compare_to_rule` take, so a fiscal-year model and its
+rule check read the same gifts the donor-level features count.
+
+```python
+from philanthropy.ingest import build_snapshots, read_gift_rows
+
+rows = [
+    {"Constituent ID": "88", "Gift Date": "2023-09-10", "Gift Amount": "100", "Gift Type": "Cash"},
+    {"Constituent ID": "88", "Gift Date": "2024-01-10", "Gift Amount": "1200", "Gift Type": "Pledge"},
+    {"Constituent ID": "88", "Gift Date": "2024-09-10", "Gift Amount": "150", "Gift Type": "Pay-Cash"},
+]
+gifts = read_gift_rows(rows, source="raisers_edge")  # the pledge is dropped
+snapshots = build_snapshots(gifts, kind="response_next_year")
+print(snapshots[["period", "period_total", "target"]])  # FY2024, 100.0, gave again: 1
+```
+
+For a real export, pass its path: `read_gift_rows("gifts.csv", source="raisers_edge")`.
+
+The source's filter option passes through the same way, for example
+`read_gift_rows("gifts.csv", source="npsp", include_stages=("Closed Won",))`.
+
 ## Next step
 
 `read_gifts` returns one row per donor, indexed by `contact_id`, with

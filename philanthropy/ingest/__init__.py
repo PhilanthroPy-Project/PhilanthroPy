@@ -123,7 +123,7 @@ from ._raisers_edge import (
     raisers_edge_gifts_to_features,
     read_raisers_edge_gifts,
 )
-from ._read_gifts import GIFT_SOURCES, read_gifts
+from ._read_gifts import GIFT_SOURCES, read_gift_rows, read_gifts
 from ._upgrade_snapshots import build_leadership_snapshots
 from ._snapshots import build_snapshots
 
@@ -158,6 +158,7 @@ __all__ = [
     "read_donorperfect_gifts",
     "read_ellucian_advance_gifts",
     "read_gifts",
+    "read_gift_rows",
     "read_little_green_light_gifts",
     "read_nonprofit_cloud_gifts",
     "read_npsp_opportunities",

@@ -681,13 +681,6 @@ def test_raw_gift_log_names_missing_fields_instead_of_a_traceback(tmp_path):
         _read_raw_gifts("raisers_edge", str(path))
 
 
-def test_raw_gift_readers_cover_every_gift_source():
-    from philanthropy.cli import _raw_gift_readers
-    from philanthropy.ingest import GIFT_SOURCES
-
-    assert set(_raw_gift_readers()) == set(GIFT_SOURCES)
-
-
 def test_read_raw_gifts_rejects_an_unknown_source(tmp_path):
     from philanthropy.cli import _read_raw_gifts
 

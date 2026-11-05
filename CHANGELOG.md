@@ -6,6 +6,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `compare_to_rule(task="response")` and `philanthropy check --task response`:
+  checks `DonorPropensityModel` on `build_snapshots(kind="response_next_year")`
+  against the best of most recent gift first, lifetime total, consecutive
+  years given and an RFM cell score, with the same top-10% metric, paired
+  bootstrap interval and verdicts as the other tasks. There is no measured
+  label floor for response, so it only needs both outcomes in the training
+  years. The Response Results page shows how to check it on your own file.
 - README: a "Quick start without Python" right after Installation, with a
   recorded demo of `features` and `check` running on a synthetic CiviCRM export.
   `scripts/record_demo_gif.py` re-records it from the real CLI output with

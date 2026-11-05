@@ -543,7 +543,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "list to use. A tie goes to the rule."
         ),
     )
-    check.add_argument("--task", required=True, choices=("upgrade", "lapse", "ask"))
+    check.add_argument("--task", required=True, choices=("upgrade", "lapse", "ask", "response"))
     check.add_argument("--source", required=True, choices=_FEATURE_SOURCES,
                         help="which CRM the gift export came from")
     check.add_argument("--data", required=True, help="raw gift export CSV")

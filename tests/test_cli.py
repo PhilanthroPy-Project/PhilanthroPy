@@ -576,7 +576,7 @@ def _make_panel_export(tmp_path):
     return path
 
 
-@pytest.mark.parametrize("task", ["upgrade", "lapse", "ask"])
+@pytest.mark.parametrize("task", ["upgrade", "lapse", "ask", "response"])
 def test_cli_check_prints_the_compare_to_rule_verdict(tmp_path, capsys, task):
     from philanthropy.model_selection import compare_to_rule
 
@@ -589,7 +589,7 @@ def test_cli_check_prints_the_compare_to_rule_verdict(tmp_path, capsys, task):
     expected = compare_to_rule(_read_raw_gifts("raisers_edge", str(data)), task=task)
     assert f"verdict: {expected['verdict']}\n" in out
     assert f"use: the {expected['method']}\n" in out
-    assert f"rule: {expected['rule']} (best of 3)" in out
+    assert f"rule: {expected['rule']} (best of {expected['n_rules_tried']})" in out
 
 
 def test_cli_check_one_year_cannot_test(tmp_path, capsys):

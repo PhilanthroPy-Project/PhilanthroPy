@@ -6,6 +6,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `build_snapshots(..., score_period=FY)` builds unlabelled rows for one
+  fiscal year, with the same population and features its labelled rows
+  would have and no `target` column, so the current year can be scored with
+  a model trained on the labelled years without inventing a placeholder
+  following year. Gifts after `FY` are ignored, and `"next_amount"` scores
+  everyone who gave in `FY` rather than only those who give again. The
+  `build_snapshots` and `compare_to_rule` docstrings now say to judge which
+  year is complete by the export date, not the latest gift date.
 - `compare_to_rule(task="response")` and `philanthropy check --task response`:
   checks `DonorPropensityModel` on `build_snapshots(kind="response_next_year")`
   against the best of most recent gift first, lifetime total, consecutive

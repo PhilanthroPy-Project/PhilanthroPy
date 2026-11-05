@@ -130,3 +130,41 @@ def test_bad_arguments():
     with pytest.raises(ValueError, match="min_years_given"):
         build_snapshots(_gifts(), kind="lapse", min_years_given=0)
     assert build_snapshots(_gifts().iloc[:0], kind="lapse").empty
+
+
+# --------------------------------------------------------------------------- #
+# score_period: unlabelled rows for the year being scored
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("kind", ["upgrade", "lapse", "response_next_year", "next_amount"])
+def test_score_period_rows_match_the_labelled_rows(kind):
+    from philanthropy.datasets import make_donor_panel
+
+    gifts = make_donor_panel(n_donors=400, n_years=5, random_state=0)["gifts"]
+    labelled = build_snapshots(gifts, kind=kind, fiscal_years=[2020], cadence=True)
+    scored = build_snapshots(gifts, kind=kind, score_period=2020, cadence=True)
+    assert "target" not in scored.columns and len(labelled) > 0
+    if kind == "next_amount":
+        # Scoring cannot condition on giving next year: everyone who gave in T.
+        assert set(labelled.index) < set(scored.index)
+        scored = scored.loc[labelled.index]
+    pd.testing.assert_frame_equal(scored, labelled.drop(columns="target"))
+
+
+def test_score_period_ignores_later_gifts_and_scores_the_last_year():
+    from philanthropy.datasets import make_donor_panel
+
+    gifts = make_donor_panel(n_donors=300, n_years=5, random_state=1)["gifts"]
+    last = int(build_snapshots(gifts, kind="lapse")["period"].max()) + 1
+    current = build_snapshots(gifts, kind="lapse", score_period=last)
+    assert len(current) > 0 and set(current["period"]) == {last}
+    trimmed = build_snapshots(gifts, kind="lapse", score_period=last - 1)
+    early = gifts[gifts["gift_date"] <= gifts["gift_date"].max() - pd.DateOffset(years=1)]
+    pd.testing.assert_frame_equal(trimmed, build_snapshots(early, kind="lapse", score_period=last - 1))
+
+
+def test_score_period_rejects_a_future_year_and_fiscal_years():
+    gifts = pd.DataFrame({"donor_id": ["a"], "gift_date": ["2020-08-01"], "gift_amount": [10.0]})
+    with pytest.raises(ValueError, match="after the last fiscal year"):
+        build_snapshots(gifts, kind="lapse", score_period=2030)
+    with pytest.raises(ValueError, match="not both"):
+        build_snapshots(gifts, kind="lapse", score_period=2021, fiscal_years=[2021])

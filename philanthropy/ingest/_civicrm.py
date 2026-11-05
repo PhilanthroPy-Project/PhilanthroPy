@@ -165,15 +165,7 @@ def civicrm_contributions_to_features(
     if df.empty:
         return _empty_feature_frame()
 
-    missing = [col for col in _REQUIRED if col not in df.columns]
-    if missing:
-        raise KeyError(
-            f"CiviCRM contribution log is missing {missing}. Export the "
-            f"'Contact ID', 'Contribution Date' and 'Total Amount' fields "
-            f"(APIv4: contact_id, receive_date, total_amount); got "
-            f"{sorted(df.columns)}."
-        )
-
+    _require_civicrm_columns(df)
     df = _civicrm_received_rows(df, statuses).copy()
 
     # total_gift_amount is a plain sum; CiviCRM carries a per-row `currency` but
@@ -187,16 +179,7 @@ def civicrm_contributions_to_features(
             stacklevel=2,
         )
 
-    df["_contact_id"] = df["contact_id"].astype("string").str.strip()
-    df["_ts"] = _to_datetime(df["receive_date"])
-    df["_amount"] = _to_amount(df["total_amount"]).fillna(0.0)
-    # A gift we cannot attribute to a donor, or place in time, contributes to no
-    # feature; drop it rather than let a NaT poison a donor's recency.
-    df = df[
-        df["_contact_id"].notna()
-        & (df["_contact_id"].str.len() > 0)
-        & df["_ts"].notna()
-    ]
+    df = _typed_gift_rows(df)
     if df.empty:
         return _empty_feature_frame()
 
@@ -234,6 +217,37 @@ def civicrm_contributions_to_features(
 
     out.index.name = "contact_id"
     return _coerce_schema(out)
+
+
+def _require_civicrm_columns(df: pd.DataFrame) -> None:
+    missing = [col for col in _REQUIRED if col not in df.columns]
+    if missing:
+        raise KeyError(
+            f"CiviCRM contribution log is missing {missing}. Export the "
+            f"'Contact ID', 'Contribution Date' and 'Total Amount' fields "
+            f"(APIv4: contact_id, receive_date, total_amount); got "
+            f"{sorted(df.columns)}."
+        )
+
+
+def _typed_gift_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """Add the typed ``_contact_id`` / ``_ts`` / ``_amount`` columns to a
+    received-rows frame and drop the rows they cannot place.
+
+    Shared by :func:`civicrm_contributions_to_features` and
+    :func:`~philanthropy.ingest.read_gift_rows`, so both count the same gifts.
+    """
+    df = df.copy()
+    df["_contact_id"] = df["contact_id"].astype("string").str.strip()
+    df["_ts"] = _to_datetime(df["receive_date"])
+    df["_amount"] = _to_amount(df["total_amount"]).fillna(0.0)
+    # A gift we cannot attribute to a donor, or place in time, contributes to no
+    # feature; drop it rather than let a NaT poison a donor's recency.
+    return df[
+        df["_contact_id"].notna()
+        & (df["_contact_id"].str.len() > 0)
+        & df["_ts"].notna()
+    ]
 
 
 def _civicrm_received_rows(

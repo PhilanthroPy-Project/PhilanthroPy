@@ -12,6 +12,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   from the rule check's verdict had to reimplement the winning rule's
   ordering; pass `build_snapshots(..., score_period=FY)` rows and the
   reported `rule` name instead.
+- `philanthropy.ingest.read_gift_rows(path_or_df, *, source, **kwargs)`: one
+  row per counted gift (`donor_id`, `gift_date`, `gift_amount`) after exactly
+  the filtering `read_gifts` applies for the same source, ready for
+  `build_snapshots` and `compare_to_rule`. Callers that built
+  `build_snapshots` input from a CRM export had to reach into each reader's
+  private row-filter helpers to get there. `philanthropy check` and
+  `train --task leadership` now read raw exports through it.
 - `compare_to_rule(task="response")` and `philanthropy check --task response`:
   checks `DonorPropensityModel` on `build_snapshots(kind="response_next_year")`
   against the best of most recent gift first, lifetime total, consecutive
@@ -148,6 +155,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   Setting `n_estimators` without `backend="random_forest"` now warns that
   it has no effect, so code tuned for the old forest default doesn't
   silently fit a different model.
+
+### Documentation
+- `read_gifts`' docstring points at `GIFT_SOURCES` instead of naming some of
+  the sources, and the `GIFT_SOURCES` and registry comments no longer refer
+  to CLI code (closes #360).
 
 ### Fixed
 - README and `ADOPTERS.md` point to the pinned adopter issue (#369)

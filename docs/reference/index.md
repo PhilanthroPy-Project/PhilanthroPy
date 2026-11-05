@@ -114,7 +114,7 @@ Every domain method returns a number on its own scale. None of them are calibrat
 ## Deprecations
 
 !!! info "This page is built from `main`, which is ahead of the release"
-    `pip install philanthropy` currently gives you **0.9.0**. The tier tables
+    `pip install philanthropy` currently gives you **0.10.0**. The tier tables
     above describe the API as it stands on `main`; the deprecations below are
     live in the version you actually have installed.
 
@@ -183,6 +183,14 @@ donor id. Code that passes fiscal years alone now raises a `ValueError` naming
 both fixes. For a time-varying target such as "gave next year", where the same
 donor correctly appears in both folds, pass `drop_repeat_donors=False`, which
 gives exactly the 0.7.x behaviour.
+
+### 0.10.0
+
+Nothing is removed or newly deprecated. One default changed:
+`LapsePredictor` now uses `backend="hist_gradient_boosting"`, which ranked
+likely lapsers better on every held-out DonorsChoose and PSID test year. Pass
+`backend="random_forest"` to keep the 0.9.x model; setting `n_estimators`
+without it now warns, because the boosting backend ignores it.
 
 ### Removed in 0.9.0
 

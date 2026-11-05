@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-05
+
 ### Added
 - `philanthropy.model_selection.rule_scores(snapshots, *, task, gifts=None,
   rule=None)` scores rows with the rules `compare_to_rule` tries (upgrade,
@@ -43,6 +45,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - A Markdown "Question or something else" issue template. GitHub's community
   profile counts only Markdown templates, so with just the two YAML forms the
   Community tab reported no issue template at all (#365).
+- `philanthropy.ingest.blackbaud_crm_revenue_to_features` and
+  `read_blackbaud_crm_revenue`: a Blackbaud CRM revenue export bridge, alongside
+  the existing CiviCRM and Raiser's Edge ones. Reads a revenue acknowledgement
+  export, keeping only `Payment` revenue types by default
+  (`DEFAULT_INCLUDED_REVENUE_TYPES`); the `include_revenue_types` parameter
+  overrides the allowlist. An export with no revenue-type column warns rather
+  than summing pledges alongside their payments. Registered in the `read_gifts`
+  preset registry (#332).
 - Ellucian CRM Advance transaction-export ingest via
   `ellucian_advance_gifts_to_features`, `read_ellucian_advance_gifts` and the
   `read_gifts(..., source="ellucian_advance")` preset. Pledge types
@@ -92,7 +102,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   rate only. A group where the metric is undefined gets NaN.
 - `philanthropy.model_selection.compare_to_rule(gifts, task=...)` checks, on
   the caller's own gift log, whether the model or the simple rule should rank
-  donors for upgrade, lapse or ask. It trains on every labelled
+  donors for upgrade, lapse, ask or response. It trains on every labelled
   fiscal year but the last, tests on the last complete one, and compares the
   model against the best of the same fixed rule sets the Results pages use
   (top-10% hit rate, or mean absolute error for ask), with a paired bootstrap
@@ -106,7 +116,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   function's own held-out fold and model, against the same three upgrade
   rules. The existing `baseline_*` and `lift_*` keys are unchanged. Because
   `train --task leadership` prints every report key, the CLI shows it too.
-- `philanthropy check --task {upgrade,lapse,ask} --source ... --data ...`
+- `philanthropy check --task {upgrade,lapse,ask,response} --source ... --data ...`
   runs `compare_to_rule` on a raw CRM gift export and prints the verdict, in
   the Results pages' words, and which list to use (the model or the rule).
 - Models take CRM exports as they come. `AskAmountRecommender`'s
@@ -596,15 +606,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `Failed`, `Pending`, `Written Off`, and `Fully Refunded` installments are not
   summed as gifts. Wired into the CLI as `philanthropy features --source nonprofit_cloud`
   and registered in the `read_gifts` preset registry.
-- `philanthropy.ingest.blackbaud_crm_revenue_to_features` and
-  `read_blackbaud_crm_revenue`: a Blackbaud CRM revenue export bridge, alongside
-  the existing CiviCRM and Raiser's Edge ones. Reads a revenue acknowledgement
-  export, keeping only `Payment` revenue types by default
-  (`DEFAULT_INCLUDED_REVENUE_TYPES`); the `include_revenue_types` parameter
-  overrides the allowlist. An export with no revenue-type column warns rather
-  than summing pledges alongside their payments. Registered in the `read_gifts`
-  preset registry.
-
 
 ### Changed
 - The docs workflow builds on Python 3.13 instead of 3.10. pymdown-extensions

@@ -8,8 +8,8 @@ cannot `pip install`, that is a bug, please report it.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.9.x   | :white_check_mark: |
-| < 0.9   | :x:                |
+| 0.10.x  | :white_check_mark: |
+| < 0.10  | :x:                |
 
 ## Loading models (trust boundary)
 

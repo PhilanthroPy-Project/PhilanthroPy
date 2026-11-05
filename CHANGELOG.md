@@ -6,6 +6,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `build_snapshots(..., score_period=FY)` builds unlabelled rows for one
+  fiscal year, with the same population and features its labelled rows
+  would have and no `target` column, so the current year can be scored with
+  a model trained on the labelled years without inventing a placeholder
+  following year. Gifts after `FY` are ignored, and `"next_amount"` scores
+  everyone who gave in `FY` rather than only those who give again. The
+  `build_snapshots` and `compare_to_rule` docstrings now say to judge which
+  year is complete by the export date, not the latest gift date.
 - `philanthropy.ingest.read_gift_rows(path_or_df, *, source, **kwargs)`: one
   row per counted gift (`donor_id`, `gift_date`, `gift_amount`) after exactly
   the filtering `read_gifts` applies for the same source, ready for

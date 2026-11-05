@@ -183,7 +183,10 @@ def compare_to_rule(
         Gifts after this date are ignored, and only fiscal years whose
         following year is complete by ``as_of`` can carry a label, so a
         partial current year never masquerades as "gave nothing". Defaults
-        to the latest gift date in ``gifts``.
+        to the latest gift date in ``gifts``; pass the date the export was
+        pulled when you know it, since a file whose last gift falls just
+        before a year end cannot tell a quiet last fortnight from an
+        unfinished year.
     fiscal_year_start : int, default=7
         Month (1-12) the fiscal year begins.
     threshold, band : float, (float, float)

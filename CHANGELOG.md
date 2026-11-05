@@ -6,6 +6,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `philanthropy.model_selection.rule_scores(snapshots, *, task, gifts=None,
+  rule=None)` scores rows with the rules `compare_to_rule` tries (upgrade,
+  lapse and response), one rule or all of them. Callers that built a list
+  from the rule check's verdict had to reimplement the winning rule's
+  ordering; pass `build_snapshots(..., score_period=FY)` rows and the
+  reported `rule` name instead.
 - `build_snapshots(..., score_period=FY)` builds unlabelled rows for one
   fiscal year, with the same population and features its labelled rows
   would have and no `target` column, so the current year can be scored with

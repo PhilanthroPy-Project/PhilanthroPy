@@ -25,7 +25,7 @@ from philanthropy.ingest._upgrade_snapshots import _fy_end, _prepare_gifts
 from philanthropy.utils._label_floor import check_label_floor
 from philanthropy.utils._validation import fiscal_year_for, validate_fiscal_year_start
 
-__all__ = ["compare_to_rule"]
+__all__ = ["compare_to_rule", "rule_scores"]
 
 TASKS = ("upgrade", "lapse", "ask", "response")
 
@@ -84,6 +84,19 @@ def _rules(
         "max(last period's total, average training next-gift)": np.maximum(last_total, float(y_train.mean())),
         "median training next-gift": np.full(len(test), float(np.median(y_train))),
     }
+
+
+def _lifetime(df: pd.DataFrame, snap: pd.DataFrame) -> pd.DataFrame:
+    """Each row's gift count and total through the end of its own fiscal
+    year, from ``_prepare_gifts`` output."""
+    period = snap["period"].to_numpy()
+    count, total = np.full(len(snap), np.nan), np.full(len(snap), np.nan)
+    for fy in np.unique(period):
+        through = df[df["_fy"] <= fy].groupby("donor_id")["_amount"]
+        rows = period == fy
+        count[rows] = through.size().reindex(snap.index[rows]).to_numpy()
+        total[rows] = through.sum().reindex(snap.index[rows]).to_numpy()
+    return pd.DataFrame({"count": count, "total": total}, index=snap.index)
 
 
 def _rfm_score(recency: np.ndarray, frequency: np.ndarray, monetary: np.ndarray) -> np.ndarray:
@@ -193,7 +206,9 @@ def compare_to_rule(
         The upgrade question's leadership level and candidate band; ignored
         by the other tasks.
     n_bootstrap : int, default=1000
-        Resamples behind the interval.
+        Resamples behind the interval. Most of the run time is the model
+        fit, not the resamples: in Pyodide 0.29 a response check with a
+        90,000-row test year took about 40 s at 1000 and 24 s at 200.
     random_state : int, default=0
         Seed for the model fit and the bootstrap.
 
@@ -281,10 +296,7 @@ def compare_to_rule(
     report.update({"test_fiscal_year": test_fy, "n_train": int(len(train)), "n_test": int(len(test))})
 
     metric = _mae if task == "ask" else _top_rate
-    lifetime = None
-    if task == "response":
-        through_test = df[df["_fy"] <= test_fy].groupby("donor_id")["_amount"]
-        lifetime = pd.DataFrame({"count": through_test.size(), "total": through_test.sum()}).reindex(test.index)
+    lifetime = _lifetime(df, test) if task == "response" else None
     rules = _rules(task, test, y_train, lifetime)
     scored = {name: metric(y_test, score) for name, score in rules.items()}
     best = (min if task == "ask" else max)(scored, key=lambda name: scored[name])
@@ -324,3 +336,79 @@ def compare_to_rule(
 
     report.update(_verdict(task, y_test, model_score, rules[best], n_bootstrap, random_state))
     return report
+
+
+def rule_scores(
+    snapshots: pd.DataFrame,
+    *,
+    task: str,
+    gifts: Optional[Union[Iterable[Mapping], pd.DataFrame]] = None,
+    rule: Optional[str] = None,
+    fiscal_year_start: int = 7,
+) -> Union[pd.DataFrame, pd.Series]:
+    """Score donor rows with the simple rules :func:`compare_to_rule` tries.
+
+    When the check says to use the rule, this builds that rule's list: pass
+    the rows to rank, typically ``build_snapshots(gifts, kind=...,
+    score_period=FY)`` for the year being worked, and the rule name the
+    check returned. Higher scores rank first. Ranking rules (most recent
+    gift first, the RFM cell score) rank within the rows given, so pass one
+    fiscal year at a time.
+
+    Parameters
+    ----------
+    snapshots : DataFrame
+        :func:`~philanthropy.ingest.build_snapshots` rows for ``task``'s
+        kind (``"upgrade"``, ``"lapse"`` or ``"response_next_year"``),
+        indexed by donor, with a ``period`` column. ``target`` is not used.
+    task : {"upgrade", "lapse", "response"}
+        Which rule set. Ask's rules depend on the training years' targets
+        and are not scored here; use :func:`compare_to_rule`.
+    gifts : iterable of mapping, or DataFrame, optional
+        The gift log the rows were built from. Required for ``"response"``,
+        whose lifetime-total and RFM rules read each donor's gifts through
+        the end of the row's fiscal year.
+    rule : str, optional
+        One rule name, as :func:`compare_to_rule` reports it in ``rule``.
+        Default: every rule for ``task``.
+    fiscal_year_start : int, default=7
+        Month (1-12) the fiscal year begins, as used to build ``snapshots``.
+
+    Returns
+    -------
+    Series or DataFrame
+        The named rule's scores, or one column per rule, indexed like
+        ``snapshots``.
+
+    Raises
+    ------
+    ValueError
+        If ``task`` is unknown or ``"ask"``, ``rule`` is not one of the
+        task's rules, or ``gifts`` is missing for ``"response"``.
+
+    Examples
+    --------
+    >>> from philanthropy.datasets import make_donor_panel
+    >>> from philanthropy.ingest import build_snapshots
+    >>> from philanthropy.model_selection import rule_scores
+    >>> gifts = make_donor_panel(n_donors=200, n_years=4, random_state=0)["gifts"]
+    >>> rows = build_snapshots(gifts, kind="lapse", fiscal_years=[2020])
+    >>> scores = rule_scores(rows, task="lapse", rule="months since last gift")
+    >>> call_first = scores.sort_values(ascending=False).index[:10]
+    >>> len(call_first)
+    10
+    """
+    if task not in TASKS or task == "ask":
+        raise ValueError(f"task must be one of {tuple(t for t in TASKS if t != 'ask')}; got {task!r}.")
+    lifetime = None
+    if task == "response":
+        if gifts is None:
+            raise ValueError("task='response' needs gifts for its lifetime-total and RFM rules.")
+        validate_fiscal_year_start(fiscal_year_start)
+        lifetime = _lifetime(_prepare_gifts(gifts, fiscal_year_start)[0], snapshots)
+    scores = pd.DataFrame(_rules(task, snapshots, np.empty(0), lifetime), index=snapshots.index)
+    if rule is None:
+        return scores
+    if rule not in scores.columns:
+        raise ValueError(f"rule must be one of {list(scores.columns)} for task={task!r}; got {rule!r}.")
+    return scores[rule]

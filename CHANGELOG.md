@@ -6,6 +6,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `philanthropy.model_selection.rule_scores(snapshots, *, task, gifts=None,
+  rule=None)` scores rows with the rules `compare_to_rule` tries (upgrade,
+  lapse and response), one rule or all of them. Callers that built a list
+  from the rule check's verdict had to reimplement the winning rule's
+  ordering; pass `build_snapshots(..., score_period=FY)` rows and the
+  reported `rule` name instead.
 - `compare_to_rule(task="response")` and `philanthropy check --task response`:
   checks `DonorPropensityModel` on `build_snapshots(kind="response_next_year")`
   against the best of most recent gift first, lifetime total, consecutive

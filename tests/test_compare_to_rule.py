@@ -175,3 +175,37 @@ def test_every_task_reports_the_same_keys(task):
 def test_bad_task_raises():
     with pytest.raises(ValueError, match="task"):
         compare_to_rule(pd.DataFrame(columns=["donor_id", "gift_date", "gift_amount"]), task="retention")
+
+
+@pytest.mark.parametrize("task, kind, extra", [
+    ("lapse", "lapse", {"min_years_given": 2, "cadence": True}),
+    ("response", "response_next_year", {}),
+    ("upgrade", "upgrade", {}),
+])
+def test_rule_scores_reproduce_the_checked_rule(task, kind, extra):
+    from philanthropy.ingest import build_snapshots
+    from philanthropy.model_selection import rule_scores
+    from philanthropy.model_selection._rule_check import _top_rate
+
+    gifts = make_donor_panel(n_donors=800, n_years=5, random_state=2)["gifts"]
+    out = compare_to_rule(gifts, task=task, n_bootstrap=20)
+    rows = build_snapshots(gifts, kind=kind, fiscal_years=[out["test_fiscal_year"]], **extra)
+    scores = rule_scores(rows, task=task, gifts=gifts, rule=out["rule"])
+    assert scores.index.equals(rows.index)
+    assert _top_rate(rows["target"].to_numpy("float64"), scores.to_numpy()) == pytest.approx(out["rule_value"])
+    every = rule_scores(rows, task=task, gifts=gifts)
+    assert out["rule"] in every.columns and len(every.columns) == out["n_rules_tried"]
+
+
+def test_rule_scores_refuses_ask_unknown_rules_and_response_without_gifts():
+    from philanthropy.ingest import build_snapshots
+    from philanthropy.model_selection import rule_scores
+
+    gifts = make_donor_panel(n_donors=100, n_years=4, random_state=0)["gifts"]
+    rows = build_snapshots(gifts, kind="response_next_year")
+    with pytest.raises(ValueError, match="task"):
+        rule_scores(rows, task="ask")
+    with pytest.raises(ValueError, match="rule must be one of"):
+        rule_scores(rows, task="response", gifts=gifts, rule="largest gift")
+    with pytest.raises(ValueError, match="needs gifts"):
+        rule_scores(rows, task="response")

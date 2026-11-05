@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
 import pandas as pd
@@ -124,6 +124,39 @@ def _read_activities(activity_specs: Sequence[str]) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
+def _raw_gift_readers() -> Dict[str, Callable[[str], pd.DataFrame]]:
+    """The reader-and-filter pair for every ``ingest.GIFT_SOURCES`` name.
+
+    Kept as one registry so adding a source to ``GIFT_SOURCES`` without a
+    ``_read_raw_gifts`` branch is caught by
+    ``tests/test_cli.py::test_raw_gift_readers_cover_every_gift_source``
+    instead of silently reading the export as CiviCRM.
+    """
+    from . import ingest
+    from .ingest._blackbaud_crm import _blackbaud_crm_received_rows
+    from .ingest._bloomerang import _bloomerang_received_rows
+    from .ingest._donorperfect import _donorperfect_received_rows
+    from .ingest._ellucian_advance import _ellucian_advance_received_rows
+    from .ingest._little_green_light import _little_green_light_received_rows
+    from .ingest._nonprofit_cloud import _nonprofit_cloud_received_rows
+    from .ingest._npsp import _npsp_received_rows
+    from .ingest._raisers_edge import _raisers_edge_received_rows
+
+    return {
+        "civicrm": lambda path: ingest.read_civicrm_contributions(path),
+        "raisers_edge": lambda path: _raisers_edge_received_rows(ingest.read_raisers_edge_gifts(path)),
+        "npsp": lambda path: _npsp_received_rows(ingest.read_npsp_opportunities(path)),
+        "nonprofit_cloud": lambda path: _nonprofit_cloud_received_rows(ingest.read_nonprofit_cloud_gifts(path)),
+        "bloomerang": lambda path: _bloomerang_received_rows(ingest.read_bloomerang_transactions(path)),
+        "donorperfect": lambda path: _donorperfect_received_rows(ingest.read_donorperfect_gifts(path)),
+        "blackbaud_crm": lambda path: _blackbaud_crm_received_rows(ingest.read_blackbaud_crm_revenue(path)),
+        "little_green_light": lambda path: _little_green_light_received_rows(
+            ingest.read_little_green_light_gifts(path)
+        ),
+        "ellucian_advance": lambda path: _ellucian_advance_received_rows(ingest.read_ellucian_advance_gifts(path)),
+    }
+
+
 def _read_raw_gifts(source: str, path: str) -> pd.DataFrame:
     """Read a raw CRM gift export and normalise it to ``donor_id`` /
     ``gift_date`` / ``gift_amount``, the shape ``score_leadership_prospects``
@@ -131,27 +164,24 @@ def _read_raw_gifts(source: str, path: str) -> pd.DataFrame:
 
     Keeps exactly the rows the source's ``*_to_features`` aggregator counts,
     through the same row-filter helpers: a Raiser's Edge pledge, an NPSP open
-    stage, an unpaid Nonprofit Cloud schedule, or a cancelled or test-mode
-    CiviCRM contribution is not a gift here either. Renaming the three
-    canonical columns to the gift-log names is the only new logic.
+    stage, an unpaid Nonprofit Cloud schedule, a cancelled or test-mode
+    CiviCRM contribution, a Bloomerang commitment, a DonorPerfect pledge or
+    split, a Blackbaud CRM pledge or recurring schedule, a Little Green Light
+    pledge, or an Ellucian CRM Advance pledge is not a gift here either.
+    Renaming the three canonical columns to the gift-log names is the only
+    new logic.
     """
-    from . import ingest
     from .ingest._civicrm import _civicrm_received_rows
-    from .ingest._nonprofit_cloud import _nonprofit_cloud_received_rows
-    from .ingest._npsp import _npsp_received_rows
-    from .ingest._raisers_edge import _raisers_edge_received_rows
     from .utils._validation import ensure_local_path
 
     ensure_local_path(path, "data")
+    readers = _raw_gift_readers()
     try:
-        if source == "raisers_edge":
-            raw = _raisers_edge_received_rows(ingest.read_raisers_edge_gifts(path))
-        elif source == "npsp":
-            raw = _npsp_received_rows(ingest.read_npsp_opportunities(path))
-        elif source == "nonprofit_cloud":
-            raw = _nonprofit_cloud_received_rows(ingest.read_nonprofit_cloud_gifts(path))
-        else:
-            raw = ingest.read_civicrm_contributions(path)
+        read = readers[source]
+    except KeyError:
+        raise SystemExit(f"Unknown gift source {source!r}; expected one of {tuple(readers)}.") from None
+    try:
+        raw = read(path)
     except FileNotFoundError:
         raise SystemExit(f"Data file not found: {path}")
     except KeyError as exc:

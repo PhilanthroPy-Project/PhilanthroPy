@@ -203,9 +203,27 @@ def bloomerang_transactions_to_features(
     >>> int(feats.loc["88", "gift_count"])
     2
     """
-    df = _normalise_headers(_to_frame(transactions), _canonical_bloomerang)
+    df = _bloomerang_received_rows(transactions, exclude_entry_types)
     if df.empty:
         return _empty_feature_frame()
+    return civicrm_contributions_to_features(
+        df, reference_date=reference_date, statuses=None
+    )
+
+
+def _bloomerang_received_rows(
+    transactions: Union[Iterable[Mapping], pd.DataFrame],
+    exclude_entry_types: Optional[Sequence[str]] = DEFAULT_EXCLUDED_ENTRY_TYPES,
+) -> pd.DataFrame:
+    """Normalise a Bloomerang transaction export and keep only the rows
+    recording money received, the rows
+    :func:`bloomerang_transactions_to_features` counts.
+
+    Shared with the CLI's raw gift log so both count the same gifts.
+    """
+    df = _normalise_headers(_to_frame(transactions), _canonical_bloomerang)
+    if df.empty:
+        return df
 
     missing = [col for col in _REQUIRED if col not in df.columns]
     if missing:
@@ -228,14 +246,10 @@ def bloomerang_transactions_to_features(
                 f"any) are summed alongside the payments made against them, "
                 f"which counts every committed dollar twice. Add the "
                 f"'Transaction Type' field to the export.",
-                stacklevel=2,
+                stacklevel=3,
             )
 
-    if df.empty:
-        return _empty_feature_frame()
-    return civicrm_contributions_to_features(
-        df, reference_date=reference_date, statuses=None
-    )
+    return df
 
 
 def read_bloomerang_transactions(path: Union[str, Path]) -> pd.DataFrame:

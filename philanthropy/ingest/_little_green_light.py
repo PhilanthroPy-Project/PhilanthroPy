@@ -113,32 +113,7 @@ def little_green_light_gifts_to_features(
     pandas.DataFrame
         One row per constituent, indexed by ``contact_id``.
     """
-    df = _normalise_headers(_to_frame(gifts), _canonical_little_green_light)
-
-    if df.empty:
-        return _empty_feature_frame()
-
-    missing = [col for col in _REQUIRED if col not in df.columns]
-    if missing:
-        raise KeyError(
-            f"Little Green Light gift export is missing {missing}. Export the "
-            f"'LGL Constituent ID', 'Gift date' and 'Amount' fields; "
-            f"got {sorted(df.columns)}."
-        )
-
-    if exclude_gift_types:
-        if "gift_type" in df.columns:
-            unwanted = {_gift_type_key(t) for t in exclude_gift_types}
-            keys = df["gift_type"].map(_gift_type_key)
-            df = df[~keys.isin(unwanted)]
-        else:
-            warnings.warn(
-                "Little Green Light gift export has no gift type column, so "
-                f"exclude_gift_types={tuple(exclude_gift_types)!r} could not "
-                "be applied: pledge commitments (if present) may be summed "
-                "alongside payments. Add the 'Gift type' field to the export.",
-                stacklevel=2,
-            )
+    df = _little_green_light_received_rows(gifts, exclude_gift_types=exclude_gift_types)
 
     if df.empty:
         return _empty_feature_frame()
@@ -169,3 +144,42 @@ def _canonical_little_green_light(name: object) -> str:
 def _gift_type_key(value: object) -> str:
     """Collapse case, whitespace and punctuation for gift-type matching."""
     return _NON_ALNUM_ALL.sub("", str(value).strip().lower())
+
+
+def _little_green_light_received_rows(
+    gifts: Union[Iterable[Mapping], pd.DataFrame],
+    exclude_gift_types: Optional[Sequence[str]] = DEFAULT_EXCLUDED_LGL_GIFT_TYPES,
+) -> pd.DataFrame:
+    """Normalise a Little Green Light gift export and keep only the rows
+    recording money received, the rows
+    :func:`little_green_light_gifts_to_features` counts.
+
+    Shared with the CLI's raw gift log so both count the same gifts.
+    """
+    df = _normalise_headers(_to_frame(gifts), _canonical_little_green_light)
+    if df.empty:
+        return df
+
+    missing = [col for col in _REQUIRED if col not in df.columns]
+    if missing:
+        raise KeyError(
+            f"Little Green Light gift export is missing {missing}. Export the "
+            f"'LGL Constituent ID', 'Gift date' and 'Amount' fields; "
+            f"got {sorted(df.columns)}."
+        )
+
+    if exclude_gift_types:
+        if "gift_type" in df.columns:
+            unwanted = {_gift_type_key(t) for t in exclude_gift_types}
+            keys = df["gift_type"].map(_gift_type_key)
+            df = df[~keys.isin(unwanted)]
+        else:
+            warnings.warn(
+                "Little Green Light gift export has no gift type column, so "
+                f"exclude_gift_types={tuple(exclude_gift_types)!r} could not "
+                "be applied: pledge commitments (if present) may be summed "
+                "alongside payments. Add the 'Gift type' field to the export.",
+                stacklevel=3,
+            )
+
+    return df

@@ -8,6 +8,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Documentation
 - `CITATION.cff` now cites 0.10.0, the newest published release (Zenodo
   version DOI 10.5281/zenodo.23990995). The concept DOI is unchanged.
+- The "How sure are we?" results page now says that a 90% range holds 90
+  in 100 gifts across all donors, not within each gift size: with the
+  default `score="absolute"` the largest gifts land inside it far less
+  often on all four real files. It points to `score="log"`, whose width
+  grows with the amount, as the main fix, and to `groups=` as a weaker one.
 
 ## [0.10.0] - 2026-11-05
 

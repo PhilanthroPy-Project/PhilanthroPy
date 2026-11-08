@@ -70,6 +70,13 @@ how much a single donor's next gift can swing, not where it will land.
   land inside it.
 - A range that holds the gift that often has to be wide. Use it to set expectations (a gift well
   below the range is unusual; one at the bottom of it is not), not as the ask itself.
+- The 90 in 100 is across all donors, not within each gift size. The default range is the same
+  width for everyone, so on all four real files it held the largest gifts well under 90 times in
+  100. If your big gifts matter most, pass `score="log"`: the range then grows with the amount,
+  which brings the top tier much closer to the level asked for while overall coverage stays on
+  target. Calibrating each tier on its own with `groups=` (a tier known before the gift, such as
+  the suggested amount's band) helps less. Neither closes the gap completely, because the biggest
+  gifts are partly the ones nobody saw coming.
 - Your file is not one of these. Set the ranges on your own recent donors, never on the donors you
   built the suggested amount from, and check how often they held before you rely on them.
 

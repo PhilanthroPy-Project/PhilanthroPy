@@ -11,6 +11,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   reachable as `read_gifts(..., source="neon")` and `read_gift_rows`. It
   drops Neon's `Pledge` and `Match Pledge` donation types by default and
   keeps donations and pledge payments (closes #237).
+- Official support for Python 3.14. Added `3.14` to the CI test matrix and package classifiers; the docs build job now runs on 3.14 too.
 
 ### Documentation
 - `CITATION.cff` now cites 0.10.0, the newest published release (Zenodo

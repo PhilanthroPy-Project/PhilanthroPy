@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Documentation
+- Grateful-patient documentation now explains that gift timing for repeat
+  patients uses each donor's latest discharge, not the discharge nearest each
+  gift.
 - `CITATION.cff` now cites 0.10.0, the newest published release (Zenodo
   version DOI 10.5281/zenodo.23990995). The concept DOI is unchanged.
 - The "How sure are we?" results page now says that a 90% range holds 90

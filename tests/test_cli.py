@@ -654,6 +654,11 @@ _RAW_GIFT_EXPORTS = {
         "1,2025-01-10,1000,Straight Pledge (Primary)",
         "1,2025-02-10,100,Pledge Payment",
     ),
+    "neon": (
+        "Account ID,Donation Date,Donation Amount,Donation Type",
+        "1,2025-01-10,1000,Pledge",
+        "1,2025-02-10,100,Pledge Payment",
+    ),
 }
 
 

@@ -22,6 +22,7 @@ from philanthropy.ingest import (
     donorperfect_gifts_to_features,
     ellucian_advance_gifts_to_features,
     little_green_light_gifts_to_features,
+    neon_donations_to_features,
     nonprofit_cloud_gifts_to_features,
     npsp_opportunities_to_features,
     raisers_edge_gifts_to_features,
@@ -32,6 +33,7 @@ from philanthropy.ingest import (
     read_ellucian_advance_gifts,
     read_gifts,
     read_little_green_light_gifts,
+    read_neon_donations,
     read_nonprofit_cloud_gifts,
     read_npsp_opportunities,
     read_raisers_edge_gifts,
@@ -161,7 +163,7 @@ def test_unknown_source_raises_a_clear_error():
         read_gifts([], source="salesforce_classic")
 
 
-def test_gift_sources_lists_all_nine_presets():
+def test_gift_sources_lists_all_ten_presets():
     assert set(GIFT_SOURCES) == {
         "civicrm",
         "raisers_edge",
@@ -172,6 +174,7 @@ def test_gift_sources_lists_all_nine_presets():
         "blackbaud_crm",
         "little_green_light",
         "ellucian_advance",
+        "neon",
     }
 
 
@@ -323,4 +326,29 @@ def test_ellucian_advance_kwarg_reaches_the_underlying_aggregator():
     unfiltered = read_gifts(
         rows, source="ellucian_advance", exclude_transaction_types=None
     )
+    assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0
+
+
+def test_neon_path_matches_direct_call(tmp_path):
+    path = _write_csv(
+        tmp_path,
+        "Account ID,Donation Date,Donation Amount,Donation Type",
+        "88,2025-01-10,1200.00,Pledge",
+        "88,2025-02-10,100.00,Pledge Payment",
+    )
+    via_registry = read_gifts(path, source="neon")
+    direct = neon_donations_to_features(read_neon_donations(path))
+    pd.testing.assert_frame_equal(via_registry, direct)
+
+
+def test_neon_kwarg_reaches_the_underlying_aggregator():
+    rows = [
+        {"Account ID": "88", "Donation Date": "2025-01-10",
+         "Donation Amount": "1200.00", "Donation Type": "Pledge"},
+        {"Account ID": "88", "Donation Date": "2025-02-10",
+         "Donation Amount": "100.00", "Donation Type": "Pledge Payment"},
+    ]
+    default = read_gifts(rows, source="neon")
+    assert float(default.loc["88", "total_gift_amount"]) == 100.0
+    unfiltered = read_gifts(rows, source="neon", exclude_donation_types=None)
     assert float(unfiltered.loc["88", "total_gift_amount"]) == 1300.0

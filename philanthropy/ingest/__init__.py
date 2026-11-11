@@ -51,6 +51,10 @@ transaction export CSV; ``ellucian_advance_gifts_to_features`` aggregates it,
 dropping pledge commitments first so a promised dollar is not counted both as
 the promise and as the payments against it.
 
+Neon CRM: ``read_neon_donations`` loads a Neon donation export CSV;
+``neon_donations_to_features`` aggregates it, dropping Pledge and Match
+Pledge rows first so pledged dollars are not counted before payment.
+
 ``map_columns`` renames a user-supplied export's headers to the canonical
 names a bridge above expects, raising one error listing every column still
 missing after the rename.
@@ -108,6 +112,11 @@ from ._little_green_light import (
     read_little_green_light_gifts,
 )
 from ._map_columns import map_columns
+from ._neon import (
+    DEFAULT_EXCLUDED_NEON_DONATION_TYPES,
+    neon_donations_to_features,
+    read_neon_donations,
+)
 from ._nonprofit_cloud import (
     DEFAULT_INCLUDED_GIFT_TRANSACTION_STATUSES,
     nonprofit_cloud_gifts_to_features,
@@ -132,6 +141,7 @@ __all__ = [
     "DEFAULT_EXCLUDED_ENTRY_TYPES",
     "DEFAULT_EXCLUDED_GIFT_TYPES",
     "DEFAULT_EXCLUDED_LGL_GIFT_TYPES",
+    "DEFAULT_EXCLUDED_NEON_DONATION_TYPES",
     "DEFAULT_EXCLUDED_RECORD_TYPES",
     "DEFAULT_INCLUDED_GIFT_TRANSACTION_STATUSES",
     "DEFAULT_INCLUDED_REVENUE_TYPES",
@@ -148,6 +158,7 @@ __all__ = [
     "ellucian_advance_gifts_to_features",
     "little_green_light_gifts_to_features",
     "map_columns",
+    "neon_donations_to_features",
     "nonprofit_cloud_gifts_to_features",
     "npsp_opportunities_to_features",
     "raisers_edge_gifts_to_features",
@@ -160,6 +171,7 @@ __all__ = [
     "read_gifts",
     "read_gift_rows",
     "read_little_green_light_gifts",
+    "read_neon_donations",
     "read_nonprofit_cloud_gifts",
     "read_npsp_opportunities",
     "read_raisers_edge_gifts",

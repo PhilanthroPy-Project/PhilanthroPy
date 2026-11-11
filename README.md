@@ -43,9 +43,9 @@ One toolkit, two audiences:
 
 ### Maturity
 
-Single-maintainer MIT project. **`pip install philanthropy` gives you `0.9.0`**, the current release.
+Single-maintainer MIT project. `pip install philanthropy` installs the latest PyPI release (see the version badge above, or the [releases page](https://github.com/PhilanthroPy-Project/PhilanthroPy/releases)).
 
-`main` is ahead of it: `1.0.0` (freezes the API) is merged and green but deliberately unreleased, so the 0.x line gets a real usage window before that promise takes effect. Read the [CHANGELOG](CHANGELOG.md) for what is queued.
+`main` may be ahead of it; read the [CHANGELOG](CHANGELOG.md) for what is queued. `1.0.0`, which freezes the API, is planned but not cut, so the 0.x line gets a real usage window before that promise takes effect. What still stands between `main` and 1.0 is tracked in [#351](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/351).
 
 Preprocessing and the core classifiers are Tier 1; grateful-patient featurization and `philanthropy.ingest` are Tier 2 (Beta); `FinancialForecastModel` and `philanthropy.experimental.*` are Tier 3 (Experimental) and carry no API guarantees. From `1.0.0`, Tier 1 becomes semver-protected: breaking one requires a major release preceded by a full published minor of `DeprecationWarning`. Per-symbol tiers are in the [API reference](docs/reference/index.md).
 
@@ -68,6 +68,19 @@ cd PhilanthroPy
 pip install -e ".[dev]"
 ```
 </details>
+
+### Quick start without Python
+
+Installing also gives you a `philanthropy` command. Point it at a CRM gift export: `features` rolls it up to one row per donor, and `check` tells you whether a model beats the simple rule on your own file before you trust either.
+
+```bash
+philanthropy features --source civicrm --data gifts.csv --out features.csv
+philanthropy check --task lapse --source civicrm --data gifts.csv
+```
+
+![The two commands above running on a synthetic CiviCRM export: features writes one row per donor, and check reports that the model is about the same as the months-since-last-gift rule, so use the rule](https://raw.githubusercontent.com/PhilanthroPy-Project/PhilanthroPy/main/docs/assets/cli_demo.gif)
+
+*Synthetic data from `make_donor_panel`; recorded with [`scripts/record_demo_gif.py`](scripts/record_demo_gif.py).* More commands, including training and scoring: [No Python? Use the CLI](#no-python-use-the-cli) and the [CLI guide](docs/how-to/use_the_cli.md).
 
 ---
 
@@ -418,9 +431,11 @@ Questions are welcome in
 
 **Already using PhilanthroPy?** There is no telemetry in this package and there
 never will be, so
-[Are you using PhilanthroPy?](https://github.com/PhilanthroPy-Project/PhilanthroPy/discussions/158)
-is the only place adoption is visible. One reply is enough, and "evaluated it and
-passed" is more useful than a star.
+[Using PhilanthroPy? Tell us](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/369)
+and [ADOPTERS.md](ADOPTERS.md) are the only places adoption is visible. One comment
+is enough, and "evaluated it and passed" is more useful than a star. If you are
+happy to be named, add yourself to the adopters list through the
+[adopter form](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/new?template=adopter.yml).
 
 ---
 

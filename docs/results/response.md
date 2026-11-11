@@ -116,6 +116,28 @@ score = model.predict_affinity_score(X_new)
 call_first = np.argsort(-score)[:10]  # your top 10% of this list
 ```
 
+Check it on your file first. `compare_to_rule` runs this page's test on your own gift log: it trains on every complete fiscal
+year but the last, then compares the model's top 10% with the best of four rules (most recent
+gift first, lifetime total, consecutive years given, an RFM cell score) on the last one. A tie
+goes to the rule.
+
+```python
+from philanthropy.datasets import make_donor_panel
+from philanthropy.model_selection import compare_to_rule
+
+# Replace with your own gift log: one row per gift, with donor_id,
+# gift_date and gift_amount.
+gifts = make_donor_panel(n_donors=800, n_years=5, random_state=0)["gifts"]
+out = compare_to_rule(gifts, task="response")
+print(out["verdict"], "->", out["method"], "|", out["rule"])
+```
+
+Or from a raw CRM export, without Python:
+
+```bash
+philanthropy check --task response --source raisers_edge --data gifts.csv
+```
+
 ??? note "How we tested"
 
     Each tab says what date we pretended it was and what we checked. Results on your own file will

@@ -7,12 +7,84 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 - `philanthropy.ingest.neon_donations_to_features()` and
-  `read_neon_donations()` now provide a Neon CRM donation-export preset,
-  excluding pledge commitments by default while keeping pledge payments.
+  `read_neon_donations()` add a Neon CRM donation-export preset, also
+  reachable as `read_gifts(..., source="neon")` and `read_gift_rows`. It
+  drops Neon's `Pledge` and `Match Pledge` donation types by default and
+  keeps donations and pledge payments (closes #237).
+
+### Documentation
+- `CITATION.cff` now cites 0.10.0, the newest published release (Zenodo
+  version DOI 10.5281/zenodo.23990995). The concept DOI is unchanged.
+- The "How sure are we?" results page now says that a 90% range holds 90
+  in 100 gifts across all donors, not within each gift size: with the
+  default `score="absolute"` the largest gifts land inside it far less
+  often on all four real files. It points to `score="log"`, whose width
+  grows with the amount, as the main fix, and to `groups=` as a weaker one.
+
+## [0.10.0] - 2026-11-05
+
+### Added
+- `philanthropy.model_selection.rule_scores(snapshots, *, task, gifts=None,
+  rule=None)` scores rows with the rules `compare_to_rule` tries (upgrade,
+  lapse and response), one rule or all of them. Callers that built a list
+  from the rule check's verdict had to reimplement the winning rule's
+  ordering; pass `build_snapshots(..., score_period=FY)` rows and the
+  reported `rule` name instead.
+- `build_snapshots(..., score_period=FY)` builds unlabelled rows for one
+  fiscal year, with the same population and features its labelled rows
+  would have and no `target` column, so the current year can be scored with
+  a model trained on the labelled years without inventing a placeholder
+  following year. Gifts after `FY` are ignored, and `"next_amount"` scores
+  everyone who gave in `FY` rather than only those who give again. The
+  `build_snapshots` and `compare_to_rule` docstrings now say to judge which
+  year is complete by the export date, not the latest gift date.
+- `philanthropy.ingest.read_gift_rows(path_or_df, *, source, **kwargs)`: one
+  row per counted gift (`donor_id`, `gift_date`, `gift_amount`) after exactly
+  the filtering `read_gifts` applies for the same source, ready for
+  `build_snapshots` and `compare_to_rule`. Callers that built
+  `build_snapshots` input from a CRM export had to reach into each reader's
+  private row-filter helpers to get there. `philanthropy check` and
+  `train --task leadership` now read raw exports through it.
+- `compare_to_rule(task="response")` and `philanthropy check --task response`:
+  checks `DonorPropensityModel` on `build_snapshots(kind="response_next_year")`
+  against the best of most recent gift first, lifetime total, consecutive
+  years given and an RFM cell score, with the same top-10% metric, paired
+  bootstrap interval and verdicts as the other tasks. There is no measured
+  label floor for response, so it only needs both outcomes in the training
+  years. The Response Results page shows how to check it on your own file.
+- README: a "Quick start without Python" right after Installation, with a
+  recorded demo of `features` and `check` running on a synthetic CiviCRM export.
+  `scripts/record_demo_gif.py` re-records it from the real CLI output with
+  Pillow, so the GIF cannot drift from what the commands print (#363).
+- `ADOPTERS.md` and an "I use PhilanthroPy" issue form, linked from the README,
+  so a user has one place to say they use it (#364).
+- A Markdown "Question or something else" issue template. GitHub's community
+  profile counts only Markdown templates, so with just the two YAML forms the
+  Community tab reported no issue template at all (#365).
+- `philanthropy.ingest.blackbaud_crm_revenue_to_features` and
+  `read_blackbaud_crm_revenue`: a Blackbaud CRM revenue export bridge, alongside
+  the existing CiviCRM and Raiser's Edge ones. Reads a revenue acknowledgement
+  export, keeping only `Payment` revenue types by default
+  (`DEFAULT_INCLUDED_REVENUE_TYPES`); the `include_revenue_types` parameter
+  overrides the allowlist. An export with no revenue-type column warns rather
+  than summing pledges alongside their payments. Registered in the `read_gifts`
+  preset registry (#332).
+- Ellucian CRM Advance transaction-export ingest via
+  `ellucian_advance_gifts_to_features`, `read_ellucian_advance_gifts` and the
+  `read_gifts(..., source="ellucian_advance")` preset. Pledge types
+  (`Straight Pledge`, `Bequest Intention`, ...) are dropped by default and
+  pledge payments kept, matching the `Type` column's documented
+  `Straight Pledge (Primary)` form; the receipt number after `Date` is
+  stripped, and only the `Legal` (hard credit) amount is summed (#241).
 - Little Green Light gift-export ingest support via
   `little_green_light_gifts_to_features`, `read_little_green_light_gifts`, and
   the `read_gifts(..., source="little_green_light")` preset, with pledge
   commitments excluded from received-gift roll-ups by default.
+- `philanthropy check` and `philanthropy train --task leadership` accept all
+  nine `read_gifts` presets (adding `bloomerang`, `donorperfect`,
+  `blackbaud_crm`, `little_green_light` and `ellucian_advance`), and read each
+  one through the same row filter `features` uses. An unknown source now stops
+  with an error instead of being read as CiviCRM (closes #341).
 - Test covering the CLI's `_score_array` fallback to `predict_proba(X)[:, 1]`
   for a model with no `predict_affinity_score` (closes #53).
 - Test covering `FiscalYearGroupedSplitter.split` skipping a fold that has
@@ -46,7 +118,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   rate only. A group where the metric is undefined gets NaN.
 - `philanthropy.model_selection.compare_to_rule(gifts, task=...)` checks, on
   the caller's own gift log, whether the model or the simple rule should rank
-  donors for upgrade, lapse or ask. It trains on every labelled
+  donors for upgrade, lapse, ask or response. It trains on every labelled
   fiscal year but the last, tests on the last complete one, and compares the
   model against the best of the same fixed rule sets the Results pages use
   (top-10% hit rate, or mean absolute error for ask), with a paired bootstrap
@@ -60,7 +132,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   function's own held-out fold and model, against the same three upgrade
   rules. The existing `baseline_*` and `lift_*` keys are unchanged. Because
   `train --task leadership` prints every report key, the CLI shows it too.
-- `philanthropy check --task {upgrade,lapse,ask} --source ... --data ...`
+- `philanthropy check --task {upgrade,lapse,ask,response} --source ... --data ...`
   runs `compare_to_rule` on a raw CRM gift export and prints the verdict, in
   the Results pages' words, and which list to use (the model or the rule).
 - Models take CRM exports as they come. `AskAmountRecommender`'s
@@ -104,6 +176,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `False` leaves every other caller's columns unchanged.
 
 ### Changed
+- README: the Maturity section no longer hardcodes the release number, so it
+  cannot go stale; it points to the PyPI badge and the releases page.
 - `LapsePredictor` now defaults to `backend="hist_gradient_boosting"`. Picked
   on a validation year held out from every published test year, it ranked
   likely lapsers better than the old unbounded random forest on every
@@ -116,7 +190,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   it has no effect, so code tuned for the old forest default doesn't
   silently fit a different model.
 
+### Documentation
+- `read_gifts`' docstring points at `GIFT_SOURCES` instead of naming some of
+  the sources, and the `GIFT_SOURCES` and registry comments no longer refer
+  to CLI code (closes #360).
+
 ### Fixed
+- README and `ADOPTERS.md` point to the pinned adopter issue (#369)
+  instead of Discussion #158, which is now closed.
+- The README's Maturity block no longer says `1.0.0` is merged on `main`; it
+  is planned, with its blockers in #351. The bug form's version placeholder no
+  longer suggests `0.7.0` (#362).
 - `MajorGiftClassifier(monotonic_cst={"column": 1})` raised on a DataFrame,
   because the backend saw a NumPy array without column names. Dict keys are
   now resolved to positions first, as on the other boosting models.
@@ -133,6 +217,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   column, and an NPSP export carrying both Account ID and Primary Contact is
   keyed by Account, as `features` keys it, instead of by whichever column came
   first.
+- `philanthropy features --source` accepts every `GIFT_SOURCES` preset, including
+  `bloomerang`, `donorperfect` and `blackbaud_crm`, through `read_gifts` (closes #338).
 
 ## [0.9.0] - 2026-10-12
 
@@ -536,15 +622,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   `Failed`, `Pending`, `Written Off`, and `Fully Refunded` installments are not
   summed as gifts. Wired into the CLI as `philanthropy features --source nonprofit_cloud`
   and registered in the `read_gifts` preset registry.
-- `philanthropy.ingest.blackbaud_crm_revenue_to_features` and
-  `read_blackbaud_crm_revenue`: a Blackbaud CRM revenue export bridge, alongside
-  the existing CiviCRM and Raiser's Edge ones. Reads a revenue acknowledgement
-  export, keeping only `Payment` revenue types by default
-  (`DEFAULT_INCLUDED_REVENUE_TYPES`); the `include_revenue_types` parameter
-  overrides the allowlist. An export with no revenue-type column warns rather
-  than summing pledges alongside their payments. Registered in the `read_gifts`
-  preset registry.
-
 
 ### Changed
 - The docs workflow builds on Python 3.13 instead of 3.10. pymdown-extensions

@@ -63,6 +63,7 @@ def build_snapshots(
     fiscal_year_start: int = 7,
     scale_free: bool = False,
     cadence: bool = False,
+    score_period: Optional[int] = None,
 ) -> pd.DataFrame:
     """Build labelled donor x fiscal-year snapshots for one question.
 
@@ -95,6 +96,18 @@ def build_snapshots(
     cadence : bool, default=False
         Also emit :data:`CADENCE_COLUMNS` (see :func:`period_snapshots`).
         Recommended for ``kind="lapse"``.
+    score_period : int, optional
+        Build unlabelled rows for this one fiscal year instead, to score it
+        with a model trained on the labelled years: the same population and
+        the same features the labelled rows for that year would have, from
+        gifts dated at or before its end, and no ``target`` column. Gifts
+        after it are ignored, so it may be the current, unfinished fiscal
+        year, and the population never depends on what happens after it
+        (``"next_amount"`` scores everyone who gave in it). Must not be
+        after the file's last fiscal year; cannot be combined with
+        ``fiscal_years``. Which year is the last complete one depends on
+        the export date, not the latest gift date: a file pulled two weeks
+        before year end still holds an unfinished year.
 
     Returns
     -------
@@ -102,7 +115,8 @@ def build_snapshots(
         Indexed by ``donor_id``, sorted by ``period`` then ``donor_id``:
         ``period`` (the fiscal year T), :data:`CORE_COLUMNS`,
         ``gift_count`` (gifts in T), ``months_since_last_gift`` (to the end
-        of T), the scale-free columns when asked, and ``target``.
+        of T), the scale-free columns when asked, and ``target`` (absent
+        with ``score_period``).
 
     Examples
     --------
@@ -123,15 +137,30 @@ def build_snapshots(
     giving years by then.
     """
     validate_fiscal_year_start(fiscal_year_start)
+    if score_period is not None and fiscal_years is not None:
+        raise ValueError("Pass score_period or fiscal_years, not both.")
     df, pivot_sum, pivot_max, pivot_count = _prepare_gifts(gifts, fiscal_year_start)
     if df.empty:
         return pd.DataFrame(index=pd.Index([], name="donor_id"))
     # Fiscal years are contiguous: a year with no gift at all on file is
     # still a period in which every donor gave $0.
     years = list(range(int(df["_fy"].min()), int(df["_fy"].max()) + 1))
+    if score_period is not None:
+        score_period = int(score_period)
+        if score_period > years[-1]:
+            raise ValueError(
+                f"score_period={score_period} is after the last fiscal year in the file ({years[-1]})."
+            )
+        # Drop every later year, then add a placeholder following year in
+        # which every donor gave, so period_snapshots keeps the year without
+        # reading anything from after it; its "target" is dropped below.
+        years = [y for y in years if y <= score_period] + [score_period + 1]
+        fiscal_years = [score_period]
     totals = pivot_sum.reindex(columns=years, fill_value=0.0).fillna(0.0)
     largest = pivot_max.reindex(columns=years, fill_value=0.0).fillna(0.0)
     counts = pivot_count.reindex(columns=years, fill_value=0).fillna(0)
+    if score_period is not None:
+        totals[score_period + 1] = 1.0
 
     snap = period_snapshots(
         totals, kind=kind, largest=largest, counts=counts, periods=fiscal_years,
@@ -151,7 +180,8 @@ def build_snapshots(
         last_date[int(p)].get(d, np.nan) for d, p in zip(snap.index, snap["period"])
     ]
     target = snap.pop("target")
-    snap["target"] = target
+    if score_period is None:
+        snap["target"] = target
     return snap
 
 

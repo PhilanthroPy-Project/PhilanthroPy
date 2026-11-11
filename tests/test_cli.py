@@ -321,6 +321,20 @@ def test_cli_features_missing_data_file_exits(tmp_path):
               "--data", str(tmp_path / "nope.csv")])
 
 
+def test_cli_features_accepts_every_gift_source():
+    """Argparse choices must track ingest.GIFT_SOURCES so a new reader is
+    accepted without another CLI edit (#338)."""
+    from philanthropy.cli import _build_parser
+    from philanthropy.ingest import GIFT_SOURCES
+
+    parser = _build_parser()
+    for source in GIFT_SOURCES:
+        args = parser.parse_args(
+            ["features", "--source", source, "--data", "gifts.csv"]
+        )
+        assert args.source == source
+
+
 def test_cli_features_help_lists_the_columns_it_actually_emits(tmp_path):
     """The help text is what tells an analyst what to pass to `train
     --features`, so it must not drift from the real frame."""
@@ -562,7 +576,7 @@ def _make_panel_export(tmp_path):
     return path
 
 
-@pytest.mark.parametrize("task", ["upgrade", "lapse", "ask"])
+@pytest.mark.parametrize("task", ["upgrade", "lapse", "ask", "response"])
 def test_cli_check_prints_the_compare_to_rule_verdict(tmp_path, capsys, task):
     from philanthropy.model_selection import compare_to_rule
 
@@ -575,7 +589,7 @@ def test_cli_check_prints_the_compare_to_rule_verdict(tmp_path, capsys, task):
     expected = compare_to_rule(_read_raw_gifts("raisers_edge", str(data)), task=task)
     assert f"verdict: {expected['verdict']}\n" in out
     assert f"use: the {expected['method']}\n" in out
-    assert f"rule: {expected['rule']} (best of 3)" in out
+    assert f"rule: {expected['rule']} (best of {expected['n_rules_tried']})" in out
 
 
 def test_cli_check_one_year_cannot_test(tmp_path, capsys):
@@ -615,6 +629,36 @@ _RAW_GIFT_EXPORTS = {
         "1,2025-01-10,1000,Cancelled",
         "1,2025-02-10,100,Completed",
     ),
+    "bloomerang": (
+        "Account Number,Date,Amount,Transaction Type",
+        "1,2025-01-10,1000,Pledge",
+        "1,2025-02-10,100,PledgePayment",
+    ),
+    "donorperfect": (
+        "Donor ID,Gift Date,Gift Amount,Record Type",
+        "1,2025-01-10,1000,P",
+        "1,2025-02-10,100,G",
+    ),
+    "blackbaud_crm": (
+        "Constituent ID,Date,Amount,Revenue Type",
+        "1,2025-01-10,1000,Pledge",
+        "1,2025-02-10,100,Payment",
+    ),
+    "little_green_light": (
+        "LGL Constituent ID,Gift date,Amount,Gift type",
+        "1,2025-01-10,1000,Pledge",
+        "1,2025-02-10,100,Gift",
+    ),
+    "ellucian_advance": (
+        "Entity ID,Date,Legal,Type",
+        "1,2025-01-10,1000,Straight Pledge (Primary)",
+        "1,2025-02-10,100,Pledge Payment",
+    ),
+    "neon": (
+        "Account ID,Donation Date,Donation Amount,Donation Type",
+        "1,2025-01-10,1000,Pledge",
+        "1,2025-02-10,100,Pledge Payment",
+    ),
 }
 
 
@@ -640,3 +684,26 @@ def test_raw_gift_log_names_missing_fields_instead_of_a_traceback(tmp_path):
     path.write_text("Constituent ID,Gift Amount\n1,100\n")
     with pytest.raises(SystemExit, match="missing"):
         _read_raw_gifts("raisers_edge", str(path))
+
+
+def test_read_raw_gifts_rejects_an_unknown_source(tmp_path):
+    from philanthropy.cli import _read_raw_gifts
+
+    path = tmp_path / "gifts.csv"
+    path.write_text("Constituent ID,Gift Date,Gift Amount\n1,2025-01-10,100\n")
+    with pytest.raises(SystemExit, match="Unknown gift source"):
+        _read_raw_gifts("not_a_source", str(path))
+
+
+@pytest.mark.parametrize("source", sorted(_RAW_GIFT_EXPORTS))
+def test_check_and_train_accept_every_gift_source(tmp_path, capsys, source):
+    from philanthropy.cli import _build_parser
+
+    path = tmp_path / f"{source}.csv"
+    path.write_text("\n".join(_RAW_GIFT_EXPORTS[source]) + "\n")
+    main(["check", "--task", "lapse", "--source", source, "--data", str(path)])
+    assert capsys.readouterr().out.startswith("verdict: can't test")
+    args = _build_parser().parse_args(
+        ["train", "--task", "leadership", "--source", source, "--data", str(path), "--out", "m.joblib"]
+    )
+    assert args.source == source

@@ -134,7 +134,7 @@ mail to.
 
 ## Check the model against the simple rule on your own file
 
-`check` reads a raw gift export the way `features` does and runs `philanthropy.model_selection.compare_to_rule` on it. It trains on every labelled fiscal year but the last, then compares the model with the best of a few rules fixed in code (for lapse: months since last gift, shortest giving streak, declining trend) on your last complete fiscal year. `--task` is `upgrade`, `lapse` or `ask`.
+`check` reads a raw gift export the way `features` does and runs `philanthropy.model_selection.compare_to_rule` on it. It trains on every labelled fiscal year but the last, then compares the model with the best of a few rules fixed in code (for lapse: months since last gift, shortest giving streak, declining trend; for response: most recent gift first, lifetime total, consecutive years given, an RFM cell score) on your last complete fiscal year. `--task` is `upgrade`, `lapse`, `ask` or `response`.
 
 ```bash
 philanthropy check --task lapse --source npsp --data opportunities.csv

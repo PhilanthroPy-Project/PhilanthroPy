@@ -78,7 +78,11 @@ contribution. Code, docs, tests, and review all count.
   timezone-localisation fallback in `EncounterRecencyTransformer`, preserving
   the useful invalid-timezone error, and added coverage for the optional
   `RFMTransformer(include_tenure=True)` output contract, then linked the
-  temporal-leakage tutorial to the measured KDD Cup 1998 replication result
+  temporal-leakage tutorial to the measured KDD Cup 1998 replication result,
+  and added the Ellucian CRM Advance gift reader
+  ([#241](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/241))
+  and the Neon CRM donation reader
+  ([#237](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/237))
   (closes
   [#201](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/201),
   [#150](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/150),
@@ -114,6 +118,10 @@ contribution. Code, docs, tests, and review all count.
   [#238](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/238)).
 - [@vridhib](https://github.com/vridhib): added a Salesforce Nonprofit Cloud GiftTransaction ingest reader (closes [#234](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/234)), and added a Blackbaud CRM Revenue ingest reader (closes
   [#240](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/240))
+
+- [@ShahadatTest](https://github.com/ShahadatTest): CLI gift-source registry support
+  and regression tests for `features --source` (#338; AI-assisted).
+- [@Sudhakar7J](https://github.com/Sudhakar7J): extended `philanthropy check` and `philanthropy train --task leadership` to every `read_gifts` source, reading each through the same row filter `features` uses (closes #341).
 
 ## Getting listed
 

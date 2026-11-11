@@ -50,7 +50,7 @@ def test_pledge_is_excluded_and_pledge_payment_is_kept(donations):
     assert int(feats.loc["88", "gift_count"]) == 2
 
 
-@pytest.mark.parametrize("donation_type", ["Pledge", "Matching Pledge"])
+@pytest.mark.parametrize("donation_type", ["Pledge", "Match Pledge"])
 def test_default_excluded_types_are_dropped(donation_type):
     rows = [
         {"Account ID": "1", "Donation Date": "2025-01-01",
@@ -64,7 +64,7 @@ def test_default_excluded_types_are_dropped(donation_type):
 
 @pytest.mark.parametrize(
     "donation_type",
-    ["pledge", "PLEDGE", "  Pledge  ", "MatchingPledge", "matching_pledge"],
+    ["pledge", "PLEDGE", "  Pledge  ", "MatchPledge", "match_pledge"],
 )
 def test_exclusion_matching_ignores_case_spacing_and_punctuation(donation_type):
     rows = [
@@ -120,25 +120,34 @@ def test_exclude_none_does_not_warn_about_a_missing_donation_type_column():
 
 def test_default_excluded_set_is_documented_and_non_empty():
     assert "Pledge" in DEFAULT_EXCLUDED_NEON_DONATION_TYPES
-    assert "Matching Pledge" in DEFAULT_EXCLUDED_NEON_DONATION_TYPES
+    assert "Match Pledge" in DEFAULT_EXCLUDED_NEON_DONATION_TYPES
 
 
 def test_api_field_names_are_accepted():
     rows = [
-        {"linkedAccountId": "7", "date": "2025-05-01", "amount": "300.00",
-         "type": "Donation"},
-        {"linkedAccountId": "7", "date": "2025-05-02", "amount": "999.00",
-         "type": "Pledge"},
+        {"accountId": "7", "date": "2025-05-01", "amount": "300.00",
+         "fund": "General"},
+        {"accountId": "7", "date": "2025-05-02", "amount": "50.00",
+         "fund": "Research"},
     ]
-    feats = neon_donations_to_features(rows)
-    assert float(feats.loc["7", "total_gift_amount"]) == 300.0
+    feats = neon_donations_to_features(rows, exclude_donation_types=None)
+    assert float(feats.loc["7", "total_gift_amount"]) == 350.0
+    assert int(feats.loc["7", "distinct_financial_types"]) == 2
+
+
+def test_a_bare_type_column_is_not_taken_as_the_donation_type():
+    rows = [{"Account ID": "1", "Donation Date": "2025-01-01",
+             "Donation Amount": "500.00", "Type": "Pledge"}]
+    with pytest.warns(UserWarning, match="no donation type column"):
+        feats = neon_donations_to_features(rows)
+    assert float(feats.loc["1", "total_gift_amount"]) == 500.0
 
 
 def test_export_labels_and_api_names_agree(donations):
     api = [
-        {"linkedAccountId": t["Account ID"], "date": t["Donation Date"],
-         "amount": t["Donation Amount"], "type": t["Donation Type"],
-         "fundName": t["Fund"], "email": t["Email"],
+        {"accountId": t["Account ID"], "date": t["Donation Date"],
+         "amount": t["Donation Amount"], "Donation Type": t["Donation Type"],
+         "fund": t["Fund"], "email": t["Email"],
          "first_name": t["First Name"], "last_name": t["Last Name"]}
         for t in donations
     ]
@@ -199,7 +208,7 @@ def test_missing_required_column_names_the_neon_fields():
         neon_donations_to_features(rows)
     message = str(excinfo.value)
     assert "Neon" in message
-    assert "donation date" in message
+    assert "Donation Date" in message
     assert "CiviCRM" not in message
 
 

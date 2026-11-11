@@ -35,16 +35,12 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 import pandas as pd
 
 from . import __version__
-
-# Gift-export readers `features` can front. Each name maps to a
-# (reader, aggregator) pair in _cmd_features.
-_FEATURE_SOURCES = ("civicrm", "raisers_edge", "npsp", "nonprofit_cloud")
 
 # The donor-level columns `features` emits, in order. Named here so
 # `philanthropy features --help` answers "what do I pass to --features?"
@@ -124,51 +120,24 @@ def _read_activities(activity_specs: Sequence[str]) -> pd.DataFrame:
 
 
 def _read_raw_gifts(source: str, path: str) -> pd.DataFrame:
-    """Read a raw CRM gift export and normalise it to ``donor_id`` /
-    ``gift_date`` / ``gift_amount``, the shape ``score_leadership_prospects``
-    (via ``build_leadership_snapshots``) needs.
-
-    Keeps exactly the rows the source's ``*_to_features`` aggregator counts,
-    through the same row-filter helpers: a Raiser's Edge pledge, an NPSP open
-    stage, an unpaid Nonprofit Cloud schedule, or a cancelled or test-mode
-    CiviCRM contribution is not a gift here either. Renaming the three
-    canonical columns to the gift-log names is the only new logic.
+    """Read a raw CRM gift export as ``donor_id`` / ``gift_date`` /
+    ``gift_amount`` rows, the shape ``score_leadership_prospects`` and
+    ``compare_to_rule`` need, through :func:`philanthropy.ingest.read_gift_rows`,
+    so it keeps exactly the rows ``features`` counts for the same source.
     """
-    from . import ingest
-    from .ingest._civicrm import _civicrm_received_rows
-    from .ingest._nonprofit_cloud import _nonprofit_cloud_received_rows
-    from .ingest._npsp import _npsp_received_rows
-    from .ingest._raisers_edge import _raisers_edge_received_rows
+    from .ingest import read_gift_rows
     from .utils._validation import ensure_local_path
 
     ensure_local_path(path, "data")
     try:
-        if source == "raisers_edge":
-            raw = _raisers_edge_received_rows(ingest.read_raisers_edge_gifts(path))
-        elif source == "npsp":
-            raw = _npsp_received_rows(ingest.read_npsp_opportunities(path))
-        elif source == "nonprofit_cloud":
-            raw = _nonprofit_cloud_received_rows(ingest.read_nonprofit_cloud_gifts(path))
-        else:
-            raw = ingest.read_civicrm_contributions(path)
+        return read_gift_rows(path, source=source)
+    except ValueError as exc:  # unknown source
+        raise SystemExit(str(exc))
     except FileNotFoundError:
         raise SystemExit(f"Data file not found: {path}")
     except KeyError as exc:
         # Same as `features`: the bridge names the missing export fields.
         raise SystemExit(str(exc.args[0] if exc.args else exc))
-
-    missing = [c for c in ("contact_id", "receive_date", "total_amount") if c not in raw.columns]
-    if missing:
-        raise SystemExit(
-            f"Column(s) {missing} not found in {path} after normalisation. "
-            f"Available: {list(raw.columns)}."
-        )
-    # Dedup by id and drop test-mode rows for every source; the Completed
-    # status filter is CiviCRM's alone (the other bridges filtered above).
-    raw = _civicrm_received_rows(raw, ("Completed",) if source == "civicrm" else None)
-    return raw.rename(
-        columns={"contact_id": "donor_id", "receive_date": "gift_date", "total_amount": "gift_amount"}
-    )
 
 
 def _load_bundle(path: str) -> Dict[str, Any]:
@@ -363,28 +332,11 @@ def _cmd_features(args: argparse.Namespace) -> None:
     from . import ingest
     from .utils._validation import ensure_local_path
 
-    read: Callable[..., pd.DataFrame]
-    to_features: Callable[..., pd.DataFrame]
-    if args.source == "raisers_edge":
-        read = ingest.read_raisers_edge_gifts
-        to_features = ingest.raisers_edge_gifts_to_features
-    elif args.source == "npsp":
-        read = ingest.read_npsp_opportunities
-        to_features = ingest.npsp_opportunities_to_features
-    elif args.source == "nonprofit_cloud":
-        read = ingest.read_nonprofit_cloud_gifts
-        to_features = ingest.nonprofit_cloud_gifts_to_features
-    else:
-        read = ingest.read_civicrm_contributions
-        to_features = ingest.civicrm_contributions_to_features
-
     ensure_local_path(args.data, "data")
     try:
-        gifts = read(args.data)
+        features = ingest.read_gifts(args.data, source=args.source)
     except FileNotFoundError:
         raise SystemExit(f"Data file not found: {args.data}")
-    try:
-        features = to_features(gifts)
     except KeyError as exc:
         # The aggregators name the missing export fields; that message is the
         # whole answer, so surface it instead of a traceback.
@@ -439,6 +391,8 @@ def _cmd_check(args: argparse.Namespace) -> None:
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    from .ingest import GIFT_SOURCES
+
     parser = argparse.ArgumentParser(
         prog="philanthropy",
         description="Train, score, and validate PhilanthroPy models from CSV files.",
@@ -467,7 +421,7 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     features.add_argument(
-        "--source", required=True, choices=_FEATURE_SOURCES,
+        "--source", required=True, choices=GIFT_SOURCES,
         help="which CRM the export came from",
     )
     features.add_argument(
@@ -497,7 +451,7 @@ def _build_parser() -> argparse.ArgumentParser:
     train.add_argument("--model", default="DonorPropensityModel", choices=_MODEL_CHOICES)
     train.add_argument("--out", required=True, help="output model bundle (plain) or scored CSV (leadership)")
     train.add_argument("--random-state", type=int, default=0, dest="random_state")
-    train.add_argument("--source", default=None, choices=_FEATURE_SOURCES,
+    train.add_argument("--source", default=None, choices=GIFT_SOURCES,
                         help="which CRM the gift export came from (leadership)")
     train.add_argument("--threshold", type=float, default=1000.0,
                         help="leadership-giving level an upgrade crosses into (leadership)")
@@ -557,8 +511,8 @@ def _build_parser() -> argparse.ArgumentParser:
             "list to use. A tie goes to the rule."
         ),
     )
-    check.add_argument("--task", required=True, choices=("upgrade", "lapse", "ask"))
-    check.add_argument("--source", required=True, choices=_FEATURE_SOURCES,
+    check.add_argument("--task", required=True, choices=("upgrade", "lapse", "ask", "response"))
+    check.add_argument("--source", required=True, choices=GIFT_SOURCES,
                         help="which CRM the gift export came from")
     check.add_argument("--data", required=True, help="raw gift export CSV")
     check.add_argument("--threshold", type=float, default=1000.0,

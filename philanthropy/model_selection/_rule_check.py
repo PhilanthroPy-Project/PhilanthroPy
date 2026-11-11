@@ -25,25 +25,31 @@ from philanthropy.ingest._upgrade_snapshots import _fy_end, _prepare_gifts
 from philanthropy.utils._label_floor import check_label_floor
 from philanthropy.utils._validation import fiscal_year_for, validate_fiscal_year_start
 
-__all__ = ["compare_to_rule"]
+__all__ = ["compare_to_rule", "rule_scores"]
 
-TASKS = ("upgrade", "lapse", "ask")
+TASKS = ("upgrade", "lapse", "ask", "response")
 
 _KIND = {
-    "upgrade": "upgrade", "lapse": "lapse", "ask": "next_amount",
+    "upgrade": "upgrade", "lapse": "lapse", "ask": "next_amount", "response": "response_next_year",
 }
 # Lapse is asked about donors with at least two giving years, the donors a
 # retention program can act on, as on the Results pages.
-_MIN_YEARS_GIVEN = {"upgrade": 1, "lapse": 2, "ask": 1}
+_MIN_YEARS_GIVEN = {"upgrade": 1, "lapse": 2, "ask": 1, "response": 1}
 _LABEL_FLOOR_TASK = {"upgrade": "major_gift", "lapse": "lapse"}
 _TOP_FRACTION = 0.10
 
 
 # The rule sets, fixed here before any run (the same ones
 # scripts/benchmark_models_vs_baselines.py scores the Results pages
-# against). Each maps a name to a score over the test rows; higher means
-# "more likely" for the three classifiers and is the predicted amount for ask.
-def _rules(task: str, test: pd.DataFrame, y_train: np.ndarray) -> Dict[str, np.ndarray]:
+# against; response adds most recent gift first and consecutive years given
+# to that script's lifetime total and RFM cell score). Each maps a name to a
+# score over the test rows; higher means "more likely" for the classifiers
+# and is the predicted amount for ask.
+# ``lifetime`` (response only) holds each test donor's gift count and total
+# through the test year.
+def _rules(
+    task: str, test: pd.DataFrame, y_train: np.ndarray, lifetime: Optional[pd.DataFrame] = None,
+) -> Dict[str, np.ndarray]:
     if task == "upgrade":
         return {
             "this-year total": test["period_total"].to_numpy(),
@@ -56,12 +62,50 @@ def _rules(task: str, test: pd.DataFrame, y_train: np.ndarray) -> Dict[str, np.n
             "shortest giving streak": -test["consecutive_periods_given"].to_numpy(),
             "declining trend": -test["period_trend"].to_numpy(),
         }
+    if task == "response":
+        months = test["months_since_last_gift"].to_numpy()
+        streak = test["consecutive_periods_given"].to_numpy()
+        # Most recent gift first, ties broken by the longer streak, then the
+        # larger total: rank position as a score, so the first row scores highest.
+        order = np.lexsort((-test["period_total"].to_numpy(), -streak, months))
+        recent_first = np.empty(len(test))
+        recent_first[order] = -np.arange(len(test), dtype="float64")
+        assert lifetime is not None
+        count, total = lifetime["count"].to_numpy(), lifetime["total"].to_numpy()
+        return {
+            "most recent gift first": recent_first,
+            "lifetime total": total,
+            "consecutive years given": streak.astype("float64"),
+            "RFM cell score": _rfm_score(months, count, total),
+        }
     last_total = test["period_total"].to_numpy()
     return {
         "last period's total": last_total,
         "max(last period's total, average training next-gift)": np.maximum(last_total, float(y_train.mean())),
         "median training next-gift": np.full(len(test), float(np.median(y_train))),
     }
+
+
+def _lifetime(df: pd.DataFrame, snap: pd.DataFrame) -> pd.DataFrame:
+    """Each row's gift count and total through the end of its own fiscal
+    year, from ``_prepare_gifts`` output."""
+    period = snap["period"].to_numpy()
+    count, total = np.full(len(snap), np.nan), np.full(len(snap), np.nan)
+    for fy in np.unique(period):
+        through = df[df["_fy"] <= fy].groupby("donor_id")["_amount"]
+        rows = period == fy
+        count[rows] = through.size().reindex(snap.index[rows]).to_numpy()
+        total[rows] = through.sum().reindex(snap.index[rows]).to_numpy()
+    return pd.DataFrame({"count": count, "total": total}, index=snap.index)
+
+
+def _rfm_score(recency: np.ndarray, frequency: np.ndarray, monetary: np.ndarray) -> np.ndarray:
+    """Recency + frequency + monetary percentile-rank sum, the segmentation
+    most CRMs build in. Lower recency (months since the last gift) is better."""
+    def pct(values: np.ndarray) -> np.ndarray:
+        return pd.Series(values).rank(pct=True).to_numpy()
+
+    return pct(-recency) + pct(frequency) + pct(monetary)
 
 
 def _top_rate(y_true: np.ndarray, score: np.ndarray) -> float:
@@ -142,22 +186,29 @@ def compare_to_rule(
     ----------
     gifts : iterable of mapping, or DataFrame
         Gift-level rows with ``donor_id``, ``gift_date`` and ``gift_amount``.
-    task : {"upgrade", "lapse", "ask"}
+    task : {"upgrade", "lapse", "ask", "response"}
         Which question: will the donor reach ``threshold`` next year (from
-        inside ``band``), stop giving, or how much will they give next year
-        given that they do.
+        inside ``band``), stop giving, how much will they give next year
+        given that they do, or will anyone who has ever given give next
+        year. The response rules are most recent gift first, lifetime
+        total, consecutive years given, and an RFM cell score.
     as_of : str or Timestamp, optional
         Gifts after this date are ignored, and only fiscal years whose
         following year is complete by ``as_of`` can carry a label, so a
         partial current year never masquerades as "gave nothing". Defaults
-        to the latest gift date in ``gifts``.
+        to the latest gift date in ``gifts``; pass the date the export was
+        pulled when you know it, since a file whose last gift falls just
+        before a year end cannot tell a quiet last fortnight from an
+        unfinished year.
     fiscal_year_start : int, default=7
         Month (1-12) the fiscal year begins.
     threshold, band : float, (float, float)
         The upgrade question's leadership level and candidate band; ignored
         by the other tasks.
     n_bootstrap : int, default=1000
-        Resamples behind the interval.
+        Resamples behind the interval. Most of the run time is the model
+        fit, not the resamples: in Pyodide 0.29 a response check with a
+        90,000-row test year took about 40 s at 1000 and 24 s at 200.
     random_state : int, default=0
         Seed for the model fit and the bootstrap.
 
@@ -176,7 +227,9 @@ def compare_to_rule(
         ``model - rule`` (``None`` when the model was not fit); and
         ``label_floor``, :func:`~philanthropy.utils.check_label_floor`'s
         answer on the training labels (``None`` for ask, which has no
-        floor and instead needs 20 training and 5 test rows).
+        floor and instead needs 20 training and 5 test rows, and for
+        response, which has no measured floor and only needs both outcomes
+        among the training labels).
 
     Raises
     ------
@@ -243,13 +296,18 @@ def compare_to_rule(
     report.update({"test_fiscal_year": test_fy, "n_train": int(len(train)), "n_test": int(len(test))})
 
     metric = _mae if task == "ask" else _top_rate
-    rules = _rules(task, test, y_train)
+    lifetime = _lifetime(df, test) if task == "response" else None
+    rules = _rules(task, test, y_train, lifetime)
     scored = {name: metric(y_test, score) for name, score in rules.items()}
     best = (min if task == "ask" else max)(scored, key=lambda name: scored[name])
     report.update({"rule": best, "n_rules_tried": len(rules), "rule_value": scored[best]})
 
     if task == "ask":
         enough = len(train) >= 20 and len(test) >= 5
+    elif task == "response":
+        # LABEL_FLOORS has no measured floor for response, so this only asks
+        # for a classifier that can be fit: both outcomes in the training years.
+        enough = np.unique(y_train).size == 2
     else:
         report["label_floor"] = check_label_floor(y_train, _LABEL_FLOOR_TASK[task])
         enough = report["label_floor"] == "run"
@@ -260,7 +318,7 @@ def compare_to_rule(
     # Imported here: philanthropy.models already imports this subpackage
     # for FiscalYearGroupedSplitter, so a module-level import would cycle.
     from philanthropy.models import (
-        AskAmountRecommender, LapsePredictor, MajorGiftClassifier,
+        AskAmountRecommender, DonorPropensityModel, LapsePredictor, MajorGiftClassifier,
     )
 
     X_train = train[feature_cols].fillna(0.0).to_numpy("float64")
@@ -269,9 +327,88 @@ def compare_to_rule(
         model_score = AskAmountRecommender(random_state=random_state).fit(X_train, y_train).predict(X_test)
     elif task == "lapse":
         model_score = LapsePredictor(random_state=random_state).fit(X_train, y_train).predict_lapse_score(X_test)
+    elif task == "response":
+        model = DonorPropensityModel(random_state=random_state).fit(X_train, y_train)
+        model_score = model.predict_proba(X_test)[:, 1]
     else:
         model_score = MajorGiftClassifier(random_state=random_state).fit(X_train, y_train).predict_proba(X_test)[:, 1]
     model_score = np.asarray(model_score, dtype="float64")
 
     report.update(_verdict(task, y_test, model_score, rules[best], n_bootstrap, random_state))
     return report
+
+
+def rule_scores(
+    snapshots: pd.DataFrame,
+    *,
+    task: str,
+    gifts: Optional[Union[Iterable[Mapping], pd.DataFrame]] = None,
+    rule: Optional[str] = None,
+    fiscal_year_start: int = 7,
+) -> Union[pd.DataFrame, pd.Series]:
+    """Score donor rows with the simple rules :func:`compare_to_rule` tries.
+
+    When the check says to use the rule, this builds that rule's list: pass
+    the rows to rank, typically ``build_snapshots(gifts, kind=...,
+    score_period=FY)`` for the year being worked, and the rule name the
+    check returned. Higher scores rank first. Ranking rules (most recent
+    gift first, the RFM cell score) rank within the rows given, so pass one
+    fiscal year at a time.
+
+    Parameters
+    ----------
+    snapshots : DataFrame
+        :func:`~philanthropy.ingest.build_snapshots` rows for ``task``'s
+        kind (``"upgrade"``, ``"lapse"`` or ``"response_next_year"``),
+        indexed by donor, with a ``period`` column. ``target`` is not used.
+    task : {"upgrade", "lapse", "response"}
+        Which rule set. Ask's rules depend on the training years' targets
+        and are not scored here; use :func:`compare_to_rule`.
+    gifts : iterable of mapping, or DataFrame, optional
+        The gift log the rows were built from. Required for ``"response"``,
+        whose lifetime-total and RFM rules read each donor's gifts through
+        the end of the row's fiscal year.
+    rule : str, optional
+        One rule name, as :func:`compare_to_rule` reports it in ``rule``.
+        Default: every rule for ``task``.
+    fiscal_year_start : int, default=7
+        Month (1-12) the fiscal year begins, as used to build ``snapshots``.
+
+    Returns
+    -------
+    Series or DataFrame
+        The named rule's scores, or one column per rule, indexed like
+        ``snapshots``.
+
+    Raises
+    ------
+    ValueError
+        If ``task`` is unknown or ``"ask"``, ``rule`` is not one of the
+        task's rules, or ``gifts`` is missing for ``"response"``.
+
+    Examples
+    --------
+    >>> from philanthropy.datasets import make_donor_panel
+    >>> from philanthropy.ingest import build_snapshots
+    >>> from philanthropy.model_selection import rule_scores
+    >>> gifts = make_donor_panel(n_donors=200, n_years=4, random_state=0)["gifts"]
+    >>> rows = build_snapshots(gifts, kind="lapse", fiscal_years=[2020])
+    >>> scores = rule_scores(rows, task="lapse", rule="months since last gift")
+    >>> call_first = scores.sort_values(ascending=False).index[:10]
+    >>> len(call_first)
+    10
+    """
+    if task not in TASKS or task == "ask":
+        raise ValueError(f"task must be one of {tuple(t for t in TASKS if t != 'ask')}; got {task!r}.")
+    lifetime = None
+    if task == "response":
+        if gifts is None:
+            raise ValueError("task='response' needs gifts for its lifetime-total and RFM rules.")
+        validate_fiscal_year_start(fiscal_year_start)
+        lifetime = _lifetime(_prepare_gifts(gifts, fiscal_year_start)[0], snapshots)
+    scores = pd.DataFrame(_rules(task, snapshots, np.empty(0), lifetime), index=snapshots.index)
+    if rule is None:
+        return scores
+    if rule not in scores.columns:
+        raise ValueError(f"rule must be one of {list(scores.columns)} for task={task!r}; got {rule!r}.")
+    return scores[rule]

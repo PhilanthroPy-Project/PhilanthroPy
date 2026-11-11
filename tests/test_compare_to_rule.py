@@ -65,6 +65,61 @@ def test_rule_wins_when_the_label_is_the_rule():
     assert out["model_value"] > 0
 
 
+def _response_log(n_donors, n_years, p_after_one, p_after_four, seed):
+    """Each year a giving donor makes 1 or 4 gifts (a fresh coin each year,
+    the last one on June 28, so recency is the same for everyone and the
+    yearly total is always 100). Whether they give the next year depends
+    only on that year's gift count; a donor who skipped a year comes back
+    with probability 0.1."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    for d in range(n_donors):
+        gives = True
+        for t in range(n_years):
+            if not gives:
+                gives = rng.random() < 0.1
+                continue
+            n = 1 if rng.random() < 0.5 else 4
+            for k in range(n):
+                month = 6 if k == 0 else 1 + k
+                rows.append({"donor_id": f"d{d}", "gift_date": f"{2015 + t}-{month:02d}-28",
+                             "gift_amount": 100.0 / n})
+            gives = rng.random() < (p_after_one if n == 1 else p_after_four)
+    return pd.DataFrame(rows)
+
+
+def test_response_model_wins_on_a_signal_no_rule_ranks_by():
+    # Giving again follows this year's gift count, which neither recency,
+    # lifetime total, streak nor the RFM score (whose frequency is the
+    # lifetime count) ranks by.
+    out = compare_to_rule(_response_log(1500, 7, 0.9, 0.2, seed=0), task="response", n_bootstrap=300)
+    assert out["n_rules_tried"] == 4
+    assert out["label_floor"] is None
+    assert out["verdict"] == "Beats the rule"
+    assert out["method"] == "model"
+    lo, hi = out["difference_ci"]
+    assert 0 < lo <= hi
+
+
+def test_response_rule_keeps_the_list_when_there_is_no_signal():
+    # Giving again is a coin with the same odds for everyone: the model has
+    # nothing to find, and a tie goes to the rule.
+    out = compare_to_rule(_response_log(1500, 7, 0.6, 0.6, seed=1), task="response", n_bootstrap=300)
+    assert out["model_value"] is not None
+    assert out["verdict"] != "Beats the rule"
+    assert out["method"] == "rule"
+
+
+def test_response_with_one_outcome_keeps_the_rule_without_fitting():
+    gifts = pd.DataFrame([
+        {"donor_id": f"d{d}", "gift_date": f"{fy}-03-01", "gift_amount": 50.0}
+        for d in range(30) for fy in range(2016, 2021)
+    ])
+    out = compare_to_rule(gifts, task="response")
+    assert out["verdict"] == "not enough labels"
+    assert out["method"] == "rule" and out["model_value"] is None
+
+
 def test_too_few_labels_keeps_the_rule_without_fitting():
     gifts = make_donor_panel(n_donors=60, n_years=6, random_state=0)["gifts"]
     out = compare_to_rule(gifts, task="lapse")
@@ -81,9 +136,10 @@ def test_one_labelled_year_cannot_be_tested():
         "gift_date": ["2019-08-01", "2020-08-01", "2019-08-01", "2020-08-01"],
         "gift_amount": [10, 20, 30, 40],
     })
-    out = compare_to_rule(gifts, task="ask")
-    assert out["verdict"].startswith("can't test")
-    assert out["method"] == "rule"
+    for task in ("ask", "response"):
+        out = compare_to_rule(gifts, task=task)
+        assert out["verdict"].startswith("can't test")
+        assert out["method"] == "rule"
     assert compare_to_rule(gifts.iloc[:0], task="lapse")["verdict"].startswith("can't test")
 
 
@@ -97,7 +153,7 @@ def test_partial_current_year_never_labels_the_one_before_it():
     assert full["test_fiscal_year"] == 2021
 
 
-@pytest.mark.parametrize("task", ["upgrade", "lapse", "ask"])
+@pytest.mark.parametrize("task", ["upgrade", "lapse", "ask", "response"])
 def test_every_task_reports_the_same_keys(task):
     gifts = make_donor_panel(n_donors=800, n_years=5, random_state=2)["gifts"]
     out = compare_to_rule(gifts, task=task, n_bootstrap=20)
@@ -108,7 +164,7 @@ def test_every_task_reports_the_same_keys(task):
     assert out["method"] in ("model", "rule")
     assert out["verdict"] in VERDICTS or out["verdict"] == "not enough labels"
     assert out["metric"] == ("mae" if task == "ask" else "top10pct_hit_rate")
-    assert out["n_rules_tried"] == 3
+    assert out["n_rules_tried"] == (4 if task == "response" else 3)
     if out["verdict"] in VERDICTS:
         assert (out["method"] == "model") == (out["verdict"] == "Beats the rule")
     else:
@@ -119,3 +175,37 @@ def test_every_task_reports_the_same_keys(task):
 def test_bad_task_raises():
     with pytest.raises(ValueError, match="task"):
         compare_to_rule(pd.DataFrame(columns=["donor_id", "gift_date", "gift_amount"]), task="retention")
+
+
+@pytest.mark.parametrize("task, kind, extra", [
+    ("lapse", "lapse", {"min_years_given": 2, "cadence": True}),
+    ("response", "response_next_year", {}),
+    ("upgrade", "upgrade", {}),
+])
+def test_rule_scores_reproduce_the_checked_rule(task, kind, extra):
+    from philanthropy.ingest import build_snapshots
+    from philanthropy.model_selection import rule_scores
+    from philanthropy.model_selection._rule_check import _top_rate
+
+    gifts = make_donor_panel(n_donors=800, n_years=5, random_state=2)["gifts"]
+    out = compare_to_rule(gifts, task=task, n_bootstrap=20)
+    rows = build_snapshots(gifts, kind=kind, fiscal_years=[out["test_fiscal_year"]], **extra)
+    scores = rule_scores(rows, task=task, gifts=gifts, rule=out["rule"])
+    assert scores.index.equals(rows.index)
+    assert _top_rate(rows["target"].to_numpy("float64"), scores.to_numpy()) == pytest.approx(out["rule_value"])
+    every = rule_scores(rows, task=task, gifts=gifts)
+    assert out["rule"] in every.columns and len(every.columns) == out["n_rules_tried"]
+
+
+def test_rule_scores_refuses_ask_unknown_rules_and_response_without_gifts():
+    from philanthropy.ingest import build_snapshots
+    from philanthropy.model_selection import rule_scores
+
+    gifts = make_donor_panel(n_donors=100, n_years=4, random_state=0)["gifts"]
+    rows = build_snapshots(gifts, kind="response_next_year")
+    with pytest.raises(ValueError, match="task"):
+        rule_scores(rows, task="ask")
+    with pytest.raises(ValueError, match="rule must be one of"):
+        rule_scores(rows, task="response", gifts=gifts, rule="largest gift")
+    with pytest.raises(ValueError, match="needs gifts"):
+        rule_scores(rows, task="response")

@@ -62,10 +62,12 @@ Everything reachable from `philanthropy.__all__` is listed below. A symbol not l
 | `bloomerang_transactions_to_features`, `read_bloomerang_transactions`, `DEFAULT_EXCLUDED_ENTRY_TYPES` | `ingest` | Tracks Bloomerang's REST API entry-type vocabulary and export labels; the excluded-type default will grow as real exports arrive. |
 | `donorperfect_gifts_to_features`, `read_donorperfect_gifts`, `DEFAULT_EXCLUDED_RECORD_TYPES` | `ingest` | Tracks DonorPerfect's `record_type` vocabulary and export labels; the excluded-type default will grow as real exports arrive. |
 | `little_green_light_gifts_to_features`, `read_little_green_light_gifts`, `DEFAULT_EXCLUDED_LGL_GIFT_TYPES` | `ingest` | Tracks Little Green Light gift export labels and gift-type vocabulary; the excluded-type default may grow as documented LGL export variants are encountered. |
-| `neon_donations_to_features`, `read_neon_donations`, `DEFAULT_EXCLUDED_NEON_DONATION_TYPES` | `ingest` | Tracks Neon CRM's donation export labels and pledge/payment vocabulary; the excluded-type default will grow as real exports arrive. |
+| `ellucian_advance_gifts_to_features`, `read_ellucian_advance_gifts`, `DEFAULT_EXCLUDED_ADVANCE_TRANSACTION_TYPES` | `ingest` | Tracks Ellucian CRM Advance transaction export labels and its pledge-type vocabulary, which each site validates against its own `tms_pledge_type` table; the excluded-type default will grow as real exports arrive. |
+| `neon_donations_to_features`, `read_neon_donations`, `DEFAULT_EXCLUDED_NEON_DONATION_TYPES` | `ingest` | Tracks Neon CRM's donation export labels and its Donation Type vocabulary; the report-builder column labels are accepted as documented aliases and may grow as real exports arrive. |
+| `rule_scores` | `model_selection` | New in 0.10.0; its rule sets are `compare_to_rule`'s and change when those do. |
 | `map_columns` | `ingest` | The one-error-per-missing-column message shape may still change. |
 | `activities_to_features` | `ingest` | The activity-type feature set (`_count_12m`, `_distinct`, ...) may grow as more source types are onboarded. |
-| `read_gifts`, `GIFT_SOURCES` | `ingest` | A thin preset registry over the CiviCRM, Raiser's Edge and NPSP bridges above; it inherits their tier and grows a new preset name as they do. |
+| `read_gifts`, `read_gift_rows`, `GIFT_SOURCES` | `ingest` | A thin preset registry over the CRM bridges above; it inherits their tier and grows a new preset name as they do. `read_gift_rows` returns the gift rows `read_gifts` counts, before the per-donor roll-up. |
 | `build_leadership_snapshots` | `ingest` | The gift-derived feature set (trend, consecutive years given, ...) is a minimal starting recipe and is likely to be refined. |
 | `build_snapshots` | `ingest` | The kinds (`upgrade`, `lapse`, `response_next_year`, `next_amount`), their populations and the shared column set are new and may grow; the scale-free block stays opt-in until a validation fold adopts it. |
 | `score_leadership_prospects` | `models` | The top-reasons heuristic (z-score within the scored population weighted by global permutation importance) and the top-N/lift report shape are a starting recipe over `build_leadership_snapshots`, likely to be refined; `suggested_ask` is left `NaN` pending a real ask-amount training signal. |
@@ -113,7 +115,7 @@ Every domain method returns a number on its own scale. None of them are calibrat
 ## Deprecations
 
 !!! info "This page is built from `main`, which is ahead of the release"
-    `pip install philanthropy` currently gives you **0.9.0**. The tier tables
+    `pip install philanthropy` currently gives you **0.10.0**. The tier tables
     above describe the API as it stands on `main`; the deprecations below are
     live in the version you actually have installed.
 
@@ -182,6 +184,14 @@ donor id. Code that passes fiscal years alone now raises a `ValueError` naming
 both fixes. For a time-varying target such as "gave next year", where the same
 donor correctly appears in both folds, pass `drop_repeat_donors=False`, which
 gives exactly the 0.7.x behaviour.
+
+### 0.10.0
+
+Nothing is removed or newly deprecated. One default changed:
+`LapsePredictor` now uses `backend="hist_gradient_boosting"`, which ranked
+likely lapsers better on every held-out DonorsChoose and PSID test year. Pass
+`backend="random_forest"` to keep the 0.9.x model; setting `n_estimators`
+without it now warns, because the boosting backend ignores it.
 
 ### Removed in 0.9.0
 

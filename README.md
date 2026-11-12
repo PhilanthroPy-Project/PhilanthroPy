@@ -25,7 +25,7 @@
 </p>
 
 <p align="center">
-  <strong><a href="https://PhilanthroPy-Project.github.io/PhilanthroPy/">🚀 View the Full Documentation Site</a></strong>
+  <strong><a href="https://PhilanthroPy-Project.github.io/PhilanthroPy/">ð View the Full Documentation Site</a></strong>
 </p>
 
 ---
@@ -93,7 +93,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 model = DonorPropensityModel(n_estimators=200, random_state=0)
 model.fit(X_train, y_train)
 
-scores = model.predict_affinity_score(X_test)   # 0–100, not a raw probability
+scores = model.predict_affinity_score(X_test)   # 0â100, not a raw probability
 auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
 
 print(f"held-out ROC-AUC: {auc:.3f}")
@@ -186,7 +186,7 @@ philanthropy features --source raisers_edge --data gifts.csv \
   --as-of 2025-06-30 --out features.csv
 ```
 
-And `train --task leadership` skips the "define your own label" step entirely for one specific, common question: which of your current $100–999 donors is likely to cross $1,000 next fiscal year? It reads the raw gift export directly, trains and validates on your fiscal-year history, and writes a scored, ranked CSV with a suggested next ask:
+And `train --task leadership` skips the "define your own label" step entirely for one specific, common question: which of your current $100â999 donors is likely to cross $1,000 next fiscal year? It reads the raw gift export directly, trains and validates on your fiscal-year history, and writes a scored, ranked CSV with a suggested next ask:
 
 ```bash
 philanthropy train --task leadership --source raisers_edge --data gifts.csv \
@@ -205,7 +205,7 @@ Nothing in the package downloads anything on its own either. No module imports a
 
 ### Validated on real donor data
 
-The leakage-safety design was tested on [KDD Cup 1998](https://kdd.ics.uci.edu/databases/kddcup98/kddcup98.html), a real file of 95,412 donors with a 24-mailing giving history. Building features from the whole export instead of as of each decision point inflated walk-forward ROC-AUC by **+0.376** (0.482 → 0.858), roughly three times the effect on synthetic data, and no choice of splitter recovers any of it. That is the failure mode this library is built to prevent.
+The leakage-safety design was tested on [KDD Cup 1998](https://kdd.ics.uci.edu/databases/kddcup98/kddcup98.html), a real file of 95,412 donors with a 24-mailing giving history. Building features from the whole export instead of as of each decision point inflated walk-forward ROC-AUC by **+0.376** (0.482 â 0.858), roughly three times the effect on synthetic data, and no choice of splitter recovers any of it. That is the failure mode this library is built to prevent.
 
 The script had a prediction written into it before it ran, that real leakage would be *smaller*. It was wrong by about a factor of five, and it is reported that way. Script, output, and environment lock are archived at [doi:10.5281/zenodo.22050649](https://doi.org/10.5281/zenodo.22050649). Walkthrough: **[Real-data replication](docs/explanation/real_data_replication.md)**.
 
@@ -215,15 +215,15 @@ The script had a prediction written into it before it ran, that real leakage wou
 
 `philanthropy.ingest` is the on-ramp: it turns what your donor system already emits into the donor-level feature table the estimators expect, with no glue code in between.
 
-**CiviCRM.** A contribution export (or an APIv4 `Contribution.get` result) → `read_civicrm_contributions()` → `civicrm_contributions_to_features()` → `predict_affinity_score()`. The bridge drops payment-processor test transactions and counts only `Completed` contributions, which is the difference between a lifetime-giving number you can brief a gift officer on and one inflated by refunds. Worked version: **[Ingest CiviCRM contributions](docs/how-to/ingest_civicrm_contributions.md)**.
+**CiviCRM.** A contribution export (or an APIv4 `Contribution.get` result) â `read_civicrm_contributions()` â `civicrm_contributions_to_features()` â `predict_affinity_score()`. The bridge drops payment-processor test transactions and counts only `Completed` contributions, which is the difference between a lifetime-giving number you can brief a gift officer on and one inflated by refunds. Worked version: **[Ingest CiviCRM contributions](docs/how-to/ingest_civicrm_contributions.md)**.
 
-**Blackbaud Raiser's Edge / RE NXT.** `read_raisers_edge_gifts()` → `raisers_edge_gifts_to_features()`, dropping pledge and recurring-gift-template rows by default (`DEFAULT_EXCLUDED_GIFT_TYPES`) so a committed dollar is never summed as both the promise and the payment.
+**Blackbaud Raiser's Edge / RE NXT.** `read_raisers_edge_gifts()` â `raisers_edge_gifts_to_features()`, dropping pledge and recurring-gift-template rows by default (`DEFAULT_EXCLUDED_GIFT_TYPES`) so a committed dollar is never summed as both the promise and the payment.
 
-**Salesforce NPSP.** `read_npsp_opportunities()` → `npsp_opportunities_to_features()`, counting only closed/won Opportunity stages by default (`DEFAULT_INCLUDED_STAGES`: `Closed Won`, `Awarded`, `Posted`). A `Pledged` instalment, an open pipeline stage, and `Closed Lost` are not gifts.
+**Salesforce NPSP.** `read_npsp_opportunities()` â `npsp_opportunities_to_features()`, counting only closed/won Opportunity stages by default (`DEFAULT_INCLUDED_STAGES`: `Closed Won`, `Awarded`, `Posted`). A `Pledged` instalment, an open pipeline stage, and `Closed Lost` are not gifts.
 
 All gift bridges are also reachable through one function, `philanthropy.ingest.read_gifts(path_or_df, source=...)`, for code that needs to support more than one CRM without an `if/elif` per source. The `source` argument accepts every preset registered in `GIFT_SOURCES`.
 
-**UniSchema.** PhilanthroPy is also the modeling half of an ecosystem. [UniSchema](https://github.com/PhilanthroPy-Project/UniSchema) normalizes fragmented advancement webhooks (GiveCampus, Slate, NPSP, Cvent, …) into a single `ConstituentEvent` stream. Webhooks → UniSchema egress → `read_constituent_events()` → `constituent_events_to_features()` → `predict_affinity_score()`. Worked, runnable version with the full diagram: **[Ingest UniSchema events](docs/how-to/ingest_unischema_events.md)**.
+**UniSchema.** PhilanthroPy is also the modeling half of an ecosystem. [UniSchema](https://github.com/PhilanthroPy-Project/UniSchema) normalizes fragmented advancement webhooks (GiveCampus, Slate, NPSP, Cvent, â¦) into a single `ConstituentEvent` stream. Webhooks â UniSchema egress â `read_constituent_events()` â `constituent_events_to_features()` â `predict_affinity_score()`. Worked, runnable version with the full diagram: **[Ingest UniSchema events](docs/how-to/ingest_unischema_events.md)**.
 
 ### Multiple files, one donor table, no glue code
 
@@ -237,30 +237,30 @@ A no-code upload flow rarely gets one clean CRM export; it gets a gift file, an 
 
 Full parameter documentation for every symbol below is rendered in the [API reference](https://PhilanthroPy-Project.github.io/PhilanthroPy/reference/).
 
-### 🧹 Preprocessing
+### ð§¹ Preprocessing
 
 | Transformer | Description |
 |---|---|
 | `CRMCleaner` | Standardise raw CRM exports: coerce `gift_date` to `datetime64` and `gift_amount` to `float64` |
 | `WealthScreeningImputer` | Leakage-safe wealth imputation (median / mean / zero), fill stats frozen at `fit()` |
 | `WealthScreeningImputerKNN` | Leakage-safe KNN imputation for wealth-screening vendor columns |
-| `WealthPercentileTransformer` | Per-column wealth percentile rank (0–100); NaN-in → NaN-out |
+| `WealthPercentileTransformer` | Per-column wealth percentile rank (0â100); NaN-in â NaN-out |
 | `FiscalYearTransformer` | Fiscal year & quarter from gift dates; configurable start month |
-| `RFMTransformer` | Recency–Frequency–Monetary features for donor segmentation |
+| `RFMTransformer` | RecencyâFrequencyâMonetary features for donor segmentation |
 | `ShareOfWalletScorer` | Normalised Share-of-Wallet score + `capacity_tier` encoding |
 | `MatchingGiftFeaturizer` | Employer matching-gift eligibility and expected-match features |
 | `EncounterTransformer` | Bridge EHR encounters with the CRM; drops identifier-like columns by name |
-| `EncounterRecencyTransformer` | Encounter-date columns → predictive recency features |
+| `EncounterRecencyTransformer` | Encounter-date columns â predictive recency features |
 | `GratefulPatientFeaturizer` | Clinical gravity score + service-line capacity weights |
 | `DischargeToSolicitationWindowTransformer` | `in_solicitation_window` (0/1) and `window_position_score` [0,1] |
 | `SolicitationWindowTransformer` | Supported alias of `DischargeToSolicitationWindowTransformer` |
 | `PlannedGivingSignalTransformer` | Bequest / legacy-gift intent vector |
 
-### 🤖 Models
+### ð¤ Models
 
 | Model | Description |
 |---|---|
-| `DonorPropensityModel` | Random Forest with `predict_affinity_score()` on a 0–100 scale |
+| `DonorPropensityModel` | Random Forest with `predict_affinity_score()` on a 0â100 scale |
 | `MajorGiftClassifier` | Calibrated `HistGradientBoostingClassifier`, NaN-native |
 | `LapsePredictor` | Random Forest for donor lapse, with `predict_lapse_score()` |
 | `PlannedGivingIntentScorer` | Calibrated bequest-intent scorer, NaN-native, `predict_intent_score()` |
@@ -270,7 +270,7 @@ Full parameter documentation for every symbol below is rendered in the [API refe
 | `FinancialForecastModel` | Hybrid LSTM-ARIMA revenue forecaster, dependency-free |
 | `PropensityScorer` | Constant-probability baseline, a floor to beat, not a scorer |
 
-### 📊 Metrics, splitters, and the rest
+### ð Metrics, splitters, and the rest
 
 | Symbol | Module | Description |
 |---|---|---|
@@ -289,9 +289,12 @@ Full parameter documentation for every symbol below is rendered in the [API refe
 | `bloomerang_transactions_to_features`, `read_bloomerang_transactions` | `ingest` | Bloomerang transaction bridge; drops `Pledge` and `Recurring Donation` commitment rows by default |
 | `donorperfect_gifts_to_features`, `read_donorperfect_gifts` | `ingest` | DonorPerfect gift bridge; drops `P` (Pledge) and `M` (Main split) record types by default |
 | `blackbaud_crm_revenue_to_features`, `read_blackbaud_crm_revenue` | `ingest` | Blackbaud CRM revenue bridge; keeps only `Payment` transaction type by default |
+| `little_green_light_gifts_to_features`, `read_little_green_light_gifts` | `ingest` | Little Green Light gift bridge; drops non-gift rows by default |
+| `ellucian_advance_gifts_to_features`, `read_ellucian_advance_gifts` | `ingest` | Ellucian CRM Advance gift bridge; keeps only completed transactions by default |
+| `neon_gifts_to_features`, `read_neon_gifts` | `ingest` | Neon CRM gift bridge; drops pledge and refund rows by default |
 | `read_gifts` | `ingest` | One entry point over every preset registered in `GIFT_SOURCES` |
 | `map_columns` | `ingest` | Renames a user-mapped header set to the canonical names the bridges expect |
-| `activities_to_features` | `ingest` | Long, multi-source activity log (events, volunteering, ...) → per-donor, per-type engagement features |
+| `activities_to_features` | `ingest` | Long, multi-source activity log (events, volunteering, ...) â per-donor, per-type engagement features |
 | `build_leadership_snapshots` | `ingest` | Per-donor, per-fiscal-year training table for a mid-level-to-leadership upgrade model |
 | `score_leadership_prospects` | `models` | Trains, validates, and scores the upgrade model in one call; powers `train --task leadership` |
 | `generate_synthetic_donor_data`, `load_ciob_fundraising` | `datasets` | Synthetic pool and a real CIOB series |
@@ -303,17 +306,17 @@ Full parameter documentation for every symbol below is rendered in the [API refe
 
 ## Guides
 
-**Tutorials**: [Building your first model](docs/tutorials/building_your_first_model.md) · [Avoiding temporal data leakage](docs/tutorials/avoiding_temporal_data_leakage.md) · [Building a grateful-patient pipeline](docs/tutorials/building_a_grateful_patient_pipeline.md)
+**Tutorials**: [Building your first model](docs/tutorials/building_your_first_model.md) Â· [Avoiding temporal data leakage](docs/tutorials/avoiding_temporal_data_leakage.md) Â· [Building a grateful-patient pipeline](docs/tutorials/building_a_grateful_patient_pipeline.md)
 
-**How-to**: [Use the CLI](docs/how-to/use_the_cli.md) · [Ingest UniSchema events](docs/how-to/ingest_unischema_events.md) · [Ingest CiviCRM contributions](docs/how-to/ingest_civicrm_contributions.md) · [Handle missing wealth data](docs/how-to/handle_missing_wealth_data.md) · [Build grateful-patient features](docs/how-to/build_grateful_patient_features.md) · [Recommend ask amounts](docs/how-to/recommend_ask_amounts.md) · [Score matching-gift eligibility](docs/how-to/score_matching_gift_eligibility.md) · [Measure campaign efficiency](docs/how-to/measure_campaign_efficiency.md) · [Audit score fairness](docs/how-to/audit_score_fairness.md) · [Estimate appeal uplift](docs/how-to/estimate_appeal_uplift.md) · [Save and load models](docs/how-to/save_and_load_models.md) · [Develop and test](docs/how-to/develop_and_test.md)
+**How-to**: [Use the CLI](docs/how-to/use_the_cli.md) Â· [Ingest UniSchema events](docs/how-to/ingest_unischema_events.md) Â· [Ingest CiviCRM contributions](docs/how-to/ingest_civicrm_contributions.md) Â· [Handle missing wealth data](docs/how-to/handle_missing_wealth_data.md) Â· [Build grateful-patient features](docs/how-to/build_grateful_patient_features.md) Â· [Recommend ask amounts](docs/how-to/recommend_ask_amounts.md) Â· [Score matching-gift eligibility](docs/how-to/score_matching_gift_eligibility.md) Â· [Measure campaign efficiency](docs/how-to/measure_campaign_efficiency.md) Â· [Audit score fairness](docs/how-to/audit_score_fairness.md) Â· [Estimate appeal uplift](docs/how-to/estimate_appeal_uplift.md) Â· [Save and load models](docs/how-to/save_and_load_models.md) Â· [Develop and test](docs/how-to/develop_and_test.md)
 
-**Explanation**: [Design principles](docs/explanation/design_principles.md) · [Capacity and loyalty](docs/explanation/capacity_and_loyalty.md) · [Fundraising metrics](docs/explanation/fundraising_metrics.md) · [Compliance considerations](docs/explanation/compliance_considerations.md) · [Benchmarks](docs/explanation/benchmarks.md)
+**Explanation**: [Design principles](docs/explanation/design_principles.md) Â· [Capacity and loyalty](docs/explanation/capacity_and_loyalty.md) Â· [Fundraising metrics](docs/explanation/fundraising_metrics.md) Â· [Compliance considerations](docs/explanation/compliance_considerations.md) Â· [Benchmarks](docs/explanation/benchmarks.md)
 
 ---
 
 ## Roadmap
 
-### 🔜 Next
+### ð Next
 
 - `philanthropy.visualisation.plot_capacity_heatmap()`
 - `EnsemblePropensityModel` (stacked LapsePredictor + DonorPropensityModel)

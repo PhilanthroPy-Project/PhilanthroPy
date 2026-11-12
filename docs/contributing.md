@@ -22,6 +22,11 @@ Fork, branch, run `make ci`, push to your fork, open a pull request against
 runs on top of it) is in
 [CONTRIBUTING.md](https://github.com/PhilanthroPy-Project/PhilanthroPy/blob/main/CONTRIBUTING.md).
 
+Adding a CRM ingest reader? The step-by-step checklist — vendor-docs
+citation, header aliases, registration, CLI wiring, tests and the CHANGELOG
+rule — is in
+[CONTRIBUTING.md#adding-a-crm-ingest-reader](https://github.com/PhilanthroPy-Project/PhilanthroPy/blob/main/CONTRIBUTING.md#adding-a-crm-ingest-reader).
+
 Setup plus a first green `make ci` takes about eight minutes.
 
 Everyone who has landed a change is credited in

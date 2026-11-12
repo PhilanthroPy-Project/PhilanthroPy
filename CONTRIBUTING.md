@@ -112,6 +112,149 @@ when an issue is linked; reviewers read the PR body first, not the issue.
 CI runs on pull requests from forks. If a job fails, push another commit to the
 same branch; the PR updates itself.
 
+## Adding a CRM ingest reader
+
+A reader PR gives one CRM's gift export its own bridge module, registers it so
+`read_gifts(..., source="<crm>")` finds it, and tests it. Work the steps below
+in order; each one is something a reviewer asked for on #312, #314 or #321.
+Copy the shape from `philanthropy/ingest/_raisers_edge.py` and
+`tests/test_raisers_edge.py` rather than inventing a new one.
+
+### 1. Cite the vendor's own docs first
+
+Collect the vendor's own documentation for the export: the field names, and
+every type/status term the filter matches (`Gift Type` values, contribution
+statuses, opportunity stages, revenue types). The module docstring ends with a
+`Sources:` block listing each document with a link, and every field name and
+every type/status term in the file must come from one of them. The PR body
+cites the same sources. #314 stayed blocked until its vocabulary was traced
+back to a Neon Support Center article: a `DEFAULT_` set that is not in the
+cited vocabulary produces a wrong total, not a wording preference.
+
+### 2. Build the bridge module
+
+All in `philanthropy/ingest/_<crm>.py`:
+
+- **Header aliases.** A `_HEADER_ALIASES` dict mapping the export's own labels
+  onto the canonical `contact_id`, `receive_date` and `total_amount` names,
+  plus the type/status column (e.g. `gift_type`), applied by a local
+  `_canonical_<crm>()` that falls through to `_canonical` from `._civicrm`.
+  Cover every spelling the vendor documents for the same field: the desktop
+  export, the database columns and the API rarely agree.
+- **A `DEFAULT_...` constant.** `DEFAULT_EXCLUDED_...` or
+  `DEFAULT_INCLUDED_...`, a tuple documented with `#:` comments and cited to
+  the vendor docs, used as the default of the aggregator's filter parameter.
+  `None` (or an empty sequence) disables the filter, so the parameter
+  docstring says that explicitly.
+- **The private row filter.** `_<crm>_received_rows(...)` normalises headers,
+  raises `KeyError` naming the fields the export is missing, and applies the
+  filter. When the filter was requested but the export has no type/status
+  column it calls `warnings.warn(..., stacklevel=3)` instead of silently
+  summing commitments with the payments made against them.
+- **The typed empty frame.** `<crm>_..._to_features` returns
+  `_empty_feature_frame()` from `._civicrm` when nothing survives the filter,
+  so an all-pledge input yields the same columns and dtypes as a normal frame
+  instead of an untyped empty one.
+- **Delegation.** The aggregator ends with
+  `civicrm_contributions_to_features(df, reference_date=..., statuses=None)` —
+  `statuses=None` because this bridge already dropped everything that is not
+  money received; do not reimplement the roll-up. The loader
+  `read_<crm>_...` delegates to `read_civicrm_contributions` for the same
+  reason (BOM handling and path hardening are already solved there).
+
+### 3. Register it
+
+- `philanthropy/ingest/_read_gifts.py`: import the reader and aggregator
+  (and the private `_<crm>_received_rows`), add `"<crm>"` to `GIFT_SOURCES`,
+  add the `(reader, aggregator)` pair to `_REGISTRY`, add the
+  `(reader, row filter)` pair to `_ROW_FILTERS`, add the source's filter kwarg
+  to the `read_gifts` docstring's `**kwargs` list, and name the bridge in the
+  module docstring's list. `GIFT_SOURCES` is compared against a hardcoded set
+  in `tests/test_read_gifts.py` and against `_ROW_FILTERS` in
+  `tests/test_read_gift_rows.py`, so a half-registered source fails tests
+  rather than review.
+- `philanthropy/ingest/__init__.py`: the import in module order, and the
+  `__all__` entry in its alphabetical place (the `DEFAULT_`/`GIFT_` capitals
+  sort ahead of the lowercase names — do not append at the end).
+- `docs/reference/index.md`: one Tier 2 row with the three public symbols, the
+  `ingest` module, and why it is not Tier 1.
+
+### 4. Wire the CLI
+
+`check` and `train --task leadership` read a raw export through
+`_read_raw_gifts` in `philanthropy/cli.py`, which calls
+`ingest.read_gift_rows`, which looks the source up in `_ROW_FILTERS`. So:
+
+- The private `_<crm>_received_rows` helper from step 2 is the row filter
+  `_<crm>_..._to_features` calls: one filter, so the CLI and `features` count
+  exactly the same gifts.
+- Register `(read_<crm>_..., _<crm>_received_rows)` in `_ROW_FILTERS` in
+  `philanthropy/ingest/_read_gifts.py` — that table is the CLI's raw-gift
+  reader table (#341) and it is what `check` and `train --task leadership`
+  use.
+- `features --source` needs nothing: its choices are `GIFT_SOURCES` (#338
+  has landed).
+- Add one case to `_RAW_GIFT_EXPORTS` in `tests/test_cli.py`: a row the source
+  counts and one it drops (a pledge, an open stage, an unpaid schedule), so
+  `test_raw_gift_log_drops_the_rows_features_drops` proves the raw gift log
+  drops what `features` drops.
+
+### 5. Test it
+
+- `tests/test_<crm>.py`, one file per CRM, following
+  `tests/test_raisers_edge.py`: the default filter, `None` and an empty
+  sequence disabling it, the missing-type-column warning, every documented
+  alias, the typed empty frame, the missing-field `KeyError`, and the
+  `read_<crm>_...` single-file and directory cases.
+- Two `read_gifts` tests in `tests/test_read_gifts.py`:
+  `test_<crm>_path_matches_direct_call` (a path through the registry gives
+  the same frame as the direct reader + aggregator call) and
+  `test_<crm>_kwarg_reaches_the_underlying_aggregator` (the filter kwarg is
+  not swallowed). Import the new names in the alphabetical import block.
+- The hardcoded `GIFT_SOURCES` set in `test_gift_sources_lists_all_..._presets`
+  in `tests/test_read_gifts.py`: add `"<crm>"` and bump the count in the test
+  name.
+- The `_EXPORTS` entry in `tests/test_read_gift_rows.py`; without it
+  `test_every_gift_source_is_covered` fails, because it compares
+  `_ROW_FILTERS`, `GIFT_SOURCES` and `_EXPORTS` for equality.
+
+Before committing, run:
+
+```bash
+python -m pytest tests/test_<crm>.py tests/test_read_gifts.py tests/test_read_gift_rows.py tests/test_cli.py -q
+```
+
+### 6. Add exactly one CHANGELOG bullet
+
+One bullet under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md), naming the
+new public symbols and the preset. Never run an editor formatter over
+`CHANGELOG.md`: #312 was held up by a formatter rewriting about 100 unrelated
+lines. Check the diff before you push:
+
+```bash
+git diff upstream/main -- CHANGELOG.md
+```
+
+It must show your one bullet and nothing else.
+
+### 7. Build the docs
+
+`docs/reference/index.md` is part of the site, so run the same command CI
+runs:
+
+```bash
+mkdocs build --strict
+```
+
+It must pass. Then run `make ci` (or the [Windows
+commands](#testing-on-windows)) as for any other change.
+
+If `main` gains another reader while yours is in review, merge `main` and add
+your source alongside theirs. Taking your own side of `GIFT_SOURCES`,
+`_REGISTRY`, the `read_gifts` docstring, `ingest/__init__.py` and
+`tests/test_read_gifts.py` drops the reader that landed first — that is the
+round-trip #312, #314 and #321 each needed.
+
 ## Additional checks
 
 After cloning, run `sh scripts/install_hooks.sh` to install the pre-push hook.

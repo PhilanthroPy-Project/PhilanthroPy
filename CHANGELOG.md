@@ -14,6 +14,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Official support for Python 3.14. Added `3.14` to the CI test matrix and package classifiers; the docs build job now runs on 3.14 too.
 
 ### Documentation
+- `CONTRIBUTING.md` gains an "Adding a CRM ingest reader" checklist: every
+  step a reader PR needs, in order — vendor-docs citation, header aliases,
+  `DEFAULT_` constants, the missing type/status warning, the typed empty frame,
+  delegation to `civicrm_contributions_to_features`, registration in
+  `GIFT_SOURCES`/`_REGISTRY`, the CLI row-filter table, tests, and the
+  one-bullet CHANGELOG rule — linked from `docs/contributing.md` (#342).
 - `CITATION.cff` now cites 0.10.0, the newest published release (Zenodo
   version DOI 10.5281/zenodo.23990995). The concept DOI is unchanged.
 - The "How sure are we?" results page now says that a 90% range holds 90

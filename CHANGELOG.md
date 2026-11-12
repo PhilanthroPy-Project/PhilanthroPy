@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- **Docs: document all CRM readers.** README and how-to guide now cover every preset in `GIFT_SOURCES`, including Little Green Light, Ellucian CRM Advance and Neon CRM. (#355)
 - A "Results" section in the docs (`docs/results/`): one page per model
   ($1K upgrade, response/major gift, lapse, suggested ask, planned giving,
   who to mail) written for fundraisers, not data scientists, comparing each
@@ -539,16 +540,16 @@ emitting a `DeprecationWarning` naming this version.
 - `WealthPercentileTransformer.fit` now raises an actionable `ValueError` when
   an explicit `wealth_cols` list matches no training column; partial matches
   and automatic detection remain unchanged.
-- README coverage badge now links to `pyproject.toml` and reads "≥92% floor"
-  rather than a bare "≥92%". It was a static shields.io string with no tie to
+- README coverage badge now links to `pyproject.toml` and reads "â¥92% floor"
+  rather than a bare "â¥92%". It was a static shields.io string with no tie to
   the enforced number, so it would have silently lied had `fail_under` ever
   moved. Not wiring a dynamic gist badge (`schneegans/dynamic-badges-action`):
   that needs a personal-access-token secret this change doesn't have standing
   to create, and Codecov/Coveralls are explicitly ruled out elsewhere in this
   project's standing rules.
 
-- `ShareOfWalletScorer` output column 0 is renamed `sow_score` →
-  `capacity_utilisation_ratio`. The formula was always capacity ÷ clipped
+- `ShareOfWalletScorer` output column 0 is renamed `sow_score` â
+  `capacity_utilisation_ratio`. The formula was always capacity Ã· clipped
   modelled wealth: utilisation of estimated capacity, with no term for giving to
   *your* institution, so the old name claimed a share-of-wallet quantity the
   score cannot express (the class docstring has warned about exactly this since
@@ -690,9 +691,9 @@ work that ships for the first time in this release.
   first, so a positional call was silently accepted and returned a plausible
   wrong number. It is now a `TypeError`.
 - **Four accidental second import paths moved behind underscores** so 1.0 does
-  not freeze them: `metrics.scoring` → `metrics._scoring`,
-  `preprocessing.transformers` → `preprocessing._transformers`,
-  `models.propensity` → `models._propensity_baseline`, `utils.testing` →
+  not freeze them: `metrics.scoring` â `metrics._scoring`,
+  `preprocessing.transformers` â `preprocessing._transformers`,
+  `models.propensity` â `models._propensity_baseline`, `utils.testing` â
   `utils._testing`. Every public symbol is unchanged and still exported from its
   subpackage; only a direct `from philanthropy.metrics.scoring import ...`
   breaks. Import from the subpackage instead.
@@ -1089,7 +1090,7 @@ work that ships for the first time in this release.
   `PropensityScorer`: the fitted attributes each sets, and that `PropensityScorer`'s
   default threshold returns `classes_[0]` for every row.
 - `make_donor_dataset` now documents that it returns a **gift-level** frame, so
-  `len(df) > n_donors` (each donor contributes 1–5 rows), and that
+  `len(df) > n_donors` (each donor contributes 1â5 rows), and that
   `fiscal_year_start` and `lapse_rate` are accepted but currently unused.
 - `CLAUDE.md` is now `AGENTS.md`, the tool-neutral convention, with `CLAUDE.md`
   reduced to an `@AGENTS.md` import. Agents other than Claude Code were reading no
@@ -1382,12 +1383,12 @@ value: `LapsePredictor(lapse_window_years=...)`,
   `RFMTransformer` moved to an explicit contract class: its `_skip_test=True`
   tag was running 1 check instead of 46.
 - Branch coverage is enabled and gated; the risk-tier subtree has its own floor.
-- `docs/explanation/benchmarks.md` reports mean and min–max across five seeds
+- `docs/explanation/benchmarks.md` reports mean and minâmax across five seeds
   instead of three decimals from one split.
 - CI: the duplicate full-suite run is gone, lint runs once instead of five
   times, and there are new `floors` (lowest-direct dependency resolution),
   `package`, and `minimal` (no-matplotlib import) jobs plus a macOS leg.
-- `publish.yml` gates on tag ↔ `pyproject.toml` ↔ `CHANGELOG.md` agreement, and
+- `publish.yml` gates on tag â `pyproject.toml` â `CHANGELOG.md` agreement, and
   both third-party actions are SHA-pinned.
 
 ## [0.5.0] - 2026-07-24
@@ -1452,7 +1453,7 @@ value: `LapsePredictor(lapse_window_years=...)`,
 - Cleared 31 real-defect lint violations (unused imports/variables) across the
   package and tests, including two dead code blocks.
 - Corrected `EncounterTransformer` API drift in the grateful-patient tutorial and
-  the README example (invalid `encounter_date_col` / `donor_id_col` kwargs →
+  the README example (invalid `encounter_date_col` / `donor_id_col` kwargs â
   `discharge_col` / `merge_key`; pipeline scored via `predict_proba`).
 - README metrics table listed `retention_rate`; the real export is
   `donor_retention_rate`.
@@ -1471,14 +1472,14 @@ value: `LapsePredictor(lapse_window_years=...)`,
 - `constituent_events_to_features` and `read_constituent_events` re-exported at
   the top level (`from philanthropy import constituent_events_to_features`).
 - `examples/quickstart.py` and `examples/unischema_to_scores.py`: runnable,
-  end-to-end scripts (train + score; UniSchema `ConstituentEvent` stream →
-  features → score). Smoke-tested in `tests/test_examples.py`.
+  end-to-end scripts (train + score; UniSchema `ConstituentEvent` stream â
+  features â score). Smoke-tested in `tests/test_examples.py`.
 - tests/test_ingest.py (aggregation, identity resolution, dedup, file/dir
   readers, mixed-currency warning, estimator integration)
 
 ### Fixed
 - Pinned `scikit-learn>=1.6`; the code relies on `validate_data` and
-  `__sklearn_tags__`, both 1.6+ APIs, so an unpinned install on 1.3–1.5
+  `__sklearn_tags__`, both 1.6+ APIs, so an unpinned install on 1.3â1.5
   imported broken.
 - `MovesManagementClassifier` now imports on Python 3.9 (added
   `from __future__ import annotations`; its `str | dict | None` annotation

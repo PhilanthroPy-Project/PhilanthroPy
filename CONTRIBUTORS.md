@@ -81,6 +81,8 @@ contribution. Code, docs, tests, and review all count.
   temporal-leakage tutorial to the measured KDD Cup 1998 replication result,
   and added the Ellucian CRM Advance gift reader
   ([#241](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/241))
+  and the Neon CRM donation reader
+  ([#237](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/237))
   (closes
   [#201](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/201),
   [#150](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/150),

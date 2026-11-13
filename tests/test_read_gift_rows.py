@@ -82,6 +82,13 @@ _EXPORTS = {
         "2,2025-03-10,60,Outright Gift",
         "2,not a date,70,Outright Gift",
     ),
+    "neon": (
+        "Account ID,Donation Date,Donation Amount,Donation Type",
+        "1,2024-01-10,1000,Pledge",
+        "1,2024-02-10,100,Pledge Payment",
+        "2,2025-03-10,60,Donation",
+        "2,not a date,70,Donation",
+    ),
 }
 
 

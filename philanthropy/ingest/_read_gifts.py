@@ -2,8 +2,8 @@
 philanthropy.ingest._read_gifts
 ================================
 One call over the CiviCRM, Raiser's Edge, Blackbaud CRM, NPSP, Nonprofit
-Cloud, Bloomerang, DonorPerfect, Little Green Light and Ellucian CRM
-Advance gift bridges.
+Cloud, Bloomerang, DonorPerfect, Little Green Light, Ellucian CRM
+Advance and Neon CRM gift bridges.
 
 Each bridge module pairs its own ``read_<source>_...`` loader with a
 ``<source>_..._to_features`` aggregator, because each CRM's export needs its
@@ -58,6 +58,7 @@ from ._little_green_light import (
     little_green_light_gifts_to_features,
     read_little_green_light_gifts,
 )
+from ._neon import _neon_received_rows, neon_donations_to_features, read_neon_donations
 from ._nonprofit_cloud import (
     _nonprofit_cloud_received_rows,
     nonprofit_cloud_gifts_to_features,
@@ -79,6 +80,7 @@ GIFT_SOURCES: Tuple[str, ...] = (
     "blackbaud_crm",
     "little_green_light",
     "ellucian_advance",
+    "neon",
 )
 
 # (reader, aggregator) pair per source.
@@ -98,6 +100,7 @@ _REGISTRY: "dict[str, tuple[Callable[[Union[str, Path]], pd.DataFrame], Callable
         read_ellucian_advance_gifts,
         ellucian_advance_gifts_to_features,
     ),
+    "neon": (read_neon_donations, neon_donations_to_features),
 }
 
 
@@ -132,7 +135,8 @@ def read_gifts(
         ``exclude_entry_types=`` for ``"bloomerang"``,
         ``exclude_record_types=`` for ``"donorperfect"``,
         ``exclude_gift_types=`` for ``"little_green_light"``,
-        ``exclude_transaction_types=`` for ``"ellucian_advance"``, or the
+        ``exclude_transaction_types=`` for ``"ellucian_advance"``,
+        ``exclude_donation_types=`` for ``"neon"``, or the
         ``reference_date=`` every preset accepts.
 
     Returns
@@ -183,6 +187,7 @@ _ROW_FILTERS: "dict[str, tuple[Callable[[Union[str, Path]], pd.DataFrame], Optio
     "blackbaud_crm": (read_blackbaud_crm_revenue, _blackbaud_crm_received_rows),
     "little_green_light": (read_little_green_light_gifts, _little_green_light_received_rows),
     "ellucian_advance": (read_ellucian_advance_gifts, _ellucian_advance_received_rows),
+    "neon": (read_neon_donations, _neon_received_rows),
 }
 
 

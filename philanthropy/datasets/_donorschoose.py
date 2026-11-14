@@ -68,6 +68,9 @@ def load_donorschoose(path: str) -> pd.DataFrame:
     https://www.icpsr.umich.edu/web/ICPSR/studies/37898. Cite as
     doi:10.3886/ICPSR37898.v1.
     """
+    from ..utils._validation import ensure_local_path
+
+    ensure_local_path(path)
     if path.endswith(".dta"):
         raw = pd.read_stata(path, columns=_COLUMNS)
     else:

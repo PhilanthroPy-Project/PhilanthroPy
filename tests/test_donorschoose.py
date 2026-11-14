@@ -8,6 +8,7 @@ dates, Yes/No flags with ICPSR's trailing-space padding, DONOR_TYPE).
 """
 
 import pandas as pd
+import pytest
 
 from philanthropy.datasets import load_donorschoose
 
@@ -81,3 +82,8 @@ def test_non_positive_amounts_pass_through_unfiltered(tmp_path):
 
     assert gifts.shape == (3, 7)
     assert gifts["gift_amount"].tolist() == [500.0, 600.0, -5.0]
+
+
+def test_rejects_a_network_path():
+    with pytest.raises(ValueError, match="local file path"):
+        load_donorschoose("https://example.invalid/donations.tsv")

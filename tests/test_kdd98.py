@@ -74,7 +74,7 @@ def test_download_caches_a_good_file_and_reads_it(tmp_path, monkeypatch):
         def __exit__(self, *exc_info):
             return False
 
-    monkeypatch.setattr(kdd98, "urlopen", lambda url: _FakeResponse())
+    monkeypatch.setattr(kdd98, "urlopen", lambda url, timeout=None: _FakeResponse())
 
     data_home = tmp_path / "cache"
     df = fetch_kdd98_donors(data_home=str(data_home), download_if_missing=True)
@@ -96,7 +96,7 @@ def test_download_verifies_checksum_and_discards_a_bad_file(tmp_path, monkeypatc
         def __exit__(self, *exc_info):
             return False
 
-    monkeypatch.setattr(kdd98, "urlopen", lambda url: _FakeResponse())
+    monkeypatch.setattr(kdd98, "urlopen", lambda url, timeout=None: _FakeResponse())
 
     with pytest.raises(OSError, match="checksum"):
         fetch_kdd98_donors(data_home=str(tmp_path), download_if_missing=True)
@@ -152,7 +152,7 @@ def test_fetch_kdd98_val_donors_downloads_and_verifies_checksums(tmp_path, monke
         def __exit__(self, *exc_info):
             return False
 
-    monkeypatch.setattr(kdd98, "urlopen", lambda url: _FakeResponse(payloads[url]))
+    monkeypatch.setattr(kdd98, "urlopen", lambda url, timeout=None: _FakeResponse(payloads[url]))
 
     data_home = tmp_path / "cache"
     df = fetch_kdd98_val_donors(data_home=str(data_home), download_if_missing=True)

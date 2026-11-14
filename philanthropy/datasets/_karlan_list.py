@@ -83,6 +83,9 @@ def load_karlan_list(path: str) -> pd.DataFrame:
     >>> round(df["gave"].mean(), 3)  # doctest: +SKIP
     0.021
     """
+    from ..utils._validation import ensure_local_path
+
+    ensure_local_path(path)
     raw = pd.read_stata(path, columns=list(_COLUMNS), convert_categoricals=False)
     df = raw.dropna(how="all").rename(columns=_COLUMNS).reset_index(drop=True)
     df = df.astype({c: "float64" for c in df.columns})

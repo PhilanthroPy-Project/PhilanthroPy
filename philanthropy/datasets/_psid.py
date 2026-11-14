@@ -333,6 +333,10 @@ def load_psid_philanthropy(data_path: str, do_path: str) -> pd.DataFrame:
     and distributed by the Survey Research Center, Institute for Social
     Research, University of Michigan, Ann Arbor, MI.
     """
+    from ..utils._validation import ensure_local_path
+
+    ensure_local_path(data_path, "data_path")
+    ensure_local_path(do_path, "do_path")
     spans = _parse_infix(do_path)
 
     category_names: List[str] = sorted(

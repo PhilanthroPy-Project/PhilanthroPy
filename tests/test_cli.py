@@ -307,6 +307,50 @@ def test_cli_features_neutralises_csv_injection(tmp_path):
     assert "'=cmd|calc" in out_path.read_text()
 
 
+def test_cli_score_neutralises_formula_headers(tmp_path):
+    data = _make_csv(tmp_path, "train.csv")
+    model_path = tmp_path / "m.joblib"
+    main(["train", "--data", str(data), "--target", "is_major_donor",
+          "--features", FEATURES, "--out", str(model_path)])
+    df = pd.read_csv(data)
+    df['=HYPERLINK("http://x")'] = "ok"
+    df.to_csv(data, index=False)
+    out_path = tmp_path / "scores.csv"
+    main(["score", "--model", str(model_path), "--data", str(data),
+          "--out", str(out_path)])
+    header = out_path.read_text().splitlines()[0]
+    assert "'=HYPERLINK" in header
+
+
+def test_cli_score_bundle_without_features_exits(tmp_path):
+    from sklearn.linear_model import LogisticRegression
+
+    from philanthropy.utils import save_model
+
+    data = _make_csv(tmp_path, "train.csv")
+    df = pd.read_csv(data)
+    cols = FEATURES.split(",")
+    model = LogisticRegression().fit(df[cols], df["is_major_donor"])
+    model_path = tmp_path / "m.joblib"
+    save_model(model, model_path)
+    with pytest.raises(SystemExit) as excinfo:
+        main(["score", "--model", str(model_path), "--data", str(data)])
+    assert "--features" in str(excinfo.value)
+
+
+def test_cli_validate_missing_labels_exits(tmp_path):
+    data = _make_csv(tmp_path, "train.csv")
+    model_path = tmp_path / "m.joblib"
+    main(["train", "--data", str(data), "--target", "is_major_donor",
+          "--features", FEATURES, "--out", str(model_path)])
+    df = pd.read_csv(data)
+    df.loc[0, "is_major_donor"] = np.nan
+    df.to_csv(data, index=False)
+    with pytest.raises(SystemExit) as excinfo:
+        main(["validate", "--model", str(model_path), "--data", str(data)])
+    assert "no 'is_major_donor' label" in str(excinfo.value)
+
+
 def test_cli_features_missing_export_field_exits_with_the_field_names(tmp_path, capsys):
     path = tmp_path / "gifts.csv"
     path.write_text("Constituent ID,Gift Type\n1,Cash\n")

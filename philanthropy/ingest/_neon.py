@@ -196,7 +196,7 @@ def _canonical_neon(header: str) -> str:
 
 
 def _donation_type_key(value: object) -> str:
-    if value is None or (isinstance(value, float) and pd.isna(value)):
+    if value is None or value is pd.NA or value != value:  # None, NaN, pd.NA
         return ""
     return _NON_ALNUM_ALL.sub("", str(value).strip().lower())
 

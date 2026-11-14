@@ -352,3 +352,9 @@ def test_numeric_looking_contact_ids_stay_text(tmp_path):
                             _row("", "2025-01-11", "50.00", "Paid")))
     feats = nonprofit_cloud_gifts_to_features(read_nonprofit_cloud_gifts(path))
     assert list(feats.index) == ["0088"]
+
+def test_na_status_counts_as_blank():
+    df = pd.DataFrame({"Donor ID": ["1", "1"], "Transaction Date": ["2025-01-01"] * 2,
+                       "Current Amount": ["10", "20"],
+                       "Status": pd.array(["Paid", None], dtype="string")})
+    assert float(nonprofit_cloud_gifts_to_features(df).loc["1", "total_gift_amount"]) == 30.0

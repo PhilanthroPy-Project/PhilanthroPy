@@ -69,3 +69,11 @@ def test_raises_on_collision_naming_the_colliding_sources():
 
     with pytest.raises(ValueError, match="A.*B|B.*A"):
         map_columns(df, {"A": "x", "B": "x"}, required=["x"])
+
+
+def test_target_already_an_unmapped_column_raises():
+    df = pd.DataFrame({"amount": [1], "Gift Amt": [2]})
+    with pytest.raises(ValueError, match="'Gift Amt' -> 'amount'"):
+        map_columns(df, {"Gift Amt": "amount"})
+    # Renaming the existing column away first is fine.
+    assert map_columns(df, {"Gift Amt": "amount", "amount": "old"}).columns.tolist() == ["old", "amount"]

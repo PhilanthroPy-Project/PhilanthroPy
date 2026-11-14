@@ -168,3 +168,10 @@ def test_score_period_rejects_a_future_year_and_fiscal_years():
         build_snapshots(gifts, kind="lapse", score_period=2030)
     with pytest.raises(ValueError, match="not both"):
         build_snapshots(gifts, kind="lapse", score_period=2021, fiscal_years=[2021])
+
+
+def test_gift_with_time_on_last_fy_day_has_zero_recency():
+    gifts = pd.DataFrame({"donor_id": ["1", "1"], "gift_date": ["2020-06-30 14:30:00", "2020-08-01"],
+                          "gift_amount": [50, 60]})
+    snaps = build_snapshots(gifts, kind="lapse")
+    assert snaps["months_since_last_gift"].tolist() == [0.0]

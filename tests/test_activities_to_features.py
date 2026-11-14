@@ -329,3 +329,18 @@ def test_output_sorted_by_contact_id():
     feats = activities_to_features(rows, as_of="2024-12-31")
 
     assert list(feats.index) == ["1", "9"]
+
+
+def test_activity_late_on_date_only_as_of_day_is_kept():
+    rows = [{"contact_id": "1", "activity_date": "2024-12-31 18:00", "activity_type": "event"}]
+    feats = activities_to_features(rows, as_of="2024-12-31")
+    assert int(feats.loc["1", "event_count_12m"]) == 1
+    assert feats.loc["1", "event_days_since_last"] == 0
+
+
+def test_activity_type_case_is_folded():
+    rows = [{"contact_id": "1", "activity_date": "2024-01-01", "activity_type": "Event"},
+            {"contact_id": "1", "activity_date": "2024-02-01", "activity_type": " event"}]
+    feats = activities_to_features(rows, as_of="2024-12-31")
+    assert list(feats.columns) == ["event_count_12m", "event_count_36m", "event_days_since_last", "event_distinct"]
+    assert int(feats.loc["1", "event_count_12m"]) == 2

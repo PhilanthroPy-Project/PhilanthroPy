@@ -288,3 +288,20 @@ def test_numeric_looking_donor_ids_stay_text(tmp_path):
                             _row("", "2025-01-11", "50.00", "G")))
     feats = donorperfect_gifts_to_features(read_donorperfect_gifts(path))
     assert list(feats.index) == ["0088"]
+
+
+def test_payment_gift_type_column_is_not_the_record_type():
+    """DonorPerfect's own Gift Type is a payment method (CK); it must not
+    shadow Record Type, nor stand in for it when Record Type is absent."""
+    rows = [
+        {"Donor ID": "1", "Gift Date": "2025-01-01", "Amount": "1200", "Gift Type": "CK", "Record Type": "P"},
+        {"Donor ID": "1", "Gift Date": "2025-02-01", "Amount": "100", "Gift Type": "CK", "Record Type": "G"},
+    ]
+    assert float(donorperfect_gifts_to_features(rows).loc["1", "total_gift_amount"]) == 100.0
+    rows = [
+        {"Donor ID": "1", "Gift Date": "2025-01-01", "Amount": "1200", "Gift Type": "CK"},
+        {"Donor ID": "1", "Gift Date": "2025-02-01", "Amount": "100", "Gift Type": "M"},
+    ]
+    with pytest.warns(UserWarning, match="no record type column"):
+        feats = donorperfect_gifts_to_features(rows)
+    assert float(feats.loc["1", "total_gift_amount"]) == 1300.0

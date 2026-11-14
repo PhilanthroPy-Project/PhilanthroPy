@@ -336,3 +336,29 @@ def test_numeric_looking_account_ids_stay_text(tmp_path):
                             _row("", "2025-01-11", "50.00", "Closed Won")))
     feats = npsp_opportunities_to_features(read_npsp_opportunities(path))
     assert list(feats.index) == ["0088"]
+
+
+def test_account_id_wins_over_account_name_in_any_order():
+    rows = [
+        {"Account Name": "Smith Household", "Account ID": "001A",
+         "Close Date": "2025-01-01", "Amount": "100", "Stage": "Closed Won"},
+        {"Account Name": "Smith Household", "Account ID": "001B",
+         "Close Date": "2025-02-01", "Amount": "5000", "Stage": "Closed Won"},
+    ]
+    feats = npsp_opportunities_to_features(rows)
+    assert sorted(feats.index) == ["001A", "001B"]
+
+
+def test_account_name_only_warns():
+    rows = [{"Account Name": "Smith Household", "Close Date": "2025-01-01",
+             "Amount": "100", "Stage": "Closed Won"}]
+    with pytest.warns(UserWarning, match="Account Name"):
+        feats = npsp_opportunities_to_features(rows)
+    assert feats.index.tolist() == ["Smith Household"]
+
+
+def test_na_stage_counts_as_blank():
+    df = pd.DataFrame({"Account ID": ["1", "1"], "Close Date": ["2025-01-01"] * 2,
+                       "Amount": ["10", "20"],
+                       "Stage": pd.array(["Closed Won", None], dtype="string")})
+    assert float(npsp_opportunities_to_features(df).loc["1", "total_gift_amount"]) == 30.0

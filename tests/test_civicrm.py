@@ -581,3 +581,74 @@ def test_to_amount_parses_signed_and_formatted_values(raw, expected):
     out = _to_amount(pd.Series([raw]))
 
     assert out.iloc[0] == pytest.approx(expected)
+
+
+# --------------------------------------------------------------------------- #
+# Regressions
+# --------------------------------------------------------------------------- #
+def test_dedup_runs_after_status_filter():
+    """A Pending row then a Completed row with the same id is one received
+    contribution, not zero."""
+    rows = [
+        {"id": "7", "contact_id": "1", "receive_date": "2025-01-01",
+         "total_amount": "100", "contribution_status": "Pending"},
+        {"id": "7", "contact_id": "1", "receive_date": "2025-01-01",
+         "total_amount": "100", "contribution_status": "Completed"},
+    ]
+    feats = civicrm_contributions_to_features(rows)
+    assert float(feats.loc["1", "total_gift_amount"]) == 100.0
+
+
+def test_amount_negative_and_scientific_forms():
+    from philanthropy.ingest._civicrm import _to_amount
+
+    raw = pd.Series(["$ (50.00)", "$(50.00)", "($50.00)", "50.00-", "1e3", "1.5E+03",
+                     "$1,250.00", "50.00 (USD)"])
+    assert _to_amount(raw).tolist() == [-50.0, -50.0, -50.0, -50.0, 1000.0, 1500.0,
+                                        1250.0, 50.0]
+
+
+def test_float_contact_id_has_no_trailing_zero():
+    rows = pd.DataFrame({"contact_id": [101, 102, np.nan],
+                         "receive_date": ["2025-01-01"] * 3, "total_amount": [1, 2, 3]})
+    feats = civicrm_contributions_to_features(rows, statuses=None)
+    assert feats.index.tolist() == ["101", "102"]
+
+
+def test_numeric_date_column_reads_yyyymmdd_and_rejects_other_numbers():
+    rows = pd.DataFrame({"contact_id": ["1"], "receive_date": [20250115], "total_amount": [10]})
+    feats = civicrm_contributions_to_features(rows, statuses=None)
+    assert feats.loc["1", "first_gift_date"] == pd.Timestamp("2025-01-15")
+    rows["receive_date"] = [45000.0]
+    with pytest.raises(ValueError, match="YYYYMMDD"):
+        civicrm_contributions_to_features(rows, statuses=None)
+
+
+def test_day_first_looking_dates_warn():
+    rows = [{"contact_id": "1", "receive_date": d, "total_amount": "5"}
+            for d in ("03/01/2025", "13/01/2025")]
+    with pytest.warns(UserWarning, match="day-first"):
+        civicrm_contributions_to_features(rows, statuses=None)
+
+
+def test_read_directory_uppercase_ext_and_empty_file(tmp_path):
+    (tmp_path / "JAN.CSV").write_text("Contact ID,Receive Date,Total Amount\n1,2025-01-01,5\n")
+    (tmp_path / "feb.csv").write_text("Contact ID,Receive Date,Total Amount\n1,2025-02-01,7\n")
+    (tmp_path / "z_empty.csv").write_text("")
+    assert read_civicrm_contributions(tmp_path)["total_amount"].tolist() == ["5", "7"]
+    assert read_civicrm_contributions(tmp_path / "z_empty.csv").empty
+
+
+def test_read_cp1252_file(tmp_path):
+    path = tmp_path / "cp.csv"
+    path.write_bytes("Contact ID,Receive Date,Total Amount,Last Name\n1,2025-01-01,5,Muñoz\n".encode("cp1252"))
+    assert read_civicrm_contributions(path).loc[0, "last_name"] == "Muñoz"
+
+
+def test_read_keeps_na_like_text(tmp_path):
+    path = tmp_path / "na.csv"
+    path.write_text("Contact ID,Receive Date,Total Amount,Last Name\nNA,2025-01-01,7,Null\n2,2025-01-01,,None\n")
+    raw = read_civicrm_contributions(path)
+    assert raw["contact_id"].tolist() == ["NA", "2"]
+    assert raw["last_name"].tolist() == ["Null", "None"]
+    assert pd.isna(raw.loc[1, "total_amount"])

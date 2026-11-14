@@ -94,7 +94,14 @@ def constituent_events_to_features(
         ``externalConstituentId`` when present, else ``constituentEmail``), with
         the columns declared in ``_FEATURE_DTYPES`` (``first_name`` /
         ``last_name`` are populated from the feed when available, else null).
-        Rows are sorted by ``constituent_id`` for determinism.
+        Rows are sorted by ``constituent_id`` for determinism. An email key
+        is stripped and casefolded, so ``"A@x.edu"`` and ``"a@x.edu "`` are
+        one constituent.
+
+    Raises
+    ------
+    ValueError
+        If the feed has no ``constituentEmail`` field.
 
     Warns
     -----
@@ -121,6 +128,12 @@ def constituent_events_to_features(
     df = _to_frame(events)
     if df.empty:
         return _empty_feature_frame()
+    if "constituentEmail" not in df.columns:
+        raise ValueError(
+            "ConstituentEvent feed has no constituentEmail field; every "
+            "ConstituentEvent must carry constituentEmail (the donor key when "
+            f"externalConstituentId is blank). Got {sorted(df.columns)}."
+        )
 
     # total_gift_amount sums raw amounts; UniSchema carries a per-event
     # `currency` but no FX rates, so a mixed-currency feed would sum apples and
@@ -271,7 +284,9 @@ def _read_events_file(path: Path) -> "list[dict]":
         # twice, and name the offending file+line if a record is malformed
         # (instead of aborting the whole ingest with a contextless traceback).
         events: "list[dict]" = []
-        with path.open(encoding="utf-8") as fh:
+        # utf-8-sig: a file saved by a Windows editor starts with a BOM, which
+        # plain utf-8 leaves inside the first record and json.loads rejects.
+        with path.open(encoding="utf-8-sig") as fh:
             for lineno, line in enumerate(fh, start=1):
                 line = line.strip()
                 if not line:
@@ -284,7 +299,7 @@ def _read_events_file(path: Path) -> "list[dict]":
                     ) from exc
         return events
     # .json (or unknown): a single object or an array of objects.
-    text = path.read_text(encoding="utf-8").strip()
+    text = path.read_text(encoding="utf-8-sig").strip()
     if not text:
         return []
     try:
@@ -301,8 +316,12 @@ def _to_frame(events: Union[Iterable[Mapping], pd.DataFrame]) -> pd.DataFrame:
 
 
 def _constituent_id(df: pd.DataFrame) -> pd.Series:
-    """External CRM id when present and non-empty, else the email."""
-    email = df["constituentEmail"].astype("string")
+    """External CRM id when present and non-empty, else the email.
+
+    The email is stripped and casefolded first: "A@x.edu" and "a@x.edu " are
+    one mailbox, so one donor.
+    """
+    email = df["constituentEmail"].astype("string").str.strip().str.casefold()
     if "externalConstituentId" not in df.columns:
         return email
     ext = df["externalConstituentId"].astype("string")

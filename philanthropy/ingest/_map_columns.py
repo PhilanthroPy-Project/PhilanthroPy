@@ -53,7 +53,9 @@ def map_columns(
     ValueError
         If, after renaming, any name in ``required`` is missing. The message
         lists every missing column at once, so a user fixing the mapping in a
-        UI does not have to resubmit once per missing field.
+        UI does not have to resubmit once per missing field. Also raised
+        when two mapped sources share a target, or a target is already an
+        unmapped column of ``df``.
 
     Examples
     --------
@@ -82,6 +84,19 @@ def map_columns(
         )
         raise ValueError(
             "mapping assigns multiple source columns to the same target: " + detail
+        )
+    # A target that is already a column of df, and is not itself renamed away,
+    # would end up as two columns with one name (df[target] a DataFrame).
+    clashes = {
+        target: sources[0]
+        for target, sources in targets.items()
+        if target in df.columns and target != sources[0] and target not in mapping
+    }
+    if clashes:
+        detail = "; ".join(f"{source!r} -> {target!r}" for target, source in clashes.items())
+        raise ValueError(
+            "mapping renames a column onto a name df already has as an unmapped "
+            "column: " + detail
         )
 
     renamed = df.rename(columns=mapping)

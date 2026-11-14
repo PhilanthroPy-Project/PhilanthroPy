@@ -15,11 +15,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Documentation
 - `CONTRIBUTING.md` gains an "Adding a CRM ingest reader" checklist: every
-  step a reader PR needs, in order — vendor-docs citation, header aliases,
+  step a reader PR needs, in order -- vendor docs citation, header aliases,
   `DEFAULT_` constants, the missing type/status warning, the typed empty frame,
   delegation to `civicrm_contributions_to_features`, registration in
-  `GIFT_SOURCES`/`_REGISTRY`, the CLI row-filter table, tests, and the
-  one-bullet CHANGELOG rule — linked from `docs/contributing.md` (#342).
+  `GIFT_SOURCES` / `REGISTRY`, the CLI row-filter table, tests, and the
+  one-bullet CHANGELOG rule -- linked from `docs/contributing.md` (#342).
+- Grateful-patient documentation now explains that gift timing for repeat
+  patients uses each donor's latest discharge, not the discharge nearest each
+  gift.
 - `CITATION.cff` now cites 0.10.0, the newest published release (Zenodo
   version DOI 10.5281/zenodo.23990995). The concept DOI is unchanged.
 - The "How sure are we?" results page now says that a 90% range holds 90

@@ -237,6 +237,12 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
     ValueError
         If ``discharge_col`` is absent from ``encounter_df``.
 
+    Notes
+    -----
+    Encounter summaries retain only the latest discharge per donor after the
+    optional ``as_of`` cutoff. Every gift is measured against that discharge;
+    ``as_of`` does not select the discharge nearest each gift.
+
     Examples
     --------
     >>> import pandas as pd

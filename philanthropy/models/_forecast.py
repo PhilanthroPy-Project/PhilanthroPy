@@ -252,11 +252,10 @@ class FinancialForecastModel(RegressorMixin, BaseEstimator):
             appeal counts, prior-period giving, macro indicators).  May contain
             ``NaN``; missing values are filled with frozen training medians.
         y : array-like of shape (n_samples,)
-            Giving revenue for each period.
-
-        Rows must be in time order, oldest to newest: the autoregressive
-        roll-forward used by :meth:`predict_revenue_forecast` is fitted on
-        ``y`` in row order, so shuffled rows give meaningless forecasts.
+            Giving revenue for each period. Rows must be in time order,
+            oldest to newest: the autoregressive roll-forward used by
+            :meth:`predict_revenue_forecast` is fitted on ``y`` in row order,
+            so shuffled rows give meaningless forecasts.
 
         Returns
         -------

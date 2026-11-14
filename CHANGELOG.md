@@ -28,6 +28,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
   often on all four real files. It points to `score="log"`, whose width
   grows with the amount, as the main fix, and to `groups=` as a weaker one.
 
+### Fixed
+- Ingest: `read_gift_rows(source="ellucian_advance")` no longer returns zero rows when dates carry a receipt number, and soft-credit-only Advance rows are no longer counted as $0 gifts.
+- Ingest: CiviCRM-based readers apply the test-mode and status filters before removing duplicate contribution ids, so a Pending copy no longer hides the Completed row.
+- Ingest: amounts such as `$ (50.00)` and `50.00-` read as negative, `1e3` parses as 1000, a numeric date column is read as YYYYMMDD (other numbers raise instead of becoming 1970 dates), and slash dates that look day-first now warn.
+- Ingest: the DonorPerfect payment-method `Gift Type` column no longer collides with the Record Type filter; an NPSP Account ID or Primary Contact always wins over Account Name as the donor key; the Blackbaud CRM `Constituent` name column is no longer a donor key.
+- Ingest: missing (`pd.NA`) type values count as blank in every reader's type filter, numeric donor ids from a column with a blank no longer become `"101.0"`, and `map_columns` raises instead of creating duplicate columns.
+- Ingest: the CSV reader finds upper-case `.CSV` files, skips empty files, falls back to cp1252, and keeps literal `NA`/`None`/`Null` text; ConstituentEvent emails match case-insensitively and BOM-prefixed JSON loads; activity types are case-insensitive and a date-only `as_of` keeps the whole day.
+- Snapshots: `build_snapshots` and `build_leadership_snapshots` parse US dates, currency strings and tz-aware dates instead of silently dropping or crashing on them (and warn with a count of dropped rows); `build_leadership_snapshots` skips, with a warning, a year whose following fiscal year is not on file instead of labelling everyone target=0; a gift late on the last day of a fiscal year no longer gives a negative `months_since_last_gift`; a bad `donors` frame raises a clear error.
+- `FinancialForecastModel` standardises features and residuals for its residual network, so the nonlinear part converges and contributes instead of matching plain linear regression; this changes every prediction, and on purely linear data the network can now add some noise (raise `alpha` to damp it). `predict_revenue_forecast` forecasts flat at the training mean when the history is shorter than `2 * ar_order + 2` periods or the AR fit is explosive, instead of returning values up to 1e24.
+- `GammaGammaModel` warns when the fitted `q <= 1` and returns NaN instead of a negative gift size; `BetaGeoModel` and `GammaGammaModel` raise a `ConvergenceWarning` when the fit does not converge; `BetaGeoModel` no longer returns NaN at `a == 1`; `repeat_giving_summary` ignores refunds and $0 days.
+- `AskAmountRecommender` relative mode uses whichever reference column is present instead of failing on NaN; `GiftIntervalCalibrator` never returns an upper bound below the clipped lower bound; `capacity_ratio` accepts a one-column frame.
+- `AskAmountRecommender`, `ShareOfWalletRegressor`, `PlannedGivingIntentScorer` and `MajorGiftClassifier` warn when there are too few training rows for any tree to split (every donor would get the same score); `PlannedGivingIntentScorer` gains `min_samples_leaf`.
+- `score_leadership_prospects` rejects `top_n < 1`, drops zero and negative contributions from the reasons, joins float donor ids, and reports only activity id match warnings in `activity_id_match_warnings`.
+- `EncounterTransformer` and `GratefulPatientFeaturizer` keep their encounter table when an unfitted copy is pickled, so cross-validation with `n_jobs > 1` works again; fitted bundles still drop it.
+- `CRMCleaner` and `FiscalYearTransformer` keep the input index under `set_output(transform="pandas")`, so rows no longer misalign inside a `ColumnTransformer`.
+- `ShareOfWalletScorer` returns NaN for a donor with no wealth data instead of ranking them Principal, and rejects `epsilon <= 0`; the wealth imputers warn when no column matches a wealth name.
+- `EncounterRecencyTransformer` with `timezone` set reads naive dates as local time, so midnight dates no longer slip into the previous fiscal year; it reads a single-column array positionally and warns when it cannot find the date column.
+- `GratefulPatientFeaturizer` drops undated encounters before the `as_of` cutoff and reads CSV `encounter_path` files; a date-only `as_of` includes the whole day; `EncounterTransformer` rejects non-numeric passthrough columns at fit; `RFMTransformer` excludes undated gifts from both frequency and monetary.
+- `explain_donor_scores` aligns a DataFrame baseline by column name; `compare_to_rule` shares ties at the top-10% cut by expected value instead of row order; `FiscalYearGroupedSplitter` accepts sparse year histories the gap allows.
+- Metrics: `top_donor_share` no longer takes one donor too many on float rounding; `interval_report` and `interval_score` reject NaN `y_true`; fairness metrics raise when `pos_label` never appears in `y_pred` instead of reporting exact parity. `CRMCleaner` warns on comma-decimal amounts it cannot parse.
+- CLI: `score` and `validate` exit with a clear message for a bundle saved without a feature list, and `validate` rejects rows with a missing label.
+
+### Security
+- The CLI escapes spreadsheet-formula column headers as well as cells in the CSVs it writes.
+- `load_donorschoose`, `load_karlan_list` and `load_psid_philanthropy` reject network URLs, like every other data path; the KDD Cup 1998 download times out instead of hanging.
+- The publish workflow passes the release tag through an environment variable instead of interpolating it into the shell, and SHA-pins every action in the job that builds the published files.
+
 ## [0.10.0] - 2026-11-05
 
 ### Added

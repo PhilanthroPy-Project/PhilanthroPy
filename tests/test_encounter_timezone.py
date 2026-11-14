@@ -87,3 +87,14 @@ def test_invalid_timezone_raises_lookup_error_naming_offending_zone():
 
     assert "Already tz-aware" not in str(exc_info.value)
 
+
+
+def test_naive_dates_are_local_wall_clock_not_utc():
+    # 2023-07-01 is the first day of FY2024 (fiscal_year_start=7). Reading the
+    # naive date as UTC then converting to Chicago put it on 2023-06-30.
+    X = pd.DataFrame({"last_encounter_date": ["2023-07-01", "2023-06-30"]})
+    out = EncounterRecencyTransformer(
+        reference_date="2023-09-01", timezone="America/Chicago"
+    ).fit_transform(X)
+    assert out[:, 2].tolist() == [2024.0, 2023.0]
+    assert out[:, 0].tolist() == [62.0, 63.0]

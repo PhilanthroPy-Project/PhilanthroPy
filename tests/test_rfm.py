@@ -102,3 +102,16 @@ def test_rfm_transformer_nan_amount_excluded_from_frequency_and_monetary():
     d1 = rfm[rfm['donor_id'] == 1].iloc[0]
     assert d1['frequency'] == 1
     assert d1['monetary'] == 100
+
+
+def test_rfm_transformer_undated_gift_excluded_from_frequency_and_monetary():
+    data = pd.DataFrame({
+        'donor_id': [2, 2],
+        'gift_date': ['2020-01-01', None],
+        'gift_amount': [3.0, 4.0],
+    })
+    with pytest.warns(UserWarning, match="missing gift_date"):
+        rfm = RFMTransformer(reference_date='2024-01-01').fit_transform(data)
+    d2 = rfm.iloc[0]
+    assert d2['frequency'] == 1
+    assert d2['monetary'] == 3.0

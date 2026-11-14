@@ -111,6 +111,15 @@ def explain_donor_scores(
             )
     if np.ndim(baseline) == 2:
         train = pd.DataFrame(baseline)
+        if is_df and isinstance(baseline, pd.DataFrame):
+            # Align by name: a reordered training frame would otherwise give
+            # each feature another feature's baseline.
+            missing = [c for c in X.columns if c not in train.columns]
+            if missing:
+                raise ValueError(
+                    f"baseline is missing column(s) {missing} present in X."
+                )
+            train = train[list(X.columns)]
         ref = [
             train[c].median()
             if pd.api.types.is_numeric_dtype(train[c])

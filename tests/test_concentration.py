@@ -74,3 +74,8 @@ def test_cost_per_dollar_raised():
 def test_fundraising_roi():
     assert fundraising_roi(total_raised=400, total_fundraising_expense=100) == pytest.approx(3.0)
     assert fundraising_roi(total_raised=100, total_fundraising_expense=0) == np.inf
+
+
+def test_top_donor_share_ceil_is_not_pushed_up_by_float_error():
+    # 0.07 * 100 == 7.000000000000001, which used to take 8 donors.
+    assert top_donor_share(np.ones(100), 0.07) == pytest.approx(0.07)

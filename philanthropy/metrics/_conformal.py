@@ -179,6 +179,10 @@ def _interval_inputs(
         )
     if y.size == 0:
         raise ValueError("y_true must be non-empty.")
+    if not np.all(np.isfinite(y)):
+        raise ValueError("y_true must be finite (no NaN or inf).")
+    if np.isnan(lo).any() or np.isnan(hi).any():
+        raise ValueError("lower and upper must not contain NaN.")
     a = float(alpha)
     if not 0 < a < 1:
         raise ValueError(f"alpha must satisfy 0 < alpha < 1, got {alpha!r}.")

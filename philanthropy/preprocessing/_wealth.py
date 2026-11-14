@@ -233,6 +233,13 @@ class WealthScreeningImputer(TransformerMixin, BaseEstimator):
                 input_cols = [f"x{i}" for i in range(n_cols)]
 
         self.imputed_cols_ = self._resolve_cols(input_cols)
+        if not self.imputed_cols_:
+            warnings.warn(
+                "WealthScreeningImputer: no column of X matches a wealth column name, so "
+                "nothing will be imputed and NaNs pass through unchanged. Pass "
+                "a DataFrame with named columns, or set wealth_cols.",
+                UserWarning,
+            )
 
         # Warn about requested columns not found in X
         if self.wealth_cols is not None:

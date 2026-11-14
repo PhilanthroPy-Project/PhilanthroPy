@@ -136,7 +136,7 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
     ``clinical_gravity_score`` Encounter count × service-line capacity weight.
     ``distinct_service_lines`` Number of unique service lines.
     ``distinct_physicians``    Number of unique attending physicians.
-    ``total_drg_weight``       Sum of DRG relative weights (NaN if unavailable).
+    ``total_drg_weight``       Sum of DRG relative weights (0.0 if unavailable).
     ========================= ================================================
 
     Donors absent from the encounter table receive zeros for all columns.
@@ -193,7 +193,9 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         so persisting it would make every saved model a patient-data disclosure:
         a bundle handed to a vendor, attached to a ticket, or copied to a laptop
         would carry the raw clinical rows with it. It is therefore replaced with
-        ``None`` on serialisation.
+        ``None`` when a fitted instance is serialised. An unfitted instance
+        keeps it, because joblib pickles unfitted copies to parallel
+        cross-validation workers, which need the table to fit.
 
         A round-tripped instance can still ``transform``. It cannot ``fit``
         again until it is given the table back, which is the intended
@@ -206,7 +208,10 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
         as donor data.
         """
         state = dict(super().__getstate__())
-        state["encounter_df"] = None
+        # Unfitted copies (joblib workers in cross_val_score, deepcopy) need
+        # the table to fit; only a fitted bundle has a summary to stand on.
+        if "encounter_summary_" in state:
+            state["encounter_df"] = None
         return state
 
     def fit(self: _Self, X: Any, y: Any = None) -> _Self:
@@ -233,7 +238,10 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
             from ..utils._validation import ensure_local_path
 
             ensure_local_path(self.encounter_path, "encounter_path")
-            raw_enc = pd.read_parquet(self.encounter_path)
+            if str(self.encounter_path).lower().endswith(".csv"):
+                raw_enc = pd.read_csv(self.encounter_path)
+            else:
+                raw_enc = pd.read_parquet(self.encounter_path)
         elif self.encounter_df is not None:
             raw_enc = self.encounter_df.copy()  # critical: snapshot here
         else:
@@ -248,6 +256,9 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
             raw_enc[self.discharge_col], errors="coerce"
         )
 
+        # Undated rows cannot be placed before or after as_of, so they are
+        # dropped (as EncounterTransformer does) rather than slipping past it.
+        raw_enc = raw_enc.dropna(subset=[self.discharge_col])
         raw_enc = _apply_as_of_cutoff(
             raw_enc, self.discharge_col, self.as_of, "GratefulPatientFeaturizer"
         )

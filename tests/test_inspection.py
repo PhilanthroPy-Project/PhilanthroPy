@@ -223,3 +223,17 @@ def test_explain_int_array_keeps_fractional_median():
     out = explain_donor_scores(model, X, "predict", baseline=X, top_k=1)
     np.testing.assert_allclose(out["baseline"].astype(float), 2.5)
     np.testing.assert_allclose(out["contribution"], 2.0 * (X[:, 0] - 2.5))
+
+
+def test_explain_aligns_a_dataframe_baseline_by_column_name():
+    rng = np.random.default_rng(0)
+    X = pd.DataFrame({"a": rng.normal(0, 1, 50), "b": rng.normal(100, 1, 50)})
+    model = LinearRegression().fit(X, 2 * X["a"] + X["b"])
+    row = X.iloc[[0]]
+    same = explain_donor_scores(model, row, "predict", baseline=X, top_k=None)
+    swapped = explain_donor_scores(
+        model, row, "predict", baseline=X[["b", "a"]], top_k=None
+    )
+    pd.testing.assert_frame_equal(same, swapped)
+    with pytest.raises(ValueError, match="missing column"):
+        explain_donor_scores(model, row, "predict", baseline=X[["a"]].assign(c=1.0))

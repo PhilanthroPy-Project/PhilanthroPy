@@ -181,6 +181,13 @@ class WealthScreeningImputerKNN(TransformerMixin, BaseEstimator):
             )
 
         self.imputed_cols_ = self._resolve_cols(input_cols)
+        if not self.imputed_cols_:
+            warnings.warn(
+                "WealthScreeningImputerKNN: no column of X matches a wealth column name, so "
+                "nothing will be imputed and NaNs pass through unchanged. Pass "
+                "a DataFrame with named columns, or set wealth_cols.",
+                UserWarning,
+            )
 
         # Warn about columns requested but absent
         if self.wealth_cols is not None:
@@ -399,7 +406,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         all columns are summed (including ``capacity_col_idx``).
     epsilon : float, default=1.0
         Small constant added to the denominator to prevent division by
-        zero when all wealth columns are zero.
+        zero when all wealth columns are zero. Must be > 0.
     capacity_floor : float, default=0.0
         Minimum value to enforce on ``estimated_capacity`` before scoring
         (prevents negative capacity from distorting the SoW score).
@@ -450,6 +457,16 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         self.major_tier_threshold = major_tier_threshold
         self.principal_tier_threshold = principal_tier_threshold
 
+    def _no_wealth(self, X_arr: np.ndarray, w_indices: list[int]) -> np.ndarray:
+        """Rows whose wealth columns are all NaN.
+
+        The capacity column is left out when other wealth columns exist (the
+        default sums every column), or a capacity-only row would score
+        capacity / (capacity + epsilon), i.e. near 1.
+        """
+        cols = [i for i in w_indices if i != int(self.capacity_col_idx)] or w_indices
+        return np.isnan(X_arr[:, cols]).all(axis=1)
+
     def fit(self: _SelfS, X: Any, y: Any = None) -> _SelfS:
         """Fit the scorer: record wealth scale from training data.
 
@@ -462,8 +479,8 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         -------
         self : ShareOfWalletScorer
         """
-        if self.epsilon < 0:
-            raise ValueError(f"`epsilon` must be >= 0, got {self.epsilon}.")
+        if not self.epsilon > 0:
+            raise ValueError(f"`epsilon` must be > 0, got {self.epsilon}.")
         if not (0 <= self.capacity_col_idx):
             raise ValueError(f"`capacity_col_idx` must be >= 0, got {self.capacity_col_idx}.")
 
@@ -477,10 +494,12 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
             if self.wealth_col_indices is None
             else [int(i) for i in self.wealth_col_indices]
         )
-        wealth_sum = np.nansum(X_arr[:, w_indices], axis=1)
+        wealth_sum = np.nansum(X_arr[:, w_indices], axis=1).astype(np.float64)
+        # A row with no screening data at all is unknown wealth, not zero.
+        wealth_sum[self._no_wealth(X_arr, w_indices)] = np.nan
 
         # 95th-percentile scale to clip outliers and keep SoW in [0, 1]
-        if len(wealth_sum) > 0:
+        if not np.isnan(wealth_sum).all():
             p95 = np.nanpercentile(wealth_sum, 95)
             self.wealth_scale_ = float(p95) if p95 > 0 else 1.0
         else:
@@ -500,6 +519,9 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         X_out : np.ndarray of shape (n_samples, 2), dtype float64
             Column 0: ``capacity_utilisation_ratio`` in [0, 1].
             Column 1: ``capacity_tier`` (0 = Leadership, 1 = Major, 2 = Principal).
+            Both are ``NaN`` for a row whose wealth columns (other than the
+            capacity column) are all missing: no screening data is unknown
+            wealth, not zero wealth.
 
         Raises
         ------
@@ -530,6 +552,7 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
 
         # Wealth sum: clip at 95th-percentile scale from fit to prevent score collapse
         wealth_raw = np.nansum(X_arr[:, w_indices], axis=1)
+        no_wealth = self._no_wealth(X_arr, w_indices)
         wealth_clipped = np.clip(wealth_raw, 0.0, self.wealth_scale_)
 
         # SoW = capacity / (wealth + epsilon), then clip to [0, 1]
@@ -545,6 +568,8 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         tiers[sow >= float(self.principal_tier_threshold)] = float(
             self.TIER_ENCODING["Principal"]
         )
+        sow[no_wealth] = np.nan
+        tiers[no_wealth] = np.nan
 
         return np.column_stack([sow, tiers])
 
@@ -581,11 +606,14 @@ class ShareOfWalletScorer(TransformerMixin, BaseEstimator):
         Returns
         -------
         labels : ndarray of str, shape (n_samples,)
-            One of ``"Principal"``, ``"Major"``, or ``"Leadership"`` per row.
+            One of ``"Principal"``, ``"Major"``, or ``"Leadership"`` per row,
+            or ``None`` for a row whose wealth columns are all missing.
         """
         out = self.transform(X)
-        tier_ints = out[:, 1].astype(int)
-        return np.array([self.TIER_LABELS[t] for t in tier_ints], dtype=object)
+        return np.array(
+            [None if np.isnan(t) else self.TIER_LABELS[int(t)] for t in out[:, 1]],
+            dtype=object,
+        )
 
     def __sklearn_tags__(self) -> Tags:
         tags = super().__sklearn_tags__()

@@ -115,8 +115,8 @@ def test_not_enough_fiscal_years_names_the_shortfall():
     X = np.zeros((10, 2))
     with pytest.raises(
         ValueError,
-        match=r"Not enough fiscal years \(5\) for n_splits=2 with gap_years=5\.\s+"
-              r"Need at least 8 distinct fiscal years\.",
+        match=r"Not enough fiscal years \(5\) for n_splits=2 with gap_years=5: "
+              r"no fiscal year has training data more than 5 year\(s\) before it\.",
     ):
         list(FiscalYearGroupedSplitter(drop_repeat_donors=False, n_splits=2, gap_years=5).split(
             X, groups=_FY_GROUPS
@@ -350,3 +350,18 @@ def test_row_loss_warning_fires_on_the_first_fold_not_at_exhaustion():
     )
     with pytest.warns(UserWarning, match="removed 3 test row"):
         next(gen)
+
+
+def test_sparse_years_use_the_arithmetic_gap_not_the_year_count():
+    # 2015, 2020, 2021 with gap_years=2: testing 2021 on 2015 is valid even
+    # though only three distinct years exist.
+    fy = np.repeat([2015, 2020, 2021], 10)
+    X = np.zeros((30, 1))
+    sp = FiscalYearGroupedSplitter(n_splits=1, gap_years=2, drop_repeat_donors=False)
+    folds = list(sp.split(X, groups=fy))
+    assert len(folds) == sp.get_n_splits(X, groups=fy) == 1
+    train, test = folds[0]
+    assert set(fy[train]) == {2015}
+    assert set(fy[test]) == {2021}
+    sp3 = FiscalYearGroupedSplitter(n_splits=3, gap_years=2, drop_repeat_donors=False)
+    assert len(list(sp3.split(X, groups=fy))) == sp3.get_n_splits(X, groups=fy) == 2

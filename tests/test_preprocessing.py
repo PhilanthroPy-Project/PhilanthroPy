@@ -532,24 +532,32 @@ class TestEncounterRecencyTransformerEdgeCases:
     def test_fit_on_ndarray_warns_and_defaults_reference_date_to_today(self):
         from philanthropy.preprocessing import EncounterRecencyTransformer
 
-        X = np.array([["2023-01-01"], ["2023-02-01"]], dtype=object)
+        X = np.array(
+            [["2023-01-01", "x"], ["2023-02-01", "y"]], dtype=object
+        )
         with pytest.warns(UserWarning, match="X is not a DataFrame"):
             t = EncounterRecencyTransformer().fit(X)
         assert t.reference_date_ == pd.Timestamp.today().normalize()
 
-    def test_transform_ndarray_after_ndarray_fit_returns_all_nan(self):
+    def test_multi_column_ndarray_fit_warns_that_transform_is_all_nan(self):
         from philanthropy.preprocessing import EncounterRecencyTransformer
 
-        # Fitted on an ndarray: no column names exist, so transform cannot
-        # resolve the date columns and must return an all-NaN block instead
-        # of guessing.
-        X = np.array([["2023-01-01"], ["2023-02-01"]], dtype=object)
-        with pytest.warns(UserWarning, match="X is not a DataFrame"):
-            t = EncounterRecencyTransformer().fit(X)
+        # No column names and more than one column: the date column cannot be
+        # located, so fit says so instead of transform going silently all-NaN.
+        X = np.array(
+            [["2023-01-01", "x"], ["2023-02-01", "y"]], dtype=object
+        )
+        with pytest.warns(UserWarning, match="date_col cannot be located"):
+            t = EncounterRecencyTransformer(reference_date="2023-09-01").fit(X)
+        assert np.isnan(t.transform(X)).all()
 
+    def test_single_column_ndarray_is_read_positionally(self):
+        from philanthropy.preprocessing import EncounterRecencyTransformer
+
+        X = np.array([["2023-06-01"], ["2023-01-01"]], dtype=object)
+        t = EncounterRecencyTransformer(reference_date="2023-09-01").fit(X)
         out = t.transform(X)
-        assert out.shape == (2, 3)
-        assert np.isnan(out).all()
+        assert out[:, 0].tolist() == [92.0, 243.0]
 
     def test_fit_ignores_a_configured_column_missing_from_training_frame(self):
         from philanthropy.preprocessing import EncounterRecencyTransformer
@@ -871,3 +879,42 @@ class TestWealthPercentileTransformer:
         from_array = WealthPercentileTransformer().fit(df.to_numpy())
         assert from_frame.feature_names_in_.tolist() == ["net_worth", "other"]
         assert from_array.feature_names_in_.tolist() == ["x0", "x1"]
+
+
+@pytest.mark.parametrize("cls", [CRMCleaner, FiscalYearTransformer])
+def test_pandas_output_keeps_input_index_inside_column_transformer(cls):
+    from sklearn.compose import ColumnTransformer
+
+    df = pd.DataFrame({
+        "gift_date": ["2023-06-30", "2023-01-01", "2023-10-28"],
+        "gift_amount": [4.0, 1.0, 6.0],
+    }, index=[3, 0, 5])
+    ct = ColumnTransformer(
+        [("t", cls(), ["gift_date"])], remainder="passthrough"
+    ).set_output(transform="pandas")
+    out = ct.fit_transform(df)
+    assert list(out.index) == [3, 0, 5]
+    assert out["remainder__gift_amount"].tolist() == [4.0, 1.0, 6.0]
+    assert list(cls().set_output(transform="pandas").fit_transform(df).index) == [3, 0, 5]
+
+
+def test_comma_decimal_amounts_warn():
+    from philanthropy.preprocessing._transformers import _coerce_currency_to_float
+
+    with pytest.warns(UserWarning, match="comma decimal"):
+        _coerce_currency_to_float(pd.Series(["1.234,56", "1,5"], name="amt"))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        _coerce_currency_to_float(pd.Series(["$1,000.00", "1,000"], name="amt"))
+
+
+@pytest.mark.parametrize("name", ["WealthScreeningImputer", "WealthScreeningImputerKNN"])
+def test_wealth_imputer_warns_when_no_column_will_be_imputed(name):
+    import philanthropy.preprocessing as pp
+
+    cls = getattr(pp, name)
+    A = np.array([[1.0, np.nan], [2.0, 3.0], [np.nan, 4.0]])
+    with pytest.warns(UserWarning, match="nothing will be imputed"):
+        cls().fit(A)
+    with pytest.warns(UserWarning, match="nothing will be imputed"):
+        cls().fit(pd.DataFrame(A, columns=["foo", "bar"]))

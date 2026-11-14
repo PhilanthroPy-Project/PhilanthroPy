@@ -209,3 +209,26 @@ def test_rule_scores_refuses_ask_unknown_rules_and_response_without_gifts():
         rule_scores(rows, task="response", gifts=gifts, rule="largest gift")
     with pytest.raises(ValueError, match="needs gifts"):
         rule_scores(rows, task="response")
+
+
+def test_top_rate_shares_ties_at_the_cut_by_expected_value():
+    from philanthropy.model_selection._rule_check import _top_rate
+
+    # A constant score ranks nobody above anybody, so the top 10% should hold
+    # the base rate, whatever the row order.
+    y = np.array([1.0] * 10 + [0.0] * 90)
+    assert _top_rate(y, np.zeros(100)) == pytest.approx(0.1)
+    assert _top_rate(y[::-1], np.zeros(100)) == pytest.approx(0.1)
+    # Untied scores are unchanged: the top 10 rows by score.
+    assert _top_rate(y, -np.arange(100.0)) == pytest.approx(1.0)
+
+
+def test_top_rate_counts_scored_rows_when_the_cut_falls_among_nan():
+    from philanthropy.model_selection._rule_check import _top_rate
+
+    y = np.array([1] * 10 + [0] * 90, dtype=float)
+    score = np.full(100, np.nan)
+    score[:5] = np.arange(5)
+    # 5 scored positives fill 5 of 10 slots; the NaN block (5 of 95
+    # positive) shares the other 5.
+    assert _top_rate(y, score) == pytest.approx((5 + 5 * 5 / 95) / 10)

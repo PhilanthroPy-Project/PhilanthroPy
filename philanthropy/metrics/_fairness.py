@@ -44,7 +44,9 @@ def selection_rate_by_group(
     Raises
     ------
     ValueError
-        If inputs have mismatched lengths, are empty, or contain missing values.
+        If inputs have mismatched lengths, are empty, or contain missing values,
+        or if ``pos_label`` never appears in a ``y_pred`` that is not a single
+        negative value (raw scores, or labels of another type).
     """
     y_pred = np.asarray(y_pred)
     groups = np.asarray(sensitive_features)
@@ -63,6 +65,18 @@ def selection_rate_by_group(
         )
 
     selected = y_pred == pos_label
+    if not selected.any():
+        n_values = len(pd.unique(y_pred))
+        if n_values > 1 or (
+            y_pred.dtype.kind in "OSU" and not isinstance(pos_label, str)
+        ):
+            # Raw scores, or labels of another type ("1" vs 1): nothing matches,
+            # and every rate of 0 would read as exact parity downstream.
+            raise ValueError(
+                f"pos_label={pos_label!r} never appears in y_pred "
+                f"({n_values} distinct value(s), dtype {y_pred.dtype}). Pass "
+                "thresholded binary decisions and a pos_label of the same type."
+            )
     return {g: float(selected[groups == g].mean()) for g in np.unique(groups)}
 
 
@@ -95,12 +109,16 @@ def disparate_impact_ratio(
     -------
     float
         Ratio in ``[0.0, 1.0]``. Returns ``1.0`` when only one group is present
-        or when no sample in any group is selected (no disparity to measure).
+        or when every prediction is the same negative value (no disparity to
+        measure).
 
     Raises
     ------
     ValueError
-        If inputs have mismatched lengths, are empty, or contain missing values.
+        If inputs have mismatched lengths, are empty, or contain missing values,
+        or if ``pos_label`` never appears in ``y_pred`` while ``y_pred`` holds
+        more than one value or labels of a different type (raw scores, or
+        ``"1"`` against ``pos_label=1``).
     """
     rates = selection_rate_by_group(y_pred, sensitive_features, pos_label=pos_label)
     values = np.array(list(rates.values()), dtype=float)
@@ -145,7 +163,9 @@ def demographic_parity_difference(
     Raises
     ------
     ValueError
-        If inputs have mismatched lengths, are empty, or contain missing values.
+        If inputs have mismatched lengths, are empty, or contain missing values,
+        or if ``pos_label`` never appears in a ``y_pred`` that is not a single
+        negative value (raw scores, or labels of another type).
     """
     rates = selection_rate_by_group(y_pred, sensitive_features, pos_label=pos_label)
     values = np.array(list(rates.values()), dtype=float)

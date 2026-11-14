@@ -246,6 +246,19 @@ class RFMTransformer(TransformerMixin, BaseEstimator):
                 UserWarning,
                 stacklevel=2,
             )
+        # Same for an undated gift: count() would skip it for frequency while
+        # monetary still summed its amount.
+        has_date = X_df['gift_date'].notna()
+        n_missing_date = int((~has_date).sum())
+        if n_missing_date:
+            warnings.warn(
+                f"RFMTransformer is excluding {n_missing_date} gift row(s) "
+                "with a missing gift_date from both frequency and monetary, so "
+                "the two features describe the same set of gifts.",
+                UserWarning,
+                stacklevel=2,
+            )
+        has_amount = has_amount & has_date
         grouped_valid = X_df[has_amount].groupby('donor_id')
 
         # Frequency: number of gifts with a known amount

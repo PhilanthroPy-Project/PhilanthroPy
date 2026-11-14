@@ -314,3 +314,32 @@ def test_warns_when_ndarray_has_no_recoverable_merge_key():
         out = gpf.transform(np.array([[1.0], [2.0]]))
     assert out.shape == (2, 4)
     assert not out.any()
+
+
+def test_undated_encounters_do_not_bypass_as_of():
+    enc = pd.DataFrame({
+        "donor_id": [1, 1, 1],
+        "discharge_date": ["2020-01-01", "2025-01-01", None],
+        "service_line": ["cardiac", "oncology", "neuro"],
+        "attending_physician_id": ["P1", "P2", "P3"],
+    })
+    gpf = GratefulPatientFeaturizer(encounter_df=enc, as_of="2021-01-01")
+    row = gpf.fit(pd.DataFrame({"donor_id": [1]})).encounter_summary_.loc[1]
+    assert row["total_encounters"] == 1
+    assert row["distinct_service_lines"] == 1
+    assert row["distinct_physicians"] == 1
+
+
+def test_encounter_path_reads_csv(tmp_path):
+    enc = pd.DataFrame({
+        "donor_id": [1, 2],
+        "discharge_date": ["2022-01-01", "2022-02-01"],
+        "service_line": ["cardiac", "oncology"],
+        "attending_physician_id": ["P1", "P2"],
+    })
+    path = tmp_path / "enc.csv"
+    enc.to_csv(path, index=False)
+    X = pd.DataFrame({"donor_id": [1, 2]})
+    from_csv = GratefulPatientFeaturizer(encounter_path=str(path)).fit(X)
+    from_df = GratefulPatientFeaturizer(encounter_df=enc).fit(X)
+    np.testing.assert_array_equal(from_csv.transform(X), from_df.transform(X))

@@ -141,6 +141,11 @@ class GratefulPatientFeaturizer(TransformerMixin, BaseEstimator):
 
     Donors absent from the encounter table receive zeros for all columns.
 
+    Encounter summaries retain only the latest discharge per donor after the
+    optional ``as_of`` cutoff. When used for gift timing, every gift is measured
+    against that discharge; ``as_of`` does not select the discharge nearest
+    each gift.
+
     Examples
     --------
     >>> import pandas as pd

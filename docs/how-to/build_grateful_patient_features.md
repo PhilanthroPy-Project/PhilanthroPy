@@ -6,6 +6,8 @@ Academic medical centers (AMCs) track hospital visits across different service l
 
 `GratefulPatientFeaturizer` turns clinical encounter histories into predictive signals, drawn from encounter metadata alone: service line, attending physician, and dates. It reads only those columns and returns four numeric aggregates, so no identifier from the encounter table reaches the model. That is a narrow read surface, **not** formal HIPAA de-identification; if you need identifier-like columns dropped from a wider encounter frame, use `EncounterTransformer` and its `pii_patterns`. Review [Compliance Considerations](../explanation/compliance_considerations.md) before production use.
 
+For the limitation affecting repeat patients, see [Known limitation: repeat patients](../explanation/compliance_considerations.md#known-limitation-repeat-patients).
+
 ```python
 import pandas as pd
 from philanthropy.preprocessing import GratefulPatientFeaturizer

@@ -23,6 +23,10 @@ Two components do this work: `GratefulPatientFeaturizer` and `EncounterTransform
 
 In short: the library helps you *model* on data that you have **already** made lawful to use. Making it lawful is your responsibility, upstream of any transformer.
 
+### Known limitation: repeat patients
+
+Both `GratefulPatientFeaturizer` and `EncounterTransformer` summarize encounters to one latest discharge per donor after the optional `as_of` cutoff. For repeat or long-course patients, such as oncology or transplant patients, a gift made after an earlier stay can therefore be timed against a later discharge rather than the stay closest to that gift. `as_of` excludes encounters discharged after the cutoff; it does not select the nearest discharge for each gift. Per-gift encounter keying would require encounter rows at transform time, while saved bundles omit those rows ([#78](https://github.com/PhilanthroPy-Project/PhilanthroPy/pull/78)); see the design discussion in [#110](https://github.com/PhilanthroPy-Project/PhilanthroPy/issues/110).
+
 ## Dropping columns by name is defense-in-depth, not de-identification
 
 `EncounterTransformer` drops columns whose **names** match a set of identifier heuristics: the class attribute `PII_PATTERNS` (substrings such as `_id`, `mrn`, `ssn`, `name`, `dob`, `zip`, `patient`, `phone`, `email`, `address`), plus anything you add through the `id_cols_to_drop` parameter. You can override the heuristic entirely with the `pii_patterns` parameter, which **replaces** (does not extend) the built-in default.

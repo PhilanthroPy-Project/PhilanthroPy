@@ -285,3 +285,14 @@ class TestPlannedGivingIntentScorer:
         m = PlannedGivingIntentScorer(n_estimators=5, random_state=0).fit(X, y)
         scores = m.predict_intent_score(X)
         assert np.isfinite(scores).all()
+
+
+def test_tiny_training_set_warns_and_min_samples_leaf_fixes_it():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(60, 3))
+    y = (X[:, 0] > 0).astype(int)
+    with pytest.warns(UserWarning, match="min_samples_leaf"):
+        flat = PlannedGivingIntentScorer(random_state=0).fit(X, y)
+    assert np.unique(flat.predict_intent_score(X)).size == 1
+    small = PlannedGivingIntentScorer(random_state=0, min_samples_leaf=5).fit(X, y)
+    assert np.unique(small.predict_intent_score(X)).size > 1

@@ -41,6 +41,7 @@ True
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, Optional, TypeVar
 
 import numpy as np
@@ -177,7 +178,10 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
         Ask amounts are right-skewed (a few large gifts, many small ones),
         and squared error fits the conditional *mean*, which overshoots most
         donors; absolute error fits the conditional *median* instead, which
-        tracks a typical ask more closely.
+        tracks a typical ask more closely. With ``target_mode="relative"`` the
+        loss applies to the log ratio, so the dollar ask is the reference
+        times the *median* ratio (``"absolute_error"``) or the *geometric
+        mean* ratio (``"squared_error"``), never the arithmetic mean.
     random_state : int or None, default=None
         Seed for the internal random-number generator.  Set to an integer
         for reproducible model artefacts suitable for audit trails.
@@ -344,13 +348,17 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
     # ------------------------------------------------------------------
 
     def _relative_reference(self, X: np.ndarray) -> np.ndarray:
-        """max(last gift, average gift) per row, floored to avoid log(0)."""
+        """max(last gift, average gift) per row, floored to avoid log(0).
+
+        ``np.fmax`` ignores a NaN in either column; a row with both missing
+        falls back to ``ask_floor``.
+        """
         if self.last_gift_idx_ is None or self.avg_gift_idx_ is None:
             raise ValueError(
                 "target_mode='relative' requires both last_gift_idx and avg_gift_idx."
             )
-        ref = np.maximum(X[:, self.last_gift_idx_], X[:, self.avg_gift_idx_])
-        return np.maximum(ref, self.ask_floor)
+        ref = np.fmax(X[:, self.last_gift_idx_], X[:, self.avg_gift_idx_])
+        return np.fmax(ref, self.ask_floor)
 
     def _fit_backend(
         self, X: np.ndarray, y: np.ndarray, sample_weight: Optional[np.ndarray]
@@ -370,6 +378,14 @@ class AskAmountRecommender(RegressorMixin, BaseEstimator):
                 "loss='absolute_error' the backend does not enforce it."
             )
 
+        if X.shape[0] < 2 * self.min_samples_leaf:
+            warnings.warn(
+                f"Only {X.shape[0]} training rows for min_samples_leaf="
+                f"{self.min_samples_leaf}: no tree can split, so every donor "
+                "gets the same ask. Lower min_samples_leaf or add rows.",
+                UserWarning,
+                stacklevel=3,
+            )
         est = HistGradientBoostingRegressor(
             learning_rate=self.learning_rate,
             max_iter=self.max_iter,

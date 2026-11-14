@@ -232,3 +232,26 @@ def test_self_check_does_not_change_the_final_model():
     np.testing.assert_array_equal(
         checked.fit(X, y).predict(X), plain.fit(X, y).predict(X)
     )
+
+
+def test_relative_mode_ignores_nan_in_one_reference_column():
+    rng = np.random.default_rng(0)
+    X = np.abs(rng.normal(100, 30, size=(300, 3)))
+    y = X[:, 0] * 1.2 + rng.normal(0, 5, 300)
+    Xn = X.copy()
+    Xn[:5, 0] = np.nan
+    m = AskAmountRecommender(
+        target_mode="relative", last_gift_idx=0, avg_gift_idx=1, random_state=0
+    ).fit(Xn, y)
+    assert np.all(np.isfinite(m.predict(Xn[:6])))
+    Xb = Xn.copy()
+    Xb[:5, 1] = np.nan
+    pred = m.predict(Xb[:3])
+    assert np.all(np.isfinite(pred)) and np.all(pred >= m.ask_floor)
+
+
+def test_too_few_rows_for_min_samples_leaf_warns():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(35, 3))
+    with pytest.warns(UserWarning, match="min_samples_leaf"):
+        AskAmountRecommender(random_state=0).fit(X, 1000 + 500 * X[:, 0])

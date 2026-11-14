@@ -223,7 +223,9 @@ class GiftIntervalCalibrator(RegressorMixin, BaseEstimator):
     estimator : object
         A **fitted** regressor whose ``predict`` returns a dollar amount. Fitting
         it on the rows passed to :meth:`fit` would make the conformity scores
-        in-sample and void the guarantee, so this class checks and refuses.
+        in-sample and void the guarantee. This class cannot detect that (it
+        only checks that ``estimator`` is fitted), so the caller must
+        calibrate on rows the estimator never saw.
     alpha : float, Fraction, Decimal or int, default=0.05
         Miscoverage. The interval targets ``1 - alpha`` and reports what it
         attains. Read exactly: ``0.05`` means one twentieth, and an alpha with
@@ -530,6 +532,8 @@ class GiftIntervalCalibrator(RegressorMixin, BaseEstimator):
         lower, upper = self._bounds(X, yhat, q)
         if self.lower_bound is not None:
             lower = np.maximum(lower, float(self.lower_bound))
+            # The clip can lift lower past upper; never return an inverted interval.
+            upper = np.maximum(upper, lower)
         return GiftInterval(
             lower=lower,
             upper=upper,

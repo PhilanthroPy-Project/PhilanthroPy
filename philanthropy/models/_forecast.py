@@ -41,10 +41,15 @@ from __future__ import annotations
 
 from typing import Any, Optional, Tuple, TypeVar
 
+import warnings
+
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
+from sklearn.compose import TransformedTargetRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.neural_network import MLPRegressor
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
 
@@ -102,8 +107,12 @@ class FinancialForecastModel(RegressorMixin, BaseEstimator):
     ----------
     linear_model_ : LinearRegression
         The fitted linear (ARIMA-surrogate) component.
-    nonlinear_model_ : MLPRegressor or None
-        The fitted nonlinear (LSTM-surrogate) residual component.  ``None`` when
+    nonlinear_model_ : TransformedTargetRegressor or None
+        The fitted nonlinear (LSTM-surrogate) residual component: an
+        :class:`~sklearn.neural_network.MLPRegressor` behind a
+        :class:`~sklearn.preprocessing.StandardScaler` on ``X``, with the
+        residual target standardised too (both scalers frozen at fit time).
+        ``None`` when
         the residuals are degenerate (fewer than two samples or zero variance),
         in which case predictions fall back to the linear component alone.
     fill_values_ : ndarray of shape (n_features_in_,)
@@ -192,9 +201,11 @@ class FinancialForecastModel(RegressorMixin, BaseEstimator):
         n = y.shape[0]
         self.y_mean_ = float(np.mean(y)) if n else 0.0
 
-        if p <= 0 or n <= p:
-            # Not enough history for the requested order: degenerate to a flat
-            # forecast at the series mean.
+        if p <= 0 or n < 2 * p + 2:
+            # Not enough history for the requested order (fewer than two rows
+            # per estimated coefficient makes the least squares near-
+            # interpolating and the roll-forward explode): degenerate to a
+            # flat forecast at the series mean.
             self.ar_coef_ = np.zeros(max(p, 0), dtype=float)
             self.ar_intercept_ = self.y_mean_
             return
@@ -205,6 +216,25 @@ class FinancialForecastModel(RegressorMixin, BaseEstimator):
         target = y[p:]
         design = np.column_stack([np.ones(rows), lags])
         coef, *_ = np.linalg.lstsq(design, target, rcond=None)
+        # An explosive fit (companion-matrix spectral radius well above 1)
+        # grows without bound when rolled forward; fall back to the flat mean.
+        companion = np.zeros((p, p))
+        companion[0] = coef[1:]
+        companion[1:, :-1] = np.eye(p - 1)
+        # A unit root (a steady trend fits radius ~1.00001) is kept: it
+        # extrapolates the trend linearly rather than exploding. Only a
+        # clearly explosive fit falls back.
+        if np.max(np.abs(np.linalg.eigvals(companion))) > 1.01:
+            warnings.warn(
+                "The fitted AR roll-forward is non-stationary (spectral "
+                "radius > 1.01); predict_revenue_forecast falls back to a flat "
+                "forecast at the training mean.",
+                UserWarning,
+                stacklevel=3,
+            )
+            self.ar_coef_ = np.zeros(p, dtype=float)
+            self.ar_intercept_ = self.y_mean_
+            return
         self.ar_intercept_ = float(coef[0])
         self.ar_coef_ = coef[1:]
 
@@ -223,6 +253,10 @@ class FinancialForecastModel(RegressorMixin, BaseEstimator):
             ``NaN``; missing values are filled with frozen training medians.
         y : array-like of shape (n_samples,)
             Giving revenue for each period.
+
+        Rows must be in time order, oldest to newest: the autoregressive
+        roll-forward used by :meth:`predict_revenue_forecast` is fitted on
+        ``y`` in row order, so shuffled rows give meaningless forecasts.
 
         Returns
         -------
@@ -250,11 +284,19 @@ class FinancialForecastModel(RegressorMixin, BaseEstimator):
         # fall back to the linear component alone.
         self.nonlinear_model_ = None
         if X_imp.shape[0] > 1 and float(residuals.max() - residuals.min()) > 0.0:
-            nn = MLPRegressor(
-                hidden_layer_sizes=self.hidden_layer_sizes,
-                alpha=self.alpha,
-                max_iter=self.max_iter,
-                random_state=self.random_state,
+            # Standardise X and the dollar-scale residuals; unscaled, the
+            # network never converges and learns nothing.
+            nn = TransformedTargetRegressor(
+                regressor=make_pipeline(
+                    StandardScaler(),
+                    MLPRegressor(
+                        hidden_layer_sizes=self.hidden_layer_sizes,
+                        alpha=self.alpha,
+                        max_iter=self.max_iter,
+                        random_state=self.random_state,
+                    ),
+                ),
+                transformer=StandardScaler(),
             )
             nn.fit(X_imp, residuals)
             self.nonlinear_model_ = nn
@@ -265,7 +307,7 @@ class FinancialForecastModel(RegressorMixin, BaseEstimator):
 
         # Iterations run by the residual network (1 when it was skipped).
         self.n_iter_ = (
-            self.nonlinear_model_.n_iter_
+            self.nonlinear_model_.regressor_[-1].n_iter_
             if self.nonlinear_model_ is not None
             else 1
         )

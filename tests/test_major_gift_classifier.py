@@ -278,3 +278,11 @@ def test_class_weight_shifts_predictions_toward_upweighted_class():
     clf.fit(X_train, y_train)
     preds = clf.predict(X_test)
     assert np.mean(preds == 0) > 0.87
+
+
+def test_tiny_training_set_warns():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(45, 3))
+    y = (X[:, 0] > 0).astype(int)
+    with pytest.warns(UserWarning, match="min_samples_leaf"):
+        MajorGiftClassifier(random_state=0).fit(X, y)

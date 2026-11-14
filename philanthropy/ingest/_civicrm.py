@@ -238,7 +238,7 @@ def _typed_gift_rows(df: pd.DataFrame) -> pd.DataFrame:
     :func:`~philanthropy.ingest.read_gift_rows`, so both count the same gifts.
     """
     df = df.copy()
-    df["_contact_id"] = df["contact_id"].astype("string").str.strip()
+    df["_contact_id"] = _normalise_contact_id(df["contact_id"]).str.strip()
     df["_ts"] = _to_datetime(df["receive_date"])
     df["_amount"] = _to_amount(df["total_amount"]).fillna(0.0)
     # A gift we cannot attribute to a donor, or place in time, contributes to no
@@ -259,13 +259,6 @@ def _civicrm_received_rows(
     Shared by :func:`civicrm_contributions_to_features` and the CLI's raw gift
     log, so both count the same gifts.
     """
-    # Two rows sharing a CiviCRM contribution id are the same contribution;
-    # concatenating overlapping monthly exports is how that happens. Collapse
-    # only rows with a real id: pandas' duplicated() treats NaN == NaN, which
-    # would drop every id-less gift once any row carries one.
-    if "id" in df.columns:
-        df = df[~(df["id"].notna() & df.duplicated(subset="id"))]
-
     if "is_test" in df.columns:
         df = df[~_to_bool(df["is_test"])]
 
@@ -283,6 +276,15 @@ def _civicrm_received_rows(
                 f"export, or pass statuses=None to accept every row.",
                 stacklevel=3,
             )
+
+    # Two rows sharing a CiviCRM contribution id are the same contribution;
+    # concatenating overlapping monthly exports is how that happens. Collapse
+    # only rows with a real id: pandas' duplicated() treats NaN == NaN, which
+    # would drop every id-less gift once any row carries one. This runs after
+    # the filters, so a Pending copy of a contribution that a later export
+    # shows as Completed cannot knock out the Completed row.
+    if "id" in df.columns:
+        df = df[~(df["id"].notna() & df.duplicated(subset="id"))]
     return df
 
 
@@ -292,7 +294,8 @@ def read_civicrm_contributions(path: Union[str, Path]) -> pd.DataFrame:
     Accepts either a single ``.csv`` file or a directory, which is walked
     **recursively** and whose ``*.csv`` files are concatenated in sorted
     relative-path order, the shape you get from keeping a folder of monthly
-    exports. Symlinks are not followed.
+    exports. The ``.csv`` suffix is matched in any case (``JAN.CSV``), and
+    an empty file in a directory is skipped. Symlinks are not followed.
 
     Every column is read as text and the headers are normalised to the APIv4
     spelling, so ``"Total Amount"``, ``"Contact ID"`` and ``"Contribution Date"``
@@ -311,7 +314,8 @@ def read_civicrm_contributions(path: Union[str, Path]) -> pd.DataFrame:
     -------
     contributions : pandas.DataFrame
         The export as written, with normalised column names and text values.
-        A directory holding no CSV returns an empty frame.
+        A directory holding no CSV, or a single empty file, returns an empty
+        frame.
 
     Raises
     ------
@@ -325,17 +329,18 @@ def read_civicrm_contributions(path: Union[str, Path]) -> pd.DataFrame:
     if p.is_dir():
         files = [
             f
-            for f in p.rglob("*.csv")
+            for f in p.rglob("*")
             # Skip symlinks: one inside the export folder pointing outside it
             # must not be followed and read (path-traversal hardening).
-            if f.is_file() and not f.is_symlink()
+            if f.suffix.lower() == ".csv" and f.is_file() and not f.is_symlink()
         ]
-        if not files:
-            return pd.DataFrame()
         # Sort by relative path so ordering is deterministic across platforms.
         frames = [
             _read_csv(f) for f in sorted(files, key=lambda f: f.relative_to(p).as_posix())
         ]
+        frames = [f for f in frames if not (f.empty and f.columns.empty)]
+        if not frames:
+            return pd.DataFrame()
         return pd.concat(frames, ignore_index=True)
     return _read_csv(p)
 
@@ -347,8 +352,16 @@ def _read_csv(path: Path) -> pd.DataFrame:
     # utf-8-sig: CiviCRM writes UTF-8, but an export round-tripped through Excel
     # comes back with a BOM that would otherwise ride along inside the first
     # header. dtype=str keeps a numeric-looking Contact ID from becoming an int
-    # in one file and a float in another once a blank appears.
-    df = pd.read_csv(path, dtype=str, encoding="utf-8-sig", keep_default_na=True)
+    # in one file and a float in another once a blank appears. Only a blank
+    # cell is missing: pandas' default NA strings would turn a Contact ID
+    # "NA" or a last name "Null" into NaN. A file that is not UTF-8 is most
+    # often a Windows Excel save, so cp1252 is the fallback.
+    try:
+        df = pd.read_csv(path, dtype=str, encoding="utf-8-sig", keep_default_na=False, na_values=[""])
+    except UnicodeDecodeError:
+        df = pd.read_csv(path, dtype=str, encoding="cp1252", keep_default_na=False, na_values=[""])
+    except pd.errors.EmptyDataError:
+        return pd.DataFrame()
     return _normalise_headers(df)
 
 
@@ -384,13 +397,22 @@ def _to_amount(series: pd.Series) -> pd.Series:
     """
     if pd.api.types.is_numeric_dtype(series):
         return pd.to_numeric(series, errors="coerce")
-    # Accounting notation wraps a negative in parens, e.g. "($50.00)"; turn it
-    # into a leading minus sign before stripping everything else, or it reads
-    # as a plain positive.
     text = series.astype("string").str.strip()
-    text = text.str.replace(r"^\((.*)\)$", r"-\1", regex=True)
+    # Plain numbers, scientific notation ("1.5E+03") included, parse as they
+    # are; stripping characters first would read "1e3" as 13.
+    direct = pd.to_numeric(text, errors="coerce")
+    # Accounting notation wraps a negative in parens, anywhere around a
+    # currency symbol ("($50.00)", "$ (50.00)"), and some ledgers write a
+    # trailing minus ("50.00-"); turn both into a leading minus sign before
+    # stripping everything else, or they read as a plain positive.
+    # Only parens that wrap the number itself count: "50.00 (USD)" is not a
+    # negative.
+    text = text.str.replace(
+        r"^([^()]*?)\(\s*([$€£¥]?\s*[\d,.]+\s*)\)([^()]*)$", r"-\1\2\3", regex=True
+    )
+    text = text.str.replace(r"^(.*)-$", r"-\1", regex=True)
     cleaned = text.str.replace(r"[^\d.\-]", "", regex=True)
-    return pd.to_numeric(cleaned, errors="coerce")
+    return direct.fillna(pd.to_numeric(cleaned, errors="coerce"))
 
 
 def _to_datetime(series: pd.Series) -> pd.Series:
@@ -401,10 +423,55 @@ def _to_datetime(series: pd.Series) -> pd.Series:
     can carry ``03/01/2025``. ``format="mixed"`` parses both rather than
     rejecting one; it also resolves that example as *March 1* under pandas'
     ``dayfirst=False`` default. A site configured ``dd/mm/yyyy`` should pass an
-    already-parsed datetime column.
+    already-parsed datetime column; a slash date whose first field is above
+    12 (``13/01/2025``) shows the file is day-first and raises a warning,
+    because the other rows of that file are then read the wrong way round.
+
+    A numeric column (dates stored as numbers) is read as ``YYYYMMDD``;
+    any other number raises rather than being guessed at as epoch
+    nanoseconds or an Excel serial.
     """
+    if pd.api.types.is_numeric_dtype(series):
+        num = pd.to_numeric(series, errors="coerce")
+        known = num.dropna()
+        if not ((known % 1 == 0) & (known >= 10_000_000) & (known < 100_000_000)).all():
+            raise ValueError(
+                "A date column holds numbers that are not 8-digit YYYYMMDD "
+                "dates (e.g. 20250115); export dates as text, or convert Excel "
+                "serial / epoch numbers to datetimes before passing them in."
+            )
+        return pd.to_datetime(num.astype("Int64").astype("string"), format="%Y%m%d", errors="coerce")
+    if pd.api.types.is_object_dtype(series) or pd.api.types.is_string_dtype(series):
+        first = series.astype("string").str.extract(r"^\s*(\d{1,2})/\d{1,2}/", expand=False)
+        if (pd.to_numeric(first, errors="coerce") > 12).any():
+            warnings.warn(
+                "Some slash-separated dates have a first field above 12 (e.g. "
+                "13/01/2025), so the file looks day-first, but dates are read "
+                "month-first: 03/01/2025 becomes March 1. Parse the column "
+                "with dayfirst=True yourself and pass datetimes instead.",
+                stacklevel=2,
+            )
     ts = pd.to_datetime(series, format="mixed", errors="coerce", utc=True)
     return ts.dt.tz_localize(None)
+
+
+def _normalise_contact_id(series: pd.Series) -> pd.Series:
+    """Coerce a contact_id column to string, without a spurious ".0".
+
+    ``pd.read_csv`` reads an id column as float64 the moment any cell in it
+    is blank (NaN forces the whole column off int64), so "123" round-trips as
+    123.0 and, left to plain ``.astype("string")``, becomes the string
+    "123.0" -- which then fails to join against the same donor's "123" from
+    a column that never had a blank. Format an integral float back to its
+    bare digits first; a genuinely fractional id (not a real CRM id, but not
+    this function's problem either) is left alone.
+    """
+    if not pd.api.types.is_float_dtype(series):
+        return series.astype("string")
+    as_int_str = series.map(
+        lambda v: str(int(v)) if pd.notna(v) and float(v).is_integer() else v
+    )
+    return as_int_str.astype("string")
 
 
 def _to_bool(series: pd.Series) -> pd.Series:

@@ -95,7 +95,14 @@ def _apply_as_of_cutoff(
     if as_of is None:
         return enc
     cutoff = _parse_as_of(as_of, class_name)
-    keep = enc[discharge_col].isna() | (enc[discharge_col] <= cutoff)
+    # A date-only cutoff ("2023-12-31") covers that whole day, so a row
+    # stamped 2023-12-31 14:00 is kept, matching the documented inclusive rule.
+    if cutoff == cutoff.normalize():
+        keep = enc[discharge_col].isna() | (
+            enc[discharge_col] < cutoff + pd.Timedelta(days=1)
+        )
+    else:
+        keep = enc[discharge_col].isna() | (enc[discharge_col] <= cutoff)
     if not keep.any() and len(enc):
         warnings.warn(
             f"{class_name}(as_of={cutoff.date()}) excluded every {row_noun} "
@@ -307,7 +314,9 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         so persisting it would make every saved model a patient-data disclosure:
         a bundle handed to a vendor, attached to a ticket, or copied to a laptop
         would carry the raw clinical rows with it. It is therefore replaced with
-        ``None`` on serialisation.
+        ``None`` when a fitted instance is serialised. An unfitted instance
+        keeps it, because joblib pickles unfitted copies to parallel
+        cross-validation workers, which need the table to fit.
 
         A round-tripped instance can still ``transform``. It cannot ``fit``
         again until it is given the table back, which is the intended
@@ -320,7 +329,10 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         as donor data.
         """
         state = dict(super().__getstate__())
-        state["encounter_df"] = None
+        # Unfitted copies (joblib workers in cross_val_score, deepcopy) need
+        # the table to fit; only a fitted bundle has a summary to stand on.
+        if "encounter_summary_" in state:
+            state["encounter_df"] = None
         return state
 
     # ------------------------------------------------------------------
@@ -451,6 +463,24 @@ class EncounterTransformer(TransformerMixin, BaseEstimator):
         self._validate_encounter_df(raw_enc)
 
         self._validate_X(X)
+        if isinstance(X, pd.DataFrame):
+            dropped = set(self._identify_pii_columns(X.columns))
+            dropped.add(self.gift_date_col)
+            non_numeric = []
+            for col in X.columns:
+                if col in dropped:
+                    continue
+                try:
+                    np.asarray(X[col], dtype=np.float64)
+                except (ValueError, TypeError):
+                    non_numeric.append(col)
+            if non_numeric:
+                raise ValueError(
+                    f"EncounterTransformer passes columns {non_numeric} "
+                    "through to a float output, but they are not numeric. "
+                    "Encode or drop them before this step, or add them to "
+                    "id_cols_to_drop."
+                )
         gift_dates = (
             self._parse_gift_dates(X)
             if isinstance(X, pd.DataFrame) and self.gift_date_col in X.columns

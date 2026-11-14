@@ -327,20 +327,24 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
                 f"years in `groups`, found {n_fy}."
             )
 
-        max_splits = n_fy - 1 - gap_years
-        if max_splits < 1:
+        # A year can be a test year when some year lies strictly before
+        # (test_fy - gap_years). The gap is arithmetic, so count from the year
+        # values, not from how many distinct years there are: 2015, 2020, 2021
+        # with gap_years=2 can still test 2021 on 2015.
+        valid_test_fy = unique_fy[unique_fy - gap_years > unique_fy[0]]
+        if len(valid_test_fy) == 0:
             raise ValueError(
                 f"Not enough fiscal years ({n_fy}) for n_splits={requested_splits} "
-                f"with gap_years={gap_years}.  Need at least "
-                f"{requested_splits + 1 + gap_years} distinct fiscal years."
+                f"with gap_years={gap_years}: no fiscal year has training "
+                f"data more than {gap_years} year(s) before it."
             )
 
-        n_splits = min(requested_splits, max_splits)
+        n_splits = min(requested_splits, len(valid_test_fy))
 
         # Walk from the most-recent test year backward to get exactly n_splits folds.
-        # Each fold tests a consecutive fiscal year, training on *all* prior years.
+        # Each fold tests a fiscal year, training on *all* years before its cutoff.
         indices = np.arange(n_samples)
-        test_fy_sequence = unique_fy[-(n_splits):]  # Last n_splits fiscal years as test sets
+        test_fy_sequence = valid_test_fy[-n_splits:]
 
         dropped_total = 0
         for test_fy in test_fy_sequence:
@@ -415,19 +419,15 @@ class FiscalYearGroupedSplitter(BaseCrossValidator):
             if drop_repeat and groups.ndim == 2 and groups.shape[1] == 2:
                 groups = groups[:, 0]
             unique_fy = np.unique(groups[~_missing_mask(groups)])
-            n_fy = len(unique_fy)
-            max_splits = max(0, n_fy - 1 - gap_years)
-            n_splits = min(n_splits, max_splits)
-            if n_splits == 0:
-                return 0
             try:
                 unique_fy = np.sort(unique_fy.astype(float))
             except (TypeError, ValueError):
                 # Non-numeric years: split() raises the descriptive error.
-                return n_splits
-            # split() skips a test year with no training rows before its
-            # cutoff (possible with fractional fiscal years), so don't count it.
-            return int(np.count_nonzero(unique_fy[-n_splits:] - gap_years > unique_fy[0]))
+                return min(n_splits, max(0, len(unique_fy) - 1 - gap_years))
+            # Same rule as split(): a test year needs a training year strictly
+            # before its cutoff.
+            n_valid = int(np.count_nonzero(unique_fy - gap_years > unique_fy[0]))
+            return min(n_splits, n_valid)
         return n_splits
 
     # ------------------------------------------------------------------

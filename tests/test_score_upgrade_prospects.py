@@ -508,3 +508,52 @@ def test_include_momentum_runs_without_excluded_features_in_top_reasons():
     )
     for reasons in scores["top_reasons"]:
         assert all(feature != "fiscal_year" for feature, _ in reasons)
+
+
+@pytest.mark.parametrize("top_n", [0, -3])
+def test_non_positive_top_n_raises(top_n):
+    with pytest.raises(ValueError, match="top_n"):
+        score_leadership_prospects(_archetype_gifts(), random_state=0, top_n=top_n)
+
+
+def test_top_reasons_drop_zero_contributions():
+    from philanthropy.models._upgrade import _top_reasons
+
+    X = pd.DataFrame(np.random.default_rng(0).normal(size=(5, 4)), columns=list("abcd"))
+    imp = pd.DataFrame({"feature": list("abcd"), "importance_mean": [0.5, -0.1, 0, 0.0]})
+    reasons = _top_reasons(X, imp)
+    assert all([feat for feat, _ in r] == ["a"] for r in reasons)
+
+
+def test_float_donor_index_joins_the_scoring_row():
+    # A donors frame read from a CSV with a blank id cell has a float index
+    # (123.0); the current-year scoring row must still join it to "123".
+    gifts = _archetype_gifts()
+    ids = {d: i + 1 for i, d in enumerate(gifts["donor_id"].unique())}
+    gifts["donor_id"] = gifts["donor_id"].map(ids)
+    capacity = {i: float(i % 7) for i in ids.values()}
+    as_str = pd.DataFrame(
+        {"capacity_estimate": list(capacity.values())},
+        index=pd.Index([str(i) for i in capacity]),
+    )
+    as_float = as_str.set_axis(pd.Index([float(i) for i in capacity]))
+    a, _ = score_leadership_prospects(gifts, donors=as_str, random_state=0)
+    b, _ = score_leadership_prospects(gifts, donors=as_float, random_state=0)
+    pd.testing.assert_series_equal(a["affinity_score"], b["affinity_score"])
+
+
+def test_non_activity_warnings_are_re_emitted_not_reported(monkeypatch):
+    import warnings
+
+    import philanthropy.models._upgrade as up
+
+    real = up.build_leadership_snapshots
+
+    def noisy(*args, **kwargs):
+        warnings.warn("3 of 100 gift rows ... are dropped.", UserWarning)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(up, "build_leadership_snapshots", noisy)
+    with pytest.warns(UserWarning, match="are dropped"):
+        _, report = score_leadership_prospects(_archetype_gifts(), random_state=0)
+    assert report["activity_id_match_warnings"] == []

@@ -33,7 +33,11 @@ from typing import Iterable, Mapping, Optional, Union
 
 import pandas as pd
 
-from philanthropy.ingest._civicrm import _resolve_reference_date, _to_datetime
+from philanthropy.ingest._civicrm import (
+    _normalise_contact_id,
+    _resolve_reference_date,
+    _to_datetime,
+)
 from philanthropy.utils._momentum import trailing_slope_features
 
 __all__ = ["activities_to_features"]
@@ -54,11 +58,13 @@ def activities_to_features(
     ----------
     activities : iterable of mapping, or DataFrame
         Long-format rows, one per activity: ``contact_id``, ``activity_date``,
-        ``activity_type`` are required; ``amount`` and ``hours`` are used when
+        ``activity_type`` are required (types are matched ignoring case and
+        surrounding spaces, and named in lower case); ``amount`` and ``hours`` are used when
         present (summed, per type, over the trailing 12 months); ``name`` is
         accepted but not aggregated.
     as_of : str or datetime-like
         The cutoff. Rows with ``activity_date`` after ``as_of`` are dropped
+        (a date-only ``as_of`` keeps that whole day, whatever the time)
         before any feature is computed; every window and recency figure is
         measured back from this date, not from "now" or from the batch's own
         latest date. A tz-aware timestamp (e.g. ``pd.Timestamp("2024-12-31",
@@ -153,12 +159,17 @@ def activities_to_features(
     df = df.copy()
     df["_contact_id"] = _normalise_contact_id(df["contact_id"]).str.strip()
     df["_ts"] = _to_datetime(df["activity_date"])
-    df["_type"] = df["activity_type"].astype("string").str.strip()
+    # Casefolded so "Event" and "event" are one type, one column family.
+    df["_type"] = df["activity_type"].astype("string").str.strip().str.casefold()
     # as_of is required, so this never falls back to the batch's own latest
     # date; it only normalises as_of (naive or tz-aware) to naive UTC, the
     # same treatment activity_date already got via _to_datetime, so the two
     # sides of every comparison below share a tz-awareness.
     as_of_ts = _resolve_reference_date(as_of, df["_ts"])
+    # A date-only as_of means "through the end of that day": compare by date,
+    # so an activity at 18:00 on the as_of day is kept, not cut.
+    if as_of_ts == as_of_ts.normalize():
+        df["_ts"] = df["_ts"].dt.normalize()
 
     # A row we can't place in time or attribute to a donor and a type
     # contributes to nothing; drop it rather than let a NaT or blank type
@@ -254,31 +265,12 @@ def _to_frame(activities: Union[Iterable[Mapping], pd.DataFrame]) -> pd.DataFram
     return pd.DataFrame(list(activities))
 
 
-def _normalise_contact_id(series: pd.Series) -> pd.Series:
-    """Coerce a contact_id column to string, without a spurious ".0".
-
-    ``pd.read_csv`` reads an id column as float64 the moment any cell in it
-    is blank (NaN forces the whole column off int64), so "123" round-trips as
-    123.0 and, left to plain ``.astype("string")``, becomes the string
-    "123.0" -- which then fails to join against the same donor's "123" from
-    a column that never had a blank. Format an integral float back to its
-    bare digits first; a genuinely fractional id (not a real CRM id, but not
-    this function's problem either) is left alone.
-    """
-    if not pd.api.types.is_float_dtype(series):
-        return series.astype("string")
-    as_int_str = series.map(
-        lambda v: str(int(v)) if pd.notna(v) and float(v).is_integer() else v
-    )
-    return as_int_str.astype("string")
-
-
 def _donor_id_index(donors: Union[pd.DataFrame, pd.Series, Iterable]) -> pd.Index:
     if isinstance(donors, pd.DataFrame):
-        return pd.Index(donors.index.astype("string").str.strip())
+        return pd.Index(_normalise_contact_id(donors.index.to_series()).str.strip())
     if isinstance(donors, pd.Series):
-        return pd.Index(donors.astype("string").str.strip())
-    return pd.Index(pd.Series(list(donors)).astype("string").str.strip())
+        return pd.Index(_normalise_contact_id(donors).str.strip())
+    return pd.Index(_normalise_contact_id(pd.Series(list(donors))).str.strip())
 
 
 def _warn_on_low_match_rate(

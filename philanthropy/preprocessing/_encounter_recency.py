@@ -207,11 +207,38 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
 
     def _parse_dates(self, series: pd.Series) -> pd.Series:
         """Parse a date series to datetime64[ns], optionally localising timezone."""
-        parsed = pd.to_datetime(series, errors="coerce", utc=(self.timezone is not None))
+        parsed = pd.to_datetime(series, errors="coerce")
+        if not pd.api.types.is_datetime64_any_dtype(parsed):
+            # Mixed UTC offsets cannot share one dtype without going via UTC.
+            parsed = pd.to_datetime(series, errors="coerce", utc=True)
         if self.timezone is not None:
-            # utc=True above already makes parsed dates tz-aware.
-            parsed = parsed.dt.tz_convert(self.timezone)
+            # A naive date is already local wall-clock time: localise it rather
+            # than reading it as UTC, which would shift midnight to the
+            # previous day west of Greenwich.
+            if parsed.dt.tz is None:
+                parsed = parsed.dt.tz_localize(
+                    self.timezone, ambiguous="NaT", nonexistent="shift_forward"
+                )
+            else:
+                parsed = parsed.dt.tz_convert(self.timezone)
         return parsed
+
+    def _as_frame(self, X: Any) -> Optional[pd.DataFrame]:
+        """Return ``X`` with named columns, or None if names cannot be resolved.
+
+        A single-column array with a single ``date_col`` is read positionally.
+        """
+        if isinstance(X, pd.DataFrame):
+            return X
+        if hasattr(self, "feature_names_in_"):
+            return pd.DataFrame(
+                np.asarray(X, dtype=object), columns=self.feature_names_in_
+            )
+        cols = self._resolve_date_cols()
+        arr = np.asarray(X, dtype=object)
+        if len(cols) == 1 and arr.ndim == 2 and arr.shape[1] == 1:
+            return pd.DataFrame({cols[0]: arr[:, 0]})
+        return None
 
     def _as_of_for(self, dates: pd.Series) -> Optional[pd.Timestamp]:
         """Return ``as_of`` parsed and aligned to ``dates``' timezone, or None.
@@ -333,18 +360,26 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
 
         # Register the input schema via validate_data; allow NaN and string types.
         validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=True)
+        df = self._as_frame(X)
+        if df is None:
+            warnings.warn(
+                "EncounterRecencyTransformer: X has no column names and more "
+                "than one column, so date_col cannot be located and transform "
+                "will return all-NaN features. Pass a DataFrame.",
+                UserWarning,
+            )
 
         # Freeze the reference date:
         if self.reference_date is not None:
             self.reference_date_ = pd.Timestamp(self.reference_date)
         else:
             # Infer from training data: max observed date across all date columns.
-            if isinstance(X, pd.DataFrame):
+            if df is not None:
                 cols = self._resolve_date_cols()
                 max_dates = []
                 for col in cols:
-                    if col in X.columns:
-                        parsed = self._parse_dates(X[col])
+                    if col in df.columns:
+                        parsed = self._parse_dates(df[col])
                         cutoff = self._as_of_for(parsed)
                         if cutoff is not None:
                             # Otherwise an out-of-window training row would
@@ -401,14 +436,9 @@ class EncounterRecencyTransformer(TransformerMixin, BaseEstimator):
         validate_data(self, X, dtype=None, ensure_all_finite="allow-nan", reset=False)
 
         # Build a working DataFrame from X
-        if isinstance(X, pd.DataFrame):
-            df = X
-        elif hasattr(self, "feature_names_in_"):
-            df = pd.DataFrame(
-                np.asarray(X, dtype=object), columns=self.feature_names_in_
-            )
-        else:
-            # Fallback: cannot resolve column names; produce NaN output.
+        df = self._as_frame(X)
+        if df is None:
+            # Fallback: cannot resolve column names (fit warned); NaN output.
             n = np.asarray(X).shape[0]
             cols = self._resolve_date_cols()
             n_out = len(cols) * 3

@@ -53,7 +53,8 @@ def _sha256(path: str) -> str:
 
 def _download(url: str, dest: str, expected_sha256: str) -> None:
     tmp = dest + ".part"
-    with urlopen(url) as response, open(tmp, "wb") as fh:
+    # A stalled mirror would otherwise hang the caller (and CI) indefinitely.
+    with urlopen(url, timeout=60) as response, open(tmp, "wb") as fh:
         for chunk in iter(lambda: response.read(1 << 20), b""):
             fh.write(chunk)
 

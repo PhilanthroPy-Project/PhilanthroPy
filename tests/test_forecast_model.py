@@ -289,3 +289,53 @@ def test_pipeline_compatibility(revenue_Xy):
     ])
     pipe.fit(X, y)
     assert pipe.predict(X).shape == (150,)
+
+
+def test_residual_network_learns_dollar_scale_nonlinearity():
+    # Unscaled, the residual MLP never converged on dollar-scale targets and
+    # the hybrid matched plain linear regression (MAE ~49k vs ~8k scaled).
+    from sklearn.linear_model import LinearRegression
+
+    r = np.random.default_rng(0)
+    X = r.normal(size=(600, 4))
+    y = 500_000 + 80_000 * X[:, 0] + 60_000 * X[:, 1] ** 2 + r.normal(0, 5000, 600)
+    model = FinancialForecastModel(random_state=0).fit(X[:400], y[:400])
+    lin = LinearRegression().fit(X[:400], y[:400])
+    hybrid_mae = np.mean(np.abs(model.predict(X[400:]) - y[400:]))
+    linear_mae = np.mean(np.abs(lin.predict(X[400:]) - y[400:]))
+    assert hybrid_mae < 0.5 * linear_mae
+    assert model.n_iter_ < model.max_iter
+
+
+def test_short_history_ar_falls_back_to_flat_mean():
+    # n=6 with ar_order=3 used to near-interpolate and explode on roll-forward.
+    out = []
+    for s in range(50):
+        r = np.random.default_rng(s)
+        X = r.normal(size=(6, 2))
+        y = 100_000 + r.normal(0, 10_000, 6)
+        m = FinancialForecastModel(ar_order=3, random_state=0, max_iter=20).fit(X, y)
+        assert np.all(m.ar_coef_ == 0.0)
+        out.append(np.max(np.abs(m.predict_revenue_forecast(X, 12))))
+    assert max(out) < 1e6
+
+
+def test_nonstationary_ar_fit_warns_and_falls_back():
+    t = np.arange(40, dtype=float)
+    y = 1000 * 1.1 ** t
+    with pytest.warns(UserWarning, match="non-stationary"):
+        m = FinancialForecastModel(ar_order=2, random_state=0, max_iter=20).fit(
+            t[:, None], y
+        )
+    assert np.all(m.ar_coef_ == 0.0)
+    assert np.allclose(m.predict_revenue_forecast(t[:, None], 5), y.mean())
+
+
+def test_linear_trend_is_extrapolated_not_flattened():
+    # A steady trend fits a unit root (radius ~1.00001); it must not be
+    # mistaken for an explosive fit.
+    t = np.arange(60, dtype=float)
+    y = 1000 + 50 * t + np.random.default_rng(0).normal(0, 5, 60)
+    m = FinancialForecastModel(random_state=0, max_iter=20).fit(t[:, None], y)
+    fc = m.predict_revenue_forecast(t[-3:, None], 3)
+    assert np.allclose(fc, [4000, 4050, 4100], atol=25)

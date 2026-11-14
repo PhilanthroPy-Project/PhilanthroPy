@@ -476,3 +476,26 @@ def test_unclosed_json_object_raises(tmp_path):
     p.write_text("{")
     with pytest.raises(ValueError, match="Malformed JSON"):
         read_constituent_events(p)
+
+
+def test_email_key_is_stripped_and_casefolded():
+    events = [_event("A@x.edu", "DONATION", "2025-01-01T00:00:00Z", amount=5),
+              _event("a@x.edu ", "DONATION", "2025-01-02T00:00:00Z", amount=5)]
+    feats = constituent_events_to_features(events)
+    assert feats.index.tolist() == ["a@x.edu"]
+    assert float(feats.loc["a@x.edu", "total_gift_amount"]) == 10.0
+
+
+def test_missing_email_field_names_it():
+    events = [{"externalConstituentId": "1", "eventType": "DONATION", "amount": 5,
+               "createdAt": "2025-01-01T00:00:00Z"}]
+    with pytest.raises(ValueError, match="constituentEmail"):
+        constituent_events_to_features(events)
+
+
+@pytest.mark.parametrize("name", ["bom.json", "bom.ndjson"])
+def test_read_events_file_with_bom(tmp_path, name):
+    path = tmp_path / name
+    path.write_text(json.dumps(_event("a@x.edu", "DONATION", "2025-01-01T00:00:00Z", amount=5)) + "\n",
+                    encoding="utf-8-sig")
+    assert len(read_constituent_events(path)) == 1

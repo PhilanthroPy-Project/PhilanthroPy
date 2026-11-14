@@ -143,6 +143,8 @@ def _canonical_little_green_light(name: object) -> str:
 
 def _gift_type_key(value: object) -> str:
     """Collapse case, whitespace and punctuation for gift-type matching."""
+    if value is None or value is pd.NA or value != value:  # None, NaN, pd.NA
+        return ""
     return _NON_ALNUM_ALL.sub("", str(value).strip().lower())
 
 

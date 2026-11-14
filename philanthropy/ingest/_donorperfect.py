@@ -116,10 +116,13 @@ _HEADER_ALIASES = {
     "gift_amount": "total_amount",
     "giftamount": "total_amount",
     # Record type: the field this module exists to read. Not the same as
-    # DonorPerfect's own "gift_type" (a payment-method descriptor), so that
-    # name is deliberately not aliased here.
+    # DonorPerfect's own "gift_type" (a payment-method descriptor, e.g. CK),
+    # which is moved out of the way so it can never stand in for, or shadow,
+    # the record type the filter reads.
     "record_type": "gift_type",
     "recordtype": "gift_type",
+    "gift_type": "payment_type",
+    "gifttype": "payment_type",
     # GL code: DonorPerfect's fund-like designation, the analogue of
     # CiviCRM's Financial Type. Feeds distinct_financial_types.
     "gl_code": "financial_type",
@@ -306,6 +309,6 @@ def _canonical_donorperfect(header: str) -> str:
 
 
 def _record_type_key(value: object) -> str:
-    if value is None or (isinstance(value, float) and pd.isna(value)):
+    if value is None or value is pd.NA or value != value:  # None, NaN, pd.NA
         return ""
     return _NON_ALNUM_ALL.sub("", str(value).strip().lower())

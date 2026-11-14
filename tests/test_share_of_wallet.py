@@ -361,9 +361,27 @@ def test_knn_non_knn_strategies_still_append_indicators(strategy):
     assert out.shape[1] == 4  # 2 original + 2 indicators (both match by substring)
 
 
-def test_share_of_wallet_scorer_negative_epsilon_raises():
-    with pytest.raises(ValueError, match=r"`epsilon` must be >= 0, got -1\."):
-        ShareOfWalletScorer(epsilon=-1).fit(np.ones((5, 2)))
+@pytest.mark.parametrize("eps", [-1, 0])
+def test_share_of_wallet_scorer_non_positive_epsilon_raises(eps):
+    # epsilon=0 divides by zero on an all-zero wealth row.
+    with pytest.raises(ValueError, match=rf"`epsilon` must be > 0, got {eps}\."):
+        ShareOfWalletScorer(epsilon=eps).fit(np.ones((5, 2)))
+
+
+def test_share_of_wallet_scorer_all_nan_wealth_is_unscored_not_principal():
+    # A $10 donor with no screening data used to score as zero wealth and
+    # land in the top tier.
+    X = np.array([
+        [50_000, 2e6, 3e6],
+        [10, np.nan, np.nan],
+        [1e5, 5e5, 5e5],
+        [2e5, 1e6, 1e6],
+    ])
+    for s in (ShareOfWalletScorer(wealth_col_indices=[1, 2]), ShareOfWalletScorer()):
+        out = s.fit(X).transform(X)
+        assert np.isnan(out[1]).all()
+        assert np.isfinite(out[[0, 2, 3]]).all()
+        assert s.get_tier_labels(X)[1] is None
 
 
 def test_share_of_wallet_scorer_negative_capacity_col_idx_raises():
@@ -415,3 +433,21 @@ def test_legacy_sow_score_name_is_removed():
     )
     assert not hasattr(scorer, "get_legacy_feature_names_out")
     assert "sow_score" not in scorer.get_feature_names_out()
+
+
+def test_capacity_ratio_accepts_one_column_frame_and_passes_nan():
+    rng = np.random.default_rng(0)
+    X = np.abs(rng.normal(100, 30, size=(300, 3)))
+    y = X[:, 0] * 1.2
+    m = ShareOfWalletRegressor(random_state=0).fit(X, y)
+    out = m.capacity_ratio(X[:4], pd.DataFrame({"g": [1, 2, 3, 4.0]}))
+    assert out.shape == (4,)
+    ratio = m.capacity_ratio(X[:2], [np.nan, 5.0])
+    assert np.isnan(ratio[0]) and np.isfinite(ratio[1])
+
+
+def test_share_of_wallet_too_few_rows_warns():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(35, 3))
+    with pytest.warns(UserWarning, match="min_samples_leaf"):
+        ShareOfWalletRegressor(random_state=0).fit(X, 1000 + 500 * X[:, 0])

@@ -8,6 +8,7 @@ Center download, but with fabricated households and fabricated values.
 """
 
 import pandas as pd
+import pytest
 
 from philanthropy.datasets import load_psid_philanthropy
 
@@ -227,3 +228,8 @@ def test_wave_missing_from_extract_is_skipped(tmp_path):
     df = load_psid_philanthropy(str(data_path), str(do_path))
 
     assert sorted(df["year"].unique().tolist()) == [2001]
+
+
+def test_rejects_a_network_path(tmp_path):
+    with pytest.raises(ValueError, match="local file path"):
+        load_psid_philanthropy("https://example.invalid/psid.txt", str(tmp_path / "x.do"))

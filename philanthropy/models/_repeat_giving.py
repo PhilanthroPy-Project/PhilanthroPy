@@ -39,6 +39,7 @@ References
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, Callable, TypeVar
 
 import numpy as np
@@ -46,6 +47,7 @@ import pandas as pd
 from scipy.optimize import minimize
 from scipy.special import gammaln, hyp2f1
 from sklearn.base import BaseEstimator
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.utils import Tags
 from sklearn.utils.validation import check_is_fitted, validate_data
 
@@ -64,7 +66,10 @@ def repeat_giving_summary(
     """Build per-donor BG/NBD and gamma-gamma inputs from a gift table.
 
     Gifts on the same day are merged into one gift (amounts summed), as in
-    [1]_, so a split payment does not count as a repeat gift.
+    [1]_, so a split payment does not count as a repeat gift. Days whose
+    merged total is zero or negative (refunds, reversals, $0 soft credits)
+    are then dropped, so they never count as gifts; a donor with no positive
+    gift day is left out of the summary.
 
     Parameters
     ----------
@@ -101,6 +106,8 @@ def repeat_giving_summary(
         .sum(min_count=1)
         .reset_index()
     )
+    # Refunds and $0 rows are not gifts; NaN amounts stay for RFMTransformer.
+    daily = daily[~(daily["gift_amount"] <= 0)]
     # RFMTransformer owns the as_of cut, the NaN-amount handling and the
     # recency / tenure clock; it counts each gift day once because of the
     # merge above.
@@ -141,6 +148,13 @@ def _fit_log_params(
         safe, np.zeros(n_params), method="Nelder-Mead",
         options={"maxiter": max_iter, "xatol": 1e-6, "fatol": 1e-8},
     )
+    if not result.success:
+        warnings.warn(
+            f"Maximum-likelihood fit did not converge ({result.message}); "
+            "increase max_iter.",
+            ConvergenceWarning,
+            stacklevel=3,
+        )
     return np.exp(result.x), result
 
 
@@ -288,6 +302,9 @@ class BetaGeoModel(BaseEstimator):
         x, t_x, T = self._check_X(X, reset=False).T
         p = self.params_
         r, alpha, a, b = p["r"], p["alpha"], p["a"], p["b"]
+        # The closed form is 0/0 at a == 1; nudge off the singularity.
+        if abs(a - 1.0) < 1e-6:
+            a = 1.0 + 1e-6
         hyp = hyp2f1(r + x, b + x, a + b + x - 1, horizon / (alpha + T + horizon))
         numer = (a + b + x - 1) / (a - 1) * (
             1 - ((alpha + T) / (alpha + T + horizon)) ** (r + x) * hyp
@@ -387,6 +404,15 @@ class GammaGammaModel(BaseEstimator):
 
         params, result = _fit_log_params(neg_ll, 3, self.max_iter)
         self.params_ = dict(zip(("p", "q", "v"), params))
+        if self.params_["q"] <= 1:
+            warnings.warn(
+                f"Fitted q={self.params_['q']:.3g} <= 1: gift sizes are too "
+                "heavy-tailed for the population mean to exist, and "
+                "predict_gift_size_forecast returns NaN for donors with few "
+                "repeat gifts.",
+                UserWarning,
+                stacklevel=2,
+            )
         self.log_likelihood_ = float(-result.fun)
         self.n_iter_ = int(result.nit)
         return self
@@ -395,11 +421,15 @@ class GammaGammaModel(BaseEstimator):
         """Expected size of each donor's future gifts.
 
         ``p (v + x m) / (p x + q - 1)``: a weighted average of the population
-        mean ``p v / (q - 1)`` and the donor's own mean ``m``. Infinite when
-        ``q <= 1``, where the population mean does not exist.
+        mean ``p v / (q - 1)`` and the donor's own mean ``m``. When
+        ``q <= 1`` the population mean does not exist, and rows where
+        ``p x + q - 1 <= 0`` (always including ``x = 0``) are returned as
+        ``NaN`` rather than a meaningless negative or infinite size.
         """
         check_is_fitted(self)
         x, m = self._check_X(X, reset=False).T
         p, q, v = (self.params_[k] for k in ("p", "q", "v"))
         m = np.where(x > 0, m, 0.0)
-        return p * (v + x * m) / (p * x + q - 1)
+        denom = p * x + q - 1
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return np.where(denom > 0, p * (v + x * m) / denom, np.nan)

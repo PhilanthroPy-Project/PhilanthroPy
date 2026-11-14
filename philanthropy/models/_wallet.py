@@ -43,6 +43,7 @@ True
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, Optional, TypeVar
 
 import numpy as np
@@ -52,6 +53,7 @@ from sklearn.utils import Tags
 from sklearn.utils.validation import (
     _check_sample_weight,
     check_is_fitted,
+    column_or_1d,
     validate_data,
 )
 
@@ -234,6 +236,14 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         """
         X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
         self.n_features_in_ = X.shape[1]
+        if X.shape[0] < 2 * self.min_samples_leaf:
+            warnings.warn(
+                f"Only {X.shape[0]} training rows for min_samples_leaf="
+                f"{self.min_samples_leaf}: no tree can split, so every donor "
+                "gets the same capacity. Lower min_samples_leaf or add rows.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         self.estimator_ = HistGradientBoostingRegressor(
             learning_rate=self.learning_rate,
@@ -278,7 +288,9 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
             of zero or negative are replaced with ``1.0`` (the
             ``capacity_floor`` fallback) to avoid division-by-zero errors
             and to ensure semantically valid ratios for new donors with no
-            prior giving history.
+            prior giving history. ``NaN`` (giving unknown) is not treated as
+            zero: it passes through and that donor's ratio is ``NaN``. A
+            one-column DataFrame or ``(n_samples, 1)`` array is accepted.
 
         Returns
         -------
@@ -314,7 +326,7 @@ class ShareOfWalletRegressor(RegressorMixin, BaseEstimator):
         check_is_fitted(self, ["estimator_"])
         predicted_capacity = self.predict(X)
 
-        historical_giving = np.asarray(historical_giving, dtype=float)
+        historical_giving = column_or_1d(historical_giving, dtype=float)
         if predicted_capacity.shape[0] != historical_giving.shape[0]:
             raise ValueError(
                 f"`historical_giving` must have the same length as the number "

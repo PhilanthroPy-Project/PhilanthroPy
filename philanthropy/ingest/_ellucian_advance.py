@@ -48,6 +48,7 @@ from ._civicrm import (
     _canonical,
     _empty_feature_frame,
     _normalise_headers,
+    _to_amount,
     _to_frame,
     civicrm_contributions_to_features,
     read_civicrm_contributions,
@@ -118,7 +119,8 @@ def ellucian_advance_gifts_to_features(
         and ``Legal`` are required after normalisation; ``Type`` and
         ``Allocation`` are used when present. A ``Date`` that carries the
         receipt number (``01/10/2025 #0001234``) is read as the date alone.
-        ``Credit`` (soft credit) is ignored.
+        ``Credit`` (soft credit) is ignored, and a row with a blank or zero
+        ``Legal`` (a soft-credit-only row) is dropped.
     reference_date : str or datetime-like, optional
         Anchor for recency features. If ``None``, the latest surviving
         transaction date in the batch is used.
@@ -169,11 +171,6 @@ default=DEFAULT_EXCLUDED_ADVANCE_TRANSACTION_TYPES
 
     if df.empty:
         return _empty_feature_frame()
-    df = df.assign(
-        receive_date=df["receive_date"].map(
-            lambda v: _RECEIPT_SUFFIX.sub("", v) if isinstance(v, str) else v
-        )
-    )
     return civicrm_contributions_to_features(
         df, reference_date=reference_date, statuses=None
     )
@@ -198,7 +195,7 @@ def _canonical_ellucian_advance(header: str) -> str:
 
 def _transaction_type_key(value: object) -> str:
     """Drop the parenthesised donor type, then collapse case and punctuation."""
-    if value is None or (isinstance(value, float) and pd.isna(value)):
+    if value is None or value is pd.NA or value != value:  # None, NaN, pd.NA
         return ""
     return _NON_ALNUM_ALL.sub("", _DONOR_TYPE_SUFFIX.sub("", str(value)).lower())
 
@@ -241,4 +238,12 @@ def _ellucian_advance_received_rows(
                 stacklevel=3,
             )
 
-    return df
+    # A soft-credit-only row (blank or zero Legal) records no money from
+    # this entity; counting it would add a $0 gift and move last_gift_date.
+    legal = _to_amount(df["total_amount"])
+    df = df[legal.notna() & (legal != 0)]
+    return df.assign(
+        receive_date=df["receive_date"].map(
+            lambda v: _RECEIPT_SUFFIX.sub("", v) if isinstance(v, str) else v
+        )
+    )

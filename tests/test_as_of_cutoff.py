@@ -104,3 +104,17 @@ def test_as_of_round_trips_through_get_params():
     for cls in (EncounterTransformer, GratefulPatientFeaturizer):
         est = cls(encounter_df=ENCOUNTERS, as_of=CUTOFF)
         assert est.get_params()["as_of"] == CUTOFF
+
+
+def test_date_only_cutoff_includes_the_whole_day():
+    # as_of is inclusive; a date-only cutoff must keep a same-day discharge
+    # stamped in the afternoon.
+    enc = pd.DataFrame({"donor_id": [1], "discharge_date": ["2023-12-31 14:00"]})
+    t = EncounterTransformer(encounter_df=enc, as_of="2023-12-31").fit(GIFTS)
+    assert t.encounter_summary_.loc[1, "encounter_count"] == 1
+
+
+def test_non_numeric_passthrough_column_is_rejected_at_fit():
+    gifts = GIFTS.assign(campaign=["spring", "fall"])
+    with pytest.raises(ValueError, match="campaign"):
+        EncounterTransformer(encounter_df=ENCOUNTERS, as_of=CUTOFF).fit(gifts)

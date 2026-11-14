@@ -6,6 +6,7 @@ Models for predicting planned giving (bequest) intent.
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, TypeVar
 
 import numpy as np
@@ -72,6 +73,11 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         position or, when ``X`` is a DataFrame, column name
         (``{"total_giving": 1}``). ``None`` applies no constraint
         (current behaviour).
+    min_samples_leaf : int, default=20
+        Minimum number of samples per leaf of the backend. Each calibration
+        fold trains on half the rows, so below ``4 * min_samples_leaf`` rows
+        no tree can split, every donor gets the same score, and :meth:`fit`
+        warns. Lower it for small files.
     """
 
     def __init__(
@@ -81,12 +87,14 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
         class_weight: Any = None,
         categorical_features: Any = None,
         monotonic_cst: Any = None,
+        min_samples_leaf: int = 20,
     ) -> None:
         self.n_estimators = n_estimators
         self.random_state = random_state
         self.class_weight = class_weight
         self.categorical_features = categorical_features
         self.monotonic_cst = monotonic_cst
+        self.min_samples_leaf = min_samples_leaf
 
     def fit(self: _Self, X: Any, y: Any, sample_weight: Any = None) -> _Self:
         """Fit the calibrated classifier to planned-giving intent labels.
@@ -136,11 +144,22 @@ class PlannedGivingIntentScorer(ClassifierMixin, BaseEstimator):
                 f"{counts.min()}."
             )
 
+        fold_rows = X.shape[0] * (_CALIBRATION_CV_FOLDS - 1) // _CALIBRATION_CV_FOLDS
+        if fold_rows < 2 * self.min_samples_leaf:
+            warnings.warn(
+                f"Each calibration fold trains on about {fold_rows} rows, "
+                f"fewer than 2 * min_samples_leaf={self.min_samples_leaf}: no "
+                "tree can split, so every donor gets the same score. Lower "
+                "min_samples_leaf or add rows.",
+                UserWarning,
+                stacklevel=2,
+            )
         base_estimator = HistGradientBoostingClassifier(
             max_iter=self.n_estimators,
             # The old GradientBoostingClassifier default depth: same tree
             # shape, so scores match it on sample data; only NaN handling changes.
             max_depth=3,
+            min_samples_leaf=self.min_samples_leaf,
             categorical_features=resolve_columns(self, self.categorical_features),
             monotonic_cst=resolve_monotonic_cst(self, self.monotonic_cst),
             random_state=self.random_state

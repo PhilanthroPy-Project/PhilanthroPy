@@ -78,8 +78,9 @@ def test_round_tripped_transformer_still_transforms_identically(
 
 @pytest.mark.parametrize("cls", [EncounterTransformer, GratefulPatientFeaturizer])
 def test_clone_is_unaffected(cls, encounters):
-    # clone() goes through get_params, not pickle, so cross-validation and grid
-    # search still receive a usable estimator.
+    # clone() goes through get_params, not pickle. Pickling an unfitted copy
+    # (what joblib does to ship one to a worker) also keeps the table: only a
+    # fitted instance, which has a summary to transform from, drops it.
     fresh = clone(cls(encounter_df=encounters))
     pd.testing.assert_frame_equal(fresh.encounter_df, encounters)
 
@@ -90,3 +91,27 @@ def test_getstate_does_not_mutate_the_live_instance(encounters, gifts):
     t = EncounterTransformer(encounter_df=encounters).fit(gifts)
     t.__getstate__()
     pd.testing.assert_frame_equal(t.encounter_df, encounters)
+
+
+@pytest.mark.parametrize("cls", [EncounterTransformer, GratefulPatientFeaturizer])
+def test_parallel_cross_validation_ships_the_table_to_workers(cls, encounters):
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import cross_val_score
+    from sklearn.pipeline import make_pipeline
+    from sklearn.impute import SimpleImputer
+
+    rng = np.random.default_rng(0)
+    n = 30
+    X = pd.DataFrame({
+        "donor_id": np.arange(n) % 3,
+        "gift_date": "2022-01-01",
+        "gift_amount": rng.uniform(1, 100, n),
+    })
+    if cls is GratefulPatientFeaturizer:
+        X = X[["donor_id"]]
+    y = np.arange(n) % 2
+    pipe = make_pipeline(
+        cls(encounter_df=encounters), SimpleImputer(), LogisticRegression()
+    )
+    scores = cross_val_score(pipe, X, y, cv=3, n_jobs=2, error_score="raise")
+    assert np.isfinite(scores).all()

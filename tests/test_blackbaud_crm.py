@@ -391,3 +391,21 @@ def test_numeric_looking_constituent_ids_stay_text(tmp_path):
     ))
     feats = blackbaud_crm_revenue_to_features(read_blackbaud_crm_revenue(path))
     assert list(feats.index) == ["0088"]
+
+def test_constituent_name_column_is_not_the_donor_key():
+    rows = [
+        {"Constituent": "John Smith", "Lookup ID": "8-1", "Date": "2025-01-01",
+         "Amount": "10", "Revenue Type": "Payment"},
+        {"Constituent": "John Smith", "Lookup ID": "8-2", "Date": "2025-01-01",
+         "Amount": "20", "Revenue Type": "Payment"},
+    ]
+    assert sorted(blackbaud_crm_revenue_to_features(rows).index) == ["8-1", "8-2"]
+    with pytest.raises(KeyError):
+        blackbaud_crm_revenue_to_features([{k: v for k, v in rows[0].items() if k != "Lookup ID"}])
+
+
+def test_na_revenue_type_counts_as_blank():
+    df = pd.DataFrame({"Constituent ID": ["1", "1"], "Date": ["2025-01-01"] * 2,
+                       "Amount": ["10", "20"],
+                       "Revenue Type": pd.array(["Payment", None], dtype="string")})
+    assert float(blackbaud_crm_revenue_to_features(df).loc["1", "total_gift_amount"]) == 30.0

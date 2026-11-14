@@ -195,3 +195,46 @@ def test_summary_feeds_both_models():
     assert (s["recency"] <= s["T"]).all()
     BetaGeoModel().fit(s[["frequency", "recency", "T"]])
     GammaGammaModel().fit(s[["frequency", "monetary_value"]])
+
+
+def test_gamma_gamma_q_below_one_warns_and_returns_nan_not_negative():
+    r = np.random.default_rng(3)
+    n = 2000
+    x = r.integers(1, 4, n).astype(float)
+    mu = np.exp(r.normal(4, 2.5, n))
+    mbar = np.array([r.gamma(2, mm / 2, int(k)).mean() for mm, k in zip(mu, x)])
+    with pytest.warns(UserWarning, match="q="):
+        g = GammaGammaModel().fit(np.column_stack([x, mbar]))
+    assert g.params_["q"] <= 1
+    pred = g.predict_gift_size_forecast(np.array([[0, 0.0], [1, 50.0], [3, 50.0]]))
+    assert np.isnan(pred[0])
+    assert np.all(np.isnan(pred) | (pred > 0))
+
+
+def test_unconverged_fit_warns():
+    from sklearn.exceptions import ConvergenceWarning
+
+    X = np.array([[0, 0, 5], [3, 4, 5], [1, 1, 5], [6, 4.8, 5]] * 10, float)
+    with pytest.warns(ConvergenceWarning):
+        BetaGeoModel(max_iter=5).fit(X)
+
+
+def test_gifts_forecast_finite_at_a_equal_one():
+    m = BetaGeoModel()
+    m.params_ = dict(r=0.5, alpha=2.0, a=1.0, b=2.0)
+    m.n_features_in_ = 3
+    out = m.predict_gifts_forecast(np.array([[2, 1, 3.0], [0, 0, 3.0]]))
+    assert np.all(np.isfinite(out)) and np.all(out > 0)
+
+
+def test_summary_ignores_refunds_and_zero_gifts():
+    g = pd.DataFrame({
+        "donor_id": ["a", "a", "b", "b", "b"],
+        "gift_date": ["2020-01-01", "2021-01-01", "2020-01-01", "2020-06-01", "2021-01-01"],
+        "gift_amount": [100, -100, 100, 0, 50],
+    })
+    s = repeat_giving_summary(g)
+    assert s.loc["a", "frequency"] == 0
+    assert s.loc["a", "monetary_value"] == 0
+    assert s.loc["b", "frequency"] == 1
+    assert s.loc["b", "monetary_value"] == 50

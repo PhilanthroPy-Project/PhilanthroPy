@@ -96,6 +96,18 @@ def _coerce_currency_to_float(col: pd.Series) -> pd.Series:
             col = col.mask(complex_mask)
     cleaned = col.astype(str).str.strip()
     cleaned = cleaned.str.replace(r"^\((.*)\)$", r"-\1", regex=True)
+    # European formats ("1.234,56", "1,5") are not supported: the comma would
+    # be stripped as a thousands separator. Say so instead of misparsing.
+    comma_decimal = cleaned.str.contains(r"\d,\d{1,2}$", regex=True) & had_value
+    if comma_decimal.any():
+        warnings.warn(
+            f"CRMCleaner: {int(comma_decimal.sum())} value(s) in amount column "
+            f"{col.name!r} look like a comma decimal separator (e.g. "
+            f"{col[comma_decimal].iloc[0]!r}). Only '.' is read as a decimal "
+            "point, so these are misparsed; convert them before cleaning.",
+            UserWarning,
+            stacklevel=2,
+        )
     cleaned = cleaned.str.replace(r"[^0-9eE.\-]", "", regex=True)
     parsed = pd.to_numeric(cleaned, errors="coerce").where(had_value)
 
@@ -200,7 +212,11 @@ class CRMCleaner(TransformerMixin, BaseEstimator):
         check_is_fitted(self)
         X_arr = _validate_X(self, X, reset=False)
 
-        X_df = pd.DataFrame(X_arr, columns=getattr(self, "feature_names_in_", None)).copy()
+        X_df = pd.DataFrame(
+            X_arr,
+            columns=getattr(self, "feature_names_in_", None),
+            index=X.index if isinstance(X, pd.DataFrame) else None,
+        ).copy()
         
         if self.date_col in X_df.columns:
             X_df[self.date_col] = pd.to_datetime(X_df[self.date_col], errors="coerce")
@@ -311,7 +327,11 @@ class FiscalYearTransformer(TransformerMixin, BaseEstimator):
         check_is_fitted(self)
         X_arr = _validate_X(self, X, reset=False)
         
-        X_df = pd.DataFrame(X_arr, columns=getattr(self, "feature_names_in_", None)).copy()
+        X_df = pd.DataFrame(
+            X_arr,
+            columns=getattr(self, "feature_names_in_", None),
+            index=X.index if isinstance(X, pd.DataFrame) else None,
+        ).copy()
         
         if self.date_col not in X_df.columns:
             X_df["fiscal_year"] = np.nan

@@ -273,3 +273,27 @@ def test_read_directory_concatenates(tmp_path):
         read_ellucian_advance_gifts(tmp_path)
     )
     assert float(feats.loc["88", "total_gift_amount"]) == 350.0
+
+
+def test_read_gift_rows_strips_receipt_suffix():
+    from philanthropy.ingest import read_gift_rows
+
+    rows = [
+        {"Entity ID": "88", "Date": "01/10/2025 #0001234",
+         "Legal": "1200.00", "Type": "Straight Pledge (Primary)"},
+        {"Entity ID": "88", "Date": "02/10/2025 #0001301",
+         "Legal": "100.00", "Type": "Pledge Payment (Primary)"},
+    ]
+    out = read_gift_rows(rows, source="ellucian_advance")
+    assert out["gift_amount"].tolist() == [100.0]
+
+
+def test_soft_credit_only_row_is_not_a_gift():
+    rows = [
+        {"Entity ID": "1", "Date": "2020-01-01", "Legal": "100", "Credit": "100", "Type": "Gift (Primary)"},
+        {"Entity ID": "1", "Date": "2025-01-01", "Legal": "", "Credit": "500", "Type": "Gift (Joint)"},
+        {"Entity ID": "1", "Date": "2025-02-01", "Legal": "0", "Credit": "500", "Type": "Gift (Joint)"},
+    ]
+    feats = ellucian_advance_gifts_to_features(rows)
+    assert int(feats.loc["1", "gift_count"]) == 1
+    assert str(feats.loc["1", "last_gift_date"].date()) == "2020-01-01"

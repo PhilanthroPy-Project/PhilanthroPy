@@ -117,6 +117,7 @@ DEFAULT_INCLUDED_STAGES = (
 # Primary Contact, the Account is the intended donor key (see
 # _prefer_account_donor_key below).
 _ACCOUNT_KEY_ALIASES = frozenset({"account_id", "accountid", "account_name"})
+_NAME_KEY_ALIASES = frozenset({"account_name"})
 _CONTACT_KEY_ALIASES = frozenset({"primary_contact", "npsp_primary_contact_c"})
 
 # NPSP header normalisation, applied before the CiviCRM bridge's own. Case and
@@ -349,15 +350,30 @@ def _prefer_account_donor_key(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df
     raw_keys = {c: _NON_ALNUM.sub("_", str(c).strip().lower()).strip("_") for c in df.columns}
-    has_account = any(k in _ACCOUNT_KEY_ALIASES for k in raw_keys.values())
+    has_account = any(k in _ACCOUNT_KEY_ALIASES - _NAME_KEY_ALIASES for k in raw_keys.values())
     has_contact = any(k in _CONTACT_KEY_ALIASES for k in raw_keys.values())
     if has_account and has_contact:
         drop_cols = [c for c, k in raw_keys.items() if k in _CONTACT_KEY_ALIASES]
         df = df.drop(columns=drop_cols)
+    # An Account Name is not unique: two households both named "Smith
+    # Household" would merge into one donor. Any id column wins over it,
+    # whatever the column order; the name is the key only as a last resort.
+    names = [c for c, k in raw_keys.items() if k in _NAME_KEY_ALIASES]
+    if names:
+        if has_account or has_contact:
+            df = df.drop(columns=names)
+        else:
+            warnings.warn(
+                "NPSP Opportunity export has no Account ID or Primary Contact "
+                "column, so the Account Name is used as the donor key: "
+                "different households with the same name are merged into one "
+                "donor. Add the 'Account ID' field to the export.",
+                stacklevel=4,
+            )
     return df
 
 
 def _stage_key(value: object) -> str:
-    if value is None or (isinstance(value, float) and pd.isna(value)):
+    if value is None or value is pd.NA or value != value:  # None, NaN, pd.NA
         return ""
     return _NON_ALNUM_ALL.sub("", str(value).strip().lower())

@@ -10,6 +10,7 @@ score (0–100) for use by prospect-management officers and gift officers.
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, Optional, TypeVar, Union
 
 import numpy as np
@@ -476,6 +477,17 @@ class MajorGiftClassifier(ClassifierMixin, BaseEstimator):
         X, y = validate_data(self, X, y, ensure_all_finite="allow-nan", reset=True)
         self.classes_ = unique_labels(y)
         self.n_features_in_ = X.shape[1]
+        # CalibratedClassifierCV's default 5 folds train on 4/5 of the rows.
+        fold_rows = X.shape[0] * 4 // 5
+        if fold_rows < 2 * self.min_samples_leaf:
+            warnings.warn(
+                f"Each calibration fold trains on about {fold_rows} rows, "
+                f"fewer than 2 * min_samples_leaf={self.min_samples_leaf}: no "
+                "tree can split, so every donor gets the same score. Lower "
+                "min_samples_leaf or add rows.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         base_estimator = HistGradientBoostingClassifier(
             max_iter=self.max_iter,

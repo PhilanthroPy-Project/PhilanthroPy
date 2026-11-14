@@ -111,7 +111,19 @@ def _rfm_score(recency: np.ndarray, frequency: np.ndarray, monetary: np.ndarray)
 def _top_rate(y_true: np.ndarray, score: np.ndarray) -> float:
     """Positive rate among the top 10% of rows ranked by ``score``."""
     n = max(1, int(round(len(y_true) * _TOP_FRACTION)))
-    return float(y_true[np.argsort(-score, kind="stable")[:n]].mean())
+    # Ties at the cut are shared by expected value, not broken by row order:
+    # rows strictly above the cut-off score count fully, and the tied block
+    # fills the slots left with its mean positive rate.
+    cut = -np.sort(-score)[n - 1]  # NaN sorts last, as argsort did
+    # When the cut falls among the NaN scores, every scored row is above it
+    # and the NaN block is the tie.
+    if np.isnan(cut):
+        above, tied = ~np.isnan(score), np.isnan(score)
+    else:
+        above, tied = score > cut, score == cut
+    slots = n - int(above.sum())
+    hits = y_true[above].sum() + slots * y_true[tied].mean()
+    return float(hits / n)
 
 
 def _mae(y_true: np.ndarray, pred: np.ndarray) -> float:

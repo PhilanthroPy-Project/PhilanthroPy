@@ -182,11 +182,11 @@ DEFAULT_INCLUDED_REVENUE_TYPES = ("Payment",)
 # source are listed: the Extended Output Formats reference, the database
 # schema, and the SKY API CreateRecurringGift payload.
 _HEADER_ALIASES = {
-    # Donor key: export label "Constituent ID" or "Constituent";
-    # physical column CONSTITUENTID (FK to CONSTITUENT.ID); API field
-    # constituent_id. CONSTITUENT.LOOKUPID is the human-facing unique
-    # identifier and is also accepted.
-    "constituent": "contact_id",
+    # Donor key: export label "Constituent ID"; physical column CONSTITUENTID
+    # (FK to CONSTITUENT.ID); API field constituent_id. CONSTITUENT.LOOKUPID
+    # is the human-facing unique identifier and is also accepted. A bare
+    # "Constituent" column is the constituent's name, not an id, so it is
+    # deliberately not a donor key: two donors can share a name.
     "constituent_id": "contact_id",
     "constituentid": "contact_id",
     "lookup_id": "contact_id",
@@ -424,6 +424,6 @@ def _canonical_blackbaud_crm(header: str) -> str:
 
 
 def _revenue_type_key(value: object) -> str:
-    if value is None or (isinstance(value, float) and pd.isna(value)):
+    if value is None or value is pd.NA or value != value:  # None, NaN, pd.NA
         return ""
     return _NON_ALNUM_ALL.sub("", str(value).strip().lower())

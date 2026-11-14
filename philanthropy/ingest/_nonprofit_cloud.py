@@ -429,6 +429,6 @@ def _prefer_donor_key(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _status_key(value: object) -> str:
-    if value is None or (isinstance(value, float) and pd.isna(value)):
+    if value is None or value is pd.NA or value != value:  # None, NaN, pd.NA
         return ""
     return _NON_ALNUM_ALL.sub("", str(value).strip().lower())

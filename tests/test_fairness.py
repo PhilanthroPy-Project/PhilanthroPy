@@ -141,3 +141,17 @@ def test_metric_by_group_rejects_bad_groups(groups, match):
 def test_metric_by_group_rejects_empty():
     with pytest.raises(ValueError, match="empty"):
         metric_by_group(recall_score, [], [], [])
+
+
+@pytest.mark.parametrize(
+    "y_pred", [[0.9, 0.8, 0.1, 0.2], ["1", "1", "0", "0"], ["0", "0", "0", "0"]]
+)
+def test_disparate_impact_rejects_pos_label_absent_from_y_pred(y_pred):
+    # Raw scores or string labels never equal pos_label=1, so every rate was 0
+    # and the ratio came back 1.0, "exact parity".
+    with pytest.raises(ValueError, match="never appears in y_pred"):
+        disparate_impact_ratio(y_pred, ["a", "a", "b", "b"])
+
+
+def test_disparate_impact_all_negative_binary_predictions_is_still_one():
+    assert disparate_impact_ratio([0, 0, 0, 0], ["a", "a", "b", "b"]) == 1.0

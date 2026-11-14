@@ -63,3 +63,12 @@ def test_empty_scores_returns_empty():
 def test_invalid_calibration_raises(bad_calibration):
     with pytest.raises(ValueError):
         conformal_pvalue(bad_calibration, [1.0])
+
+
+@pytest.mark.parametrize("y_true", [[np.nan, 10.0], [np.inf, 10.0]])
+def test_interval_report_rejects_non_finite_y_true(y_true):
+    # A NaN target used to count as a miss (coverage 0.5) with score_mean NaN.
+    from philanthropy.metrics import interval_report
+
+    with pytest.raises(ValueError, match="y_true must be finite"):
+        interval_report(y_true, [5.0, 5.0], [20.0, 20.0])

@@ -25,7 +25,13 @@ FY2022 = "2021-08-01"  # -> fiscal_year 2022
 
 
 def _gifts(rows):
-    """rows: iterable of (donor_id, date, amount)."""
+    """rows: iterable of (donor_id, date, amount).
+
+    A far-later gift from an unrelated, never-a-candidate donor keeps every
+    test year's following year on file: a year with no following year has
+    no readable target and is skipped.
+    """
+    rows = list(rows) + [("later", "2029-08-01", 10**9)]
     return pd.DataFrame(rows, columns=["donor_id", "gift_date", "gift_amount"])
 
 
@@ -399,3 +405,64 @@ def test_percentile_threshold_resolves_on_snapshot_years_only():
     assert snaps.attrs["threshold"] == 500.0
     assert sorted(snaps.index) == ["1"]
     assert int(snaps.loc["1", "target"]) == 1
+
+
+# --------------------------------------------------------------------------- #
+# Regressions
+# --------------------------------------------------------------------------- #
+def test_year_without_following_year_is_skipped_with_warning():
+    gifts = pd.DataFrame({"donor_id": ["1", "1"], "gift_date": ["2019-08-01", "2020-08-01"],
+                          "gift_amount": [500, 500]})
+    with pytest.warns(UserWarning, match="no following fiscal year"):
+        snaps = build_leadership_snapshots(gifts, fiscal_years=[2020, 2021])
+    assert snaps["fiscal_year"].tolist() == [2020]
+
+
+def test_prepare_gifts_parses_us_dates_currency_and_mixed_offsets():
+    gifts = pd.DataFrame({"donor_id": ["1", "1", "1"],
+                          "gift_date": ["2019-08-01T10:00:00Z", "08/01/2020", "2021-08-01T10:00:00-05:00"],
+                          "gift_amount": ["50", "$1,000.00", "60"]})
+    snaps = build_leadership_snapshots(gifts, fiscal_years=[2020, 2021], band=(1, 9999), threshold=10_000)
+    assert snaps["fy_total"].tolist() == [50.0, 1000.0]
+
+
+def test_tz_aware_gift_dates_do_not_crash():
+    gifts = pd.DataFrame({"donor_id": ["1", "1"],
+                          "gift_date": pd.to_datetime(["2019-08-01", "2020-08-01"]).tz_localize("UTC"),
+                          "gift_amount": [500, 600]})
+    snaps = build_leadership_snapshots(gifts, fiscal_years=[2020])
+    assert snaps["months_since_last_gift"].notna().all()
+
+
+def test_unreadable_gift_rows_warn_with_count():
+    gifts = pd.DataFrame({"donor_id": ["1", "1", "1"], "gift_date": ["2019-08-01", "not a date", "2020-08-01"],
+                          "gift_amount": [500, 500, "abc"]})
+    with pytest.warns(UserWarning, match="2 of 3 gift rows"):
+        build_leadership_snapshots(gifts, fiscal_years=[2020])
+
+
+def test_float_donor_ids_join_activities_and_donors():
+    gifts = pd.DataFrame({"donor_id": [101.0, 101.0, np.nan], "gift_date": ["2019-08-01", "2020-08-01", "2020-08-01"],
+                          "gift_amount": [500, 600, 5]})
+    acts = pd.DataFrame({"contact_id": [101], "activity_date": ["2019-09-01"], "activity_type": ["event"]})
+    donors = pd.DataFrame({"rating": [5]}, index=[101.0])
+    snaps = build_leadership_snapshots(gifts, fiscal_years=[2020], activities=acts, donors=donors)
+    assert snaps.index.tolist() == ["101"]
+    assert snaps.loc["101", "rating"] == 5
+    assert snaps.loc["101", "event_count_12m"] == 1
+
+
+def test_gift_with_time_on_last_fy_day_has_zero_recency():
+    gifts = pd.DataFrame({"donor_id": ["1", "1"], "gift_date": ["2020-06-30 14:30:00", "2020-08-01"],
+                          "gift_amount": [500, 600]})
+    snaps = build_leadership_snapshots(gifts, fiscal_years=[2020])
+    assert snaps.loc["1", "months_since_last_gift"] == 0.0
+
+
+def test_bad_donors_frame_raises_named_value_error():
+    gifts = pd.DataFrame({"donor_id": ["1", "1"], "gift_date": ["2019-08-01", "2020-08-01"],
+                          "gift_amount": [500, 600]})
+    with pytest.raises(ValueError, match="one row per donor"):
+        build_leadership_snapshots(gifts, fiscal_years=[2020], donors=pd.DataFrame({"r": [1, 2]}, index=["1", "1"]))
+    with pytest.raises(ValueError, match="gift_count"):
+        build_leadership_snapshots(gifts, fiscal_years=[2020], donors=pd.DataFrame({"gift_count": [1]}, index=["1"]))

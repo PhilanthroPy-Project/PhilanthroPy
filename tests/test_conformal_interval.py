@@ -770,3 +770,23 @@ def test_no_warnings_on_the_common_path():
         cal, X_test, y_test = _calibrated(alpha=0.05, n_cal=100)
         interval = cal.predict_gift_interval(X_test)
         interval_report(y_test, interval.lower, interval.upper)
+
+
+def test_lower_bound_clip_never_inverts_interval():
+    from sklearn.base import BaseEstimator
+
+    class _Neg(BaseEstimator):
+        def fit(self):
+            self.f_ = 1
+            return self
+
+        def predict(self, X):
+            return np.where(np.asarray(X)[:, 0] > 1.5, -500.0, 100.0)
+
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(200, 1))
+    y = np.abs(rng.normal(100, 20, 200))
+    iv = GiftIntervalCalibrator(_Neg().fit(), alpha=0.2).fit(X, y).predict_gift_interval(
+        np.array([[3.0], [0.0]])
+    )
+    assert np.all(iv.upper >= iv.lower)

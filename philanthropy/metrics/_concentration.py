@@ -12,6 +12,7 @@ succession risk; a flat base may signal under-cultivated major-gift capacity.
 
 from __future__ import annotations
 
+import math
 from typing import Collection
 
 import numpy as np
@@ -93,5 +94,7 @@ def top_donor_share(amounts: Collection, top_fraction: float = 0.1) -> float:
     if a.size == 0 or total == 0:
         return 0.0
     a = np.sort(a)[::-1]
-    k = max(1, int(np.ceil(top_fraction * a.size)))
+    # Round first: 0.07 * 100 is 7.000000000000001 in float, which ceil would
+    # take to 8 donors.
+    k = max(1, math.ceil(round(top_fraction * a.size, 9)))
     return float(a[:k].sum() / total)

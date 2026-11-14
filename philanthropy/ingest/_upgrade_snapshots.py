@@ -24,6 +24,7 @@ directly when an activity log is supplied.
 from __future__ import annotations
 
 import re
+import warnings
 from typing import Iterable, Mapping, Optional, Tuple, Union
 
 import numpy as np
@@ -35,6 +36,7 @@ from philanthropy.utils._validation import validate_fiscal_year_start
 from philanthropy.utils._momentum import trailing_slope_features
 
 from ._activities import activities_to_features
+from ._civicrm import _normalise_contact_id, _to_amount, _to_datetime
 
 __all__ = ["build_leadership_snapshots"]
 
@@ -192,11 +194,31 @@ def build_leadership_snapshots(
     donors_norm = None
     if donors is not None:
         donors_norm = donors.copy()
-        donors_norm.index = donors_norm.index.astype("string").str.strip()
+        donors_norm.index = pd.Index(_normalise_contact_id(donors.index.to_series()).str.strip())
+        dup = donors_norm.index[donors_norm.index.duplicated()].unique()
+        if len(dup):
+            raise ValueError(
+                f"donors must have one row per donor id; duplicated: {list(dup[:5])}."
+            )
+
+    # A year whose following year has no gift on file at all cannot be
+    # labelled: "gave nothing next year" and "next year not in the file"
+    # would be the same 0. build_snapshots skips these years too.
+    last_fy = int(df["_fy"].max()) if len(df) else None
+    unlabelled = [fy for fy in fiscal_years if last_fy is None or fy >= last_fy]
+    if unlabelled:
+        warnings.warn(
+            f"fiscal_years {unlabelled} have no following fiscal year in the "
+            f"gift log (last is {last_fy}), so their target cannot be read; "
+            f"they are skipped.",
+            stacklevel=2,
+        )
 
     snapshots = []
     for fy_t in fiscal_years:
         fy_t = int(fy_t)
+        if fy_t in unlabelled:
+            continue
         totals_t = _column(pivot_sum, fy_t)
         candidates = totals_t[(totals_t >= low) & (totals_t <= high) & (totals_t < threshold)]
         if candidates.empty:
@@ -273,10 +295,24 @@ def _prepare_gifts(
         )
 
     df = df.copy()
-    df["donor_id"] = df["donor_id"].astype("string").str.strip()
-    df["_date"] = pd.to_datetime(df["gift_date"], errors="coerce")
-    df["_amount"] = pd.to_numeric(df["gift_amount"], errors="coerce")
-    df = df[df["donor_id"].notna() & df["_date"].notna() & df["_amount"].notna()]
+    df["donor_id"] = _normalise_contact_id(df["donor_id"]).str.strip()
+    # Same parsers as the CRM readers, so "08/01/2020", "$1,000.00" and
+    # mixed UTC offsets parse instead of silently dropping. Dates are cut to
+    # midnight: a gift at 14:30 on the last day of a fiscal year is still
+    # "0 months" before that day's end, never a negative recency.
+    df["_date"] = _to_datetime(df["gift_date"]).dt.normalize()
+    df["_amount"] = _to_amount(df["gift_amount"]).astype("float64")
+    usable = (
+        df["donor_id"].notna() & (df["donor_id"].str.len() > 0)
+        & df["_date"].notna() & df["_amount"].notna()
+    )
+    if not usable.all():
+        warnings.warn(
+            f"{int((~usable).sum())} of {len(df)} gift rows have a donor_id, "
+            f"gift_date or gift_amount that could not be read and are dropped.",
+            stacklevel=3,
+        )
+    df = df[usable]
 
     if not df.empty:
         fy = (
@@ -357,6 +393,12 @@ def _snapshot_features_for_year(
         snap = snap.join(act_feats, how="left")
 
     if donors_norm is not None:
+        overlap = sorted(set(snap.columns) & set(donors_norm.columns))
+        if overlap:
+            raise ValueError(
+                f"donors columns {overlap} clash with snapshot feature names; "
+                f"rename them before passing donors."
+            )
         snap = snap.join(donors_norm, how="left")
 
     return snap

@@ -32,6 +32,7 @@ import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 from philanthropy.ingest import build_leadership_snapshots
+from philanthropy.ingest._civicrm import _normalise_contact_id
 from philanthropy.ingest._upgrade_snapshots import (
     _column,
     _fy_end,
@@ -50,6 +51,8 @@ from ._propensity import MajorGiftClassifier
 __all__ = ["score_leadership_prospects"]
 
 _TOP_REASONS = 3
+# Substring of activities_to_features's low id match-rate warning.
+_ACTIVITY_MATCH_MARKER = "contact_id values in this activity log were found in donors"
 _LOW_DATA_ROWS = 500
 # CalibratedClassifierCV (inside MajorGiftClassifier) defaults to a 5-fold
 # cross-validation internally, which needs at least this many historical
@@ -155,7 +158,7 @@ def score_leadership_prospects(
         as a near-perfect rate on a small fold and an uninformative one on a
         large real-world validation year (e.g. reporting 1.0 on a fixed
         top-10 against a 64,178-row fold whose true top-1% lift was 2.24x).
-        Clipped to the fold size if larger.
+        Clipped to the fold size if larger. Must be at least 1.
     baseline_giving_threshold : float, optional
         The FY T giving level the "gave >= X last FY" naive baseline uses.
         Defaults to ``threshold / 2``.
@@ -187,7 +190,8 @@ def score_leadership_prospects(
         ``low_data_warning`` / ``low_data_message`` (flagged under roughly
         ``500`` training rows); ``activity_id_match_warnings`` (list of str,
         captured from ``activities_to_features``'s own low-match-rate
-        warning, not recomputed here); ``validated`` (whether a walk-forward
+        warning, not recomputed here; any other warning raised while building
+        the snapshots is re-emitted to the caller instead); ``validated`` (whether a walk-forward
         held-out fold existed at all), and, when it did:
 
         - ``validation_fiscal_year``, ``n_validation_rows``: which FY the
@@ -236,7 +240,7 @@ def score_leadership_prospects(
     Raises
     ------
     ValueError
-        If ``band[0] > band[1]``; if there is not one historical
+        If ``band[0] > band[1]``; if ``top_n < 1``; if there is not one historical
         ``(donor, fiscal year)`` row to train on as of ``as_of``; if there
         are fewer than 5 historical rows (too few for
         :class:`~philanthropy.models.MajorGiftClassifier`'s internal 5-fold
@@ -276,7 +280,8 @@ def score_leadership_prospects(
     scored population| * global_importance_weight`` (importance clipped at 0,
     since a negative permutation importance means shuffling that feature
     *helped*, not a reason to report), and keeps the top 3 as
-    ``(feature_name, donor_value)`` pairs. This is a heuristic, not a causal
+    ``(feature_name, donor_value)`` pairs, dropping any whose weighted score
+    is zero or negative (so a donor can get fewer than 3, or none). This is a heuristic, not a causal
     attribution: it says which features are both unusual for this donor and
     generally predictive, not "if X were different the score would change by
     Y". It is deliberately simple rather than a general explainability
@@ -328,6 +333,8 @@ def score_leadership_prospects(
     low, high = band
     if low > high:
         raise ValueError(f"band[0] ({low}) must be <= band[1] ({high}).")
+    if top_n is not None and top_n < 1:
+        raise ValueError(f"top_n must be >= 1, got {top_n}.")
     if isinstance(threshold, str):
         _resolve_threshold(threshold, np.array([1.0]))  # bad strings fail before any work
 
@@ -365,7 +372,11 @@ def score_leadership_prospects(
     donors_norm = None
     if donors is not None:
         donors_norm = donors.copy()
-        donors_norm.index = donors_norm.index.astype("string").str.strip()
+        # Same normalisation as build_leadership_snapshots, so a float id
+        # column (123.0) still joins the gift log's "123".
+        donors_norm.index = pd.Index(
+            _normalise_contact_id(donors.index.to_series()).str.strip()
+        )
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
@@ -381,7 +392,14 @@ def score_leadership_prospects(
                 current_fy, fiscal_year_start, activities, donors, donors_norm,
                 as_of=as_of_ts, include_momentum=include_momentum,
             )
-    activity_id_match_warnings = [str(w.message) for w in caught]
+    # Report only the activity id match-rate warning; re-emit everything
+    # else (unread dates, dropped gift rows, skipped years) to the caller.
+    activity_id_match_warnings = []
+    for w in caught:
+        if _ACTIVITY_MATCH_MARKER in str(w.message):
+            activity_id_match_warnings.append(str(w.message))
+        else:
+            warnings.warn(w.message, stacklevel=2)
 
     if historical_snap.empty:
         raise ValueError(
@@ -655,7 +673,9 @@ def _top_reasons(
 
     reasons = []
     for donor_id in X.index:
-        top_feats = weighted.loc[donor_id].sort_values(ascending=False, kind="stable").index[:top_k]
+        row = weighted.loc[donor_id]
+        # A zero weighted contribution explains nothing; never report it.
+        top_feats = row[row > 0].sort_values(ascending=False, kind="stable").index[:top_k]
         reasons.append(tuple((feat, X.loc[donor_id, feat]) for feat in top_feats))
     return reasons
 

@@ -151,6 +151,16 @@ def _load_bundle(path: str) -> Dict[str, Any]:
         raise SystemExit(str(exc))
 
 
+def _bundle_features(args: argparse.Namespace, bundle: Dict[str, Any]) -> List[str]:
+    features = _split_features(args.features) or bundle.get("features")
+    if not features:
+        raise SystemExit(
+            f"{args.model} stores no feature list (it was saved without "
+            "`features=`); pass --features."
+        )
+    return list(features)
+
+
 def _score_array(model: Any, X: Any) -> np.ndarray:
     if hasattr(model, "predict_affinity_score"):
         return model.predict_affinity_score(X)
@@ -167,10 +177,15 @@ def _neutralise_csv_injection(df: pd.DataFrame) -> pd.DataFrame:
     The scored CSV echoes donor-controlled string fields (name, email, …) that
     originate from third-party advancement webhooks. Without this, a cell like
     ``=cmd|'/c calc'!A1`` executes when an analyst opens scores.csv in Excel or
-    Google Sheets (CSV formula injection, CWE-1236). Returns a copy; numeric
+    Google Sheets (CSV formula injection, CWE-1236). Column headers come from
+    the input file too and are escaped the same way. Returns a copy; numeric
     columns are untouched.
     """
     out = df.copy()
+    out.columns = [
+        "'" + c if isinstance(c, str) and c.startswith(_CSV_INJECTION_PREFIXES) else c
+        for c in out.columns
+    ]
     # Iterate every column and let the isinstance guard below decide. Selecting
     # by dtype is not stable across pandas versions: pandas 4 stops returning
     # `str`-dtype columns for include=["object"], which would silently switch
@@ -250,7 +265,7 @@ def _cmd_train_leadership(args: argparse.Namespace) -> None:
 
 def _cmd_score(args: argparse.Namespace) -> None:
     bundle = _load_bundle(args.model)
-    features = _split_features(args.features) or bundle["features"]
+    features = _bundle_features(args, bundle)
     df = _read_csv(args.data)
     _require_columns(df, features, args.data)
 
@@ -282,14 +297,20 @@ def _cmd_validate(args: argparse.Namespace) -> None:
     )
 
     bundle = _load_bundle(args.model)
-    features = _split_features(args.features) or bundle["features"]
+    features = _bundle_features(args, bundle)
     target = args.target or bundle.get("target")
     if target is None:
         raise SystemExit(
             "validate requires --target (no target stored in the model bundle)."
         )
     df = _read_csv(args.data)
-    _require_columns(df, list(features) + [target], args.data)
+    _require_columns(df, features + [target], args.data)
+    n_missing = int(df[target].isna().sum())
+    if n_missing:
+        raise SystemExit(
+            f"{n_missing} row(s) in {args.data} have no {target!r} label; "
+            "drop or fill them before validating."
+        )
 
     model = bundle["model"]
     X = df[features]

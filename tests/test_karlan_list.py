@@ -58,3 +58,8 @@ def test_partial_missing_values_pass_through(dta):
     df = load_karlan_list(dta)
     assert np.isnan(df.loc[2, "months_since_last_gift"])
     assert np.isnan(df.loc[1, "female"])
+
+
+def test_rejects_a_network_path():
+    with pytest.raises(ValueError, match="local file path"):
+        load_karlan_list("https://example.invalid/AERtables1-5.dta")

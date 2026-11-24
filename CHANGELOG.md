@@ -14,6 +14,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Official support for Python 3.14. Added `3.14` to the CI test matrix and package classifiers; the docs build job now runs on 3.14 too.
 
 ### Documentation
+- New how-to, "Run the check on your own donor score": the five-step
+  as-of check for any existing score, in-house or vendor, with a Python
+  version of the gift roll-up and the top-10% ratio, and how it differs
+  from `philanthropy check`. Linked from the how-to index and the README.
 - `CONTRIBUTING.md` gains an "Adding a CRM ingest reader" checklist: every
   step a reader PR needs, in order — vendor-docs citation, header aliases,
   `DEFAULT_` constants, the missing type/status warning, the typed empty frame,

@@ -131,6 +131,7 @@ nav:
     - how-to/get_your_crm_export_in.md
     - how-to/fit_models_to_your_crm_columns.md
     - how-to/use_the_cli.md
+    - how-to/run_the_check_on_your_donor_score.md
     - how-to/ingest_unischema_events.md
     - how-to/ingest_civicrm_contributions.md
     - how-to/handle_missing_wealth_data.md

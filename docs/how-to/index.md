@@ -5,6 +5,7 @@ How-to guides are task recipes. Each one solves a specific problem and assumes y
 * [Get Your CRM Export In](get_your_crm_export_in.md)
 * [Fit Models to Your CRM Columns](fit_models_to_your_crm_columns.md)
 * [Use the CLI](use_the_cli.md)
+* [Run the Check on Your Own Donor Score](run_the_check_on_your_donor_score.md)
 * [Ingest UniSchema Events](ingest_unischema_events.md)
 * [Ingest CiviCRM Contributions](ingest_civicrm_contributions.md)
 * [Handle Missing Wealth Data](handle_missing_wealth_data.md)
